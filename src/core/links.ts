@@ -1,0 +1,77 @@
+import { inlineText } from './doc';
+import type { DocNode, PageId, PageMeta, WorkspaceState } from './model';
+import { livePages } from './tree';
+
+const PAGE_HREF = /^#\/page\/([A-Za-z0-9_-]+)/;
+
+export function pageHref(id: PageId): string {
+  return `#/page/${id}`;
+}
+
+export function pageIdFromHref(href: unknown): PageId | null {
+  if (typeof href !== 'string') return null;
+  return PAGE_HREF.exec(href)?.[1] ?? null;
+}
+
+export interface LinkOccurrence {
+  targetId: PageId;
+  context: string;
+}
+
+// page link nodes plus ordinary links that point at a page
+export function linksInDoc(doc: DocNode): LinkOccurrence[] {
+  const result: LinkOccurrence[] = [];
+  const visitBlock = (block: DocNode) => {
+    const targets: PageId[] = [];
+    const collect = (node: DocNode) => {
+      if (node.type === 'pageLink' && typeof node.attrs?.id === 'string') targets.push(node.attrs.id);
+      for (const mark of node.marks ?? []) {
+        const id = mark.type === 'link' ? pageIdFromHref(mark.attrs?.href) : null;
+        if (id) targets.push(id);
+      }
+      for (const child of node.content ?? []) collect(child);
+    };
+    collect(block);
+    if (targets.length === 0) return;
+    const context = inlineText(block).trim();
+    for (const targetId of new Set(targets)) result.push({ targetId, context });
+  };
+  const visit = (node: DocNode) => {
+    if (node.type === 'paragraph' || node.type === 'heading') return visitBlock(node);
+    for (const child of node.content ?? []) visit(child);
+  };
+  visit(doc);
+  return result;
+}
+
+export interface Backlink {
+  source: PageMeta;
+  contexts: string[];
+}
+
+export function backlinksTo(state: WorkspaceState, targetId: PageId): Backlink[] {
+  const result: Backlink[] = [];
+  for (const page of livePages(state.pages)) {
+    if (page.id === targetId) continue;
+    const doc = state.docs[page.id];
+    if (!doc) continue;
+    const contexts = linksInDoc(doc)
+      .filter((link) => link.targetId === targetId)
+      .map((link) => link.context);
+    if (contexts.length > 0) result.push({ source: page, contexts });
+  }
+  return result.sort((a, b) => b.source.updatedAt - a.source.updatedAt);
+}
+
+// swaps stored link labels for current titles before export
+export function refreshLinkLabels(doc: DocNode, titleOf: (id: PageId) => string | null): DocNode {
+  const visit = (node: DocNode): DocNode => {
+    if (node.type === 'pageLink' && typeof node.attrs?.id === 'string') {
+      const title = titleOf(node.attrs.id);
+      return title === null ? node : { ...node, attrs: { ...node.attrs, label: title } };
+    }
+    if (!node.content) return node;
+    return { ...node, content: node.content.map(visit) };
+  };
+  return visit(doc);
+}

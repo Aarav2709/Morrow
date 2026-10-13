@@ -1,0 +1,72 @@
+:root {
+  --font-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Source Serif 4 Variable', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --text-xs: 11.5px;
+  --text-sm: 12.5px;
+  --text-ui: 13.5px;
+  --text-md: 14.5px;
+
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --bg: #fbfaf7;
+  --bg-sidebar: #f3f1ec;
+  --surface: #ffffff;
+  --popover: #ffffff;
+  --text: #22201c;
+  --text-muted: #6b665d;
+  --text-faint: #9c968b;
+  --border: #e6e2d9;
+  --border-strong: #d4cfc4;
+  --hover: rgba(34, 32, 28, 0.055);
+  --active: rgba(34, 32, 28, 0.09);
+  --accent: #c0582f;
+  --accent-strong: #a3451f;
+  --accent-soft: rgba(192, 88, 47, 0.11);
+  --accent-line: rgba(192, 88, 47, 0.35);
+  --focus: rgba(192, 88, 47, 0.5);
+  --selection: rgba(192, 88, 47, 0.18);
+  --danger: #b3261e;
+  --danger-soft: rgba(179, 38, 30, 0.09);
+  --code-bg: #f1eee8;
+  --mark: rgba(214, 160, 40, 0.28);
+  --scrim: rgba(24, 22, 19, 0.32);
+  --toast-bg: #24221e;
+  --toast-text: #f4efe6;
+  --shadow-popover: 0 1px 2px rgba(30, 25, 20, 0.06), 0 10px 28px rgba(30, 25, 20, 0.1);
+  --shadow-dialog: 0 2px 6px rgba(30, 25, 20, 0.08), 0 24px 60px rgba(30, 25, 20, 0.18);
+}
+
+:root[data-theme='dark'] {
+  --bg: #1b1a18;
+  --bg-sidebar: #161513;
+  --surface: #222120;
+  --popover: #272623;
+  --text: #e9e5dd;
+  --text-muted: #a49e93;
+  --text-faint: #716c63;
+  --border: #2f2d2a;
+  --border-strong: #3e3b37;
+  --hover: rgba(255, 248, 235, 0.055);
+  --active: rgba(255, 248, 235, 0.09);
+  --accent: #e27d50;
+  --accent-strong: #ef9670;
+  --accent-soft: rgba(226, 125, 80, 0.15);
+  --accent-line: rgba(226, 125, 80, 0.45);
+  --focus: rgba(226, 125, 80, 0.6);
+  --selection: rgba(226, 125, 80, 0.28);
+  --danger: #f07a6e;
+  --danger-soft: rgba(240, 122, 110, 0.12);
+  --code-bg: #262421;
+  --mark: rgba(230, 180, 60, 0.3);
+  --scrim: rgba(0, 0, 0, 0.5);
+  --toast-bg: #ece7dd;
+  --toast-text: #1f1d1a;
+  --shadow-popover: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
+  --shadow-dialog: 0 2px 8px rgba(0, 0, 0, 0.35), 0 28px 70px rgba(0, 0, 0, 0.5);
+}

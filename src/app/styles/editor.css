@@ -1,0 +1,499 @@
+.editor-host {
+  position: relative;
+}
+
+.editor-loading {
+  min-height: 40vh;
+}
+
+.editor-surface {
+  position: relative;
+}
+
+.prose {
+  outline: none;
+  font-family: var(--font-serif);
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--text);
+  min-height: 40vh;
+  caret-color: var(--accent);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  font-variant-ligatures: common-ligatures;
+}
+
+.font-sans .prose {
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.68;
+}
+
+.font-mono .prose {
+  font-family: var(--font-mono);
+  font-size: 14.5px;
+  line-height: 1.75;
+}
+
+.prose > * + * {
+  margin-top: 0.55em;
+}
+
+.prose p {
+  margin: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3 {
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.012em;
+  margin-top: 1.5em;
+  margin-bottom: 0.15em;
+}
+
+.font-sans .prose h1,
+.font-sans .prose h2,
+.font-sans .prose h3 {
+  font-weight: 600;
+  letter-spacing: -0.018em;
+}
+
+.prose h1 {
+  font-size: 1.72em;
+}
+
+.prose h2 {
+  font-size: 1.36em;
+}
+
+.prose h3 {
+  font-size: 1.13em;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose strong {
+  font-weight: 650;
+}
+
+.prose a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-line);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  cursor: text;
+}
+
+.prose a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.prose a.page-link {
+  color: var(--accent-strong);
+  text-decoration: none;
+  background: var(--accent-soft);
+  border-radius: 3px;
+  padding: 0 0.22em;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.prose a.page-link:hover {
+  background: var(--accent-line);
+}
+
+.prose a.page-link.is-missing {
+  color: var(--text-faint);
+  background: var(--hover);
+  text-decoration: line-through;
+  cursor: default;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.08em 0.32em;
+}
+
+.prose pre {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  overflow-x: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+.prose pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+}
+
+.prose blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: 1em;
+  border-left: 3px solid var(--accent-line);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.prose blockquote p + p {
+  margin-top: 0.4em;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--border-strong);
+  margin: 1.6em 0;
+}
+
+.prose hr.ProseMirror-selectednode {
+  border-top-color: var(--accent);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.45em;
+  margin: 0;
+}
+
+.prose li + li {
+  margin-top: 0.2em;
+}
+
+.prose li > p + * {
+  margin-top: 0.2em;
+}
+
+.prose ul li::marker {
+  color: var(--text-faint);
+}
+
+.prose ol li::marker {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.prose ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0.1em;
+}
+
+.prose ul[data-type='taskList'] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+}
+
+.prose ul[data-type='taskList'] li > label {
+  flex: none;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  height: 1.7em;
+}
+
+.prose ul[data-type='taskList'] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.prose ul[data-type='taskList'] li[data-checked='true'] > div > p {
+  color: var(--text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--border-strong);
+}
+
+.prose .tableWrapper {
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid var(--border-strong);
+  padding: 6px 10px;
+  vertical-align: top;
+  text-align: left;
+  position: relative;
+  min-width: 80px;
+}
+
+.prose th {
+  background: var(--hover);
+  font-weight: 600;
+}
+
+.prose td > * + *,
+.prose th > * + * {
+  margin-top: 0.4em;
+}
+
+.prose .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--selection);
+  pointer-events: none;
+}
+
+.prose .ProseMirror-selectednode {
+  outline: 2px solid var(--accent-line);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.prose p.is-empty::before,
+.prose h1.is-empty::before,
+.prose h2.is-empty::before,
+.prose h3.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-faint);
+  opacity: 0.75;
+}
+
+.prose .ProseMirror-gapcursor::after {
+  border-top-color: var(--text);
+}
+
+/* block handle */
+
+.block-handle {
+  position: absolute;
+  left: -34px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  opacity: 0;
+  pointer-events: none;
+  cursor: grab;
+  transition: opacity 120ms var(--ease);
+}
+
+.block-handle.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.block-handle:hover {
+  background: var(--hover);
+  color: var(--text-muted);
+}
+
+.block-handle:active {
+  cursor: grabbing;
+}
+
+/* bubble toolbars */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+}
+
+.tool-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 28px;
+  border-radius: 5px;
+  color: var(--text-muted);
+}
+
+.tool-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tool-button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.text-tool {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.text-tool:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.text-tool.is-danger {
+  color: var(--danger);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 3px;
+}
+
+.link-form {
+  display: flex;
+  gap: 4px;
+  padding: 1px;
+}
+
+.link-input {
+  width: 260px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  outline: none;
+}
+
+.link-input:focus {
+  border-color: var(--accent);
+}
+
+.link-input.is-invalid {
+  border-color: var(--danger);
+}
+
+.link-apply {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 5px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 500;
+}
+
+.link-preview {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 8px;
+  color: var(--accent-strong);
+  height: 28px;
+}
+
+.link-preview:hover {
+  text-decoration: underline;
+}
+
+.table-toolbar {
+  flex-wrap: wrap;
+  max-width: calc(100vw - 32px);
+}
+
+/* slash and link suggestions */
+
+.suggestion-menu {
+  width: 300px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 4px;
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 5px;
+  text-align: left;
+}
+
+.suggestion-item[aria-selected='true'] {
+  background: var(--hover);
+}
+
+.suggestion-icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.suggestion-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.suggestion-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-description {
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-hint {
+  border: 0;
+  background: none;
+  font-family: var(--font-mono);
+}
+
+.suggestion-empty {
+  padding: 10px;
+  color: var(--text-muted);
+}
+
+@media (max-width: 800px) {
+  .prose {
+    font-size: 17px;
+  }
+
+  .block-handle {
+    display: none;
+  }
+}
