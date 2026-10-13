@@ -1,10 +1,10 @@
-import { cloneDoc, isRecord } from './doc';
+import { cloneDoc, fileIdsInDoc, isRecord } from './doc';
 import { findDailyNote, findJournal } from './daily';
 import { refreshLinkLabels } from './links';
 import { markdownToPage } from './markdown/parse';
 import { pageToMarkdown } from './markdown/serialize';
 import { displayTitle, SCHEMA_VERSION } from './model';
-import type { DocNode, PageId, PageMeta, WorkspaceState } from './model';
+import type { DocNode, FileId, FileMeta, PageId, PageMeta, WorkspaceState } from './model';
 import { readWorkspace } from './migrations';
 import { errorMessage, fail, ok } from './result';
 import type { Result } from './result';
@@ -13,12 +13,25 @@ import { childrenOf, livePages } from './tree';
 
 export const BACKUP_FORMAT = 'morrow-backup';
 
+export interface BackupFile extends FileMeta {
+  // base64 encoded bytes
+  data: string;
+}
+
 export interface Backup {
   format: typeof BACKUP_FORMAT;
   schemaVersion: number;
   exportedAt: string;
   pages: PageMeta[];
   docs: Record<PageId, DocNode>;
+  files: BackupFile[];
+}
+
+export interface ParsedBackup {
+  pages: PageMeta[];
+  docs: Record<PageId, DocNode>;
+  files: BackupFile[];
+  problems: string[];
 }
 
 export interface InsertPlan {
@@ -28,19 +41,25 @@ export interface InsertPlan {
   problems: string[];
 }
 
-export function createBackup(state: WorkspaceState, now: Date): Backup {
+export function createBackup(state: WorkspaceState, now: Date, files: BackupFile[] = []): Backup {
   return {
     format: BACKUP_FORMAT,
     schemaVersion: SCHEMA_VERSION,
     exportedAt: now.toISOString(),
     pages: Object.values(state.pages),
     docs: { ...state.docs },
+    files,
   };
 }
 
-export function parseBackup(
-  text: string,
-): Result<{ pages: PageMeta[]; docs: Record<PageId, DocNode>; problems: string[] }> {
+// every file referenced by any page, including pages in the trash
+export function referencedFileIds(state: WorkspaceState): Set<FileId> {
+  const ids = new Set<FileId>();
+  for (const doc of Object.values(state.docs)) for (const id of fileIdsInDoc(doc)) ids.add(id);
+  return ids;
+}
+
+export function parseBackup(text: string): Result<ParsedBackup> {
   let data: unknown;
   try {
     data = JSON.parse(text);
@@ -51,15 +70,46 @@ export function parseBackup(
   if (!Array.isArray(data.pages) || !isRecord(data.docs)) return fail('The backup is incomplete.');
   const loaded = readWorkspace(Number(data.schemaVersion), { pages: data.pages, docs: data.docs });
   if (!loaded.ok) return loaded;
-  return ok(loaded.value);
+  const files: BackupFile[] = [];
+  const problems = [...loaded.value.problems];
+  for (const raw of Array.isArray(data.files) ? data.files : []) {
+    const file = readBackupFile(raw);
+    if (file) files.push(file);
+    else problems.push('An attachment in the backup could not be read and was skipped.');
+  }
+  return ok({ pages: loaded.value.pages, docs: loaded.value.docs, files, problems });
+}
+
+function readBackupFile(raw: unknown): BackupFile | null {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(raw.id)) return null;
+  if (typeof raw.data !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(raw.data)) return null;
+  return {
+    id: raw.id,
+    name: typeof raw.name === 'string' && raw.name ? raw.name.slice(0, 255) : 'file',
+    type: typeof raw.type === 'string' ? raw.type.slice(0, 120) : 'application/octet-stream',
+    size: typeof raw.size === 'number' && Number.isFinite(raw.size) ? raw.size : 0,
+    createdAt: typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : 0,
+    data: raw.data,
+  };
+}
+
+export function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+export function base64ToBytes(text: string): Uint8Array {
+  const binary = atob(text);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 // restoring only ever adds pages, conflicting ids get fresh ids and identical pages are skipped
-export function planRestore(
-  state: WorkspaceState,
-  backup: { pages: PageMeta[]; docs: Record<PageId, DocNode>; problems: string[] },
-  newId: () => PageId,
-): InsertPlan {
+export function planRestore(state: WorkspaceState, backup: ParsedBackup, newId: () => PageId): InsertPlan {
   const remap = new Map<PageId, PageId>();
   const skip = new Set<PageId>();
   for (const page of backup.pages) {
@@ -149,12 +199,40 @@ export function planMarkdownImport(
   return { pages, docs, skipped: 0, problems: [] };
 }
 
-export function pageMarkdown(state: WorkspaceState, id: PageId): string {
+export function pageMarkdown(
+  state: WorkspaceState,
+  id: PageId,
+  filePath?: (fileId: FileId) => string | null,
+): string {
   const page = state.pages[id];
   const doc = state.docs[id];
   if (!page || !doc) return '';
   const titleOf = (target: PageId) => (state.pages[target] ? displayTitle(state.pages[target]) : null);
-  return pageToMarkdown(displayTitle(page), refreshLinkLabels(doc, titleOf), { titleOf });
+  return pageToMarkdown(displayTitle(page), refreshLinkLabels(doc, titleOf), {
+    titleOf,
+    ...(filePath ? { filePath } : {}),
+  });
+}
+
+// attachments share one folder, each file gets a stable unique name
+export function attachmentNames(ids: FileId[], files: Record<FileId, FileMeta>): Map<FileId, string> {
+  const names = new Map<FileId, string>();
+  const used = new Set<string>();
+  for (const id of ids) {
+    const meta = files[id];
+    if (!meta || names.has(id)) continue;
+    const dot = meta.name.lastIndexOf('.');
+    const extension =
+      dot > 0
+        ? meta.name
+            .slice(dot)
+            .replace(/[^.A-Za-z0-9]/g, '')
+            .slice(0, 10)
+        : '';
+    const base = safeFileName(dot > 0 ? meta.name.slice(0, dot) : meta.name);
+    names.set(id, uniqueName(`${base}${extension}`, used));
+  }
+  return names;
 }
 
 export interface ExportFile {
@@ -162,22 +240,33 @@ export interface ExportFile {
   content: string;
 }
 
-// a page with subpages exports as title.md next to a folder named after it
-export function workspaceMarkdownFiles(state: WorkspaceState): ExportFile[] {
-  const live = new Set(livePages(state.pages).map((page) => page.id));
+// a page with subpages exports as title.md next to a folder named after it, files go in attachments
+export function workspaceMarkdownFiles(
+  state: WorkspaceState,
+  fileMetas: Record<FileId, FileMeta> = {},
+): { files: ExportFile[]; attachments: Map<FileId, string> } {
+  const live = livePages(state.pages);
+  const referenced = live.flatMap((page) => (state.docs[page.id] ? fileIdsInDoc(state.docs[page.id]!) : []));
+  const attachments = new Map(
+    [...attachmentNames(referenced, fileMetas)].map(([id, name]) => [id, `attachments/${name}`]),
+  );
   const files: ExportFile[] = [];
   const visit = (parentId: PageId | null, folder: string, depth: number) => {
     if (depth > 32) return;
-    const used = new Set<string>();
+    const used = new Set<string>(['attachments']);
+    const up = '../'.repeat(depth);
     for (const page of childrenOf(state.pages, parentId)) {
-      if (!live.has(page.id)) continue;
       const name = uniqueName(safeFileName(displayTitle(page)), used);
-      files.push({ path: `${folder}${name}.md`, content: pageMarkdown(state, page.id) });
+      const filePath = (id: FileId) => {
+        const target = attachments.get(id);
+        return target ? `${up}${target}` : null;
+      };
+      files.push({ path: `${folder}${name}.md`, content: pageMarkdown(state, page.id, filePath) });
       visit(page.id, `${folder}${name}/`, depth + 1);
     }
   };
   visit(null, '', 0);
-  return files;
+  return { files, attachments };
 }
 
 export function safeFileName(title: string): string {

@@ -15,6 +15,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Info,
   Italic,
   Link2,
   Link2Off,
@@ -454,8 +455,37 @@ export function BlockMenu({
       },
     },
   ];
+  const blockType = editor.state.doc.nodeAt(request.pos)?.type.name;
+  if (blockType === 'callout') {
+    const tone = (value: string, label: string): MenuEntry => ({
+      label,
+      icon: Info,
+      checked: editor.state.doc.nodeAt(request.pos)?.attrs.tone === value,
+      onSelect: () => {
+        editor
+          .chain()
+          .focus()
+          .setNodeSelection(request.pos)
+          .updateAttributes('callout', { tone: value })
+          .run();
+      },
+    });
+    entries.unshift(
+      { heading: 'Callout' },
+      tone('note', 'Note'),
+      tone('tip', 'Tip'),
+      tone('warning', 'Warning'),
+      {
+        separator: true,
+      },
+    );
+  }
   const textual = editor.state.doc.nodeAt(request.pos)?.isTextblock ?? false;
-  const shown = textual ? entries : entries.slice(entries.findIndex((entry) => 'separator' in entry) + 1);
+  const firstTurnInto = entries.findIndex((entry) => 'heading' in entry && entry.heading === 'Turn into');
+  const afterTurnInto = entries.findIndex((entry, index) => index > firstTurnInto && 'separator' in entry);
+  const shown = textual
+    ? entries
+    : entries.filter((_entry, index) => index < firstTurnInto || index > afterTurnInto);
   return (
     <Menu
       anchor={request.rect}

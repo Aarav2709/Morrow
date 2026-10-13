@@ -10,9 +10,9 @@ import { HomeView, TasksView, TrashView } from './components/Views';
 import { commitEditors, undoRedo } from './editor/commits';
 import { writeAutoBackup } from './operations';
 import { desktop } from './platform/desktop';
-import { resolvedTheme, usePreferences } from './platform/preferences';
+import { getPreferences, resolvedTheme, usePreferences } from './platform/preferences';
 import { useRoute } from './router';
-import { getUi, setUi, useUi } from './ui';
+import { getUi, setUi, toast, useUi } from './ui';
 import { getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
@@ -89,12 +89,28 @@ function useLifecycle() {
       runAction(id);
     });
 
+    // updates are only looked for when the person turned that on
+    const updateCheck =
+      desktop && getPreferences().autoUpdate
+        ? setTimeout(() => void desktop?.checkForUpdates(), 15_000)
+        : null;
+    let announced = false;
+    const stopUpdates = desktop?.onUpdateStatus((status) => {
+      if (status.state !== 'ready' || announced) return;
+      announced = true;
+      toast(`Morrow ${status.version ?? ''} is ready to install.`, {
+        durationMs: 60_000,
+        action: { label: 'Restart', run: () => void desktop?.installUpdate() },
+      });
+    });
     const first = desktop ? setTimeout(() => void writeAutoBackup(), 30_000) : null;
     const timer = desktop ? setInterval(() => void writeAutoBackup(), AUTO_BACKUP_MS) : null;
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('visibilitychange', onVisibility);
       unsubscribe?.();
+      stopUpdates?.();
+      if (updateCheck) clearTimeout(updateCheck);
       if (first) clearTimeout(first);
       if (timer) clearInterval(timer);
     };

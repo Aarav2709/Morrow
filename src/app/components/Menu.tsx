@@ -131,6 +131,7 @@ export function Menu({ anchor, entries, onClose, placement = 'bottom-start', lab
         );
       })}
     </div>,
-    document.body,
+    // inside the main landmark so assistive tech finds the menu where the page lives
+    document.querySelector('main') ?? document.body,
   );
 }

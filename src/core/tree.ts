@@ -7,7 +7,19 @@ export function compareSiblings(a: PageMeta, b: PageMeta): number {
   return a.order - b.order || a.createdAt - b.createdAt || a.id.localeCompare(b.id);
 }
 
+// built once per pages object so large trees stay fast, pages objects are never mutated
+const liveIndex = new WeakMap<Pages, Map<PageId | null, PageMeta[]>>();
+
 export function childrenOf(pages: Pages, parentId: PageId | null, includeTrashed = false): PageMeta[] {
+  if (!includeTrashed) {
+    let index = liveIndex.get(pages);
+    if (!index) {
+      index = groupByParent(pages, false);
+      for (const list of index.values()) Object.freeze(list);
+      liveIndex.set(pages, index);
+    }
+    return index.get(parentId) ?? [];
+  }
   const result: PageMeta[] = [];
   for (const page of Object.values(pages)) {
     if (effectiveParent(pages, page) === parentId && (includeTrashed || page.trashedAt === null)) {
@@ -65,7 +77,11 @@ export function isEffectivelyTrashed(pages: Pages, id: PageId): boolean {
   return ancestorsOf(pages, id).some((ancestor) => ancestor.trashedAt !== null);
 }
 
+const liveCache = new WeakMap<Pages, PageMeta[]>();
+
 export function livePages(pages: Pages): PageMeta[] {
+  const cached = liveCache.get(pages);
+  if (cached) return cached;
   const trashed = new Map<PageId, boolean>();
   const resolve = (id: PageId, depth: number): boolean => {
     const known = trashed.get(id);
@@ -79,7 +95,9 @@ export function livePages(pages: Pages): PageMeta[] {
     trashed.set(id, value);
     return value;
   };
-  return Object.values(pages).filter((page) => !resolve(page.id, 0));
+  const result = Object.values(pages).filter((page) => !resolve(page.id, 0));
+  liveCache.set(pages, Object.freeze(result) as PageMeta[]);
+  return result;
 }
 
 export function trashedPages(pages: Pages): PageMeta[] {

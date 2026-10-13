@@ -12,6 +12,7 @@ import { getSession, getState, run } from '../workspace';
 import type { BlockMenuRequest } from './BlockHandle';
 import { registerCommit, setFocusedEditor } from './commits';
 import { BlockMenu, FormattingMenu, LinkMenu, openHref, TableMenu } from './EditorMenus';
+import { FindBar } from './FindBar';
 import { createExtensions } from './extensions';
 
 interface Props {
@@ -30,6 +31,7 @@ const COMMIT_DELAY_MS = 250;
 export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, onReady }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
+  const [finding, setFinding] = useState(false);
   const committed = useRef<DocNode>(doc);
   const callbacks = useRef({ onExitTop, onDirty, onReady });
   useEffect(() => {
@@ -58,6 +60,10 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
           'Mod-k': ({ editor: current }) => {
             if (current.state.selection.empty) return false;
             current.view.dom.dispatchEvent(new Event('morrow:edit-link'));
+            return true;
+          },
+          'Mod-f': () => {
+            window.dispatchEvent(new Event('morrow:find'));
             return true;
           },
           'Mod-s': () => {
@@ -175,10 +181,18 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
     navigate({ name: 'page', id: pageId, find: null }, { replace: true });
   }, [editor, find, pageId]);
 
+  // ctrl or cmd f from anywhere on the page opens the find bar
+  useEffect(() => {
+    const open = () => setFinding(true);
+    window.addEventListener('morrow:find', open);
+    return () => window.removeEventListener('morrow:find', open);
+  }, []);
+
   if (!editor) return <div className="editor-loading" aria-hidden="true" />;
 
   return (
     <div className="editor-host">
+      {finding && <FindBar editor={editor} onClose={() => setFinding(false)} />}
       <EditorContent editor={editor} className="editor-surface" />
       {editable && (
         <>

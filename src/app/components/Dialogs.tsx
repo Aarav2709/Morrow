@@ -1,4 +1,13 @@
-import { Download, FolderArchive, FolderOpen, HardDrive, Upload, FileUp } from 'lucide-react';
+import {
+  Download,
+  FileUp,
+  FolderArchive,
+  FolderOpen,
+  HardDrive,
+  Paperclip,
+  RefreshCw,
+  Upload,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageId } from '../../core/model';
@@ -6,18 +15,23 @@ import { foldText } from '../../core/search';
 import { ancestorsOf, childrenOf, flattenTree, isDescendantOf } from '../../core/tree';
 import { ACTIONS, formatShortcut } from '../actions';
 import {
+  deleteUnusedFiles,
   exportAllMarkdown,
   exportBackup,
   expandPage,
   importMarkdown,
   restoreBackup,
+  unusedFiles,
   writeAutoBackup,
 } from '../operations';
+import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
+import type { UpdateStatus } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, ThemePreference, WritingFont } from '../platform/preferences';
 import { closeDialog, useUi } from '../ui';
-import { run, useWorkspace } from '../workspace';
+import { getSession, run, useWorkspace } from '../workspace';
+import { HistoryDialog, IconDialog } from './HistoryDialog';
 import { Dialog } from './primitives';
 
 export function Dialogs() {
@@ -30,6 +44,15 @@ export function Dialogs() {
       return <ShortcutsDialog />;
     case 'move':
       return <MoveDialog pageId={dialog.pageId} />;
+    case 'history':
+      return <HistoryDialog pageId={dialog.pageId} />;
+    case 'icon':
+      return (
+        <IconDialog
+          pageId={dialog.pageId}
+          onPick={(icon) => run({ type: 'page.setIcon', id: dialog.pageId, icon, now: Date.now() })}
+        />
+      );
     case 'confirm':
       return (
         <Dialog
@@ -180,7 +203,7 @@ function SettingsDialog() {
               </span>
             </span>
           </button>
-          <button type="button" className="data-action" onClick={() => exportAllMarkdown()}>
+          <button type="button" className="data-action" onClick={() => void exportAllMarkdown()}>
             <FolderArchive size={18} strokeWidth={1.5} />
             <span>
               <strong>Export as Markdown</strong>
@@ -226,6 +249,9 @@ function SettingsDialog() {
         )}
       </section>
 
+      <AttachmentsSection />
+      {desktop && <UpdatesSection />}
+
       <section className="settings-section">
         <h3>About</h3>
         <p className="muted">
@@ -234,6 +260,107 @@ function SettingsDialog() {
         </p>
       </section>
     </Dialog>
+  );
+}
+
+function AttachmentsSection() {
+  const [summary, setSummary] = useState<{ count: number; bytes: number; unused: number } | null>(null);
+  const refresh = () => {
+    void Promise.all([getSession().listFiles(), unusedFiles()]).then(([files, unused]) =>
+      setSummary({
+        count: files.length,
+        bytes: files.reduce((sum, file) => sum + file.size, 0),
+        unused: unused.length,
+      }),
+    );
+  };
+  useEffect(refresh, []);
+  return (
+    <section className="settings-section">
+      <h3>Images and files</h3>
+      <div className="setting-row">
+        <span className="setting-label">
+          <Paperclip size={14} />{' '}
+          {summary
+            ? `${summary.count} file${summary.count === 1 ? '' : 's'}, ${formatBytes(summary.bytes)}`
+            : 'Counting…'}
+        </span>
+        <button
+          type="button"
+          className="button small"
+          disabled={!summary?.unused}
+          onClick={() => void deleteUnusedFiles().then(refresh)}
+        >
+          {summary?.unused ? `Remove ${summary.unused} unused` : 'No unused files'}
+        </button>
+      </div>
+      <p className="muted small">
+        Files stay while any page, trashed page or page version uses them. Backups include them.
+      </p>
+    </section>
+  );
+}
+
+function updateText(status: UpdateStatus | null): string {
+  switch (status?.state) {
+    case 'checking':
+      return 'Checking for updates…';
+    case 'none':
+      return 'Morrow is up to date.';
+    case 'available':
+    case 'downloading':
+      return `Downloading Morrow ${status.version ?? ''}…`;
+    case 'ready':
+      return `Morrow ${status.version ?? ''} is ready to install.`;
+    case 'error':
+      return `Update check failed: ${status.error ?? 'unknown error'}`;
+    default:
+      return 'Updates are only checked when you ask, or automatically if you turn that on.';
+  }
+}
+
+function UpdatesSection() {
+  const prefs = usePreferences();
+  const [status, setStatus] = useState<UpdateStatus | null>(null);
+  useEffect(() => desktop?.onUpdateStatus(setStatus), []);
+  return (
+    <section className="settings-section">
+      <h3>Updates</h3>
+      <label className="setting-row checkbox-row">
+        <span className="setting-label">Check for updates automatically</span>
+        <input
+          type="checkbox"
+          checked={prefs.autoUpdate}
+          onChange={(event) => setPreferences({ autoUpdate: event.target.checked })}
+        />
+      </label>
+      <div className="setting-row">
+        <span className="muted small" role="status">
+          {updateText(status)}
+        </span>
+        {status?.state === 'ready' ? (
+          <button
+            type="button"
+            className="button small primary"
+            onClick={() => void desktop?.installUpdate()}
+          >
+            Restart and update
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="button small"
+            disabled={status?.state === 'checking' || status?.state === 'downloading'}
+            onClick={() => void desktop?.checkForUpdates()}
+          >
+            <RefreshCw size={14} /> Check now
+          </button>
+        )}
+      </div>
+      <p className="muted small">
+        Checking contacts GitHub to look for a newer release. Nothing about you or your pages is sent.
+      </p>
+    </section>
   );
 }
 
@@ -250,6 +377,8 @@ function ShortcutsDialog() {
     ['Indent or outdent list item', 'Tab  Shift+Tab'],
     ['Undo and redo', 'Mod+Z  Mod+Shift+Z'],
     ['Save immediately', 'Mod+S'],
+    ['Find and replace', 'Mod+F'],
+    ['Add an image or file', 'paste or drop it'],
   ];
   const format = (keys: string) =>
     keys

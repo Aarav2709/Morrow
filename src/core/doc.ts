@@ -62,11 +62,18 @@ export function inlineText(node: DocNode): string {
 export function docToPlainText(doc: DocNode): string {
   const lines: string[] = [];
   const visit = (node: DocNode) => {
-    if (node.type === 'paragraph' || node.type === 'heading' || node.type === 'codeBlock') {
+    if (
+      node.type === 'paragraph' ||
+      node.type === 'heading' ||
+      node.type === 'codeBlock' ||
+      node.type === 'detailsSummary'
+    ) {
       const text = inlineText(node);
       if (text.length > 0) lines.push(text);
       return;
     }
+    if (node.type === 'image' && node.attrs?.alt) lines.push(String(node.attrs.alt));
+    if (node.type === 'fileAttachment' && node.attrs?.name) lines.push(String(node.attrs.name));
     for (const child of node.content ?? []) visit(child);
   };
   visit(doc);
@@ -87,4 +94,15 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function cloneDoc(doc: DocNode): DocNode {
   return JSON.parse(JSON.stringify(doc)) as DocNode;
+}
+
+// every stored file a document points at, through images and attachments
+export function fileIdsInDoc(doc: DocNode): string[] {
+  const ids = new Set<string>();
+  walk(doc, (node) => {
+    if ((node.type === 'image' || node.type === 'fileAttachment') && typeof node.attrs?.fileId === 'string') {
+      ids.add(node.attrs.fileId);
+    }
+  });
+  return [...ids];
 }

@@ -19,8 +19,8 @@
   --surface: #ffffff;
   --popover: #ffffff;
   --text: #22201c;
-  --text-muted: #6b665d;
-  --text-faint: #9c968b;
+  --text-muted: #59554d;
+  --text-faint: #716c63;
   --border: #e6e2d9;
   --border-strong: #d4cfc4;
   --hover: rgba(34, 32, 28, 0.055);
@@ -48,8 +48,8 @@
   --surface: #222120;
   --popover: #272623;
   --text: #e9e5dd;
-  --text-muted: #a49e93;
-  --text-faint: #716c63;
+  --text-muted: #b4aea3;
+  --text-faint: #9c968b;
   --border: #2f2d2a;
   --border-strong: #3e3b37;
   --hover: rgba(255, 248, 235, 0.055);

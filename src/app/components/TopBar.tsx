@@ -62,6 +62,7 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
       <button
         type="button"
         className="save-status is-error"
+        role="alert"
         title={`${status.error ?? 'Unknown error'}. Your changes are kept in memory and will be retried. Click to retry now.`}
         onClick={() => void getSession().flush()}
       >
@@ -71,7 +72,7 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
   }
   if (editing || status.state === 'pending' || status.state === 'saving') {
     return (
-      <span className="save-status is-saving" role="status">
+      <span className="save-status is-saving">
         <Loader2 size={13} className="spin" /> Saving
       </span>
     );
@@ -79,7 +80,6 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
   return (
     <span
       className="save-status"
-      role="status"
       title={
         status.lastSavedAt
           ? `Saved ${new Date(status.lastSavedAt).toLocaleTimeString()}`

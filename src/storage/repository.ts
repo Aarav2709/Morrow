@@ -1,9 +1,10 @@
 import { openDB } from 'idb';
 import type { DBSchema, IDBPDatabase } from 'idb';
+import { snapshotsToPrune } from '../core/history';
 import { readWorkspace } from '../core/migrations';
 import type { LoadedWorkspace } from '../core/migrations';
 import { SCHEMA_VERSION } from '../core/model';
-import type { DocNode, PageId, PageMeta } from '../core/model';
+import type { DocNode, FileId, FileMeta, PageId, PageMeta, Snapshot } from '../core/model';
 import { errorMessage, fail, ok } from '../core/result';
 import type { Result } from '../core/result';
 
@@ -11,6 +12,12 @@ export interface WriteBatch {
   pages: PageMeta[];
   docs: Array<{ id: PageId; doc: DocNode }>;
   removed: PageId[];
+  snapshots?: Snapshot[];
+}
+
+export interface StoredFile {
+  meta: FileMeta;
+  data: ArrayBuffer;
 }
 
 export interface WorkspaceRepository {
@@ -18,6 +25,12 @@ export interface WorkspaceRepository {
   // resolves only after the transaction commits, rejects on any failure
   write(batch: WriteBatch): Promise<void>;
   markInitialized(): Promise<void>;
+  putFiles(files: StoredFile[]): Promise<void>;
+  getFile(id: FileId): Promise<StoredFile | null>;
+  listFiles(): Promise<FileMeta[]>;
+  deleteFiles(ids: FileId[]): Promise<void>;
+  listSnapshots(pageId: PageId): Promise<Snapshot[]>;
+  allSnapshots(): Promise<Snapshot[]>;
   close(): void;
 }
 
@@ -25,9 +38,11 @@ interface MorrowDB extends DBSchema {
   pages: { key: string; value: PageMeta };
   docs: { key: string; value: { id: PageId; doc: DocNode } };
   meta: { key: string; value: unknown };
+  files: { key: string; value: FileMeta & { data: ArrayBuffer } };
+  history: { key: string; value: Snapshot; indexes: { pageId: string } };
 }
 
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export async function openRepository(name = 'morrow'): Promise<WorkspaceRepository> {
   const db = await openDB<MorrowDB>(name, DB_VERSION, {
@@ -37,6 +52,11 @@ export async function openRepository(name = 'morrow'): Promise<WorkspaceReposito
         database.createObjectStore('docs', { keyPath: 'id' });
         database.createObjectStore('meta');
         void transaction.objectStore('meta').put(SCHEMA_VERSION, 'schemaVersion');
+      }
+      // version 2 only adds stores, existing pages are untouched
+      if (oldVersion < 2) {
+        database.createObjectStore('files', { keyPath: 'id' });
+        database.createObjectStore('history', { keyPath: 'id' }).createIndex('pageId', 'pageId');
       }
     },
     blocking() {
@@ -73,18 +93,70 @@ class IndexedDbRepository implements WorkspaceRepository {
   }
 
   async write(batch: WriteBatch): Promise<void> {
-    const tx = this.db.transaction(['pages', 'docs'], 'readwrite');
+    const tx = this.db.transaction(['pages', 'docs', 'history'], 'readwrite');
     const pages = tx.objectStore('pages');
     const docs = tx.objectStore('docs');
+    const history = tx.objectStore('history');
+    const byPage = history.index('pageId');
     const requests: Array<Promise<unknown>> = [];
     for (const page of batch.pages) requests.push(pages.put(page));
     for (const record of batch.docs) requests.push(docs.put(record));
-    for (const id of batch.removed) requests.push(pages.delete(id), docs.delete(id));
+    for (const snapshot of batch.snapshots ?? []) requests.push(history.put(snapshot));
+    for (const id of batch.removed) {
+      requests.push(pages.delete(id), docs.delete(id));
+      requests.push(
+        byPage.getAllKeys(id).then((keys) => Promise.all(keys.map((key) => history.delete(key)))),
+      );
+    }
+    for (const pageId of new Set((batch.snapshots ?? []).map((snapshot) => snapshot.pageId))) {
+      requests.push(
+        byPage
+          .getAll(pageId)
+          .then((all) => Promise.all(snapshotsToPrune(all).map((key) => history.delete(key)))),
+      );
+    }
     await Promise.all([...requests, tx.done]);
   }
 
   async markInitialized(): Promise<void> {
     await this.db.put('meta', true, 'initialized');
+  }
+
+  async putFiles(files: StoredFile[]): Promise<void> {
+    const tx = this.db.transaction('files', 'readwrite');
+    await Promise.all([...files.map((file) => tx.store.put({ ...file.meta, data: file.data })), tx.done]);
+  }
+
+  async getFile(id: FileId): Promise<StoredFile | null> {
+    const record = await this.db.get('files', id);
+    if (!record) return null;
+    const { data, ...meta } = record;
+    return { meta, data };
+  }
+
+  async listFiles(): Promise<FileMeta[]> {
+    const metas: FileMeta[] = [];
+    let cursor = await this.db.transaction('files').store.openCursor();
+    while (cursor) {
+      const { id, name, type, size, createdAt } = cursor.value;
+      metas.push({ id, name, type, size, createdAt });
+      cursor = await cursor.continue();
+    }
+    return metas;
+  }
+
+  async deleteFiles(ids: FileId[]): Promise<void> {
+    const tx = this.db.transaction('files', 'readwrite');
+    await Promise.all([...ids.map((id) => tx.store.delete(id)), tx.done]);
+  }
+
+  async listSnapshots(pageId: PageId): Promise<Snapshot[]> {
+    const all = await this.db.getAllFromIndex('history', 'pageId', pageId);
+    return all.sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  async allSnapshots(): Promise<Snapshot[]> {
+    return this.db.getAll('history');
   }
 
   close(): void {

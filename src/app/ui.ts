@@ -5,6 +5,8 @@ export type Dialog =
   | { kind: 'settings' }
   | { kind: 'shortcuts' }
   | { kind: 'move'; pageId: PageId }
+  | { kind: 'history'; pageId: PageId }
+  | { kind: 'icon'; pageId: PageId }
   | {
       kind: 'confirm';
       title: string;

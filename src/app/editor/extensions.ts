@@ -1,9 +1,12 @@
 import type { AnyExtension } from '@tiptap/core';
+import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
 import { Placeholder } from '@tiptap/extensions';
 import StarterKit from '@tiptap/starter-kit';
 import { BlockHandle } from './BlockHandle';
+import { Callout, FindReplace } from './Blocks';
+import { FileAttachment, FileDrop, Image } from './Media';
 import type { BlockMenuRequest } from './BlockHandle';
 import { MarkdownPaste } from './MarkdownPaste';
 import { PageLink } from './PageLink';
@@ -40,6 +43,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       includeChildren: false,
       placeholder: ({ node, editor }) => {
         if (node.type.name === 'heading') return `Heading ${node.attrs.level}`;
+        if (node.type.name === 'detailsSummary') return 'Toggle title';
         if (editor.isEmpty) return 'Start writing, or press / for blocks';
         return 'Press / for blocks';
       },
@@ -52,6 +56,14 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       createPage: options.createPage,
     }),
     SlashCommand,
+    Image,
+    FileAttachment,
+    FileDrop,
+    Callout,
+    Details.configure({ persist: true, HTMLAttributes: { class: 'toggle' } }),
+    DetailsSummary,
+    DetailsContent,
+    FindReplace,
     BlockHandle.configure({ onMenu: options.onBlockMenu }),
     MarkdownPaste.configure({ resolvePage: options.resolvePage }),
   ];

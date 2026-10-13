@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core';
-import { ArrowUpRight, FileWarning, RotateCcw, Trash2 } from 'lucide-react';
+import { TextSelection } from '@tiptap/pm/state';
+import { ArrowUpRight, FileWarning, RotateCcw, Smile, Trash2 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { docToPlainText, findUnknownTypes } from '../../core/doc';
 import { backlinksTo } from '../../core/links';
@@ -10,7 +11,7 @@ import { PageEditor } from '../editor/PageEditor';
 import { deleteForever, restorePage } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
-import { getUi, setUi, useUi } from '../ui';
+import { getUi, openDialog, setUi, useUi } from '../ui';
 import { getSession, run, useWorkspace } from '../workspace';
 import type { MenuEntry } from './Menu';
 import { pageMenuEntries } from './pageMenu';
@@ -20,12 +21,22 @@ import { TopBar } from './TopBar';
 
 const EMPTY_DOC = emptyDoc();
 
+// focuses right away, tiptap's own focus waits a frame and fast typing would land in the title
+function focusStart(editor: Editor) {
+  if (editor.isDestroyed) return;
+  const { state, view } = editor;
+  view.dispatch(state.tr.setSelection(TextSelection.atStart(state.doc)));
+  view.focus();
+}
+
 export function PageView({ id, find }: { id: PageId; find: string | null }) {
   const state = useWorkspace();
   const page = state.pages[id];
   const [editing, setEditing] = useState(false);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<Editor | null>(null);
+  // enter in the title can arrive before the editor exists, focus it once it does
+  const focusWhenReady = useRef(false);
   const prefs = usePreferences();
 
   useEffect(() => {
@@ -87,12 +98,40 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
           </div>
         )}
         <article className={`page font-${prefs.font} width-${prefs.width}`}>
-          <TitleField
-            page={page}
-            readOnly={trashed}
-            inputRef={titleRef}
-            onEnter={() => editorRef.current?.chain().focus('start').run()}
-          />
+          <div className="page-icon-row">
+            {page.icon ? (
+              <button
+                type="button"
+                className="page-icon"
+                aria-label="Change icon"
+                disabled={trashed}
+                onClick={() => openDialog({ kind: 'icon', pageId: id })}
+              >
+                {page.icon}
+              </button>
+            ) : (
+              !trashed && (
+                <button
+                  type="button"
+                  className="add-icon"
+                  onClick={() => openDialog({ kind: 'icon', pageId: id })}
+                >
+                  <Smile size={14} /> Add icon
+                </button>
+              )
+            )}
+          </div>
+          <h1 className="page-title-heading">
+            <TitleField
+              page={page}
+              readOnly={trashed}
+              inputRef={titleRef}
+              onEnter={() => {
+                if (editorRef.current) focusStart(editorRef.current);
+                else focusWhenReady.current = true;
+              }}
+            />
+          </h1>
           {unreadable ? (
             <div className="banner is-error" role="alert">
               The content of this page could not be read. It has been left untouched in storage and is
@@ -111,7 +150,12 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
                 title.focus();
                 title.setSelectionRange(title.value.length, title.value.length);
               }}
-              onReady={(editor) => (editorRef.current = editor)}
+              onReady={(editor) => {
+                editorRef.current = editor;
+                if (!focusWhenReady.current) return;
+                focusWhenReady.current = false;
+                requestAnimationFrame(() => focusStart(editor));
+              }}
             />
           )}
           <Subpages parentId={id} />

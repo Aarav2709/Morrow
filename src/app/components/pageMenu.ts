@@ -1,4 +1,16 @@
-import { ArrowRightLeft, Copy, FileDown, FileUp, Pencil, Plus, Star, StarOff, Trash2 } from 'lucide-react';
+import {
+  ArrowRightLeft,
+  Copy,
+  FileDown,
+  FileUp,
+  History,
+  Pencil,
+  Plus,
+  Smile,
+  Star,
+  StarOff,
+  Trash2,
+} from 'lucide-react';
 import type { PageId } from '../../core/model';
 import {
   createPage,
@@ -19,13 +31,19 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
   return [
     { label: 'Add subpage', icon: Plus, onSelect: () => createPage({ parentId: pageId }) },
     { label: 'Rename', icon: Pencil, shortcut: 'F2', onSelect: rename },
+    {
+      label: page.icon ? 'Change icon' : 'Add icon',
+      icon: Smile,
+      onSelect: () => openDialog({ kind: 'icon', pageId }),
+    },
+    { label: 'Page history', icon: History, onSelect: () => openDialog({ kind: 'history', pageId }) },
     page.favorite
       ? { label: 'Remove from favourites', icon: StarOff, onSelect: () => toggleFavorite(pageId) }
       : { label: 'Add to favourites', icon: Star, onSelect: () => toggleFavorite(pageId) },
     { label: 'Duplicate', icon: Copy, onSelect: () => duplicatePage(pageId) },
     { label: 'Move to…', icon: ArrowRightLeft, onSelect: () => openDialog({ kind: 'move', pageId }) },
     { separator: true },
-    { label: 'Export as Markdown', icon: FileDown, onSelect: () => exportPageMarkdown(pageId) },
+    { label: 'Export as Markdown', icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
     { label: 'Import Markdown here', icon: FileUp, onSelect: () => void importMarkdown(pageId) },
     { separator: true },
     {

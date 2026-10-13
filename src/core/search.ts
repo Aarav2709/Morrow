@@ -121,7 +121,7 @@ export function findPagesByTitle(state: WorkspaceState, query: string, limit = 8
   const folded = foldText(query.trim());
   const pages = livePages(state.pages);
   if (!folded) {
-    return pages
+    return [...pages]
       .sort((a, b) => (b.lastOpenedAt ?? b.updatedAt) - (a.lastOpenedAt ?? a.updatedAt))
       .slice(0, limit);
   }

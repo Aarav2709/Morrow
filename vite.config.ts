@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -87,5 +88,10 @@ export default defineConfig({
     sourcemap: false,
     // the desktop app loads one local bundle from disk, so a large chunk costs nothing
     chunkSizeWarningLimit: 1500,
+  },
+  test: {
+    include: ['src/**/*.test.ts'],
+    environment: 'node',
+    setupFiles: ['./src/test-setup.ts'],
   },
 });

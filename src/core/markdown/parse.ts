@@ -7,7 +7,20 @@ import { inlineText } from '../doc';
 export interface ParseOptions {
   // resolves [[title]] links to page ids, unresolved links stay as text
   resolvePage?: (title: string) => PageId | null;
+  // resolves relative links such as notion exports use between pages
+  resolveLink?: (href: string) => PageId | null;
+  // resolves image and file paths that came with an import
+  resolveFile?: (href: string) => { fileId: string; name: string; image: boolean } | null;
 }
+
+const ALERT = /^\[!(note|tip|important|warning|caution)\]\s*/i;
+const TONES: Record<string, string> = {
+  note: 'note',
+  important: 'note',
+  tip: 'tip',
+  warning: 'warning',
+  caution: 'warning',
+};
 
 const md = new MarkdownIt('commonmark', { html: true }).enable(['table', 'strikethrough']);
 const MAX_INPUT = 5_000_000;
@@ -98,7 +111,44 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         break;
       case 'html_block': {
         const html = token.content.trim();
-        if (html) push({ type: 'paragraph', content: [{ type: 'text', text: html }] });
+        const details = /^<details[^>]*>/i.exec(html);
+        const aside = /^<aside[^>]*>/i.exec(html);
+        if (details) {
+          const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/i.exec(html);
+          const title = decodeEntities((summary?.[1] ?? '').replace(/<[^>]+>/g, '')).trim();
+          const body: DocNode = { type: 'detailsContent', content: [] };
+          const node: DocNode = {
+            type: 'details',
+            attrs: { open: false },
+            content: [
+              { type: 'detailsSummary', content: title ? [{ type: 'text', text: title }] : [] },
+              body,
+            ],
+          };
+          push(node);
+          const after = html.slice(summary ? summary.index + summary[0].length : details[0].length);
+          const closed = /<\/details>\s*$/i.test(after);
+          const inner = after.replace(/<\/details>\s*$/i, '').trim();
+          if (inner) body.content!.push(...(markdownToDoc(inner, options).content ?? []));
+          if (!closed) stack.push(node, body);
+        } else if (/^<\/details>/i.test(html)) {
+          if (top().type === 'detailsContent') {
+            close();
+            close();
+          }
+        } else if (aside) {
+          const closed = /<\/aside>\s*$/i.test(html);
+          const inner = html
+            .slice(aside[0].length)
+            .replace(/<\/aside>\s*$/i, '')
+            .trim();
+          const node: DocNode = { type: 'callout', attrs: { tone: 'note' }, content: [] };
+          if (inner) node.content!.push(...(markdownToDoc(inner, options).content ?? []));
+          push(node);
+          if (!closed) stack.push(node);
+        } else if (/^<\/aside>/i.test(html)) {
+          if (top().type === 'callout') close();
+        } else if (html) push({ type: 'paragraph', content: [{ type: 'text', text: html }] });
         break;
       }
       default:
@@ -140,8 +190,13 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
     const index = marks.map((mark) => mark.type).lastIndexOf(type);
     if (index !== -1) marks.splice(index, 1);
   };
+  let pageTarget: { id: PageId; label: string } | null = null;
 
   for (const token of tokens) {
+    if (pageTarget && token.type !== 'link_close') {
+      pageTarget.label += token.content;
+      continue;
+    }
     switch (token.type) {
       case 'text':
         add(token.content);
@@ -161,9 +216,15 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
       case 's_open':
         marks.push({ type: 'strike' });
         break;
-      case 'link_open':
-        marks.push({ type: 'link', attrs: { href: String(token.attrGet('href') ?? '') } });
+      case 'link_open': {
+        const href = String(token.attrGet('href') ?? '');
+        const pageId = options.resolveLink?.(href) ?? null;
+        const file = pageId ? null : (options.resolveFile?.(href) ?? null);
+        if (pageId) pageTarget = { id: pageId, label: '' };
+        else if (file) marks.push({ type: 'link', attrs: { href, fileRef: file } });
+        else marks.push({ type: 'link', attrs: { href } });
         break;
+      }
       case 'strong_close':
         remove('bold');
         break;
@@ -174,14 +235,20 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         remove('strike');
         break;
       case 'link_close':
-        remove('link');
+        if (pageTarget) {
+          out.push({ type: 'pageLink', attrs: { id: pageTarget.id, label: pageTarget.label.trim() } });
+          pageTarget = null;
+        } else remove('link');
         break;
       case 'code_inline':
         add(token.content, [{ type: 'code' }]);
         break;
       case 'image': {
-        const alt = token.content || String(token.attrGet('alt') ?? '') || 'image';
-        add(alt, [{ type: 'link', attrs: { href: String(token.attrGet('src') ?? '') } }]);
+        const src = String(token.attrGet('src') ?? '');
+        const alt = token.content || String(token.attrGet('alt') ?? '');
+        const file = options.resolveFile?.(src) ?? null;
+        if (file?.image) out.push({ type: 'image', attrs: { fileId: file.fileId, alt } });
+        else add(alt || 'image', [{ type: 'link', attrs: { href: src } }]);
         break;
       }
       case 'html_inline': {
@@ -199,6 +266,15 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
   return linkPages(mergeText(out), options);
 }
 
+function decodeEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
 function mergeText(nodes: DocNode[]): DocNode[] {
   const out: DocNode[] = [];
   for (const node of nodes) {
@@ -213,7 +289,12 @@ function mergeText(nodes: DocNode[]): DocNode[] {
 function sameMarks(a: DocMark[] = [], b: DocMark[] = []): boolean {
   return (
     a.length === b.length &&
-    a.every((mark, i) => mark.type === b[i]!.type && mark.attrs?.href === b[i]!.attrs?.href)
+    a.every(
+      (mark, i) =>
+        mark.type === b[i]!.type &&
+        mark.attrs?.href === b[i]!.attrs?.href &&
+        mark.attrs?.fileRef === b[i]!.attrs?.fileRef,
+    )
   );
 }
 
@@ -242,8 +323,12 @@ function linkPages(nodes: DocNode[], options: ParseOptions): DocNode[] {
 
 // shapes the tree so the editor schema accepts it
 function normalize(node: DocNode): DocNode {
-  const content = node.content?.map(normalize);
+  const content = node.content?.flatMap((child) => liftMedia(normalize(child)));
   let next: DocNode = content ? { ...node, content } : { ...node };
+  if (next.type === 'blockquote') next = toCallout(next);
+  if ((next.type === 'callout' || next.type === 'detailsContent') && (next.content ?? []).length === 0) {
+    next = { ...next, content: [{ type: 'paragraph', content: [] }] };
+  }
 
   if (
     next.type === 'listItem' ||
@@ -264,6 +349,49 @@ function normalize(node: DocNode): DocNode {
     next = { ...next, content: (next.content ?? []).filter((child) => child.type !== 'text' || child.text) };
   }
   return next;
+}
+
+// images and file links alone in a paragraph become blocks, anywhere else they fall back to text
+function liftMedia(node: DocNode): DocNode[] {
+  if (node.type !== 'paragraph' || !node.content) return [node];
+  const children = node.content;
+  const meaningful = children.filter(
+    (child) => !(child.type === 'hardBreak' || (child.type === 'text' && !child.text?.trim())),
+  );
+  if (meaningful.length > 0 && meaningful.every((child) => child.type === 'image')) return meaningful;
+  const refs = new Set(meaningful.map((child) => fileRefOf(child)));
+  const ref = refs.size === 1 ? [...refs][0] : undefined;
+  if (ref?.image) return [{ type: 'image', attrs: { fileId: ref.fileId, alt: '' } }];
+  if (ref) return [{ type: 'fileAttachment', attrs: { fileId: ref.fileId, name: ref.name } }];
+  const content = children.map((child): DocNode => {
+    if (child.type === 'image') return { type: 'text', text: String(child.attrs?.alt || 'image') };
+    if (!fileRefOf(child)) return child;
+    const marks = (child.marks ?? []).filter((mark) => !mark.attrs?.fileRef);
+    return marks.length ? { ...child, marks } : { type: 'text', text: child.text ?? '' };
+  });
+  return [{ ...node, content: mergeText(content) }];
+}
+
+function fileRefOf(node: DocNode): { fileId: string; name: string; image: boolean } | undefined {
+  const ref = node.marks?.find((mark) => mark.attrs?.fileRef)?.attrs?.fileRef;
+  return ref as { fileId: string; name: string; image: boolean } | undefined;
+}
+
+// github style alerts, a quote that starts with a note, tip or warning marker
+function toCallout(quote: DocNode): DocNode {
+  const [first, ...rest] = quote.content ?? [];
+  const lead = first?.type === 'paragraph' ? first.content?.[0] : undefined;
+  const match = lead?.type === 'text' && !lead.marks?.length ? ALERT.exec(lead.text ?? '') : null;
+  if (!first || !lead || !match) return quote;
+  const remainder = (lead.text ?? '').slice(match[0].length);
+  const inline = [...(remainder ? [{ ...lead, text: remainder }] : []), ...(first.content ?? []).slice(1)];
+  if (inline[0]?.type === 'hardBreak') inline.shift();
+  const content = inline.length ? [{ ...first, content: inline }, ...rest] : rest;
+  return {
+    type: 'callout',
+    attrs: { tone: TONES[match[1]!.toLowerCase()] ?? 'note' },
+    content: content.length ? content : [{ type: 'paragraph', content: [] }],
+  };
 }
 
 // a bullet list whose items start with [ ] or [x] becomes a checklist, mixed lists are split

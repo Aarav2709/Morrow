@@ -27,6 +27,13 @@ contextBridge.exposeInMainWorld('morrow', {
     return () => listeners.delete(listener);
   },
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.send('morrow:theme', theme),
+  checkForUpdates: () => ipcRenderer.invoke('morrow:check-updates'),
+  installUpdate: () => ipcRenderer.invoke('morrow:install-update'),
+  onUpdateStatus(listener: (status: unknown) => void) {
+    const handler = (_event: unknown, status: unknown) => listener(status);
+    ipcRenderer.on('morrow:update-status', handler);
+    return () => ipcRenderer.removeListener('morrow:update-status', handler);
+  },
   openExternal: (url: string) => ipcRenderer.invoke('morrow:open-external', url),
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),

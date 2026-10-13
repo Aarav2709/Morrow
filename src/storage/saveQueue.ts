@@ -1,5 +1,5 @@
 import type { Changes } from '../core/commands';
-import type { PageId, WorkspaceState } from '../core/model';
+import type { PageId, Snapshot, WorkspaceState } from '../core/model';
 import { errorMessage } from '../core/result';
 import type { WriteBatch } from './repository';
 
@@ -13,6 +13,9 @@ export interface SaveStatus {
 }
 
 export interface SaveQueueOptions {
+  // versions to store alongside the documents being written
+  snapshotsFor?: (docIds: PageId[], state: WorkspaceState) => Snapshot[];
+  onSnapshotsWritten?: (snapshots: Snapshot[]) => void;
   delayMs?: number;
   maxRetryMs?: number;
   now?: () => number;
@@ -30,6 +33,7 @@ export class SaveQueue {
   private readonly delayMs: number;
   private readonly maxRetryMs: number;
   private readonly now: () => number;
+  private readonly options: SaveQueueOptions;
 
   constructor(
     private readonly writer: { write(batch: WriteBatch): Promise<void> },
@@ -39,6 +43,7 @@ export class SaveQueue {
     this.delayMs = options.delayMs ?? 300;
     this.maxRetryMs = options.maxRetryMs ?? 30_000;
     this.now = options.now ?? Date.now;
+    this.options = options;
   }
 
   get status(): SaveStatus {
@@ -105,7 +110,12 @@ export class SaveQueue {
     for (const id of removed) if (!state.pages[id]) batch.removed.push(id);
 
     try {
+      batch.snapshots = this.options.snapshotsFor?.(
+        batch.docs.map((record) => record.id),
+        state,
+      );
       await this.writer.write(batch);
+      if (batch.snapshots?.length) this.options.onSnapshotsWritten?.(batch.snapshots);
       this.inFlight = null;
       const more = this.dirtyPages.size + this.dirtyDocs.size + this.removed.size > 0;
       this.setStatus({

@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { autoUpdater } from 'electron-updater';
 
 const SCHEME = 'morrow';
 const APP_ORIGIN = `${SCHEME}://app`;
@@ -23,6 +24,9 @@ const DIST_DIR = path.join(__dirname, '..', 'dist');
 const KEEP_BACKUPS = 20;
 const MAX_BACKUP_BYTES = 512 * 1024 * 1024;
 const IS_MAC = process.platform === 'darwin';
+const APP_ID = 'app.morrow.desktop';
+// the window and taskbar use morrow's icon even when running on the plain electron binary
+const ICON = path.join(__dirname, '..', 'build', 'icon.png');
 // matches the height of the app's top bar so the native buttons sit inside it
 const TITLE_BAR_HEIGHT = 46;
 const THEMES = {
@@ -30,15 +34,22 @@ const THEMES = {
   dark: { background: '#1b1a18', symbols: '#a49e93' },
 };
 
+// development and test runs can use a throwaway profile, installed copies never can
+if (!app.isPackaged && process.env.MORROW_USER_DATA) app.setPath('userData', process.env.MORROW_USER_DATA);
+
 protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 let mainWindow: BrowserWindow | null = null;
 let readyToClose = false;
+let installingUpdate = false;
 
 const backupsDir = () => path.join(app.getPath('userData'), 'Backups');
 const windowStateFile = () => path.join(app.getPath('userData'), 'window-state.json');
+
+// windows groups the taskbar button and notifications by this id
+if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -56,6 +67,7 @@ if (!app.requestSingleInstanceLock()) {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
     });
     registerIpc();
+    registerUpdates();
     // macos needs its system menu for copy, paste and quit, other platforms get no menu bar
     Menu.setApplicationMenu(IS_MAC ? buildMacMenu() : null);
     await createWindow();
@@ -119,6 +131,7 @@ async function createWindow(): Promise<void> {
     minHeight: 420,
     show: false,
     title: 'Morrow',
+    ...(IS_MAC || !existsSync(ICON) ? {} : { icon: ICON }),
     backgroundColor: theme.background,
     titleBarStyle: 'hidden',
     ...(IS_MAC
@@ -204,6 +217,7 @@ async function createWindow(): Promise<void> {
   });
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
+    if (installingUpdate) autoUpdater.quitAndInstall();
   });
 
   await window.loadURL(DEV_URL ?? `${APP_ORIGIN}/index.html`);
@@ -268,6 +282,37 @@ function registerIpc(): void {
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
+  });
+}
+
+// updates come from the project's github releases and are only checked when the person asks
+function registerUpdates(): void {
+  const send = (status: { state: string; version?: string; error?: string }) =>
+    mainWindow?.webContents.send('morrow:update-status', status);
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.allowPrerelease = app.getVersion().includes('-');
+  autoUpdater.on('checking-for-update', () => send({ state: 'checking' }));
+  autoUpdater.on('update-not-available', () => send({ state: 'none' }));
+  autoUpdater.on('update-available', (info) => send({ state: 'downloading', version: info.version }));
+  autoUpdater.on('update-downloaded', (info) => send({ state: 'ready', version: info.version }));
+  autoUpdater.on('error', (error) => send({ state: 'error', error: error.message }));
+  ipcMain.handle('morrow:check-updates', async (event) => {
+    if (!fromApp(event)) return;
+    if (!app.isPackaged) {
+      send({ state: 'error', error: 'updates only work in an installed copy of Morrow' });
+      return;
+    }
+    await autoUpdater
+      .checkForUpdates()
+      .catch((error: Error) => send({ state: 'error', error: error.message }));
+  });
+  ipcMain.handle('morrow:install-update', (event) => {
+    if (!fromApp(event)) return;
+    // the window closes through the normal path first, so pending edits are saved before installing
+    installingUpdate = true;
+    if (mainWindow) mainWindow.close();
+    else autoUpdater.quitAndInstall();
   });
 }
 

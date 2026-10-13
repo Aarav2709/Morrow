@@ -19,7 +19,10 @@ export interface LoadedWorkspace {
 }
 
 // each entry upgrades data from version n to n + 1
-const MIGRATIONS: Record<number, (data: RawWorkspace) => RawWorkspace> = {};
+const MIGRATIONS: Record<number, (data: RawWorkspace) => RawWorkspace> = {
+  // version 2 added stored files and page history, pages and documents kept their shape
+  1: (data) => data,
+};
 
 export function migrate(version: number, data: RawWorkspace): Result<RawWorkspace> {
   if (!Number.isInteger(version) || version < 1) return fail('The data has an unknown format version.');

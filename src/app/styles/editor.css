@@ -497,3 +497,236 @@
     display: none;
   }
 }
+
+/* images and files */
+
+.prose .image-block {
+  margin: 0.9em 0;
+  border-radius: var(--radius);
+  min-height: 48px;
+}
+
+.prose .image-block img {
+  display: block;
+  max-width: 100%;
+  max-height: 80vh;
+  margin: 0 auto;
+  border-radius: var(--radius);
+}
+
+.prose .image-block.is-loading {
+  background: var(--hover);
+}
+
+.prose .image-block.is-missing {
+  padding: 14px 16px;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  background: var(--hover);
+}
+
+.prose .file-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-ui);
+  font-size: var(--text-md);
+  background: var(--surface);
+}
+
+.prose .file-block::before {
+  content: '';
+  width: 14px;
+  height: 18px;
+  border: 1.5px solid var(--text-faint);
+  border-radius: 2px 6px 2px 2px;
+  flex: none;
+}
+
+.prose .file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prose .file-meta {
+  color: var(--text-faint);
+  font-size: var(--text-sm);
+}
+
+.prose .file-save {
+  font-size: var(--text-sm);
+  color: var(--accent-strong);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.prose .file-save:hover {
+  background: var(--accent-soft);
+}
+
+/* callouts and toggles */
+
+.prose .callout {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border-left: 3px solid var(--callout-line);
+  background: var(--callout-bg);
+  --callout-line: #4f7aa8;
+  --callout-bg: rgba(79, 122, 168, 0.09);
+}
+
+.prose .callout[data-tone='tip'] {
+  --callout-line: #4d8a5c;
+  --callout-bg: rgba(77, 138, 92, 0.1);
+}
+
+.prose .callout[data-tone='warning'] {
+  --callout-line: #b7791f;
+  --callout-bg: rgba(183, 121, 31, 0.11);
+}
+
+.prose .callout > * + * {
+  margin-top: 0.45em;
+}
+
+.prose .toggle {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.prose .toggle > button {
+  flex: none;
+  width: 22px;
+  height: 1.7em;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+}
+
+.prose .toggle > button::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 1.75px solid currentColor;
+  border-bottom: 1.75px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms var(--ease);
+}
+
+.prose .toggle.is-open > button::before {
+  transform: rotate(45deg);
+}
+
+.prose .toggle > button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.prose .toggle > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.prose .toggle summary {
+  display: block;
+  list-style: none;
+  font-weight: 600;
+}
+
+.prose .toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.prose [data-type='detailsContent'] {
+  margin-top: 0.3em;
+}
+
+.prose [data-type='detailsContent'] > * + * {
+  margin-top: 0.45em;
+}
+
+.prose summary.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--text-faint);
+  font-weight: 400;
+}
+
+/* find */
+
+.find-match {
+  background: var(--mark);
+  border-radius: 2px;
+}
+
+.find-match.is-current {
+  background: var(--accent-line);
+  outline: 1px solid var(--accent);
+}
+
+.find-bar {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  float: right;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: -8px -24px 0 12px;
+  padding: 6px;
+  font-family: var(--font-ui);
+  font-size: var(--text-ui);
+  width: min(420px, 100%);
+}
+
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.find-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  outline: none;
+}
+
+.find-input:focus {
+  border-color: var(--accent);
+}
+
+.find-count {
+  min-width: 64px;
+  text-align: right;
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.icon-button.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+/* history preview reuses the writing styles */
+
+.prose.preview {
+  min-height: 0;
+  font-size: 15px;
+}

@@ -1,7 +1,7 @@
 // workspace data model, plain json shared by storage, search, export and the editor
 
 // bump when the persisted shape changes and add a migration in migrations.ts
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const MAX_TITLE_LENGTH = 500;
 export const MAX_ICON_LENGTH = 16;
@@ -69,9 +69,37 @@ export const KNOWN_NODE_TYPES = new Set([
   'tableHeader',
   'tableCell',
   'pageLink',
+  'image',
+  'fileAttachment',
+  'callout',
+  'details',
+  'detailsSummary',
+  'detailsContent',
 ]);
 
 export const KNOWN_MARK_TYPES = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'link']);
+
+export type FileId = string;
+
+// metadata of a stored image or attachment, the bytes live next to it in storage
+export interface FileMeta {
+  id: FileId;
+  name: string;
+  type: string;
+  size: number;
+  createdAt: number;
+}
+
+export interface Snapshot {
+  id: string;
+  pageId: PageId;
+  title: string;
+  doc: DocNode;
+  createdAt: number;
+}
+
+export const CALLOUT_TONES = ['note', 'tip', 'warning'] as const;
+export type CalloutTone = (typeof CALLOUT_TONES)[number];
 
 export function emptyDoc(): DocNode {
   return { type: 'doc', content: [{ type: 'paragraph' }] };

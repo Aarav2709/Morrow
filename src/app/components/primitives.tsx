@@ -113,9 +113,13 @@ export function Dialog({
 export function Toasts() {
   const { toasts } = useUi();
   return (
-    <div className="toasts" role="status" aria-live="polite">
+    <div className="toasts">
       {toasts.map((entry) => (
-        <div key={entry.id} className={`toast${entry.tone === 'error' ? ' is-error' : ''}`}>
+        <div
+          key={entry.id}
+          className={`toast${entry.tone === 'error' ? ' is-error' : ''}`}
+          role={entry.tone === 'error' ? 'alert' : 'status'}
+        >
           <span>{entry.message}</span>
           {entry.action && (
             <button

@@ -1,3 +1,9 @@
+export interface UpdateStatus {
+  state: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error';
+  version?: string;
+  error?: string;
+}
+
 // bridge exposed by the electron preload script, absent when running in a browser
 export interface DesktopBridge {
   platform: string;
@@ -5,6 +11,9 @@ export interface DesktopBridge {
   dataPath: string;
   onCommand(listener: (id: string) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
+  checkForUpdates(): Promise<void>;
+  installUpdate(): Promise<void>;
+  onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): Promise<void>;
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;

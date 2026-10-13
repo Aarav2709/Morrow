@@ -1,4 +1,4 @@
-import { strToU8, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync } from 'fflate';
 import {
   dailyInsertIndex,
   dailyTitle,
@@ -7,17 +7,25 @@ import {
   findJournal,
   JOURNAL_TITLE,
 } from '../core/daily';
+import { fileIdsInDoc } from '../core/doc';
+import { planArchiveImport } from '../core/importer';
+import type { ArchiveEntry } from '../core/importer';
 import { displayTitle } from '../core/model';
-import type { PageId } from '../core/model';
+import type { FileId, FileMeta, PageId, Snapshot } from '../core/model';
 import {
+  attachmentNames,
+  base64ToBytes,
+  bytesToBase64,
   createBackup,
   pageMarkdown,
   parseBackup,
   planMarkdownImport,
   planRestore,
+  referencedFileIds,
   safeFileName,
   workspaceMarkdownFiles,
 } from '../core/portability';
+import type { BackupFile } from '../core/portability';
 import { childrenOf, descendantsOf, isEffectivelyTrashed } from '../core/tree';
 import { commitEditors } from './editor/commits';
 import { desktop } from './platform/desktop';
@@ -175,59 +183,152 @@ export function toggleFavorite(id: PageId): void {
   if (page) run({ type: 'page.setFavorite', id, favorite: !page.favorite });
 }
 
-export function exportPageMarkdown(id: PageId): void {
+async function fileIndex(): Promise<Record<FileId, FileMeta>> {
+  return Object.fromEntries((await getSession().listFiles()).map((file) => [file.id, file]));
+}
+
+async function zipAttachments(
+  paths: Map<FileId, string>,
+  entries: Record<string, Uint8Array>,
+  prefix: string,
+) {
+  for (const [id, path] of paths) {
+    const file = await getSession().getFile(id);
+    if (file) entries[`${prefix}${path}`] = new Uint8Array(file.data);
+  }
+}
+
+function zipBytes(entries: Record<string, Uint8Array>): Uint8Array<ArrayBuffer> {
+  return zipSync(entries, { level: 6 }) as Uint8Array<ArrayBuffer>;
+}
+
+// a page with attachments exports as a zip so its images travel with it
+export async function exportPageMarkdown(id: PageId): Promise<void> {
   commitEditors();
   const state = getState();
   const page = state.pages[id];
-  if (!page) return;
-  saveFile(`${safeFileName(displayTitle(page))}.md`, pageMarkdown(state, id), 'text/markdown;charset=utf-8');
+  const doc = state.docs[id];
+  if (!page || !doc) return;
+  const name = safeFileName(displayTitle(page));
+  const ids = fileIdsInDoc(doc);
+  if (ids.length === 0) {
+    saveFile(`${name}.md`, pageMarkdown(state, id), 'text/markdown;charset=utf-8');
+    return;
+  }
+  const names = attachmentNames(ids, await fileIndex());
+  const paths = new Map([...names].map(([fileId, file]) => [fileId, `attachments/${file}`]));
+  const entries: Record<string, Uint8Array> = {
+    [`${name}/${name}.md`]: strToU8(pageMarkdown(state, id, (fileId) => paths.get(fileId) ?? null)),
+  };
+  await zipAttachments(paths, entries, `${name}/`);
+  saveFile(`${name}.zip`, zipBytes(entries), 'application/zip');
+}
+
+async function backupFiles(): Promise<BackupFile[]> {
+  const ids = referencedFileIds(getState());
+  for (const snapshot of await getSession().allSnapshots()) {
+    for (const fileId of fileIdsInDoc(snapshot.doc)) ids.add(fileId);
+  }
+  const files: BackupFile[] = [];
+  for (const id of ids) {
+    const file = await getSession().getFile(id);
+    if (file) files.push({ ...file.meta, data: bytesToBase64(new Uint8Array(file.data)) });
+  }
+  return files;
+}
+
+async function backupJson(): Promise<string> {
+  commitEditors();
+  await getSession().flush();
+  return JSON.stringify(createBackup(getState(), new Date(), await backupFiles()));
 }
 
 export async function exportBackup(): Promise<void> {
-  commitEditors();
-  await getSession().flush();
-  const backup = createBackup(getState(), new Date());
-  saveFile(`morrow-backup-${stamp()}.json`, JSON.stringify(backup, null, 1), 'application/json');
-  toast('Backup saved. Keep it somewhere safe.');
+  try {
+    saveFile(`morrow-backup-${stamp()}.json`, await backupJson(), 'application/json');
+    toast('Backup saved. Keep it somewhere safe.');
+  } catch (error) {
+    toast(`The backup could not be created: ${message(error)}`, { tone: 'error' });
+  }
 }
 
-export function exportAllMarkdown(): void {
+export async function exportAllMarkdown(): Promise<void> {
   commitEditors();
-  const files = workspaceMarkdownFiles(getState());
+  const { files, attachments } = workspaceMarkdownFiles(getState(), await fileIndex());
   if (files.length === 0) {
     toast('There are no pages to export yet.');
     return;
   }
   const entries: Record<string, Uint8Array> = {};
   for (const file of files) entries[`Morrow/${file.path}`] = strToU8(file.content);
-  saveFile(
-    `morrow-markdown-${stamp()}.zip`,
-    zipSync(entries, { level: 6 }) as Uint8Array<ArrayBuffer>,
-    'application/zip',
-  );
+  await zipAttachments(attachments, entries, 'Morrow/');
+  saveFile(`morrow-markdown-${stamp()}.zip`, zipBytes(entries), 'application/zip');
+}
+
+const MAX_IMPORT_BYTES = 500 * 1024 * 1024;
+
+// notion exports sometimes wrap their parts in further zips
+function unzipAll(data: Uint8Array, depth = 0): ArchiveEntry[] {
+  const entries: ArchiveEntry[] = [];
+  for (const [path, bytes] of Object.entries(unzipSync(data))) {
+    if (path.endsWith('/')) continue;
+    if (/\.zip$/i.test(path) && depth < 2) entries.push(...unzipAll(bytes, depth + 1));
+    else entries.push({ path, data: bytes });
+  }
+  return entries;
+}
+
+function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? '' : 's'}`;
+}
+
+function message(error: unknown): string {
+  return error instanceof Error ? error.message : 'unknown error';
 }
 
 export async function importMarkdown(parentId: PageId | null = null): Promise<void> {
-  const files = await pickFiles('.md,.markdown,.mdown,.txt,text/markdown,text/plain', true);
-  if (files.length === 0) return;
-  const tooLarge = files.filter((file) => file.size > 5_000_000);
-  const readable = files.filter((file) => file.size <= 5_000_000);
+  const picked = await pickFiles(
+    '.md,.markdown,.mdown,.txt,.zip,text/markdown,text/plain,application/zip',
+    true,
+  );
+  if (picked.length === 0) return;
+  const tooLarge = picked.filter((file) => file.size > MAX_IMPORT_BYTES);
+  const files = picked.filter((file) => file.size <= MAX_IMPORT_BYTES);
   try {
-    const texts = await Promise.all(
-      readable.map(async (file) => ({ name: file.name, text: await file.text() })),
-    );
-    if (texts.length === 0) throw new Error('Files larger than 5 MB are not imported.');
-    const plan = planMarkdownImport(getState(), texts, parentId, newId, Date.now());
-    const result = run({ type: 'pages.insert', pages: plan.pages, docs: plan.docs });
+    const entries: ArchiveEntry[] = [];
+    const texts: Array<{ name: string; text: string }> = [];
+    for (const file of files) {
+      if (/\.zip$/i.test(file.name)) entries.push(...unzipAll(new Uint8Array(await file.arrayBuffer())));
+      else texts.push({ name: file.name, text: await file.text() });
+    }
+    if (entries.length === 0 && texts.length === 0)
+      throw new Error('Files larger than 500 MB are not imported.');
+    const state = getState();
+    const now = Date.now();
+    const archive = entries.length ? planArchiveImport(state, entries, parentId, newId, now) : null;
+    const loose = texts.length ? planMarkdownImport(state, texts, parentId, newId, now) : null;
+    // attachments are saved first so no imported page points at a file that is not stored
+    if (archive && archive.files.length > 0) {
+      const stored = await getSession().addFiles(
+        archive.files.map((file) => ({ meta: file.meta, data: file.data.slice().buffer as ArrayBuffer })),
+      );
+      if (!stored.ok) throw new Error(stored.error);
+    }
+    const pages = [...(archive?.pages ?? []), ...(loose?.pages ?? [])];
+    if (pages.length === 0) throw new Error('No Markdown files were found.');
+    const result = run({ type: 'pages.insert', pages, docs: { ...archive?.docs, ...loose?.docs } });
     if (!result.ok) return;
     expandPage(parentId);
-    const skipped = tooLarge.length
-      ? ` ${tooLarge.length} file${tooLarge.length === 1 ? ' was' : 's were'} too large.`
-      : '';
-    toast(`Imported ${plan.pages.length} page${plan.pages.length === 1 ? '' : 's'}.${skipped}`);
-    if (plan.pages.length === 1) openPage(plan.pages[0]!.id);
+    const notes = [
+      tooLarge.length ? `${plural(tooLarge.length, 'file')} too large` : '',
+      archive?.files.length ? plural(archive.files.length, 'attachment') : '',
+      ...(archive?.problems ?? []),
+    ].filter(Boolean);
+    toast(`Imported ${plural(pages.length, 'page')}${notes.length ? ` (${notes.join(', ')})` : ''}.`);
+    const top = pages.filter((page) => page.parentId === parentId);
+    if (top.length === 1) openPage(top[0]!.id);
   } catch (error) {
-    toast(`Import failed: ${error instanceof Error ? error.message : 'unknown error'}`, { tone: 'error' });
+    toast(`Import failed: ${message(error)}`, { tone: 'error' });
   }
 }
 
@@ -241,22 +342,61 @@ export async function restoreBackup(): Promise<void> {
       return;
     }
     const plan = planRestore(getState(), parsed.value, newId);
-    if (plan.pages.length === 0) {
+    const existing = new Set((await getSession().listFiles()).map((meta) => meta.id));
+    const missing = parsed.value.files.filter((backupFile) => !existing.has(backupFile.id));
+    if (plan.pages.length === 0 && missing.length === 0) {
       toast('Everything in this backup is already in your workspace.');
       return;
     }
-    const result = run({ type: 'pages.insert', pages: plan.pages, docs: plan.docs });
-    if (!result.ok) return;
+    // files go first, so no restored page ever points at something that is not saved yet
+    if (missing.length > 0) {
+      const stored = await getSession().addFiles(
+        missing.map(({ data, ...meta }) => ({ meta, data: base64ToBytes(data).buffer as ArrayBuffer })),
+      );
+      if (!stored.ok) throw new Error(stored.error);
+    }
+    if (plan.pages.length > 0) {
+      const result = run({ type: 'pages.insert', pages: plan.pages, docs: plan.docs });
+      if (!result.ok) return;
+    }
     const notes = [
       plan.skipped ? `${plan.skipped} already present` : '',
       plan.problems.length ? `${plan.problems.length} could not be read` : '',
     ].filter(Boolean);
-    toast(
-      `Restored ${plan.pages.length} page${plan.pages.length === 1 ? '' : 's'}${notes.length ? ` (${notes.join(', ')})` : ''}.`,
-    );
+    toast(`Restored ${plural(plan.pages.length, 'page')}${notes.length ? ` (${notes.join(', ')})` : ''}.`);
   } catch (error) {
-    toast(`Restore failed: ${error instanceof Error ? error.message : 'unknown error'}`, { tone: 'error' });
+    toast(`Restore failed: ${message(error)}`, { tone: 'error' });
   }
+}
+
+// files nothing points at any more, not pages, not the trash, not page history
+export async function unusedFiles(): Promise<FileMeta[]> {
+  const used = referencedFileIds(getState());
+  for (const snapshot of await getSession().allSnapshots()) {
+    for (const id of fileIdsInDoc(snapshot.doc)) used.add(id);
+  }
+  return (await getSession().listFiles()).filter((file) => !used.has(file.id));
+}
+
+export async function deleteUnusedFiles(): Promise<void> {
+  const unused = await unusedFiles();
+  if (unused.length === 0) {
+    toast('There are no unused files.');
+    return;
+  }
+  await getSession().deleteFiles(unused.map((file) => file.id));
+  toast(`Removed ${plural(unused.length, 'unused file')}.`);
+}
+
+export async function restoreVersion(snapshot: Snapshot): Promise<boolean> {
+  commitEditors();
+  const result = await getSession().restoreSnapshot(snapshot);
+  if (!result.ok) {
+    toast(result.error, { tone: 'error' });
+    return false;
+  }
+  toast('Version restored. The version it replaced is kept in the page history.');
+  return true;
 }
 
 let lastAutoBackup = 0;
@@ -264,11 +404,14 @@ let lastAutoBackup = 0;
 // desktop only, keeps rolling json copies next to the app data
 export async function writeAutoBackup(force = false): Promise<void> {
   if (!desktop) return;
-  commitEditors();
   const state = getState();
   const latest = Math.max(0, ...Object.values(state.pages).map((page) => page.updatedAt));
   if (!force && latest <= lastAutoBackup) return;
-  const result = await desktop.writeAutoBackup(JSON.stringify(createBackup(state, new Date())));
-  if (result.ok) lastAutoBackup = latest;
-  else toast(`Automatic backup failed: ${result.error}`, { tone: 'error' });
+  try {
+    const result = await desktop.writeAutoBackup(await backupJson());
+    if (result.ok) lastAutoBackup = latest;
+    else toast(`Automatic backup failed: ${result.error}`, { tone: 'error' });
+  } catch (error) {
+    toast(`Automatic backup failed: ${message(error)}`, { tone: 'error' });
+  }
 }

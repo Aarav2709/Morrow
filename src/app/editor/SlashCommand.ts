@@ -3,7 +3,11 @@ import type { Editor, Range } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import {
+  ChevronRight,
   Code2,
+  ImageIcon,
+  Info,
+  Paperclip,
   Heading1,
   Heading2,
   Heading3,
@@ -17,6 +21,8 @@ import {
   Table,
 } from 'lucide-react';
 import { foldText } from '../../core/search';
+import { pickFiles } from '../platform/files';
+import { insertFiles } from './Media';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
 
@@ -116,6 +122,44 @@ export const BLOCK_ITEMS: BlockItem[] = [
     hint: '---',
     keywords: 'hr rule separator line',
     run: (e, r) => chain(e, r).setHorizontalRule().run(),
+  },
+  {
+    id: 'callout',
+    title: 'Callout',
+    description: 'Highlighted note',
+    icon: Info,
+    keywords: 'note tip warning aside alert',
+    run: (e, r) => chain(e, r).setCallout().run(),
+  },
+  {
+    id: 'toggle',
+    title: 'Toggle',
+    description: 'Content that folds away',
+    icon: ChevronRight,
+    keywords: 'details collapse fold accordion',
+    run: (e, r) => chain(e, r).setDetails().run(),
+  },
+  {
+    id: 'image',
+    title: 'Image',
+    description: 'Picture from your computer',
+    icon: ImageIcon,
+    keywords: 'picture photo upload',
+    run: (e, r) => {
+      chain(e, r).run();
+      void pickFiles('image/*', true).then((files) => insertFiles(e, files));
+    },
+  },
+  {
+    id: 'file',
+    title: 'File',
+    description: 'Attach any file',
+    icon: Paperclip,
+    keywords: 'attachment upload pdf document',
+    run: (e, r) => {
+      chain(e, r).run();
+      void pickFiles('', true).then((files) => insertFiles(e, files));
+    },
   },
   {
     id: 'table',

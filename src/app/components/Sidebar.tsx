@@ -331,6 +331,15 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
         event.preventDefault();
         trashPage(id);
         break;
+      case 'ContextMenu':
+        event.preventDefault();
+        setMenu({ id, anchor: current! });
+        break;
+      case 'F10':
+        if (!event.shiftKey) break;
+        event.preventDefault();
+        setMenu({ id, anchor: current! });
+        break;
     }
   };
 

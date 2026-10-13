@@ -3,6 +3,8 @@ import type { DocMark, DocNode, PageId } from '../model';
 export interface SerializeOptions {
   // current title for a linked page, null keeps the stored label
   titleOf?: (id: PageId) => string | null;
+  // relative path an exported file is written to, null when it is not exported
+  filePath?: (fileId: string) => string | null;
 }
 
 const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'underline'];
@@ -70,6 +72,37 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       return '---';
     case 'table':
       return table(node, options);
+    case 'image': {
+      const alt = String(node.attrs?.alt ?? '').replace(/[[\]]/g, '');
+      const target = options.filePath?.(String(node.attrs?.fileId ?? ''));
+      return target ? `![${alt}](${formatHref(target)})` : `*[image${alt ? `: ${alt}` : ''}]*`;
+    }
+    case 'fileAttachment': {
+      const name = escapeText(String(node.attrs?.name ?? 'file'));
+      const target = options.filePath?.(String(node.attrs?.fileId ?? ''));
+      return target ? `[${name}](${formatHref(target)})` : `*[attachment: ${name}]*`;
+    }
+    case 'callout': {
+      const tone = String(node.attrs?.tone ?? 'note').toUpperCase();
+      const body = blocks(node.content ?? [], options);
+      return prefixLines(
+        `[!${tone}]
+${body}`,
+        '> ',
+        '>',
+      );
+    }
+    case 'details': {
+      const [summary, content] = node.content ?? [];
+      const title = summary ? escapeHtml(inline(summary.content ?? [], options)) : '';
+      const body = content ? blocks(content.content ?? [], options) : '';
+      return `<details>
+<summary>${title}</summary>
+
+${body}
+
+</details>`;
+    }
     default: {
       // unknown blocks keep their text so nothing silently disappears from an export
       if (node.content?.some((child) => child.type === 'text')) return inline(node.content, options);
@@ -195,6 +228,10 @@ function codeSpan(text: string): string {
   const fence = '`'.repeat(longestRun(text, '`') + 1);
   const padded = text.startsWith('`') || text.endsWith('`') ? ` ${text} ` : text;
   return `${fence}${padded}${fence}`;
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 export function escapeText(text: string): string {
