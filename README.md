@@ -39,10 +39,6 @@ write and think, on your own computer.
 - Optional update checks, off until you turn them on
 - Keyboard first: press Ctrl/Cmd + / to see every shortcut
 
-| Dark theme                                             | Search                                                            |
-| ------------------------------------------------------ | ----------------------------------------------------------------- |
-| ![A page in the dark theme](docs/images/page-dark.png) | ![Searching for tomato across pages](docs/images/search-dark.png) |
-
 ## Status
 
 Version **1.0.0**. Everything listed above is built and tested on Windows. The
