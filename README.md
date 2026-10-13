@@ -4,7 +4,7 @@ Morrow is a free, open source, local first workspace for your notes, ideas and
 projects. No account, no subscription, no cloud and no AI. Just a calm place to
 write and think, on your own computer.
 
-![Morrow showing a project page with a checklist and a table](docs/images/page-light.png)
+![Morrow showing a project page with a checklist and a table](ss.png)
 
 ## Why Morrow
 
