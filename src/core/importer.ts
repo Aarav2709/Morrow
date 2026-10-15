@@ -1,6 +1,8 @@
+import { databaseFromTable, parseCellValue } from './database';
+import { inlineText } from './doc';
 import { markdownToPage } from './markdown/parse';
 import { emptyDoc, newPageMeta } from './model';
-import type { DocNode, FileMeta, PageId, PageMeta, WorkspaceState } from './model';
+import type { DocNode, FileMeta, PageId, PageMeta, PropValue, WorkspaceState } from './model';
 import { pageIdByTitle } from './search';
 import { childrenOf } from './tree';
 
@@ -119,13 +121,41 @@ export function planArchiveImport(
     titles.set(page.id, parsed.title.replace(NOTION_ID, '') || page.title);
   }
 
+  // notion databases arrive as a csv of rows plus a folder with a page per row, they become real databases
+  const extras = new Map<PageId, Partial<PageMeta>>();
+  const newRows: PageMeta[] = [];
   for (const entry of tables) {
-    const page = keys.get(stripExtension(entry.path).replace(/_all$/, ''))!;
-    if (docs[page.id]) continue;
+    const key = stripExtension(entry.path).replace(/_all$/, '');
+    const page = keys.get(key)!;
     const rows = parseCsv(decoder.decode(entry.data));
+    if (rows.length === 0) continue;
     if (rows.length > MAX_TABLE_ROWS + 1)
       problems.push(`Only the first ${MAX_TABLE_ROWS} rows of ${page.title} were imported.`);
-    docs[page.id] = tableDoc(rows.slice(0, MAX_TABLE_ROWS + 1));
+    const [header, ...body] = rows.slice(0, MAX_TABLE_ROWS + 1);
+    const database = databaseFromTable(header!, body, newId);
+    extras.set(page.id, { kind: 'database', database });
+    docs[page.id] ??= emptyDoc();
+    const rowPages = [...keys.entries()].filter(([rowKey]) => dirname(rowKey) === key);
+    const claimed = new Set<PageId>();
+    body.forEach((cells, index) => {
+      const title = (cells[0] ?? '').trim() || 'Untitled';
+      const values: Record<string, PropValue> = {};
+      database.properties.forEach((prop, column) => {
+        const value = parseCellValue(prop, cells[column + 1] ?? '');
+        if (value !== null) values[prop.id] = value;
+      });
+      const match = rowPages.find(([, row]) => !claimed.has(row.id) && (titles.get(row.id) ?? row.title).trim() === title);
+      if (match) {
+        claimed.add(match[1].id);
+        extras.set(match[1].id, { properties: values });
+        const doc = docs[match[1].id];
+        if (doc) docs[match[1].id] = withoutPropertyLines(doc, header!.slice(1));
+      } else {
+        const id = newId();
+        newRows.push(newPageMeta({ id, parentId: page.id, title, order: index, createdAt: now, properties: values }));
+        docs[id] = emptyDoc();
+      }
+    });
   }
   for (const folder of folders.values()) docs[folder.id] = emptyDoc();
 
@@ -142,11 +172,13 @@ export function planArchiveImport(
       title: titles.get(page.id) ?? page.title,
       order,
       createdAt: now,
+      ...extras.get(page.id),
     });
   });
+  for (const row of newRows) row.order += counters.get(row.parentId) ?? 0;
 
   return {
-    pages,
+    pages: [...pages, ...newRows],
     docs,
     files: [...referenced.entries()].map(([path, meta]) => ({ meta, data: assets.get(path)!.data })),
     problems,
@@ -252,26 +284,15 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((cells) => cells.some((cell) => cell.trim()));
 }
 
-function tableDoc(rows: string[][]): DocNode {
-  if (rows.length === 0) return emptyDoc();
-  const width = Math.max(...rows.map((row) => row.length));
-  const cell = (type: string, text: string): DocNode => ({
-    type,
-    content: [
-      { type: 'paragraph', ...(text.trim() ? { content: [{ type: 'text', text: text.trim() }] } : {}) },
-    ],
-  });
-  const row = (cells: string[], type: string): DocNode => ({
-    type: 'tableRow',
-    content: Array.from({ length: width }, (_, i) => cell(type, cells[i] ?? '')),
-  });
-  return {
-    type: 'doc',
-    content: [
-      {
-        type: 'table',
-        content: [row(rows[0]!, 'tableHeader'), ...rows.slice(1).map((r) => row(r, 'tableCell'))],
-      },
-    ],
-  };
+// notion repeats a row's properties as "Name: value" lines at the top of its page, they now live in the database
+function withoutPropertyLines(doc: DocNode, names: string[]): DocNode {
+  const prefixes = names.map((name) => `${name.trim()}:`).filter((prefix) => prefix.length > 1);
+  const content = [...(doc.content ?? [])];
+  while (content.length > 0) {
+    const first = content[0]!;
+    const text = first.type === 'paragraph' ? inlineText(first).trim() : '';
+    if (!text || !prefixes.some((prefix) => text.startsWith(prefix))) break;
+    content.shift();
+  }
+  return content.length ? { ...doc, content } : emptyDoc();
 }

@@ -156,9 +156,12 @@ export const KNOWN_NODE_TYPES = new Set([
   'details',
   'detailsSummary',
   'detailsContent',
+  'inlineMath',
+  'blockMath',
+  'rawBlock',
 ]);
 
-export const KNOWN_MARK_TYPES = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'link']);
+export const KNOWN_MARK_TYPES = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'link', 'highlight']);
 
 export type FileId = string;
 
@@ -179,8 +182,34 @@ export interface Snapshot {
   createdAt: number;
 }
 
-export const CALLOUT_TONES = ['note', 'tip', 'warning'] as const;
+export const CALLOUT_TONES = ['note', 'tip', 'warning', 'danger'] as const;
 export type CalloutTone = (typeof CALLOUT_TONES)[number];
+
+// obsidian and github callout types, each drawn in one of the four tones
+const CALLOUT_KIND_TONES: Record<string, CalloutTone> = {
+  tip: 'tip',
+  hint: 'tip',
+  important: 'tip',
+  success: 'tip',
+  check: 'tip',
+  done: 'tip',
+  warning: 'warning',
+  caution: 'warning',
+  attention: 'warning',
+  question: 'warning',
+  help: 'warning',
+  faq: 'warning',
+  danger: 'danger',
+  error: 'danger',
+  failure: 'danger',
+  fail: 'danger',
+  missing: 'danger',
+  bug: 'danger',
+};
+
+export function calloutTone(kind: string): CalloutTone {
+  return CALLOUT_KIND_TONES[kind.toLowerCase()] ?? 'note';
+}
 
 export function emptyDoc(): DocNode {
   return { type: 'doc', content: [{ type: 'paragraph' }] };

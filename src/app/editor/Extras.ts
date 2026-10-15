@@ -1,0 +1,377 @@
+import { Extension, InputRule, Mark, markInputRule, markPasteRule, mergeAttributes, Node } from '@tiptap/core';
+import type { Editor, NodeViewRenderer } from '@tiptap/core';
+import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
+import { BlockMath, InlineMath } from '@tiptap/extension-mathematics';
+import type { Node as PmNode } from '@tiptap/pm/model';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import type { EditorView } from '@tiptap/pm/view';
+import { common, createLowlight } from 'lowlight';
+import { CALLOUT_TONES, calloutTone } from '../../core/model';
+import type { CalloutTone } from '../../core/model';
+import { openDialog } from '../ui';
+
+declare module '@tiptap/core' {
+  interface Commands<ReturnType> {
+    highlight: {
+      toggleHighlight: () => ReturnType;
+    };
+  }
+}
+
+// ==text== in markdown, <mark> on the page
+export const Highlight = Mark.create({
+  name: 'highlight',
+  parseHTML() {
+    return [{ tag: 'mark' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['mark', mergeAttributes(HTMLAttributes), 0];
+  },
+  addCommands() {
+    return {
+      toggleHighlight:
+        () =>
+        ({ commands }) =>
+          commands.toggleMark(this.name),
+    };
+  },
+  addKeyboardShortcuts() {
+    return { 'Mod-Shift-h': () => this.editor.commands.toggleHighlight() };
+  },
+  addInputRules() {
+    return [markInputRule({ find: /(?:^|\s)(==(?!\s+==)((?:[^=]+))==(?!\s+==))$/, type: this.type })];
+  },
+  addPasteRules() {
+    return [markPasteRule({ find: /(?:^|\s)(==(?!\s+==)((?:[^=]+))==(?!\s+==))/g, type: this.type })];
+  },
+});
+
+function setAttrs(view: EditorView, getPos: () => number | undefined, attrs: Record<string, unknown>): void {
+  const pos = getPos();
+  if (pos === undefined) return;
+  const node = view.state.doc.nodeAt(pos);
+  if (!node) return;
+  view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, ...attrs }));
+}
+
+// markdown or html morrow does not edit as blocks, shown as written and saved exactly as it was
+export const RawBlock = Node.create({
+  name: 'rawBlock',
+  group: 'block',
+  atom: true,
+  selectable: true,
+  draggable: true,
+  addAttributes() {
+    return { text: { default: '' } };
+  },
+  parseHTML() {
+    return [{ tag: 'pre[data-raw-block]', getAttrs: (element) => ({ text: element.textContent ?? '' }) }];
+  },
+  renderHTML({ node }) {
+    return ['pre', { 'data-raw-block': '' }, String(node.attrs.text ?? '')];
+  },
+  addNodeView() {
+    return ({ node, getPos, editor }) => {
+      let current = node;
+      const dom = document.createElement('div');
+      dom.className = 'raw-block';
+      dom.contentEditable = 'false';
+      const label = document.createElement('span');
+      label.className = 'raw-block-label';
+      label.textContent = 'Kept as written';
+      const pre = document.createElement('pre');
+      pre.textContent = String(node.attrs.text ?? '');
+      dom.append(label, pre);
+      const edit = () => {
+        if (!editor.isEditable) return;
+        openDialog({
+          kind: 'source',
+          title: 'Edit as written',
+          value: String(current.attrs.text ?? ''),
+          language: 'markdown',
+          onSave: (text) => setAttrs(editor.view, getPos, { text }),
+        });
+      };
+      dom.addEventListener('dblclick', edit);
+      return {
+        dom,
+        update(updated) {
+          if (updated.type !== current.type) return false;
+          current = updated;
+          pre.textContent = String(updated.attrs.text ?? '');
+          return true;
+        },
+      };
+    };
+  },
+});
+
+const editMath = (view: EditorView, node: PmNode, pos: number, block: boolean) => {
+  openDialog({
+    kind: 'source',
+    title: block ? 'Edit formula' : 'Edit inline formula',
+    value: String(node.attrs.latex ?? ''),
+    language: 'latex',
+    displayMode: block,
+    onSave: (latex) => {
+      const current = view.state.doc.nodeAt(pos);
+      if (!current || current.type !== node.type) return;
+      if (!latex.trim()) view.dispatch(view.state.tr.delete(pos, pos + current.nodeSize));
+      else view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex }));
+      view.focus();
+    },
+  });
+};
+
+// opens the first formula found close to a position, used right after inserting one
+export function editMathNear(editor: Editor, around: number): void {
+  const { doc } = editor.state;
+  let found: { node: PmNode; pos: number } | null = null;
+  doc.nodesBetween(Math.max(0, around - 2), Math.min(doc.content.size, around + 4), (node, pos) => {
+    if (!found && (node.type.name === 'blockMath' || node.type.name === 'inlineMath')) found = { node, pos };
+    return !found;
+  });
+  const hit = found as { node: PmNode; pos: number } | null;
+  if (hit) editMath(editor.view, hit.node, hit.pos, hit.node.type.name === 'blockMath');
+}
+
+// $inline$ formulas as obsidian types them, prices like $5 and $10 stay text
+const InlineMathDollar = Extension.create({
+  name: 'inlineMathDollar',
+  addInputRules() {
+    const type = this.editor.schema.nodes.inlineMath;
+    if (!type) return [];
+    return [
+      new InputRule({
+        find: /(?<![\\$\w])\$([^\s$](?:[^$\n]*[^\s$])?)\$$/,
+        handler: ({ state, range, match }) => {
+          state.tr.replaceWith(range.from, range.to, type.create({ latex: match[1] }));
+        },
+      }),
+    ];
+  },
+});
+
+export function mathExtensions() {
+  return [
+    InlineMath.configure({
+      katexOptions: { throwOnError: false, strict: false },
+      onClick: (node, pos) => {
+        const view = currentView(node);
+        if (view) editMath(view, node, pos, false);
+      },
+    }),
+    BlockMath.configure({
+      katexOptions: { throwOnError: false, displayMode: true, strict: false },
+      onClick: (node, pos) => {
+        const view = currentView(node);
+        if (view) editMath(view, node, pos, true);
+      },
+    }),
+    InlineMathDollar,
+  ];
+}
+
+// the math click handler only gets the node, the editor that holds it is found through the dom
+let activeView: EditorView | null = null;
+const MathViewTracker = Extension.create({
+  name: 'mathViewTracker',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('mathViewTracker'),
+        view: (view) => {
+          const track = () => (activeView = view);
+          view.dom.addEventListener('mousedown', track, true);
+          view.dom.addEventListener('focusin', track);
+          return {
+            destroy: () => {
+              view.dom.removeEventListener('mousedown', track, true);
+              view.dom.removeEventListener('focusin', track);
+              if (activeView === view) activeView = null;
+            },
+          };
+        },
+      }),
+    ];
+  },
+});
+function currentView(_node: PmNode): EditorView | null {
+  return activeView && !activeView.isDestroyed ? activeView : null;
+}
+export { MathViewTracker };
+
+const lowlight = createLowlight(common);
+export const CODE_LANGUAGES = lowlight.listLanguages().sort();
+
+// highlighted code, the language is picked from a list above each block
+export const CodeBlock = CodeBlockLowlight.extend({
+  addNodeView() {
+    return ({ node, getPos, editor }) => {
+      let current = node;
+      const dom = document.createElement('div');
+      dom.className = 'code-block';
+      const select = document.createElement('select');
+      select.className = 'code-language';
+      select.contentEditable = 'false';
+      select.setAttribute('aria-label', 'Code language');
+      const plain = document.createElement('option');
+      plain.value = '';
+      plain.textContent = 'Plain text';
+      select.append(plain);
+      for (const language of CODE_LANGUAGES) {
+        const option = document.createElement('option');
+        option.value = language;
+        option.textContent = language;
+        select.append(option);
+      }
+      const sync = () => {
+        const language = String(current.attrs.language ?? '');
+        if (language && !CODE_LANGUAGES.includes(language) && ![...select.options].some((o) => o.value === language)) {
+          const option = document.createElement('option');
+          option.value = language;
+          option.textContent = language;
+          select.append(option);
+        }
+        select.value = language;
+        select.disabled = !editor.isEditable;
+      };
+      sync();
+      select.addEventListener('change', () => setAttrs(editor.view, getPos, { language: select.value || null }));
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      pre.append(code);
+      dom.append(select, pre);
+      return {
+        dom,
+        contentDOM: code,
+        update(updated) {
+          if (updated.type !== current.type) return false;
+          current = updated;
+          sync();
+          return true;
+        },
+        stopEvent: (event) => select.contains(event.target as globalThis.Node),
+        ignoreMutation: (mutation) => select.contains(mutation.target),
+      };
+    };
+  },
+}).configure({ lowlight, defaultLanguage: null, HTMLAttributes: { spellcheck: 'false' } });
+
+const TONE_LABELS: Record<CalloutTone, string> = { note: 'Note', tip: 'Tip', warning: 'Warning', danger: 'Danger' };
+
+// callouts keep their obsidian type, an optional title and whether they start folded
+export function calloutNodeView(): NodeViewRenderer {
+  return ({ node, getPos, editor }) => {
+    let current = node;
+    const dom = document.createElement('div');
+    dom.className = 'callout';
+    const header = document.createElement('div');
+    header.className = 'callout-header';
+    header.contentEditable = 'false';
+    const tone = document.createElement('button');
+    tone.type = 'button';
+    tone.className = 'callout-tone';
+    const title = document.createElement('input');
+    title.className = 'callout-title';
+    title.placeholder = 'Add a title';
+    title.setAttribute('aria-label', 'Callout title');
+    const fold = document.createElement('button');
+    fold.type = 'button';
+    fold.className = 'callout-fold';
+    header.append(tone, title, fold);
+    const body = document.createElement('div');
+    body.className = 'callout-body';
+    dom.append(header, body);
+    const sync = () => {
+      const value = (CALLOUT_TONES as readonly string[]).includes(String(current.attrs.tone)) ? (current.attrs.tone as CalloutTone) : 'note';
+      dom.dataset.tone = value;
+      const kind = String(current.attrs.kind ?? value);
+      tone.textContent = kind.charAt(0).toUpperCase() + kind.slice(1);
+      tone.title = `${TONE_LABELS[value]}, click to change`;
+      if (document.activeElement !== title) title.value = String(current.attrs.title ?? '');
+      title.readOnly = !editor.isEditable;
+      const folded = current.attrs.fold === '-';
+      dom.classList.toggle('is-folded', folded);
+      fold.hidden = !current.attrs.fold;
+      fold.textContent = folded ? 'Show' : 'Hide';
+    };
+    sync();
+    tone.addEventListener('click', () => {
+      if (!editor.isEditable) return;
+      const tones = CALLOUT_TONES;
+      const next = tones[(tones.indexOf(current.attrs.tone as CalloutTone) + 1) % tones.length]!;
+      const kind = String(current.attrs.kind ?? '');
+      // a custom obsidian type keeps its name while it already looks right
+      setAttrs(editor.view, getPos, { tone: next, kind: kind && calloutTone(kind) === next ? kind : next });
+    });
+    title.addEventListener('change', () => setAttrs(editor.view, getPos, { title: title.value.trim() || null }));
+    title.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        title.blur();
+        editor.commands.focus();
+      }
+    });
+    fold.addEventListener('click', () => setAttrs(editor.view, getPos, { fold: current.attrs.fold === '-' ? '+' : '-' }));
+    return {
+      dom,
+      contentDOM: body,
+      update(updated) {
+        if (updated.type !== current.type) return false;
+        current = updated;
+        sync();
+        return true;
+      },
+      stopEvent: (event) => header.contains(event.target as globalThis.Node),
+      ignoreMutation: (mutation) => header.contains(mutation.target as globalThis.Node),
+    };
+  };
+}
+
+const TAG_PATTERN = /(^|[\s(])#([\p{L}\p{N}_\-/]*[\p{L}_\-/][\p{L}\p{N}_\-/]*)/gu;
+const tagKey = new PluginKey<DecorationSet>('tags');
+
+function tagDecorations(doc: PmNode): DecorationSet {
+  const decorations: Decoration[] = [];
+  doc.descendants((node, pos, parent) => {
+    if (parent?.type.name === 'codeBlock') return false;
+    if (!node.isText || !node.text || node.marks.some((mark) => mark.type.name === 'code' || mark.type.name === 'link')) return true;
+    for (const match of node.text.matchAll(TAG_PATTERN)) {
+      const from = pos + match.index + match[1]!.length;
+      const to = from + match[2]!.length + 1;
+      decorations.push(Decoration.inline(from, to, { class: 'tag-chip', 'data-tag': match[2]! }));
+    }
+    return true;
+  });
+  return DecorationSet.create(doc, decorations);
+}
+
+// #tags written in text are shown as chips and open the tag's page when clicked with ctrl or cmd
+export function Tags(open: (tag: string) => void) {
+  return Extension.create({
+    name: 'tags',
+    addProseMirrorPlugins() {
+      return [
+        new Plugin<DecorationSet>({
+          key: tagKey,
+          state: {
+            init: (_config, state) => tagDecorations(state.doc),
+            apply: (tr, value) => (tr.docChanged ? tagDecorations(tr.doc) : value),
+          },
+          props: {
+            decorations: (state) => tagKey.getState(state),
+            handleClick: (view, _pos, event) => {
+              const target = (event.target as HTMLElement | null)?.closest<HTMLElement>('.tag-chip');
+              if (!target?.dataset.tag || (view.editable && !(event.ctrlKey || event.metaKey))) return false;
+              event.preventDefault();
+              open(target.dataset.tag);
+              return true;
+            },
+          },
+        }),
+      ];
+    },
+  });
+}

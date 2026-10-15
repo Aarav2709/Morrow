@@ -1,6 +1,7 @@
 import { docToPlainText } from './doc';
 import { displayTitle } from './model';
 import type { DocNode, PageId, PageMeta, WorkspaceState } from './model';
+import { tagMatches, tagsOf } from './tags';
 import { ancestorsOf, livePages } from './tree';
 
 export interface SearchSnippet {
@@ -46,13 +47,20 @@ export function tokenize(query: string): string[] {
     .slice(0, 12);
 }
 
+// #tag in a query keeps only pages with that tag, the other words are searched as usual
 export function searchWorkspace(state: WorkspaceState, query: string, limit = 50): SearchResult[] {
-  const terms = tokenize(query);
-  if (terms.length === 0) return [];
+  const all = tokenize(query);
+  const wantedTags = all.filter((term) => /^#[^#\s]+$/.test(term)).map((term) => term.slice(1));
+  const terms = all.filter((term) => !/^#[^#\s]+$/.test(term));
+  if (terms.length === 0 && wantedTags.length === 0) return [];
   const phrase = terms.join(' ');
   const results: SearchResult[] = [];
 
   for (const page of livePages(state.pages)) {
+    if (wantedTags.length > 0) {
+      const tags = tagsOf(page, state.docs[page.id]);
+      if (!wantedTags.every((wanted) => tags.some((tag) => tagMatches(foldText(tag), wanted)))) continue;
+    }
     const title = foldText(displayTitle(page));
     const body = textOf(state.docs[page.id]);
     let score = 0;
@@ -69,12 +77,12 @@ export function searchWorkspace(state: WorkspaceState, query: string, limit = 50
     }
     if (!matchedAll) continue;
     const titleMatch = terms.every((term) => title.includes(term));
-    if (title === phrase) score += 30;
-    else if (title.startsWith(phrase)) score += 15;
-    if (body.folded.includes(phrase)) score += 6;
+    if (phrase && title === phrase) score += 30;
+    else if (phrase && title.startsWith(phrase)) score += 15;
+    if (phrase && body.folded.includes(phrase)) score += 6;
     // small recency bonus so fresh notes win ties
     score += Math.max(0, 2 - (Date.now() - page.updatedAt) / (1000 * 60 * 60 * 24 * 30));
-    const bodyTerm = body.folded.includes(phrase) ? phrase : terms.find((term) => body.folded.includes(term));
+    const bodyTerm = phrase && body.folded.includes(phrase) ? phrase : terms.find((term) => body.folded.includes(term));
     const snippet = bodyTerm ? makeSnippet(body, bodyTerm) : null;
     results.push({
       page,
@@ -141,4 +149,11 @@ export function pageIdByTitle(state: WorkspaceState, title: string): PageId | nu
   const folded = foldText(title.trim());
   const match = livePages(state.pages).find((page) => foldText(displayTitle(page)) === folded);
   return match?.id ?? null;
+}
+
+// a written [[target]] to a page: by title, by file name, or by the last part of a path
+export function resolveLinkTarget(state: WorkspaceState, target: string): PageId | null {
+  const clean = target.trim().replace(/\.(md|canvas)$/i, '');
+  if (!clean) return null;
+  return pageIdByTitle(state, clean) ?? pageIdByTitle(state, clean.split('/').pop() ?? clean);
 }

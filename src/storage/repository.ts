@@ -4,7 +4,7 @@ import { snapshotsToPrune } from '../core/history';
 import { readWorkspace } from '../core/migrations';
 import type { LoadedWorkspace } from '../core/migrations';
 import { SCHEMA_VERSION } from '../core/model';
-import type { DocNode, FileId, FileMeta, PageId, PageMeta, Snapshot } from '../core/model';
+import type { DocNode, FileId, FileMeta, PageId, PageMeta, Snapshot, WorkspaceState } from '../core/model';
 import { errorMessage, fail, ok } from '../core/result';
 import type { Result } from '../core/result';
 
@@ -13,6 +13,17 @@ export interface WriteBatch {
   docs: Array<{ id: PageId; doc: DocNode }>;
   removed: PageId[];
   snapshots?: Snapshot[];
+  // the whole workspace at the time of the write, file based storage lays out pages from it
+  state?: WorkspaceState;
+}
+
+// pages changed by another app while morrow was open
+export interface ExternalPatch {
+  pages: PageMeta[];
+  docs: Record<PageId, DocNode>;
+  removed: PageId[];
+  unreadable: PageId[];
+  readable: PageId[];
 }
 
 export interface StoredFile {
@@ -25,7 +36,18 @@ export interface WorkspaceRepository {
   // resolves only after the transaction commits, rejects on any failure
   write(batch: WriteBatch): Promise<void>;
   markInitialized(): Promise<void>;
-  putFiles(files: StoredFile[]): Promise<void>;
+  // stores files and returns their metadata, the ids may differ from the ones passed in
+  putFiles(files: StoredFile[]): Promise<FileMeta[]>;
+  // a url the page can load the file from directly, null when it has to be read into memory
+  fileUrl?(id: FileId): string | null;
+  // called with changes made outside morrow, returns the pages it accepted
+  onExternalChange?(listener: (patch: ExternalPatch) => PageId[]): () => void;
+  // a name for the storage location, shown in settings
+  readonly location?: string;
+  // gives storage the live workspace, to read outside edits against unsaved changes
+  attachState?(getState: () => WorkspaceState): void;
+  // where a page's file lives, relative to the storage location
+  pathOf?(id: PageId): string | null;
   getFile(id: FileId): Promise<StoredFile | null>;
   listFiles(): Promise<FileMeta[]>;
   deleteFiles(ids: FileId[]): Promise<void>;
@@ -122,9 +144,10 @@ class IndexedDbRepository implements WorkspaceRepository {
     await this.db.put('meta', true, 'initialized');
   }
 
-  async putFiles(files: StoredFile[]): Promise<void> {
+  async putFiles(files: StoredFile[]): Promise<FileMeta[]> {
     const tx = this.db.transaction('files', 'readwrite');
     await Promise.all([...files.map((file) => tx.store.put({ ...file.meta, data: file.data })), tx.done]);
+    return files.map((file) => file.meta);
   }
 
   async getFile(id: FileId): Promise<StoredFile | null> {

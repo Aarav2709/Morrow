@@ -176,7 +176,7 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
   };
 }
 
-function normalizeDatabase(raw: unknown): DatabaseDef | null {
+export function normalizeDatabase(raw: unknown): DatabaseDef | null {
   if (!isRecord(raw)) return null;
   return {
     properties: records(raw.properties).flatMap((prop) => normalizeProp(prop) ?? []),

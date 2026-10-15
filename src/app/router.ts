@@ -5,7 +5,10 @@ export type Route =
   | { name: 'home' }
   | { name: 'page'; id: PageId; find: string | null }
   | { name: 'tasks' }
-  | { name: 'trash' };
+  | { name: 'trash' }
+  | { name: 'tags' }
+  | { name: 'tag'; tag: string }
+  | { name: 'graph'; focus: PageId | null };
 
 export function parseRoute(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#/, '').split('?');
@@ -16,6 +19,9 @@ export function parseRoute(hash: string): Route {
   }
   if (parts[0] === 'tasks') return { name: 'tasks' };
   if (parts[0] === 'trash') return { name: 'trash' };
+  if (parts[0] === 'tags' && parts[1]) return { name: 'tag', tag: decodeURIComponent(parts.slice(1).join('/')) };
+  if (parts[0] === 'tags') return { name: 'tags' };
+  if (parts[0] === 'graph') return { name: 'graph', focus: parts[1] ? decodeURIComponent(parts[1]) : null };
   return { name: 'home' };
 }
 
@@ -27,6 +33,12 @@ export function routeHash(route: Route): string {
       return '#/tasks';
     case 'trash':
       return '#/trash';
+    case 'tags':
+      return '#/tags';
+    case 'tag':
+      return `#/tags/${route.tag.split('/').map(encodeURIComponent).join('/')}`;
+    case 'graph':
+      return route.focus ? `#/graph/${encodeURIComponent(route.focus)}` : '#/graph';
     default:
       return '#/';
   }

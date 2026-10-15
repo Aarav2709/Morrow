@@ -71,15 +71,18 @@ describe('images and attachments in markdown', () => {
     const doc = markdownToDoc('![Front garden](photo.png)\n\n[plan.pdf](plan.pdf)\n\n![](elsewhere.png)', {
       resolveFile,
     });
-    expect(doc.content!.map((node) => node.type)).toEqual(['image', 'fileAttachment', 'paragraph']);
+    // an image whose file is unknown stays an image of its path, so saving never drops it
+    expect(doc.content!.map((node) => node.type)).toEqual(['image', 'fileAttachment', 'image']);
+    expect(doc.content![2]!.attrs).toEqual({ fileId: null, src: 'elsewhere.png', alt: '' });
     expect(doc.content![0]!.attrs).toEqual({ fileId: 'img1', alt: 'Front garden' });
     expect(fileIdsInDoc(doc)).toEqual(['img1', 'pdf1']);
   });
 
-  it('keeps a file link inside a sentence as plain text', () => {
+  it('keeps a file link inside a sentence as an ordinary link', () => {
     const doc = markdownToDoc('Read [the plan](plan.pdf) first.', { resolveFile });
     expect(doc.content![0]!.type).toBe('paragraph');
     expect(doc.content![0]!.content!.map((node) => node.text).join('')).toBe('Read the plan first.');
+    expect(doc.content![0]!.content![1]!.marks).toEqual([{ type: 'link', attrs: { href: 'plan.pdf' } }]);
   });
 
   it('writes images and files with relative paths', () => {
@@ -131,7 +134,7 @@ describe('notion and folder imports', () => {
 
   it('builds the page tree from files and folders without notion ids', () => {
     expect(plan.pages.map((page) => page.title).sort()).toEqual(
-      ['Garden', 'Ideas', 'Middlemarch', 'Notes', 'Projects', 'Reading'].sort(),
+      ['Garden', 'Ideas', 'Middlemarch', 'Notes', 'Piranesi, a novel', 'Projects', 'Reading'].sort(),
     );
     expect(byTitle('Garden').parentId).toBe(byTitle('Projects').id);
     expect(byTitle('Middlemarch').parentId).toBe(byTitle('Reading').id);
@@ -149,14 +152,21 @@ describe('notion and folder imports', () => {
       type: 'image',
       attrs: { fileId: plan.files[0]!.meta.id, alt: '' },
     });
-    const table = plan.docs[byTitle('Reading').id]!.content![0]!;
-    expect(table.content).toHaveLength(3);
-    expect(table.content![2]!.content![0]!.content![0]!.content![0]!.text).toBe('Piranesi, a novel');
+    // the csv becomes a database, rows with a page keep it and the rest get new pages
+    const reading = byTitle('Reading');
+    expect(reading.kind).toBe('database');
+    const status = reading.database!.properties[0]!;
+    expect(status).toMatchObject({ name: 'Status', type: 'select' });
+    const optionId = (name: string) => status.options.find((option) => option.name === name)!.id;
+    expect(byTitle('Middlemarch').properties).toEqual({ [status.id]: optionId('Reading') });
+    expect(byTitle('Piranesi, a novel')).toMatchObject({ parentId: reading.id, properties: { [status.id]: optionId('Next') } });
+    // the property lines notion writes into each row page are dropped, the values live in the database
+    expect(plan.docs[byTitle('Middlemarch').id]).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
   });
 
   it('produces pages the insert command accepts', () => {
     const state = run(emptyWorkspace(), { type: 'pages.insert', pages: plan.pages, docs: plan.docs });
-    expect(livePages(state.pages)).toHaveLength(6);
+    expect(livePages(state.pages)).toHaveLength(7);
   });
 
   it('parses quoted csv fields', () => {

@@ -7,15 +7,22 @@ import '@fontsource-variable/jetbrains-mono/index.css';
 import './app/styles/tokens.css';
 import './app/styles/app.css';
 import './app/styles/editor.css';
+import './app/styles/features.css';
+import 'katex/dist/katex.min.css';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { sampleCommands } from './core/sample';
+import type { WorkspaceRepository } from './storage/repository';
 import { WorkspaceSession } from './storage/session';
+import { VaultRepository } from './storage/vaultRepository';
 import { App } from './app/App';
 import { Logo } from './app/components/primitives';
+import { VaultChooser } from './app/components/VaultChooser';
 import { commitEditors } from './app/editor/commits';
+import { COPY_LEGACY_KEY, copyLegacyInto, legacyPageCount } from './app/legacy';
 import { desktop } from './app/platform/desktop';
 import { newId } from './app/platform/files';
+import { desktopVaultBridge } from './app/platform/vault';
 import { resolvedTheme, getPreferences } from './app/platform/preferences';
 import { onTakeoverRequest, takeOverLock, tryAcquireLock } from './app/platform/tabLock';
 import { toast } from './app/ui';
@@ -26,7 +33,9 @@ type BootState =
   | { kind: 'busy' }
   | { kind: 'released' }
   | { kind: 'error'; message: string }
+  | { kind: 'choose'; legacy: number }
   | { kind: 'ready' };
+
 
 // the theme is applied before react renders so there is no flash
 document.documentElement.dataset.theme = resolvedTheme(getPreferences().theme);
@@ -34,10 +43,25 @@ document.documentElement.dataset.theme = resolvedTheme(getPreferences().theme);
 if (desktop) document.documentElement.dataset.desktop = desktop.platform;
 
 async function openWorkspace(): Promise<BootState> {
-  const opened = await WorkspaceSession.open();
+  // the desktop app keeps pages as files in a folder the person chooses, the browser keeps them in the browser
+  let repository: WorkspaceRepository | undefined;
+  if (desktop?.vault) {
+    const vault = await desktop.vault.open();
+    if (!vault.ok || !vault.root) return { kind: 'choose', legacy: await legacyPageCount().catch(() => 0) };
+    repository = new VaultRepository(desktopVaultBridge(desktop.vault, vault.root), newId);
+  }
+  const opened = await WorkspaceSession.open(repository);
   if (!opened.ok) return { kind: 'error', message: opened.error };
   const session = opened.value;
-  if (session.firstRun) {
+  session.beforeExternal = commitEditors;
+  const copyLegacy = desktop?.vault && sessionStorage.getItem(COPY_LEGACY_KEY) === '1';
+  sessionStorage.removeItem(COPY_LEGACY_KEY);
+  if (copyLegacy) {
+    const copied = await copyLegacyInto(session);
+    if (copied.ok && copied.value > 0)
+      toast(`Copied ${copied.value} page${copied.value === 1 ? '' : 's'} from Morrow 1.0 into this folder. The original copy was left as it was.`, { durationMs: 12_000 });
+    else if (!copied.ok) toast(`Your earlier pages could not be copied: ${copied.error}`, { tone: 'error', durationMs: 12_000 });
+  } else if (session.firstRun) {
     const seeded = session.executeAll(sampleCommands(newId, Date.now()));
     if (seeded.ok) await session.flush();
   }
@@ -92,6 +116,7 @@ function Boot() {
   };
 
   if (state.kind === 'ready') return <App />;
+  if (state.kind === 'choose') return <VaultChooser legacy={state.legacy} />;
   return (
     <div className="boot">
       <Logo size={36} />
@@ -110,15 +135,33 @@ function Boot() {
           <h1>Morrow could not open your workspace</h1>
           <p className="boot-text">{state.message}</p>
           <p className="boot-text muted">
-            Your data has not been changed. Private browsing modes can block local storage.
+            {desktop?.vault
+              ? 'Nothing in the folder has been changed.'
+              : 'Your data has not been changed. Private browsing modes can block local storage.'}
           </p>
-          <button type="button" className="button primary" onClick={() => window.location.reload()}>
-            Try again
-          </button>
+          <div className="button-row">
+            <button type="button" className="button primary" onClick={() => window.location.reload()}>
+              Try again
+            </button>
+            {desktop?.vault && (
+              <button
+                type="button"
+                className="button"
+                onClick={() => setState({ kind: 'choose', legacy: 0 })}
+              >
+                Open another folder
+              </button>
+            )}
+          </div>
         </>
       )}
     </div>
   );
+}
+
+// the browser version can be installed and used offline, the desktop app does not need this
+if (!desktop && import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol === 'https:') {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => undefined));
 }
 
 createRoot(document.getElementById('root')!).render(

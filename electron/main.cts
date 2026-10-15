@@ -16,8 +16,29 @@ import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promise
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { autoUpdater } from 'electron-updater';
+import {
+  applyOps,
+  chooseFolder,
+  closeVault,
+  createDefaultVault,
+  createFile,
+  currentVault,
+  forgetVault,
+  listDir,
+  openVault,
+  pathExists,
+  readBytes,
+  readText,
+  revealInFolder,
+  scanVault,
+  selectVault,
+  vaultFilePath,
+  vaultState,
+} from './vault.cjs';
 
 const SCHEME = 'morrow';
+// images and files inside the open vault load through this scheme, nothing outside the vault is served
+const FILE_SCHEME = 'morrow-file';
 const APP_ORIGIN = `${SCHEME}://app`;
 const DEV_URL = process.env.MORROW_DEV_URL ?? null;
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -39,6 +60,7 @@ if (!app.isPackaged && process.env.MORROW_USER_DATA) app.setPath('userData', pro
 
 protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: FILE_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
 ]);
 
 let mainWindow: BrowserWindow | null = null;
@@ -62,6 +84,7 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(async () => {
     protocol.handle(SCHEME, serveApp);
+    protocol.handle(FILE_SCHEME, serveVaultFile);
     session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
     session.defaultSession.on('will-download', (_event, item) => {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
@@ -89,6 +112,24 @@ async function serveApp(request: Request): Promise<Response> {
   if (!file.startsWith(DIST_DIR + path.sep) || !existsSync(file))
     return new Response('Not found', { status: 404 });
   return net.fetch(pathToFileURL(file).toString());
+}
+
+async function serveVaultFile(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  let relative: string;
+  try {
+    relative = decodeURIComponent(url.pathname.replace(/^\/+/, ''));
+  } catch {
+    return new Response('Not found', { status: 404 });
+  }
+  const file = url.host === 'vault' ? vaultFilePath(relative) : null;
+  if (!file || !existsSync(file)) return new Response('Not found', { status: 404 });
+  const response = await net.fetch(pathToFileURL(file).toString());
+  // svg images can carry scripts, they are only ever shown as images
+  const headers = new Headers(response.headers);
+  headers.set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
+  headers.set('X-Content-Type-Options', 'nosniff');
+  return new Response(response.body, { status: response.status, headers });
 }
 
 interface WindowState {
@@ -217,6 +258,7 @@ async function createWindow(): Promise<void> {
   });
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
+    closeVault();
     if (installingUpdate) autoUpdater.quitAndInstall();
   });
 
@@ -273,6 +315,7 @@ function registerIpc(): void {
     await mkdir(backupsDir(), { recursive: true });
     await shell.openPath(backupsDir());
   });
+  registerVaultIpc();
   ipcMain.handle('morrow:write-backup', async (event, json: unknown) => {
     if (!fromApp(event)) return { ok: false, error: 'Not allowed.' };
     if (typeof json !== 'string' || json.length > MAX_BACKUP_BYTES)
@@ -283,6 +326,36 @@ function registerIpc(): void {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
   });
+}
+
+// the renderer reaches the vault only through these, each one checks the page asking is morrow itself
+function registerVaultIpc(): void {
+  const handle = (channel: string, fn: (...args: unknown[]) => unknown) =>
+    ipcMain.handle(channel, async (event, ...args: unknown[]) => {
+      if (!fromApp(event)) throw new Error('Not allowed.');
+      return fn(...args);
+    });
+  handle('vault:state', () => vaultState());
+  handle('vault:choose', () => chooseFolder(mainWindow));
+  handle('vault:create-default', () => createDefaultVault());
+  handle('vault:select', (dir) => selectVault(String(dir)));
+  handle('vault:forget', (dir) => forgetVault(String(dir)));
+  handle('vault:open', async () => {
+    const state = await vaultState();
+    if (!state.current) return { ok: false, root: null };
+    await openVault(state.current, (changes) => mainWindow?.webContents.send('vault:changes', changes));
+    return { ok: true, root: state.current };
+  });
+  handle('vault:close', () => closeVault());
+  handle('vault:scan', () => scanVault());
+  handle('vault:apply', (ops) => applyOps(ops));
+  handle('vault:read-text', (relative) => readText(relative));
+  handle('vault:read-bytes', (relative) => readBytes(relative));
+  handle('vault:create-file', (relative, data) => createFile(relative, data));
+  handle('vault:exists', (relative) => pathExists(relative));
+  handle('vault:list', (relative) => listDir(relative));
+  handle('vault:reveal', (relative) => revealInFolder(relative ?? ''));
+  handle('vault:current', () => currentVault());
 }
 
 // updates come from the project's github releases and are only checked when the person asks

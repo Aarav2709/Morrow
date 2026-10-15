@@ -2,16 +2,24 @@ import {
   BookOpen,
   CalendarDays,
   CheckSquare,
+  ChevronDown,
   ChevronRight,
   FileText,
   FileUp,
+  FolderOpen,
+  FolderPlus,
+  Hash,
   Home,
+  LayoutDashboard,
+  LayoutTemplate,
   MoreHorizontal,
+  Network,
   PanelLeftClose,
   Plus,
   Search,
   Settings,
   Star,
+  Table2,
   Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -28,7 +36,12 @@ import {
   livePages,
   trashedPages,
 } from '../../core/tree';
+import { collectTags } from '../../core/tags';
 import { formatShortcut, runAction } from '../actions';
+import { desktop } from '../platform/desktop';
+import { vaultName } from '../platform/vault';
+import { chooseVaultFolder, createVault, switchVault } from '../vaults';
+import { getSession } from '../workspace';
 import { createPage, expandPage, importMarkdown, openToday, trashPage } from '../operations';
 import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
 import { navigate, openPage, useRoute } from '../router';
@@ -43,15 +56,32 @@ type DropZone = 'before' | 'inside' | 'after';
 
 export function pageIcon(page: PageMeta): LucideIcon {
   if (page.kind === 'journal') return BookOpen;
+  if (page.kind === 'database') return Table2;
+  if (page.kind === 'canvas') return LayoutDashboard;
+  if (page.kind === 'templates') return LayoutTemplate;
   if (page.dailyDate) return CalendarDays;
   return FileText;
 }
 
 export function PageIcon({ page }: { page: PageMeta }) {
   if (page.icon) return <>{page.icon}</>;
-  if (page.kind === 'journal') return <BookOpen size={15} strokeWidth={1.75} />;
-  if (page.dailyDate) return <CalendarDays size={15} strokeWidth={1.75} />;
-  return <FileText size={15} strokeWidth={1.75} />;
+  const props = { size: 15, strokeWidth: 1.75 };
+  if (page.kind === 'journal') return <BookOpen {...props} />;
+  if (page.kind === 'database') return <Table2 {...props} />;
+  if (page.kind === 'canvas') return <LayoutDashboard {...props} />;
+  if (page.kind === 'templates') return <LayoutTemplate {...props} />;
+  if (page.dailyDate) return <CalendarDays {...props} />;
+  return <FileText {...props} />;
+}
+
+// the four kinds of page a person can make from the sidebar or a page's menu
+export function newPageEntries(parentId: PageId | null) {
+  return [
+    { label: 'Page', icon: FileText, onSelect: () => createPage({ parentId }) },
+    { label: 'Database', icon: Table2, onSelect: () => createPage({ parentId, kind: 'database' }) },
+    { label: 'Canvas', icon: LayoutDashboard, onSelect: () => createPage({ parentId, kind: 'canvas' }) },
+    { label: 'From a template…', icon: LayoutTemplate, onSelect: () => openDialog({ kind: 'template', parentId }) },
+  ];
 }
 
 function NavItem({
@@ -96,6 +126,10 @@ export function Sidebar() {
   );
   const trashCount = useMemo(() => trashedPages(state.pages).length, [state.pages]);
   const openTasks = useMemo(() => collectTasks(state).filter((task) => !task.checked).length, [state]);
+  const tagCount = useMemo(() => collectTags(state).length, [state]);
+  const [newMenu, setNewMenu] = useState<HTMLElement | null>(null);
+  const [vaultMenu, setVaultMenu] = useState<{ anchor: HTMLElement; recent: Array<{ path: string; name: string; exists: boolean }> } | null>(null);
+  const location = getSession().location;
   const todayKey = dateKey(new Date());
   const isToday = activeId !== null && state.pages[activeId]?.dailyDate === todayKey;
   const resizing = useRef(false);
@@ -129,15 +163,32 @@ export function Sidebar() {
       style={{ '--sidebar-width': `${prefs.sidebarWidth}px` } as React.CSSProperties}
     >
       <div className="sidebar-header">
-        <button
-          type="button"
-          className="brand"
-          onClick={go(() => navigate({ name: 'home' }))}
-          aria-label="Morrow home"
-        >
-          <Logo size={20} />
-          <span className="brand-name">Morrow</span>
-        </button>
+        {location && desktop?.vault ? (
+          <button
+            type="button"
+            className="brand"
+            aria-label={`Vault ${vaultName(location)}, switch vault`}
+            title={location}
+            onClick={(event) => {
+              const anchor = event.currentTarget;
+              void desktop?.vault?.state().then((vaults) => setVaultMenu({ anchor, recent: vaults.recent }));
+            }}
+          >
+            <Logo size={20} />
+            <span className="brand-name">{vaultName(location)}</span>
+            <ChevronDown size={13} className="brand-chevron" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="brand"
+            onClick={go(() => navigate({ name: 'home' }))}
+            aria-label="Morrow home"
+          >
+            <Logo size={20} />
+            <span className="brand-name">Morrow</span>
+          </button>
+        )}
         <button
           type="button"
           className="icon-button"
@@ -169,6 +220,19 @@ export function Sidebar() {
           active={route.name === 'tasks'}
           count={openTasks}
           onClick={go(() => navigate({ name: 'tasks' }))}
+        />
+        <NavItem
+          icon={Hash}
+          label="Tags"
+          active={route.name === 'tags' || route.name === 'tag'}
+          count={tagCount}
+          onClick={go(() => navigate({ name: 'tags' }))}
+        />
+        <NavItem
+          icon={Network}
+          label="Graph"
+          active={route.name === 'graph'}
+          onClick={go(() => navigate({ name: 'graph', focus: null }))}
         />
       </nav>
 
@@ -204,9 +268,10 @@ export function Sidebar() {
             <button
               type="button"
               className="icon-button small"
-              aria-label="New page"
-              title={`New page (${formatShortcut('Alt+N')})`}
-              onClick={() => createPage()}
+              aria-label="New page, database or canvas"
+              aria-haspopup="menu"
+              title={`New (${formatShortcut('Alt+N')} for a page)`}
+              onClick={(event) => setNewMenu(event.currentTarget)}
             >
               <Plus size={15} strokeWidth={1.75} />
             </button>
@@ -235,6 +300,32 @@ export function Sidebar() {
         />
         <NavItem icon={Settings} label="Settings" onClick={() => openDialog({ kind: 'settings' })} />
       </div>
+      {newMenu && <Menu anchor={newMenu} label="New" entries={newPageEntries(null)} onClose={() => setNewMenu(null)} />}
+      {vaultMenu && (
+        <Menu
+          anchor={vaultMenu.anchor}
+          label="Vaults"
+          onClose={() => setVaultMenu(null)}
+          entries={[
+            { heading: 'Vaults' },
+            ...vaultMenu.recent
+              .filter((item) => item.exists)
+              .map((item) => ({
+                label: item.name,
+                checked: item.path === location,
+                onSelect: () => {
+                  if (item.path !== location) void switchVault(item.path);
+                },
+              })),
+            { separator: true },
+            { label: 'Open another folder…', icon: FolderOpen, onSelect: () => void chooseVaultFolder() },
+            { label: 'Create a new vault', icon: FolderPlus, onSelect: () => void createVault() },
+            { label: 'Show vault folder', icon: FolderOpen, onSelect: () => void desktop?.vault?.reveal('') },
+            { separator: true },
+            { label: 'Home', icon: Home, onSelect: () => navigate({ name: 'home' }) },
+          ]}
+        />
+      )}
       <div
         className="sidebar-resizer"
         role="separator"

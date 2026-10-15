@@ -4,7 +4,7 @@ import { EditorContent } from '@tiptap/react';
 import { useEffect, useRef, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { DocNode, PageId } from '../../core/model';
-import { findPagesByTitle, pageIdByTitle } from '../../core/search';
+import { findPagesByTitle, pageIdByTitle, resolveLinkTarget } from '../../core/search';
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
 import { createPage } from '../operations';
 import { navigate, openPage } from '../router';
@@ -104,6 +104,11 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
                   .join(' / '),
               })),
           createPage: (title) => createPage({ parentId: pageId, title, open: false }),
+          resolveTarget: (target) => resolveLinkTarget(getState(), target),
+          // obsidian makes a missing linked page at the top of the vault, so does morrow
+          createFromTarget: (target) => createPage({ title: target.split('/').pop() || target, open: false }),
+          openTag: (tag) => navigate({ name: 'tag', tag }),
+          createChild: (kind) => createPage({ parentId: pageId, kind, open: false }),
           onBlockMenu: setBlockMenu,
           resolvePage: (title) => pageIdByTitle(getState(), title),
         }),

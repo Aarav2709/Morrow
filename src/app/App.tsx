@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { ACTIONS, matchesShortcut, runAction } from './actions';
 import { CommandPalette } from './components/CommandPalette';
 import { Dialogs } from './components/Dialogs';
+import { TagsView, TagView } from './components/TagsView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PageView } from './components/PageView';
 import { Toasts } from './components/primitives';
@@ -16,6 +17,9 @@ import { getUi, setUi, toast, useUi } from './ui';
 import { getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
+
+// the graph pulls in a physics library, it is only loaded when opened
+const GraphView = lazy(() => import('./components/GraphView').then((module) => ({ default: module.GraphView })));
 
 function useTheme(theme: 'system' | 'light' | 'dark') {
   useEffect(() => {
@@ -140,6 +144,15 @@ export function App() {
     case 'trash':
       view = <TrashView />;
       break;
+    case 'tags':
+      view = <TagsView />;
+      break;
+    case 'tag':
+      view = <TagView tag={route.tag} />;
+      break;
+    case 'graph':
+      view = <GraphView key={route.focus ?? 'all'} focus={route.focus} />;
+      break;
     default:
       view = <HomeView />;
   }
@@ -151,7 +164,9 @@ export function App() {
       <Sidebar />
       <div className="scrim" aria-hidden="true" onClick={() => setUi({ mobileSidebar: false })} />
       <main className="main">
-        <ErrorBoundary resetKey={window.location.hash}>{view}</ErrorBoundary>
+        <ErrorBoundary resetKey={window.location.hash}>
+          <Suspense fallback={<div className="view" aria-busy="true" />}>{view}</Suspense>
+        </ErrorBoundary>
       </main>
       {ui.palette && <CommandPalette />}
       <Dialogs />

@@ -7,11 +7,14 @@ import {
   findJournal,
   JOURNAL_TITLE,
 } from '../core/daily';
-import { fileIdsInDoc } from '../core/doc';
+import { fileIdsInDoc, remapFileIds } from '../core/doc';
 import { planArchiveImport } from '../core/importer';
 import type { ArchiveEntry } from '../core/importer';
+import { canvasDoc, emptyCanvas } from '../core/canvas';
+import { defaultDatabase } from '../core/database';
 import { displayTitle } from '../core/model';
-import type { FileId, FileMeta, PageId, Snapshot } from '../core/model';
+import type { FileId, FileMeta, PageId, PageKind, Snapshot } from '../core/model';
+import { applyTemplate, dailyTemplate, findTemplatesPage, TEMPLATES_TITLE } from '../core/templates';
 import {
   attachmentNames,
   base64ToBytes,
@@ -42,16 +45,20 @@ export function expandPage(id: PageId | null): void {
 }
 
 export function createPage(
-  options: { parentId?: PageId | null; title?: string; index?: number; open?: boolean } = {},
+  options: { parentId?: PageId | null; title?: string; index?: number; open?: boolean; kind?: PageKind } = {},
 ): PageId | null {
   const id = newId();
   const parentId = options.parentId ?? null;
+  const kind = options.kind ?? 'page';
   const result = run({
     type: 'page.create',
     id,
     parentId,
     now: Date.now(),
     title: options.title ?? '',
+    kind,
+    ...(kind === 'database' ? { database: defaultDatabase(newId) } : {}),
+    ...(kind === 'canvas' ? { doc: canvasDoc(emptyCanvas()) } : {}),
     ...(options.index !== undefined ? { index: options.index } : {}),
   });
   if (!result.ok) return null;
@@ -89,19 +96,116 @@ export function openToday(date = new Date()): void {
   }
   const id = newId();
   const siblings = childrenOf(getState().pages, journal.id);
+  const title = dailyTitle(date);
+  const template = dailyTemplate(getState());
+  const templateDoc = template ? getState().docs[template.id] : undefined;
   const result = run({
     type: 'page.create',
     id,
     parentId: journal.id,
     now,
-    title: dailyTitle(date),
+    title,
     dailyDate: key,
     index: dailyInsertIndex(siblings, key),
+    ...(template ? { tags: template.tags, icon: template.icon } : {}),
+    ...(templateDoc ? { doc: applyTemplate(templateDoc, { title, date }) } : {}),
   });
   if (!result.ok) return;
   expandPage(journal.id);
   setUi({ mobileSidebar: false });
   openPage(id);
+}
+
+export function createTemplatesPage(): PageId | null {
+  const existing = findTemplatesPage(getState());
+  if (existing) {
+    openPage(existing.id);
+    return existing.id;
+  }
+  const id = createPage({ title: TEMPLATES_TITLE, kind: 'templates', open: false });
+  if (!id) return null;
+  const template = createPage({ parentId: id, title: 'Meeting notes', open: false });
+  if (template) {
+    run({
+      type: 'page.setDoc',
+      id: template,
+      now: Date.now(),
+      doc: {
+        type: 'doc',
+        content: [
+          { type: 'paragraph', content: [{ type: 'text', text: 'Date: {{date:dddd, D MMMM YYYY}}' }] },
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Agenda' }] },
+          { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] },
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Actions' }] },
+          { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph' }] }] },
+        ],
+      },
+    });
+  }
+  expandPage(id);
+  openPage(id);
+  return id;
+}
+
+// a new page that starts as a copy of a template, with its date and title fields filled in
+export function createFromTemplate(templateId: PageId, parentId: PageId | null): PageId | null {
+  const state = getState();
+  const template = state.pages[templateId];
+  if (!template) return null;
+  const id = newId();
+  const now = new Date();
+  // the new page starts untitled, {{title}} reads as Untitled until the page is named
+  const title = '';
+  const doc = applyTemplate(state.docs[templateId] ?? { type: 'doc', content: [{ type: 'paragraph' }] }, {
+    title: displayTitle({ title }),
+    date: now,
+  });
+  const result = run({
+    type: 'page.create',
+    id,
+    parentId,
+    now: now.getTime(),
+    title,
+    icon: template.icon,
+    tags: template.tags,
+    doc,
+    ...(template.kind === 'database' && template.database ? { kind: 'database' as const, database: template.database } : {}),
+  });
+  if (!result.ok) return null;
+  expandPage(parentId);
+  setUi({ focusTitle: id, mobileSidebar: false });
+  openPage(id);
+  return id;
+}
+
+// copies a page into the templates page so new pages can start from it
+export function saveAsTemplate(id: PageId): void {
+  const state = getState();
+  const page = state.pages[id];
+  if (!page) return;
+  const container = findTemplatesPage(state)?.id ?? createTemplatesPageQuietly();
+  if (!container) return;
+  const copy = newId();
+  const result = run({
+    type: 'page.create',
+    id: copy,
+    parentId: container,
+    now: Date.now(),
+    title: displayTitle(page),
+    icon: page.icon,
+    tags: page.tags,
+    doc: state.docs[id] ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+  });
+  if (result.ok) toast(`Saved “${displayTitle(page)}” as a template.`, { action: { label: 'Open', run: () => openPage(copy) } });
+}
+
+function createTemplatesPageQuietly(): PageId | null {
+  return createPage({ title: TEMPLATES_TITLE, kind: 'templates', open: false });
+}
+
+export function revealPage(id: PageId): void {
+  const path = getSession().pathOf(id);
+  if (path !== null) void desktop?.vault?.reveal(path);
 }
 
 export function trashPage(id: PageId): void {
@@ -224,7 +328,8 @@ export async function exportPageMarkdown(id: PageId): Promise<void> {
   saveFile(`${name}.zip`, zipBytes(entries), 'application/zip');
 }
 
-async function backupFiles(): Promise<BackupFile[]> {
+async function backupFiles(includeAttachments = true): Promise<BackupFile[]> {
+  if (!includeAttachments) return [];
   const ids = referencedFileIds(getState());
   for (const snapshot of await getSession().allSnapshots()) {
     for (const fileId of fileIdsInDoc(snapshot.doc)) ids.add(fileId);
@@ -237,10 +342,10 @@ async function backupFiles(): Promise<BackupFile[]> {
   return files;
 }
 
-async function backupJson(): Promise<string> {
+async function backupJson(includeAttachments = true): Promise<string> {
   commitEditors();
   await getSession().flush();
-  return JSON.stringify(createBackup(getState(), new Date(), await backupFiles()));
+  return JSON.stringify(createBackup(getState(), new Date(), await backupFiles(includeAttachments)));
 }
 
 export async function exportBackup(): Promise<void> {
@@ -308,15 +413,20 @@ export async function importMarkdown(parentId: PageId | null = null): Promise<vo
     const archive = entries.length ? planArchiveImport(state, entries, parentId, newId, now) : null;
     const loose = texts.length ? planMarkdownImport(state, texts, parentId, newId, now) : null;
     // attachments are saved first so no imported page points at a file that is not stored
+    const fileIds = new Map<string, string>();
     if (archive && archive.files.length > 0) {
       const stored = await getSession().addFiles(
         archive.files.map((file) => ({ meta: file.meta, data: file.data.slice().buffer as ArrayBuffer })),
       );
       if (!stored.ok) throw new Error(stored.error);
+      archive.files.forEach((file, index) => fileIds.set(file.meta.id, stored.value[index]!.id));
     }
     const pages = [...(archive?.pages ?? []), ...(loose?.pages ?? [])];
     if (pages.length === 0) throw new Error('No Markdown files were found.');
-    const result = run({ type: 'pages.insert', pages, docs: { ...archive?.docs, ...loose?.docs } });
+    const docs = Object.fromEntries(
+      Object.entries({ ...archive?.docs, ...loose?.docs }).map(([id, doc]) => [id, remapFileIds(doc, fileIds)]),
+    );
+    const result = run({ type: 'pages.insert', pages, docs });
     if (!result.ok) return;
     expandPage(parentId);
     const notes = [
@@ -349,14 +459,17 @@ export async function restoreBackup(): Promise<void> {
       return;
     }
     // files go first, so no restored page ever points at something that is not saved yet
+    const fileIds = new Map<string, string>();
     if (missing.length > 0) {
       const stored = await getSession().addFiles(
         missing.map(({ data, ...meta }) => ({ meta, data: base64ToBytes(data).buffer as ArrayBuffer })),
       );
       if (!stored.ok) throw new Error(stored.error);
+      missing.forEach((backupFile, index) => fileIds.set(backupFile.id, stored.value[index]!.id));
     }
     if (plan.pages.length > 0) {
-      const result = run({ type: 'pages.insert', pages: plan.pages, docs: plan.docs });
+      const docs = Object.fromEntries(Object.entries(plan.docs).map(([id, doc]) => [id, remapFileIds(doc, fileIds)]));
+      const result = run({ type: 'pages.insert', pages: plan.pages, docs });
       if (!result.ok) return;
     }
     const notes = [
@@ -408,7 +521,8 @@ export async function writeAutoBackup(force = false): Promise<void> {
   const latest = Math.max(0, ...Object.values(state.pages).map((page) => page.updatedAt));
   if (!force && latest <= lastAutoBackup) return;
   try {
-    const result = await desktop.writeAutoBackup(await backupJson());
+    // files in a vault are already on disk as they are, automatic backups only need the pages
+    const result = await desktop.writeAutoBackup(await backupJson(getSession().location === null));
     if (result.ok) lastAutoBackup = latest;
     else toast(`Automatic backup failed: ${result.error}`, { tone: 'error' });
   } catch (error) {

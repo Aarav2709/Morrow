@@ -6,6 +6,7 @@ import { Placeholder } from '@tiptap/extensions';
 import StarterKit from '@tiptap/starter-kit';
 import { BlockHandle } from './BlockHandle';
 import { Callout, FindReplace } from './Blocks';
+import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags } from './Extras';
 import { FileAttachment, FileDrop, Image } from './Media';
 import type { BlockMenuRequest } from './BlockHandle';
 import { MarkdownPaste } from './MarkdownPaste';
@@ -16,6 +17,8 @@ import { SlashCommand } from './SlashCommand';
 export interface ExtensionOptions extends PageLinkOptions {
   onBlockMenu: (request: BlockMenuRequest) => void;
   resolvePage: (title: string) => string | null;
+  openTag: (tag: string) => void;
+  createChild: (kind: 'database' | 'canvas') => string | null;
 }
 
 export function createExtensions(options: ExtensionOptions): AnyExtension[] {
@@ -31,7 +34,14 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
         HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: null },
       },
       dropcursor: { color: 'var(--accent)', width: 2 },
+      codeBlock: false,
     }),
+    CodeBlock,
+    Highlight,
+    RawBlock,
+    ...mathExtensions(),
+    MathViewTracker,
+    Tags(options.openTag),
     TaskList,
     TaskItem.configure({ nested: true }),
     Table.configure({ resizable: false }),
@@ -54,8 +64,10 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       open: options.open,
       findPages: options.findPages,
       createPage: options.createPage,
+      resolveTarget: options.resolveTarget,
+      createFromTarget: options.createFromTarget,
     }),
-    SlashCommand,
+    SlashCommand.configure({ createChild: options.createChild }),
     Image,
     FileAttachment,
     FileDrop,

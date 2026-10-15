@@ -3,6 +3,7 @@ import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { CALLOUT_TONES } from '../../core/model';
+import { calloutNodeView } from './Extras';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -28,7 +29,28 @@ export const Callout = Node.create({
         },
         renderHTML: (attributes) => ({ 'data-tone': attributes.tone }),
       },
+      // the obsidian callout type, such as info or todo, kept so the file reads the same
+      kind: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-kind'),
+        renderHTML: (attributes) => (attributes.kind ? { 'data-kind': attributes.kind } : {}),
+      },
+      title: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-title'),
+        renderHTML: (attributes) => (attributes.title ? { 'data-title': attributes.title } : {}),
+      },
+      // + starts open and - starts folded, null cannot fold
+      fold: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-fold'),
+        renderHTML: (attributes) => (attributes.fold ? { 'data-fold': attributes.fold } : {}),
+      },
     };
+  },
+
+  addNodeView() {
+    return calloutNodeView();
   },
 
   parseHTML() {

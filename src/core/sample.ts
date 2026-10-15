@@ -1,5 +1,5 @@
 import type { Command } from './commands';
-import type { DocMark, DocNode, PageId } from './model';
+import type { DatabaseDef, DocMark, DocNode, PageId } from './model';
 
 type Inline = string | DocNode;
 
@@ -64,6 +64,36 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
   const garden = newId();
   const shelves = newId();
   const reading = newId();
+  const author = newId();
+  const status = newId();
+  const [next, current, finished] = [newId(), newId(), newId()];
+  const books: DatabaseDef = {
+    properties: [
+      { id: author, name: 'Author', type: 'text', options: [] },
+      {
+        id: status,
+        name: 'Status',
+        type: 'select',
+        options: [
+          { id: next, name: 'Next', color: 'gray' },
+          { id: current, name: 'Reading', color: 'blue' },
+          { id: finished, name: 'Finished', color: 'green' },
+        ],
+      },
+    ],
+    views: [
+      { id: newId(), name: 'All books', type: 'table', filters: [], sorts: [], groupBy: null, dateProp: null, hidden: [] },
+      { id: newId(), name: 'Board', type: 'board', filters: [], sorts: [], groupBy: status, dateProp: null, hidden: [] },
+    ],
+  };
+  const book = (title: string, by: string, state: string, offset: number): Command => ({
+    type: 'page.create',
+    id: newId(),
+    parentId: reading,
+    now: now - offset,
+    title,
+    properties: { [author]: by, [status]: state },
+  });
 
   return [
     {
@@ -86,6 +116,8 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           ['Type ', t('[[', 'code'), ' to link to another page. Linked pages show a backlink at the bottom.'],
           ['Search everything with ', t('Ctrl K', 'code'), ', or ', t('⌘ K', 'code'), ' on a Mac.'],
           ['Drag pages in the sidebar to reorder or nest them.'],
+          ['Tag pages with ', t('#ideas', 'code'), ' and see how everything connects in the ', t('Graph', 'bold'), '.'],
+          ['Make a database or a canvas from the ', t('+', 'code'), ' next to Pages.'],
         ),
         h(2, 'Try it'),
         tasks(
@@ -96,9 +128,9 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         ),
         h(2, 'Your data is yours'),
         p(
-          'Pages are saved automatically as you type. You can save a full backup or export everything as plain Markdown files from ',
-          t('Settings', 'bold'),
-          ' at any time, and restore a backup on any computer.',
+          'Every page is a plain Markdown file in a folder you chose, saved as you type. Open the folder in any other app, sync it with any tool you like, or keep it under version control. Earlier versions of every page are kept in its ',
+          t('Page history', 'bold'),
+          '.',
         ),
         quote('Make the fundamental workflows excellent before adding more workflows.'),
         h(3, 'Useful shortcuts'),
@@ -216,16 +248,12 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
       parentId: null,
       now: now - 5,
       title: 'Reading list',
-      doc: doc(
-        p('Books to read, reading and read.'),
-        table(
-          ['Title', 'Author', 'Status'],
-          ['Middlemarch', 'George Eliot', 'Reading'],
-          ['The Left Hand of Darkness', 'Ursula K. Le Guin', 'Finished'],
-          ['Piranesi', 'Susanna Clarke', 'Next'],
-        ),
-      ),
+      kind: 'database',
+      database: books,
     },
+    book('Middlemarch', 'George Eliot', current, 6),
+    book('The Left Hand of Darkness', 'Ursula K. Le Guin', finished, 7),
+    book('Piranesi', 'Susanna Clarke', next, 8),
     { type: 'page.setFavorite', id: welcome, favorite: true },
   ];
 }

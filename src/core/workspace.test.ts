@@ -303,7 +303,7 @@ describe('sample workspace', () => {
     const { findUnknownTypes } = await import('./doc');
     let n = 0;
     const state = run(emptyWorkspace(), ...sampleCommands(() => `s${n++}`, 1000));
-    expect(Object.keys(state.pages)).toHaveLength(6);
+    expect(Object.keys(state.pages)).toHaveLength(9);
     for (const page of Object.values(state.pages)) {
       const doc = state.docs[page.id]!;
       expect(findUnknownTypes(doc)).toEqual([]);

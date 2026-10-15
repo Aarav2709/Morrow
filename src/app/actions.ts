@@ -8,8 +8,14 @@ import {
   FileDown,
   FileUp,
   FolderArchive,
+  FolderOpen,
+  Hash,
   History,
   Home,
+  LayoutDashboard,
+  LayoutTemplate,
+  Network,
+  Table2,
   Keyboard,
   Moon,
   PanelLeft,
@@ -25,6 +31,7 @@ import type { PageId } from '../core/model';
 import { isEffectivelyTrashed } from '../core/tree';
 import {
   createPage,
+  createTemplatesPage,
   duplicatePage,
   exportAllMarkdown,
   exportBackup,
@@ -35,7 +42,8 @@ import {
   toggleFavorite,
   trashPage,
 } from './operations';
-import { isMac } from './platform/desktop';
+import { desktop, isMac } from './platform/desktop';
+import { chooseVaultFolder } from './vaults';
 import { getPreferences, resolvedTheme, setPreferences } from './platform/preferences';
 import { navigate, parseRoute } from './router';
 import { getUi, openDialog, setUi } from './ui';
@@ -78,6 +86,83 @@ export const ACTIONS: Action[] = [
     keywords: 'child nested',
     enabled: onLivePage,
     run: ({ pageId }) => pageId && createPage({ parentId: pageId }),
+  },
+  {
+    id: 'page.newDatabase',
+    label: 'New database',
+    group: 'General',
+    icon: Table2,
+    keywords: 'table board kanban calendar gallery notion collection',
+    run: () => createPage({ kind: 'database' }),
+  },
+  {
+    id: 'page.newCanvas',
+    label: 'New canvas',
+    group: 'General',
+    icon: LayoutDashboard,
+    keywords: 'whiteboard board diagram mind map',
+    run: () => createPage({ kind: 'canvas' }),
+  },
+  {
+    id: 'page.fromTemplate',
+    label: 'New page from a template',
+    group: 'General',
+    icon: LayoutTemplate,
+    shortcut: 'Alt+T',
+    keywords: 'template',
+    run: () => openDialog({ kind: 'template', parentId: null }),
+  },
+  {
+    id: 'go.templates',
+    label: 'Go to templates',
+    group: 'General',
+    icon: LayoutTemplate,
+    keywords: 'template',
+    run: () => createTemplatesPage(),
+  },
+  {
+    id: 'go.graph',
+    label: 'Open graph',
+    group: 'General',
+    icon: Network,
+    shortcut: 'Alt+G',
+    keywords: 'graph network links map',
+    run: () => navigate({ name: 'graph', focus: null }),
+  },
+  {
+    id: 'go.tags',
+    label: 'Go to tags',
+    group: 'General',
+    icon: Hash,
+    keywords: 'tags labels',
+    run: () => navigate({ name: 'tags' }),
+  },
+  {
+    id: 'page.localGraph',
+    label: 'Open local graph of this page',
+    group: 'Page',
+    icon: Network,
+    keywords: 'graph links neighbours',
+    enabled: ({ pageId }) => pageId !== null,
+    run: ({ pageId }) => pageId && navigate({ name: 'graph', focus: pageId }),
+  },
+  {
+    id: 'vault.open',
+    label: 'Open another vault',
+    group: 'Data',
+    icon: FolderOpen,
+    keywords: 'folder switch vault obsidian',
+    enabled: () => desktop?.vault !== undefined,
+    run: () => void chooseVaultFolder(),
+  },
+  {
+    id: 'vault.reveal',
+    label: 'Show vault folder',
+    group: 'Data',
+    icon: FolderOpen,
+    keywords: 'files finder explorer',
+    enabled: () => desktop?.vault !== undefined,
+    run: () => void desktop?.vault?.reveal(''),
   },
   {
     id: 'daily.today',

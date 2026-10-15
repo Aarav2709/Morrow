@@ -1,13 +1,16 @@
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { ArrowUpRight, FileWarning, RotateCcw, Smile, Trash2 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { docToPlainText, findUnknownTypes } from '../../core/doc';
 import { backlinksTo } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
 import type { PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
+import { findDatabaseOf } from '../../core/database';
 import { PageEditor } from '../editor/PageEditor';
+import { RowProperties } from './database/RowProperties';
+import { PageTags } from './TagsView';
 import { deleteForever, restorePage } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
@@ -20,6 +23,12 @@ import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
 const EMPTY_DOC = emptyDoc();
+
+// canvases and database views load the first time one is opened
+const CanvasView = lazy(() => import('./CanvasView').then((module) => ({ default: module.CanvasView })));
+const DatabaseView = lazy(() =>
+  import('./database/DatabaseView').then((module) => ({ default: module.DatabaseView })),
+);
 
 // focuses right away, tiptap's own focus waits a frame and fast typing would land in the title
 function focusStart(editor: Editor) {
@@ -73,6 +82,33 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
     if (trashed) return [info];
     return [info, ...pageMenuEntries(id, () => titleRef.current?.focus())];
   };
+
+  const database = findDatabaseOf(state, page);
+
+  if (page.kind === 'canvas') {
+    return (
+      <div className="view">
+        <TopBar page={page} editing={editing} menu={menu} />
+        {trashed && (
+          <div className="banner" role="note">
+            <span>This canvas is in the trash.</span>
+            <button type="button" className="button small" onClick={() => restorePage(findTrashedAncestor(state.pages, id) ?? id)}>
+              <RotateCcw size={14} /> Restore
+            </button>
+          </div>
+        )}
+        {unreadable ? (
+          <div className="banner is-error" role="alert">
+            This canvas file could not be read. It has been left untouched on disk.
+          </div>
+        ) : (
+          <Suspense fallback={<div className="canvas-view" aria-busy="true" />}>
+            <CanvasView pageId={id} doc={state.docs[id]} editable={!trashed} />
+          </Suspense>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="view">
@@ -132,7 +168,13 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
               }}
             />
           </h1>
-          {unreadable ? (
+          {page.kind !== 'database' && <PageTags page={page} editable={!trashed && !unreadable} />}
+          {database?.database && <RowProperties row={page} database={database.database} dbId={database.id} editable={!trashed} />}
+          {page.kind === 'database' ? (
+            <Suspense fallback={<div className="database" aria-busy="true" />}>
+              <DatabaseView page={page} editable={!trashed && !unreadable} />
+            </Suspense>
+          ) : unreadable ? (
             <div className="banner is-error" role="alert">
               The content of this page could not be read. It has been left untouched in storage and is
               protected from changes. Saving a backup will not include it.
@@ -158,7 +200,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
               }}
             />
           )}
-          <Subpages parentId={id} />
+          {page.kind !== 'database' && <Subpages parentId={id} />}
           <Backlinks id={id} />
         </article>
       </div>

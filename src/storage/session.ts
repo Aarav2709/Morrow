@@ -7,7 +7,7 @@ import type { DocNode, FileId, FileMeta, PageId, Snapshot, WorkspaceState } from
 import { fail, ok } from '../core/result';
 import type { Result } from '../core/result';
 import { openRepository } from './repository';
-import type { StoredFile, WorkspaceRepository } from './repository';
+import type { ExternalPatch, StoredFile, WorkspaceRepository } from './repository';
 import { SaveQueue } from './saveQueue';
 import type { SaveQueueOptions, SaveStatus } from './saveQueue';
 
@@ -16,12 +16,15 @@ export class WorkspaceSession {
   private state: WorkspaceState;
   private readonly listeners = new Set<() => void>();
   private readonly lastSnapshot = new Map<PageId, number>();
+  private readonly externalListeners = new Set<(patch: ExternalPatch, accepted: PageId[]) => void>();
+  // runs before edits made elsewhere are applied, the app saves open editors here
+  beforeExternal: () => void = () => {};
   readonly queue: SaveQueue;
 
   private constructor(
     private readonly repository: WorkspaceRepository,
     initial: WorkspaceState,
-    readonly unreadable: ReadonlySet<PageId>,
+    readonly unreadable: Set<PageId>,
     readonly problems: readonly string[],
     readonly firstRun: boolean,
     options: SaveQueueOptions,
@@ -43,6 +46,54 @@ export class WorkspaceSession {
         for (const snapshot of snapshots) this.lastSnapshot.set(snapshot.pageId, snapshot.createdAt);
       },
     });
+    repository.onExternalChange?.((patch) => this.applyExternal(patch));
+  }
+
+  get location(): string | null {
+    return this.repository.location ?? null;
+  }
+
+  pathOf(id: PageId): string | null {
+    return this.repository.pathOf?.(id) ?? null;
+  }
+
+  fileUrl(id: FileId): string | null {
+    return this.repository.fileUrl?.(id) ?? null;
+  }
+
+  onExternal(listener: (patch: ExternalPatch, accepted: PageId[]) => void): () => void {
+    this.externalListeners.add(listener);
+    return () => this.externalListeners.delete(listener);
+  }
+
+  // takes in pages changed by another app, a page with unsaved changes here keeps them
+  // and the other version is kept in its history when this one is saved
+  applyExternal(patch: ExternalPatch): PageId[] {
+    this.beforeExternal();
+    const pages = { ...this.state.pages };
+    const docs = { ...this.state.docs };
+    const accepted: PageId[] = [];
+    for (const page of patch.pages) {
+      if (this.queue.isDirty(page.id)) continue;
+      pages[page.id] = page;
+      if (patch.docs[page.id]) docs[page.id] = patch.docs[page.id]!;
+      accepted.push(page.id);
+    }
+    for (const id of patch.removed) {
+      if (this.queue.isDirty(id)) continue;
+      delete pages[id];
+      delete docs[id];
+      accepted.push(id);
+    }
+    const acceptedSet = new Set(accepted);
+    for (const id of patch.unreadable) if (acceptedSet.has(id)) this.unreadable.add(id);
+    for (const id of patch.readable) if (acceptedSet.has(id)) this.unreadable.delete(id);
+    if (accepted.length > 0) {
+      this.state = { pages, docs };
+      for (const listener of this.listeners) listener();
+    }
+    for (const listener of this.externalListeners) listener(patch, accepted);
+    return accepted;
   }
 
   static async open(
@@ -54,16 +105,16 @@ export class WorkspaceSession {
     if (!loaded.ok) return loaded;
     const state = emptyWorkspace();
     const pages = Object.fromEntries(loaded.value.pages.map((page) => [page.id, page]));
-    return ok(
-      new WorkspaceSession(
-        repo,
-        { ...state, pages, docs: loaded.value.docs },
-        new Set(loaded.value.unreadable),
-        loaded.value.problems,
-        loaded.value.firstRun,
-        options,
-      ),
+    const session = new WorkspaceSession(
+      repo,
+      { ...state, pages, docs: loaded.value.docs },
+      new Set(loaded.value.unreadable),
+      loaded.value.problems,
+      loaded.value.firstRun,
+      options,
     );
+    repo.attachState?.(session.getState);
+    return ok(session);
   }
 
   getState = (): WorkspaceState => this.state;
@@ -125,8 +176,7 @@ export class WorkspaceSession {
   // files are written straight away, a page only references them once they are safely stored
   async addFiles(files: StoredFile[]): Promise<Result<FileMeta[]>> {
     try {
-      await this.repository.putFiles(files);
-      return ok(files.map((file) => file.meta));
+      return ok(await this.repository.putFiles(files));
     } catch (error) {
       return fail(`The file could not be saved: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -150,6 +200,13 @@ export class WorkspaceSession {
 
   allSnapshots(): Promise<Snapshot[]> {
     return this.repository.allSnapshots();
+  }
+
+  // earlier versions brought over from another storage, written as they are
+  async importSnapshots(snapshots: Snapshot[]): Promise<void> {
+    if (snapshots.length === 0) return;
+    await this.queue.flush();
+    await this.repository.write({ pages: [], docs: [], removed: [], snapshots, state: this.state });
   }
 
   // the current content is kept as a version first, so restoring can always be undone

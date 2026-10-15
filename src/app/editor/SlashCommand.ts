@@ -4,6 +4,10 @@ import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import {
   ChevronRight,
+  Highlighter,
+  LayoutDashboard,
+  Sigma,
+  Table2,
   Code2,
   ImageIcon,
   Info,
@@ -22,14 +26,31 @@ import {
 } from 'lucide-react';
 import { foldText } from '../../core/search';
 import { pickFiles } from '../platform/files';
+import { editMathNear } from './Extras';
 import { insertFiles } from './Media';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
 
 interface BlockItem extends MenuItem {
   keywords: string;
-  run: (editor: Editor, range: Range) => void;
+  run: (editor: Editor, range: Range, options: SlashOptions) => void;
 }
+
+export interface SlashOptions {
+  // makes a subpage of the open page and returns its id, used for databases and canvases
+  createChild: (kind: 'database' | 'canvas') => string | null;
+}
+
+const linkChild = (editor: Editor, range: Range, options: SlashOptions, kind: 'database' | 'canvas') => {
+  const id = options.createChild(kind);
+  if (!id) return;
+  chain(editor, range)
+    .insertContent([
+      { type: 'pageLink', attrs: { id, label: kind === 'database' ? 'Database' : 'Canvas' } },
+      { type: 'text', text: ' ' },
+    ])
+    .run();
+};
 
 const chain = (editor: Editor, range: Range) => editor.chain().focus().deleteRange(range);
 
@@ -170,6 +191,53 @@ export const BLOCK_ITEMS: BlockItem[] = [
     run: (e, r) => chain(e, r).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
   {
+    id: 'math',
+    title: 'Formula',
+    description: 'Display maths in LaTeX',
+    icon: Sigma,
+    hint: '$$',
+    keywords: 'math equation latex katex tex formula',
+    run: (e, r) => {
+      chain(e, r).insertContent({ type: 'blockMath', attrs: { latex: '' } }).run();
+      // the formula opens for typing straight away
+      editMathNear(e, r.from);
+    },
+  },
+  {
+    id: 'inlineMath',
+    title: 'Inline formula',
+    description: 'Maths inside a sentence',
+    icon: Sigma,
+    hint: '$',
+    keywords: 'math equation latex inline',
+    run: (e, r) => chain(e, r).insertInlineMath({ latex: 'x^2' }).run(),
+  },
+  {
+    id: 'highlight',
+    title: 'Highlight',
+    description: 'Mark text to find it again',
+    icon: Highlighter,
+    hint: '==',
+    keywords: 'mark marker yellow',
+    run: (e, r) => chain(e, r).toggleHighlight().run(),
+  },
+  {
+    id: 'database',
+    title: 'Database',
+    description: 'Table, board and calendar of pages',
+    icon: Table2,
+    keywords: 'notion collection kanban board calendar gallery table',
+    run: (e, r, options) => linkChild(e, r, options, 'database'),
+  },
+  {
+    id: 'canvas',
+    title: 'Canvas',
+    description: 'Cards and arrows on a whiteboard',
+    icon: LayoutDashboard,
+    keywords: 'whiteboard board diagram mind map',
+    run: (e, r, options) => linkChild(e, r, options, 'canvas'),
+  },
+  {
     id: 'link',
     title: 'Link to page',
     description: 'Mention another page',
@@ -186,9 +254,13 @@ export function filterBlocks(query: string): BlockItem[] {
   return BLOCK_ITEMS.filter((item) => foldText(`${item.title} ${item.keywords}`).includes(folded));
 }
 
-export const SlashCommand = Extension.create({
+export const SlashCommand = Extension.create<SlashOptions>({
   name: 'slashCommand',
+  addOptions() {
+    return { createChild: () => null };
+  },
   addProseMirrorPlugins() {
+    const options = this.options;
     return [
       Suggestion<MenuItem, MenuItem>({
         editor: this.editor,
@@ -202,7 +274,7 @@ export const SlashCommand = Extension.create({
         items: ({ query }) => filterBlocks(query).slice(0, 20),
         command: ({ editor, range, props }) => {
           const item = BLOCK_ITEMS.find((candidate) => candidate.id === props.id);
-          item?.run(editor, range);
+          item?.run(editor, range, options);
         },
         render: renderSuggestion('Insert block', 'No matching blocks'),
       }),

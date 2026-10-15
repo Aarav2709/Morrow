@@ -15,6 +15,7 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Highlighter,
   Info,
   Italic,
   Link2,
@@ -156,6 +157,7 @@ function useMarks(editor: Editor) {
       underline: current.isActive('underline'),
       strike: current.isActive('strike'),
       code: current.isActive('code'),
+      highlight: current.isActive('highlight'),
       link: current.isActive('link'),
       h1: current.isActive('heading', { level: 1 }),
       h2: current.isActive('heading', { level: 2 }),
@@ -228,6 +230,13 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
               shortcut="Mod+E"
               active={marks.code}
               onClick={() => editor.chain().focus().toggleCode().run()}
+            />
+            <ToolButton
+              label="Highlight"
+              icon={Highlighter}
+              shortcut="Mod+Shift+H"
+              active={marks.highlight}
+              onClick={() => editor.chain().focus().toggleHighlight().run()}
             />
             <span className="toolbar-divider" />
             <ToolButton

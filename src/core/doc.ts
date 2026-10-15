@@ -55,7 +55,8 @@ export function walk(doc: DocNode, visit: (node: DocNode, parent: DocNode | null
 export function inlineText(node: DocNode): string {
   if (node.type === 'text') return node.text ?? '';
   if (node.type === 'hardBreak') return '\n';
-  if (node.type === 'pageLink') return String(node.attrs?.label ?? '');
+  if (node.type === 'pageLink') return String(node.attrs?.alias ?? node.attrs?.label ?? '');
+  if (node.type === 'inlineMath') return String(node.attrs?.latex ?? '');
   return (node.content ?? []).map(inlineText).join('');
 }
 
@@ -73,6 +74,14 @@ export function docToPlainText(doc: DocNode): string {
       return;
     }
     if (node.type === 'image' && node.attrs?.alt) lines.push(String(node.attrs.alt));
+    if (node.type === 'rawBlock' && node.attrs?.text) lines.push(String(node.attrs.text));
+    if (node.type === 'blockMath' && node.attrs?.latex) lines.push(String(node.attrs.latex));
+    // canvases are searched by the words on their cards
+    if (node.type === 'canvas' && Array.isArray(node.attrs?.nodes)) {
+      for (const card of node.attrs.nodes as Array<{ text?: unknown; label?: unknown; url?: unknown }>) {
+        for (const value of [card.text, card.label, card.url]) if (typeof value === 'string' && value) lines.push(value);
+      }
+    }
     if (node.type === 'fileAttachment' && node.attrs?.name) lines.push(String(node.attrs.name));
     for (const child of node.content ?? []) visit(child);
   };
@@ -105,4 +114,18 @@ export function fileIdsInDoc(doc: DocNode): string[] {
     }
   });
   return [...ids];
+}
+
+// points images and attachments at new file ids, for files that were stored under a different id
+export function remapFileIds(doc: DocNode, ids: ReadonlyMap<string, string>): DocNode {
+  if (ids.size === 0) return doc;
+  const visit = (node: DocNode): DocNode => {
+    let next = node;
+    if ((node.type === 'image' || node.type === 'fileAttachment') && typeof node.attrs?.fileId === 'string') {
+      const id = ids.get(node.attrs.fileId);
+      if (id) next = { ...node, attrs: { ...node.attrs, fileId: id } };
+    }
+    return next.content ? { ...next, content: next.content.map(visit) } : next;
+  };
+  return visit(doc);
 }

@@ -87,7 +87,7 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: false,
     // the desktop app loads one local bundle from disk, so a large chunk costs nothing
-    chunkSizeWarningLimit: 1500,
+    chunkSizeWarningLimit: 1800,
   },
   test: {
     include: ['src/**/*.test.ts'],

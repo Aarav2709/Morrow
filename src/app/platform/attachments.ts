@@ -8,8 +8,10 @@ export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
 const urls = new Map<FileId, Promise<string | null>>();
 
-// object urls are created once per file and kept for the session, files never change after saving
+// files in a vault load straight from disk, browser storage hands out object urls created once per file
 export function fileUrl(id: FileId): Promise<string | null> {
+  const direct = getSession().fileUrl(id);
+  if (direct) return Promise.resolve(direct);
   let url = urls.get(id);
   if (!url) {
     url = getSession()

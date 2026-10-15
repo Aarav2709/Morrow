@@ -1,57 +1,78 @@
 # Morrow
 
-Morrow is a free, open source, local first workspace for your notes, ideas and
-projects. No account, no subscription, no cloud and no AI. Just a calm place to
-write and think, on your own computer.
+Morrow is a free, open source, local first workspace for your notes, databases
+and ideas. Every page is a plain Markdown file in a folder you choose. No
+account, no subscription, no cloud and no AI. Just a calm place to write and
+think, on your own computer.
 
 ![Morrow showing a project page with a checklist and a table](ss.png)
 
 ## Why Morrow
 
-- **Yours.** Pages live on your computer. Nothing is sent anywhere: no accounts,
-  no telemetry, no ads. It works with the network cable unplugged.
+- **Yours.** Your notes are a folder of Markdown files. Open them in any app,
+  sync them with Syncthing, iCloud, Dropbox or git, and keep them forever. Edits
+  made elsewhere show up in Morrow straight away. Nothing is sent anywhere: no
+  accounts, no telemetry, no ads. It works with the network cable unplugged.
 - **Calm.** A focused writing surface with careful typography, and only the
   features that earn their place.
-- **Trustworthy.** Every change is saved automatically and the status is always
-  visible. Failed writes are kept and retried, earlier versions of every page
-  are kept, content Morrow cannot read is protected instead of overwritten, and
-  the trash never empties itself.
-- **Portable.** Export a page or the whole workspace as plain Markdown, save a
-  full backup in one file and restore it on any computer.
+- **Trustworthy.** Morrow only rewrites a file you changed in Morrow. Every
+  change is saved as you type, failed writes are retried, earlier versions of
+  every page are kept, a file changed elsewhere while you were editing is kept
+  in page history, and deleted pages go to the system trash.
+- **Compatible.** Wiki links, callouts, tags, properties, maths and canvases use
+  the same formats as Obsidian, so an existing vault opens as it is. Notion
+  exports, databases included, import in one step.
 - **AI free, by design.** Morrow does not have AI features and will not add them.
 
 ## Features
 
-- Nested pages in a sidebar tree, with icons, drag and drop, favourites and a trash
-- A rich text editor: headings, bold, italic, underline, strikethrough, code,
-  bulleted, numbered and nested lists, checklists, quotes, callouts, toggles,
-  code blocks, dividers, links and tables
-- Images and file attachments: paste, drop or insert them, stored on your computer
-- Page history: Morrow keeps earlier versions of every page and restores any of them
-- Find and replace in a page, search across every page, and a command palette
-- `/` to insert any block, Markdown shortcuts as you type, Markdown paste
-- `[[` to link pages, with titles that stay current and backlinks on every page
-- Daily notes, and a Tasks view that gathers every checklist item
-- Import from Notion or any folder of Markdown files (a zip export works as is)
-- Markdown export with attachments, full backups, automatic rolling backups
+- **Pages** in a sidebar tree with icons, drag and drop, favourites and a trash
+- **A rich editor**: headings, lists, checklists, quotes, callouts with titles
+  and folding, toggles, tables, highlights, maths, syntax highlighted code,
+  images and file attachments
+- **Links**: `[[` to link pages, with aliases and headings, live titles,
+  backlinks, links to pages that do not exist yet, and links that follow renames
+- **Databases**: table, board, calendar, list and gallery views of pages, with
+  text, number, select, multi-select, date, checkbox and link properties,
+  filters, sorts and grouping. Row values are readable frontmatter.
+- **Canvases**: an infinite whiteboard of cards, pages, images and groups joined
+  by arrows, saved as open JSON Canvas files
+- **Graph**: every page and link as a network, or the neighbourhood of one page
+- **Tags** from properties or `#tags` in text, with nested tags and a tag index
+- **Templates** with `{{date}}`, `{{time}}` and `{{title}}`, and a daily note
+  template
+- **Daily notes**, and a Tasks view that gathers every checklist item
+- **Search** across every page, with `#tag` filters, and a command palette
+- **Vaults**: open any folder, switch between folders, keep work and home apart
+- Find and replace, Markdown shortcuts, Markdown paste, page history
+- Import from Notion (pages and databases) or any folder of Markdown files,
+  export to Markdown, full backups
 - Light and dark themes, a choice of serif, sans or mono writing fonts
-- A native desktop window with the system's own window controls
-- Optional update checks, off until you turn them on
 - Keyboard first: press Ctrl/Cmd + / to see every shortcut
+- An installable web version that works offline
 
 ## Status
 
-Version **1.0.0**. Everything listed above is built and tested on Windows. The
-macOS and Linux builds are produced by the release workflow but have not yet
-been tried on real machines, and builds are not code signed yet.
+Version **2.0.0** keeps pages as files in a folder. Morrow 1.0 kept them inside
+the app; the first time 2.0 opens it offers to copy those pages into the folder
+you choose and leaves the original copy untouched. The macOS and Linux builds
+are produced by the release workflow but have not yet been tried on real
+machines, and builds are not code signed yet.
+
+## Coming from Obsidian
+
+Choose **Open a folder** and pick your vault. Morrow reads it as it is: folders,
+wiki links, embeds, callouts, tags, properties, aliases, maths and canvases.
+Nothing in `.obsidian` is touched, and files you do not edit in Morrow are never
+rewritten.
 
 ## Coming from Notion
 
 In Notion, open Settings, Export, choose **Markdown & CSV** and include
 subpages. In Morrow, choose **Import** in the sidebar and pick the zip file.
 Pages keep their nesting, links between pages and images, databases become
-tables, and Notion's callouts become Morrow callouts. The same works for an
-Obsidian vault or any folder of Markdown files zipped up.
+Morrow databases with their properties, and Notion's callouts become Morrow
+callouts.
 
 ## Build and run
 
@@ -85,13 +106,13 @@ time Morrow is opened.
 
 ## Where your data lives
 
-Everything is stored in Morrow's data folder: `%APPDATA%\Morrow` on Windows,
-`~/Library/Application Support/Morrow` on macOS and `~/.config/Morrow` on Linux.
-Settings has a button that opens it. Automatic backups are kept in the `Backups`
-folder inside it. Backups are a single readable JSON file that includes your
-images and files, and Markdown exports are plain text that opens in any editor.
-The format is documented in [docs/data-format.md](docs/data-format.md), and
-every 1.x release will keep reading it.
+In the folder you chose, as Markdown files. The format, including frontmatter,
+databases, canvases and the small `.morrow` folder Morrow keeps beside your
+pages, is documented in [docs/data-format.md](docs/data-format.md), and every
+2.x release will keep reading it. Morrow's own settings and automatic backups of
+your pages live in `%APPDATA%\Morrow` on Windows, `~/Library/Application
+Support/Morrow` on macOS and `~/.config/Morrow` on Linux. The browser version
+keeps pages in the browser's storage instead.
 
 ## Licence
 

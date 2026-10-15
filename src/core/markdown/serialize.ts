@@ -3,17 +3,20 @@ import type { DocMark, DocNode, PageId } from '../model';
 export interface SerializeOptions {
   // current title for a linked page, null keeps the stored label
   titleOf?: (id: PageId) => string | null;
+  // how a wiki link names its page, a file name or a vault path, defaults to the title
+  linkTarget?: (id: PageId) => string | null;
   // relative path an exported file is written to, null when it is not exported
   filePath?: (fileId: string) => string | null;
 }
 
-const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'underline'];
+const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'underline', 'highlight'];
 const MARK_OPEN: Record<string, (mark: DocMark) => string> = {
   link: () => '[',
   bold: () => '**',
   italic: () => '*',
   strike: () => '~~',
   underline: () => '<u>',
+  highlight: () => '==',
 };
 const MARK_CLOSE: Record<string, (mark: DocMark) => string> = {
   link: (mark) => `](${formatHref(String(mark.attrs?.href ?? ''))})`,
@@ -21,6 +24,7 @@ const MARK_CLOSE: Record<string, (mark: DocMark) => string> = {
   italic: () => '*',
   strike: () => '~~',
   underline: () => '</u>',
+  highlight: () => '==',
 };
 
 export function docToMarkdown(doc: DocNode, options: SerializeOptions = {}): string {
@@ -68,14 +72,20 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       const language = typeof node.attrs?.language === 'string' ? node.attrs.language : '';
       return `${fence}${language}\n${code}\n${fence}`;
     }
+    case 'blockMath':
+      return `$$\n${String(node.attrs?.latex ?? '').trim()}\n$$`;
+    case 'rawBlock':
+      return String(node.attrs?.text ?? '');
     case 'horizontalRule':
       return '---';
     case 'table':
       return table(node, options);
     case 'image': {
       const alt = String(node.attrs?.alt ?? '').replace(/[[\]]/g, '');
-      const target = options.filePath?.(String(node.attrs?.fileId ?? ''));
-      return target ? `![${alt}](${formatHref(target)})` : `*[image${alt ? `: ${alt}` : ''}]*`;
+      const target =
+        typeof node.attrs?.fileId === 'string' ? options.filePath?.(node.attrs.fileId) : undefined;
+      const src = target ?? (typeof node.attrs?.src === 'string' ? node.attrs.src : null);
+      return src ? `![${alt}](${formatHref(src)})` : `*[image${alt ? `: ${alt}` : ''}]*`;
     }
     case 'fileAttachment': {
       const name = escapeText(String(node.attrs?.name ?? 'file'));
@@ -83,14 +93,11 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       return target ? `[${name}](${formatHref(target)})` : `*[attachment: ${name}]*`;
     }
     case 'callout': {
-      const tone = String(node.attrs?.tone ?? 'note').toUpperCase();
+      const kind = typeof node.attrs?.kind === 'string' && node.attrs.kind ? node.attrs.kind : String(node.attrs?.tone ?? 'note');
+      const fold = node.attrs?.fold === '+' || node.attrs?.fold === '-' ? node.attrs.fold : '';
+      const title = typeof node.attrs?.title === 'string' && node.attrs.title ? ` ${node.attrs.title}` : '';
       const body = blocks(node.content ?? [], options);
-      return prefixLines(
-        `[!${tone}]
-${body}`,
-        '> ',
-        '>',
-      );
+      return prefixLines(`[!${kind}]${fold}${title}\n${body}`, '> ', '>');
     }
     case 'details': {
       const [summary, content] = node.content ?? [];
@@ -149,7 +156,7 @@ function table(node: DocNode, options: SerializeOptions): string {
       (cell.content ?? [])
         .map((child) => inline(child.content ?? [], options, true))
         .join('<br>')
-        .replace(/\|/g, '\\|')
+        .replace(/(?<!\\)\|/g, '\\|')
         .trim(),
     ),
   );
@@ -159,6 +166,19 @@ function table(node: DocNode, options: SerializeOptions): string {
   const line = (row: string[]) => `| ${pad(row).join(' | ')} |`;
   const [header, ...body] = rows;
   return [line(header!), line(Array.from({ length: width }, () => '---')), ...body.map(line)].join('\n');
+}
+
+export function wikiLink(node: DocNode, options: SerializeOptions, inTable = false): string {
+  const id = typeof node.attrs?.id === 'string' ? node.attrs.id : null;
+  const stored = typeof node.attrs?.target === 'string' ? node.attrs.target : null;
+  const target =
+    (id ? (options.linkTarget?.(id) ?? options.titleOf?.(id)) : null) ??
+    stored ??
+    String(node.attrs?.label ?? '');
+  const anchor = typeof node.attrs?.anchor === 'string' ? `#${node.attrs.anchor}` : '';
+  const alias = typeof node.attrs?.alias === 'string' ? `${inTable ? '\\|' : '|'}${node.attrs.alias}` : '';
+  const embed = node.attrs?.embed === true ? '!' : '';
+  return `${embed}[[${target.replace(/[[\]|]/g, '')}${anchor}${alias.replace(/[[\]]/g, '')}]]`;
 }
 
 function inline(nodes: DocNode[], options: SerializeOptions, inTable = false): string {
@@ -182,9 +202,13 @@ function inline(nodes: DocNode[], options: SerializeOptions, inTable = false): s
     }
     if (node.type === 'pageLink') {
       closeTo(0);
-      const id = typeof node.attrs?.id === 'string' ? node.attrs.id : '';
-      const label = options.titleOf?.(id) ?? String(node.attrs?.label ?? '');
-      out += `${pendingSpace}[[${label.replace(/[[\]]/g, '')}]]`;
+      out += pendingSpace + wikiLink(node, options, inTable);
+      pendingSpace = '';
+      continue;
+    }
+    if (node.type === 'inlineMath') {
+      closeTo(0);
+      out += `${pendingSpace}$${String(node.attrs?.latex ?? '').trim()}$`;
       pendingSpace = '';
       continue;
     }
@@ -234,13 +258,57 @@ function escapeHtml(text: string): string {
   return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// escapes only what would turn into formatting, so files stay pleasant to read in other editors
 export function escapeText(text: string): string {
-  return text.replace(/[\\`*_[\]<~]/g, (char) => `\\${char}`);
+  return escapeMath(
+    text
+      .replace(/[\\`*<]/g, (char) => `\\${char}`)
+      // intraword underscores like snake_case never start emphasis
+      .replace(/_/g, (char, index: number, all: string) =>
+        /[\p{L}\p{N}]/u.test(all[index - 1] ?? '') && /[\p{L}\p{N}]/u.test(all[index + 1] ?? '')
+          ? char
+          : `\\${char}`,
+      )
+      .replace(/~~/g, '\\~\\~')
+      .replace(/==/g, '\\=\\=')
+      .replace(/\[(?=\[)/g, '\\[')
+      .replace(/\](?=[([])/g, '\\]')
+      .replace(/&(?=#?\w+;)/g, '\\&'),
+  );
+}
+
+// escapes only the dollar signs the parser would read as the start of a formula
+function escapeMath(text: string): string {
+  let out = '';
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]!;
+    if (char === '\\') {
+      out += char + (text[i + 1] ?? '');
+      i++;
+      continue;
+    }
+    out += char === '$' && opensMath(text, i) ? '\\$' : char;
+  }
+  return out;
+}
+
+function opensMath(text: string, start: number): boolean {
+  const display = text[start + 1] === '$';
+  const open = display ? 2 : 1;
+  const next = text[start + open];
+  if (!next || /\s/.test(next) || next === '$') return false;
+  const closer = display ? '$$' : '$';
+  let end = text.indexOf(closer, start + open);
+  while (end !== -1 && text[end - 1] === '\\') end = text.indexOf(closer, end + 1);
+  if (end === -1) return false;
+  if (/\s$/.test(text.slice(start + open, end))) return false;
+  return display || !/\d/.test(text[end + 1] ?? '');
 }
 
 function escapeLineStart(text: string): string {
   return text
-    .replace(/^(\s*)(#{1,6}(?=\s|$)|>|[-+](?=\s)|={3,}|-{3,})/, '$1\\$2')
+    .replace(/^(\s*)(#{1,6}(?=\s|$)|>|[-+](?=\s)|={3,}|-{3,}|\$\$)/, '$1\\$2')
+    .replace(/^(\s*)\[([^\]]*)\]:/, '$1\\[$2]:')
     .replace(/^(\s*\d+)([.)])(?=\s)/, '$1\\$2');
 }
 

@@ -29,9 +29,13 @@ import { desktop } from '../platform/desktop';
 import type { UpdateStatus } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, ThemePreference, WritingFont } from '../platform/preferences';
-import { closeDialog, useUi } from '../ui';
+import { copyLegacyInto, legacyPageCount } from '../legacy';
+import { closeDialog, toast, useUi } from '../ui';
+import { chooseVaultFolder } from '../vaults';
 import { getSession, run, useWorkspace } from '../workspace';
 import { HistoryDialog, IconDialog } from './HistoryDialog';
+import { SourceDialog } from './SourceDialog';
+import { TemplateDialog } from './TemplateDialog';
 import { Dialog } from './primitives';
 
 export function Dialogs() {
@@ -53,6 +57,18 @@ export function Dialogs() {
           onPick={(icon) => run({ type: 'page.setIcon', id: dialog.pageId, icon, now: Date.now() })}
         />
       );
+    case 'source':
+      return (
+        <SourceDialog
+          title={dialog.title}
+          value={dialog.value}
+          language={dialog.language}
+          displayMode={dialog.displayMode ?? false}
+          onSave={dialog.onSave}
+        />
+      );
+    case 'template':
+      return <TemplateDialog parentId={dialog.parentId} />;
     case 'confirm':
       return (
         <Dialog
@@ -122,6 +138,12 @@ function SettingsDialog() {
   const prefs = usePreferences();
   const [persisted, setPersisted] = useState<boolean | null>(null);
   const [usage, setUsage] = useState<string | null>(null);
+  const [legacy, setLegacy] = useState(0);
+  const vault = getSession().location;
+
+  useEffect(() => {
+    if (vault) void legacyPageCount().then(setLegacy).catch(() => setLegacy(0));
+  }, [vault]);
 
   useEffect(() => {
     void navigator.storage
@@ -172,17 +194,50 @@ function SettingsDialog() {
       <section className="settings-section">
         <h3>Your data</h3>
         <p className="muted">
-          {desktop
-            ? 'Everything is stored on this computer, in the Morrow folder below. Nothing is sent anywhere.'
-            : 'Everything is stored in this browser on this device. Nothing is sent anywhere.'}
+          {vault
+            ? 'Every page is a Markdown file in this folder. Open it in any app, sync it with any tool, or keep it under version control. Morrow never sends anything anywhere.'
+            : desktop
+              ? 'Everything is stored on this computer, in the Morrow folder below. Nothing is sent anywhere.'
+              : 'Everything is stored in this browser on this device. Nothing is sent anywhere.'}
         </p>
-        {desktop && (
+        {vault ? (
           <div className="data-path">
-            <HardDrive size={14} /> <code>{desktop.dataPath}</code>
-            <button type="button" className="button small" onClick={() => void desktop?.showDataFolder()}>
+            <HardDrive size={14} /> <code>{vault}</code>
+            <button type="button" className="button small" onClick={() => void desktop?.vault?.reveal('')}>
               <FolderOpen size={14} /> Show
             </button>
+            <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
+              Open another
+            </button>
           </div>
+        ) : (
+          desktop && (
+            <div className="data-path">
+              <HardDrive size={14} /> <code>{desktop.dataPath}</code>
+              <button type="button" className="button small" onClick={() => void desktop?.showDataFolder()}>
+                <FolderOpen size={14} /> Show
+              </button>
+            </div>
+          )
+        )}
+        {legacy > 0 && (
+          <p className="muted small">
+            {legacy} page{legacy === 1 ? '' : 's'} from Morrow 1.0 are still in the app's own storage.{' '}
+            <button
+              type="button"
+              className="link-button"
+              onClick={() =>
+                void copyLegacyInto(getSession()).then((result) => {
+                  if (result.ok) {
+                    toast(`Copied ${result.value} page${result.value === 1 ? '' : 's'} into this vault.`);
+                    setLegacy(0);
+                  } else toast(result.error, { tone: 'error' });
+                })
+              }
+            >
+              Copy them into this vault
+            </button>
+          </p>
         )}
         <div className="data-grid">
           <button type="button" className="data-action" onClick={() => void exportBackup()}>

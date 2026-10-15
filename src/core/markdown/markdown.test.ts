@@ -90,14 +90,16 @@ describe('markdown import', () => {
     expect(markdownToPage('Just text', 'fallback').title).toBe('fallback');
   });
 
-  it('resolves wiki links only when the page exists', () => {
+  it('resolves wiki links and keeps links to pages that do not exist yet', () => {
     const doc = markdownToDoc('See [[Garden]] and [[Nowhere]].', {
       resolvePage: (title) => (title === 'Garden' ? 'g1' : null),
     });
     const nodes = doc.content![0]!.content!;
-    expect(nodes.map((node) => node.type)).toEqual(['text', 'pageLink', 'text']);
+    expect(nodes.map((node) => node.type)).toEqual(['text', 'pageLink', 'text', 'pageLink', 'text']);
     expect(nodes[1]!.attrs).toEqual({ id: 'g1', label: 'Garden' });
-    expect(nodes[2]!.text).toBe(' and [[Nowhere]].');
+    expect(nodes[3]!.attrs).toEqual({ id: null, label: 'Nowhere', target: 'Nowhere' });
+    const plain = markdownToDoc('See [[Nowhere]].', { keepUnresolved: false });
+    expect(plain.content![0]!.content).toEqual([text('See [[Nowhere]].')]);
   });
 
   it('splits mixed task and bullet lists', () => {
@@ -154,6 +156,71 @@ describe('markdown export', () => {
       type: 'doc',
       content: [{ type: 'codeBlock', attrs: { language: null }, content: [text('```\nx')] }],
     };
+    expect(markdownToDoc(docToMarkdown(doc))).toEqual(doc);
+  });
+});
+
+describe('obsidian flavoured markdown', () => {
+  const roundTrip = (source: string) => docToMarkdown(markdownToDoc(source, { resolvePage: () => null }));
+
+  it('reads aliases, headings and embeds in wiki links', () => {
+    const doc = markdownToDoc('[[Projects/Garden#Beds|the beds]] ![[Diagram]]', {
+      resolvePage: (target) => (target === 'Projects/Garden' ? 'g' : null),
+    });
+    const [link, , embed] = doc.content![0]!.content!;
+    expect(link!.attrs).toEqual({ id: 'g', label: 'the beds', anchor: 'Beds', alias: 'the beds' });
+    expect(embed!.attrs).toMatchObject({ id: null, target: 'Diagram', embed: true });
+  });
+
+  it('round trips wiki links, callouts, maths and highlights exactly', () => {
+    const source = [
+      'See [[Garden#Beds|the beds]] and ![[Sketch]].',
+      '',
+      '> [!warning]- Watch out',
+      '> The ==soil== is wet.',
+      '',
+      'Energy is $E = mc^2$ but it costs $5 and $10.',
+      '',
+      '$$',
+      '\\int_0^1 x\\,dx',
+      '$$',
+      '',
+      '<div class="custom">kept as written</div>',
+      '',
+    ].join('\n');
+    expect(roundTrip(source)).toBe(source);
+  });
+
+  it('reads callout types, titles and folding', () => {
+    const doc = markdownToDoc('> [!TIP]+ Remember\n> Water daily.');
+    expect(doc.content![0]).toEqual({
+      type: 'callout',
+      attrs: { tone: 'tip', kind: 'tip', title: 'Remember', fold: '+' },
+      content: [p(text('Water daily.'))],
+    });
+  });
+
+  it('keeps maths and highlights out of code', () => {
+    const doc = markdownToDoc('`$x$` and `==y==`');
+    expect(doc.content![0]!.content!.every((node) => node.type === 'text')).toBe(true);
+  });
+
+  it('does not escape ordinary punctuation', () => {
+    const doc: DocNode = { type: 'doc', content: [p(text('snake_case [x] #tag 100% a+b'))] };
+    expect(docToMarkdown(doc)).toBe('snake_case [x] #tag 100% a+b\n');
+  });
+
+  it('keeps remote images as images without loading them', () => {
+    const doc = markdownToDoc('![logo](https://example.org/logo.png)');
+    expect(doc.content![0]).toEqual({
+      type: 'image',
+      attrs: { fileId: null, src: 'https://example.org/logo.png', alt: 'logo' },
+    });
+    expect(docToMarkdown(doc)).toBe('![logo](https://example.org/logo.png)\n');
+  });
+
+  it('escapes text that would otherwise become a link, maths or a highlight', () => {
+    const doc: DocNode = { type: 'doc', content: [p(text('[[not a link]] $a$ and $b$ ==no== [x](y)'))] };
     expect(markdownToDoc(docToMarkdown(doc))).toEqual(doc);
   });
 });

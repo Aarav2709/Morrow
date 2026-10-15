@@ -1,7 +1,9 @@
 // every workspace change goes through here, pure and never throwing
 import { validateDoc } from './doc';
+import { normalizeTag } from './vault/frontmatter';
+import { normalizeDatabase } from './migrations';
 import { emptyDoc, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, newPageMeta, PAGE_KINDS } from './model';
-import type { DocNode, PageId, PageKind, PageMeta, WorkspaceState } from './model';
+import type { DatabaseDef, DocNode, PageId, PageKind, PageMeta, PropValue, WorkspaceState } from './model';
 import { errorMessage, fail, ok } from './result';
 import type { Result } from './result';
 import { setTaskChecked } from './tasks';
@@ -19,6 +21,9 @@ export type Command =
       dailyDate?: string | null;
       doc?: DocNode;
       index?: number;
+      tags?: string[];
+      properties?: Record<string, PropValue>;
+      database?: DatabaseDef | null;
     }
   | { type: 'page.rename'; id: PageId; title: string; now: number }
   | { type: 'page.setIcon'; id: PageId; icon: string | null; now: number }
@@ -32,6 +37,11 @@ export type Command =
   | { type: 'page.deleteForever'; id: PageId }
   | { type: 'trash.empty' }
   | { type: 'task.setChecked'; pageId: PageId; index: number; checked: boolean; now: number }
+  | { type: 'page.setTags'; id: PageId; tags: string[]; now: number }
+  | { type: 'page.setKind'; id: PageId; kind: PageKind; now: number }
+  // merges values into a database row, null clears a value
+  | { type: 'page.setProperties'; id: PageId; values: Record<string, PropValue>; now: number }
+  | { type: 'database.set'; id: PageId; database: DatabaseDef; now: number }
   | { type: 'pages.insert'; pages: PageMeta[]; docs: Record<PageId, DocNode> };
 
 export type CommandType = Command['type'];
@@ -144,6 +154,41 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
     }
     case 'pages.insert':
       return insertPages(state, command.pages, command.docs);
+    case 'page.setTags': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      const tags = normalizeTags(command.tags);
+      if (tags.join('\n') === page.value.tags.join('\n')) return unchanged(state);
+      return updatePage(state, { ...page.value, tags, updatedAt: command.now });
+    }
+    case 'page.setKind': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      if (!PAGE_KINDS.includes(command.kind)) return fail('Unknown page kind.');
+      if (page.value.kind === command.kind) return unchanged(state);
+      const database = command.kind === 'database' ? (page.value.database ?? { properties: [], views: [] }) : null;
+      return updatePage(state, { ...page.value, kind: command.kind, database, updatedAt: command.now });
+    }
+    case 'page.setProperties': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      const properties = { ...page.value.properties };
+      for (const [key, value] of Object.entries(command.values ?? {})) {
+        if (!ID_PATTERN.test(key)) return fail('Invalid property.');
+        if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) delete properties[key];
+        else if (validValue(value)) properties[key] = value;
+        else return fail('Invalid property value.');
+      }
+      return updatePage(state, { ...page.value, properties, updatedAt: command.now });
+    }
+    case 'database.set': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      if (page.value.kind !== 'database') return fail('That page is not a database.');
+      const database = normalizeDatabase(command.database);
+      if (!database) return fail('Invalid database.');
+      return updatePage(state, { ...page.value, database, updatedAt: command.now });
+    }
     default: {
       const unknown: never = command;
       return fail(`Unknown command: ${describe(unknown)}`);
@@ -164,14 +209,18 @@ function createPage(
   if (command.dailyDate != null && !DATE_PATTERN.test(command.dailyDate)) return fail('Invalid daily date.');
   const doc = validateDoc(command.doc ?? emptyDoc());
   if (!doc.ok) return doc;
+  const kind = command.kind && PAGE_KINDS.includes(command.kind) ? command.kind : 'page';
   const page = newPageMeta({
     id: command.id,
     parentId: command.parentId,
     title: normalizeTitle(command.title ?? ''),
     icon: icon.value,
-    kind: command.kind && PAGE_KINDS.includes(command.kind) ? command.kind : 'page',
+    kind,
     createdAt: command.now,
     dailyDate: command.dailyDate ?? null,
+    tags: normalizeTags(command.tags ?? []),
+    properties: { ...(command.properties ?? {}) },
+    database: kind === 'database' ? (normalizeDatabase(command.database) ?? { properties: [], views: [] }) : null,
   });
   const siblings = childrenOf(state.pages, command.parentId);
   const placed = placeAmong(siblings, page, command.index);
@@ -327,6 +376,19 @@ function setDocs(applied: Applied, docs: Record<PageId, DocNode>): Result<Applie
   const next = { ...applied.state.docs, ...docs };
   for (const id of Object.keys(docs)) applied.changes.docs.add(id);
   return ok({ state: { pages: applied.state.pages, docs: next }, changes: applied.changes });
+}
+
+function normalizeTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  const result = tags.map((tag) => (typeof tag === 'string' ? normalizeTag(tag) : null)).filter((tag): tag is string => tag !== null);
+  return [...new Set(result)].slice(0, 100);
+}
+
+function validValue(value: unknown): value is PropValue {
+  if (typeof value === 'string') return value.length <= 10_000;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value === 'boolean') return true;
+  return Array.isArray(value) && value.length <= 200 && value.every((item) => typeof item === 'string');
 }
 
 export function normalizeTitle(title: unknown): string {

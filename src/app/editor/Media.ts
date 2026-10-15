@@ -15,18 +15,24 @@ export const Image = Node.create({
   addAttributes() {
     return {
       fileId: { default: null, parseHTML: (element) => element.getAttribute('data-file-id') },
+      // an image on the web or at a path morrow could not find, kept as written
+      src: { default: null, parseHTML: (element) => element.getAttribute('data-src') },
       alt: { default: '', parseHTML: (element) => element.getAttribute('alt') ?? '' },
     };
   },
 
   parseHTML() {
-    return [{ tag: 'img[data-file-id]' }];
+    return [{ tag: 'img[data-file-id]' }, { tag: 'img[data-src]' }];
   },
 
   renderHTML({ node, HTMLAttributes }) {
     return [
       'img',
-      mergeAttributes(HTMLAttributes, { 'data-file-id': node.attrs.fileId, alt: node.attrs.alt }),
+      mergeAttributes(HTMLAttributes, {
+        'data-file-id': node.attrs.fileId,
+        'data-src': node.attrs.src,
+        alt: node.attrs.alt,
+      }),
     ];
   },
 
@@ -39,6 +45,35 @@ export const Image = Node.create({
       img.alt = String(node.attrs.alt ?? '');
       img.draggable = false;
       dom.appendChild(img);
+      const src = typeof node.attrs.src === 'string' ? node.attrs.src : null;
+      if (!node.attrs.fileId && src) {
+        // pictures from the web are only fetched when asked, opening a page never contacts anyone
+        dom.classList.remove('is-loading');
+        const remote = /^https:\/\//i.test(src);
+        const box = document.createElement('div');
+        box.className = 'image-remote';
+        const label = document.createElement('span');
+        label.textContent = remote ? `Image from ${safeHost(src)}` : `Image not found: ${src}`;
+        box.append(label);
+        if (remote) {
+          const load = document.createElement('button');
+          load.type = 'button';
+          load.className = 'button small';
+          load.textContent = 'Load image';
+          load.addEventListener('click', (event) => {
+            event.preventDefault();
+            img.src = src;
+            box.remove();
+          });
+          box.append(load);
+        }
+        dom.prepend(box);
+        return { dom };
+      }
+      img.addEventListener('error', () => {
+        dom.classList.add('is-missing');
+        dom.textContent = 'This image is missing from your workspace.';
+      });
       void fileUrl(String(node.attrs.fileId ?? '')).then((url) => {
         dom.classList.remove('is-loading');
         if (url) img.src = url;
@@ -103,6 +138,14 @@ export const FileAttachment = Node.create({
     };
   },
 });
+
+function safeHost(src: string): string {
+  try {
+    return new URL(src).host;
+  } catch {
+    return 'the web';
+  }
+}
 
 export function mediaNodes(files: FileMeta[]) {
   return files.map((file) =>

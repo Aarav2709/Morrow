@@ -1,6 +1,9 @@
 import {
   ArrowRightLeft,
   Copy,
+  FolderOpen,
+  LayoutTemplate,
+  Network,
   FileDown,
   FileUp,
   History,
@@ -17,11 +20,15 @@ import {
   duplicatePage,
   exportPageMarkdown,
   importMarkdown,
+  revealPage,
+  saveAsTemplate,
   toggleFavorite,
   trashPage,
 } from '../operations';
+import { desktop } from '../platform/desktop';
+import { navigate } from '../router';
 import { openDialog } from '../ui';
-import { getState } from '../workspace';
+import { getSession, getState } from '../workspace';
 import type { MenuEntry } from './Menu';
 
 // one menu definition for the sidebar row and the page header
@@ -42,6 +49,11 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       : { label: 'Add to favourites', icon: Star, onSelect: () => toggleFavorite(pageId) },
     { label: 'Duplicate', icon: Copy, onSelect: () => duplicatePage(pageId) },
     { label: 'Move to…', icon: ArrowRightLeft, onSelect: () => openDialog({ kind: 'move', pageId }) },
+    { label: 'Open local graph', icon: Network, onSelect: () => navigate({ name: 'graph', focus: pageId }) },
+    ...(page.kind === 'page' ? [{ label: 'Save as template', icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }] : []),
+    ...(desktop?.vault && getSession().pathOf(pageId) !== null
+      ? [{ label: 'Show in folder', icon: FolderOpen, onSelect: () => revealPage(pageId) }]
+      : []),
     { separator: true },
     { label: 'Export as Markdown', icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
     { label: 'Import Markdown here', icon: FileUp, onSelect: () => void importMarkdown(pageId) },

@@ -7,6 +7,17 @@ export type Dialog =
   | { kind: 'move'; pageId: PageId }
   | { kind: 'history'; pageId: PageId }
   | { kind: 'icon'; pageId: PageId }
+  // edit a formula or markdown kept as written, with a live preview for formulas
+  | {
+      kind: 'source';
+      title: string;
+      value: string;
+      language: 'latex' | 'markdown';
+      displayMode?: boolean;
+      onSave: (value: string) => void;
+    }
+  // pick a template for a new page
+  | { kind: 'template'; parentId: PageId | null }
   | {
       kind: 'confirm';
       title: string;

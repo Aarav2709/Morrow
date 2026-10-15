@@ -34,6 +34,7 @@ export class SaveQueue {
   private readonly maxRetryMs: number;
   private readonly now: () => number;
   private readonly options: SaveQueueOptions;
+  private writing = new Set<PageId>();
 
   constructor(
     private readonly writer: { write(batch: WriteBatch): Promise<void> },
@@ -53,6 +54,11 @@ export class SaveQueue {
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  // true while the page has changes that are not on disk yet, edits made elsewhere must not replace them
+  isDirty(id: PageId): boolean {
+    return this.dirtyPages.has(id) || this.dirtyDocs.has(id) || this.removed.has(id) || this.writing.has(id);
   }
 
   hasPending(): boolean {
@@ -95,10 +101,11 @@ export class SaveQueue {
     this.dirtyPages.clear();
     this.dirtyDocs.clear();
     this.removed.clear();
+    this.writing = new Set([...pages, ...docs, ...removed]);
     this.setStatus({ ...this.current, state: 'saving' });
 
     const state = this.getState();
-    const batch: WriteBatch = { pages: [], docs: [], removed: [] };
+    const batch: WriteBatch = { pages: [], docs: [], removed: [], state };
     for (const id of pages) {
       const page = state.pages[id];
       if (page) batch.pages.push(page);
@@ -116,6 +123,7 @@ export class SaveQueue {
       );
       await this.writer.write(batch);
       if (batch.snapshots?.length) this.options.onSnapshotsWritten?.(batch.snapshots);
+      this.writing.clear();
       this.inFlight = null;
       const more = this.dirtyPages.size + this.dirtyDocs.size + this.removed.size > 0;
       this.setStatus({
@@ -130,6 +138,7 @@ export class SaveQueue {
       for (const id of pages) if (!this.removed.has(id)) this.dirtyPages.add(id);
       for (const id of docs) if (!this.removed.has(id)) this.dirtyDocs.add(id);
       for (const id of removed) this.removed.add(id);
+      this.writing.clear();
       this.inFlight = null;
       this.setStatus({
         ...this.current,

@@ -1,31 +1,156 @@
 import MarkdownIt from 'markdown-it';
-import type { Token } from 'markdown-it';
-import { emptyDoc } from '../model';
+import type { StateBlock, StateInline, Token } from 'markdown-it';
+import { calloutTone, emptyDoc } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
 
 export interface ParseOptions {
-  // resolves [[title]] links to page ids, unresolved links stay as text
-  resolvePage?: (title: string) => PageId | null;
+  // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
+  resolvePage?: (target: string) => PageId | null;
   // resolves relative links such as notion exports use between pages
   resolveLink?: (href: string) => PageId | null;
-  // resolves image and file paths that came with an import
+  // resolves image and file paths, and ![[embeds]], to stored files
   resolveFile?: (href: string) => { fileId: string; name: string; image: boolean } | null;
+  // links to pages that do not exist yet stay live and create the page when followed, on by default
+  keepUnresolved?: boolean;
 }
 
-const ALERT = /^\[!(note|tip|important|warning|caution)\]\s*/i;
-const TONES: Record<string, string> = {
-  note: 'note',
-  important: 'note',
-  tip: 'tip',
-  warning: 'warning',
-  caution: 'warning',
-};
+export interface WikiLink {
+  target: string;
+  anchor: string | null;
+  alias: string | null;
+  embed: boolean;
+}
 
 const md = new MarkdownIt('commonmark', { html: true }).enable(['table', 'strikethrough']);
+md.inline.ruler.before('link', 'wikilink', wikiLinkRule);
+md.inline.ruler.after('backticks', 'math_inline', mathInlineRule);
+md.inline.ruler.after('strikethrough', 'highlight', highlightRule);
+md.block.ruler.before('fence', 'math_block', mathBlockRule, {
+  alt: ['paragraph', 'reference', 'blockquote', 'list'],
+});
+
 const MAX_INPUT = 5_000_000;
 const TASK_PREFIX = /^\[([ xX])\](?:\s+|$)/;
-const WIKI_LINK = /\[\[([^[\]\n]{1,200})\]\]/g;
+// obsidian callouts and github alerts: > [!type]+ optional title
+const CALLOUT = /^\[!([A-Za-z][\w-]{0,30})\]([+-]?)[ \t]*/;
+const WIKI = /^(!?)\[\[([^[\]\n]{0,400}?)\]\]/;
+
+// [[target#anchor|alias]] and ![[embed]], before markdown links so the brackets are not read as one
+function wikiLinkRule(state: StateInline, silent: boolean): boolean {
+  const start = state.pos;
+  const first = state.src.charCodeAt(start);
+  if (first !== 0x21 && first !== 0x5b) return false;
+  const match = WIKI.exec(state.src.slice(start, Math.min(state.posMax, start + 810)));
+  if (!match) return false;
+  if (!silent) {
+    const token = state.push('wikilink', '', 0);
+    token.meta = { ...parseWikiLink(match[2]!, match[1] === '!') };
+    token.markup = match[0];
+  }
+  state.pos += match[0].length;
+  return true;
+}
+
+export function parseWikiLink(inner: string, embed: boolean): WikiLink {
+  // tables escape the alias bar as \|
+  const bar = inner.search(/\\?\|/);
+  const head = bar === -1 ? inner : inner.slice(0, bar);
+  const alias = bar === -1 ? null : inner.slice(bar).replace(/^\\?\|/, '');
+  const hash = head.indexOf('#');
+  return {
+    target: (hash === -1 ? head : head.slice(0, hash)).trim(),
+    anchor: hash === -1 ? null : head.slice(hash + 1).trim(),
+    alias: alias === null ? null : alias.trim(),
+    embed,
+  };
+}
+
+// $inline$ with the usual rules that keep prices like $5 and $10 as text
+function mathInlineRule(state: StateInline, silent: boolean): boolean {
+  const { src } = state;
+  const start = state.pos;
+  if (src.charCodeAt(start) !== 0x24) return false;
+  const display = src.charCodeAt(start + 1) === 0x24;
+  const open = display ? 2 : 1;
+  const next = src[start + open];
+  if (!next || /\s/.test(next) || next === '$') return false;
+  const closer = display ? '$$' : '$';
+  let end = src.indexOf(closer, start + open);
+  while (end !== -1 && src[end - 1] === '\\') end = src.indexOf(closer, end + 1);
+  if (end === -1 || end + open > state.posMax) return false;
+  const content = src.slice(start + open, end);
+  if (/\s$/.test(content) || content.includes('\n\n')) return false;
+  if (!display && /\d/.test(src[end + 1] ?? '')) return false;
+  if (!silent) {
+    const token = state.push('math_inline', 'math', 0);
+    token.content = content;
+    token.markup = closer;
+  }
+  state.pos = end + open;
+  return true;
+}
+
+// ==highlighted text== as obsidian writes it
+function highlightRule(state: StateInline, silent: boolean): boolean {
+  const { src } = state;
+  const start = state.pos;
+  if (src.charCodeAt(start) !== 0x3d || src.charCodeAt(start + 1) !== 0x3d) return false;
+  if (src.charCodeAt(start + 2) === 0x3d) return false;
+  const end = src.indexOf('==', start + 2);
+  if (end === -1 || end + 2 > state.posMax || end === start + 2) return false;
+  const inner = src.slice(start + 2, end);
+  if (/^\s|\s$/.test(inner) || inner.includes('\n\n')) return false;
+  if (!silent) {
+    state.push('mark_open', 'mark', 1);
+    const max = state.posMax;
+    state.pos = start + 2;
+    state.posMax = end;
+    state.md.inline.tokenize(state);
+    state.posMax = max;
+    state.push('mark_close', 'mark', -1);
+  }
+  state.pos = end + 2;
+  return true;
+}
+
+// $$ on its own line opens a display formula that runs until a line ending in $$
+function mathBlockRule(state: StateBlock, startLine: number, endLine: number, silent: boolean): boolean {
+  if (state.sCount[startLine]! - state.blkIndent >= 4) return false;
+  const start = state.bMarks[startLine]! + state.tShift[startLine]!;
+  const max = state.eMarks[startLine]!;
+  if (!state.src.startsWith('$$', start)) return false;
+  const firstRest = state.src.slice(start + 2, max).trim();
+  let line = startLine;
+  const parts: string[] = [];
+  if (firstRest.endsWith('$$') && firstRest.length >= 2) {
+    parts.push(firstRest.slice(0, -2));
+  } else {
+    if (firstRest) parts.push(firstRest);
+    let closed = false;
+    while (++line < endLine) {
+      const from = state.bMarks[line]! + state.tShift[line]!;
+      const to = state.eMarks[line]!;
+      if (from < to && state.sCount[line]! < state.blkIndent) break;
+      const text = state.src.slice(from, to);
+      if (text.trimEnd().endsWith('$$')) {
+        const before = text.trimEnd().slice(0, -2);
+        if (before.trim()) parts.push(before);
+        closed = true;
+        break;
+      }
+      parts.push(state.src.slice(state.bMarks[line]!, to));
+    }
+    if (!closed) return false;
+  }
+  if (silent) return true;
+  state.line = line + 1;
+  const token = state.push('math_block', 'math', 0);
+  token.block = true;
+  token.content = parts.join('\n').trim();
+  token.map = [startLine, state.line];
+  return true;
+}
 
 export function markdownToDoc(source: string, options: ParseOptions = {}): DocNode {
   const text = source.length > MAX_INPUT ? source.slice(0, MAX_INPUT) : source;
@@ -106,51 +231,15 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         });
         break;
       }
+      case 'math_block':
+        push({ type: 'blockMath', attrs: { latex: token.content } });
+        break;
       case 'hr':
         push({ type: 'horizontalRule' });
         break;
-      case 'html_block': {
-        const html = token.content.trim();
-        const details = /^<details[^>]*>/i.exec(html);
-        const aside = /^<aside[^>]*>/i.exec(html);
-        if (details) {
-          const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/i.exec(html);
-          const title = decodeEntities((summary?.[1] ?? '').replace(/<[^>]+>/g, '')).trim();
-          const body: DocNode = { type: 'detailsContent', content: [] };
-          const node: DocNode = {
-            type: 'details',
-            attrs: { open: false },
-            content: [
-              { type: 'detailsSummary', content: title ? [{ type: 'text', text: title }] : [] },
-              body,
-            ],
-          };
-          push(node);
-          const after = html.slice(summary ? summary.index + summary[0].length : details[0].length);
-          const closed = /<\/details>\s*$/i.test(after);
-          const inner = after.replace(/<\/details>\s*$/i, '').trim();
-          if (inner) body.content!.push(...(markdownToDoc(inner, options).content ?? []));
-          if (!closed) stack.push(node, body);
-        } else if (/^<\/details>/i.test(html)) {
-          if (top().type === 'detailsContent') {
-            close();
-            close();
-          }
-        } else if (aside) {
-          const closed = /<\/aside>\s*$/i.test(html);
-          const inner = html
-            .slice(aside[0].length)
-            .replace(/<\/aside>\s*$/i, '')
-            .trim();
-          const node: DocNode = { type: 'callout', attrs: { tone: 'note' }, content: [] };
-          if (inner) node.content!.push(...(markdownToDoc(inner, options).content ?? []));
-          push(node);
-          if (!closed) stack.push(node);
-        } else if (/^<\/aside>/i.test(html)) {
-          if (top().type === 'callout') close();
-        } else if (html) push({ type: 'paragraph', content: [{ type: 'text', text: html }] });
+      case 'html_block':
+        htmlBlock(token.content, options, { push, top, close, stack });
         break;
-      }
       default:
         break;
     }
@@ -158,6 +247,53 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
 
   const doc = normalize(root);
   return (doc.content ?? []).length > 0 ? doc : emptyDoc();
+}
+
+interface Builder {
+  push: (node: DocNode) => void;
+  top: () => DocNode;
+  close: () => void;
+  stack: DocNode[];
+}
+
+// toggles and notion asides become blocks, any other html is kept exactly as written
+function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
+  const html = source.trim();
+  const details = /^<details[^>]*>/i.exec(html);
+  const aside = /^<aside[^>]*>/i.exec(html);
+  if (details) {
+    const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/i.exec(html);
+    const title = decodeEntities((summary?.[1] ?? '').replace(/<[^>]+>/g, '')).trim();
+    const body: DocNode = { type: 'detailsContent', content: [] };
+    const node: DocNode = {
+      type: 'details',
+      attrs: { open: false },
+      content: [{ type: 'detailsSummary', content: title ? [{ type: 'text', text: title }] : [] }, body],
+    };
+    b.push(node);
+    const after = html.slice(summary ? summary.index + summary[0].length : details[0].length);
+    const closed = /<\/details>\s*$/i.test(after);
+    const inner = after.replace(/<\/details>\s*$/i, '').trim();
+    if (inner) body.content!.push(...(markdownToDoc(inner, options).content ?? []));
+    if (!closed) b.stack.push(node, body);
+  } else if (/^<\/details>/i.test(html)) {
+    if (b.top().type === 'detailsContent') {
+      b.close();
+      b.close();
+    }
+  } else if (aside) {
+    const closed = /<\/aside>\s*$/i.test(html);
+    const inner = html
+      .slice(aside[0].length)
+      .replace(/<\/aside>\s*$/i, '')
+      .trim();
+    const node: DocNode = { type: 'callout', attrs: { tone: 'note', kind: 'note' }, content: [] };
+    if (inner) node.content!.push(...(markdownToDoc(inner, options).content ?? []));
+    b.push(node);
+    if (!closed) b.stack.push(node);
+  } else if (/^<\/aside>/i.test(html)) {
+    if (b.top().type === 'callout') b.close();
+  } else if (html) b.push({ type: 'rawBlock', attrs: { text: source.replace(/\n+$/, '') } });
 }
 
 // first level one heading becomes the page title
@@ -202,7 +338,8 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         add(token.content);
         break;
       case 'softbreak':
-        add(' ');
+        // kept until callout titles are read, then becomes a space
+        out.push({ type: 'softBreak' });
         break;
       case 'hardbreak':
         out.push({ type: 'hardBreak' });
@@ -215,6 +352,9 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         break;
       case 's_open':
         marks.push({ type: 'strike' });
+        break;
+      case 'mark_open':
+        marks.push({ type: 'highlight' });
         break;
       case 'link_open': {
         const href = String(token.attrGet('href') ?? '');
@@ -234,6 +374,9 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
       case 's_close':
         remove('strike');
         break;
+      case 'mark_close':
+        remove('highlight');
+        break;
       case 'link_close':
         if (pageTarget) {
           out.push({ type: 'pageLink', attrs: { id: pageTarget.id, label: pageTarget.label.trim() } });
@@ -243,18 +386,27 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
       case 'code_inline':
         add(token.content, [{ type: 'code' }]);
         break;
+      case 'math_inline':
+        out.push({ type: 'inlineMath', attrs: { latex: token.content } });
+        break;
+      case 'wikilink':
+        out.push(...wikiNode(token.meta as unknown as WikiLink, token.markup, options, marks));
+        break;
       case 'image': {
         const src = String(token.attrGet('src') ?? '');
         const alt = token.content || String(token.attrGet('alt') ?? '');
         const file = options.resolveFile?.(src) ?? null;
         if (file?.image) out.push({ type: 'image', attrs: { fileId: file.fileId, alt } });
-        else add(alt || 'image', [{ type: 'link', attrs: { href: src } }]);
+        else if (file) add(alt || file.name, [{ type: 'link', attrs: { href: src, fileRef: file } }]);
+        else out.push({ type: 'image', attrs: { fileId: null, src, alt } });
         break;
       }
       case 'html_inline': {
         const tag = token.content.trim().toLowerCase();
         if (tag === '<u>') marks.push({ type: 'underline' });
         else if (tag === '</u>') remove('underline');
+        else if (tag === '<mark>') marks.push({ type: 'highlight' });
+        else if (tag === '</mark>') remove('highlight');
         else if (/^<br\s*\/?>$/.test(tag)) out.push({ type: 'hardBreak' });
         else add(token.content);
         break;
@@ -263,7 +415,29 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         if (token.content) add(token.content);
     }
   }
-  return linkPages(mergeText(out), options);
+  return mergeText(out);
+}
+
+function wikiNode(link: WikiLink, markup: string, options: ParseOptions, marks: DocMark[]): DocNode[] {
+  if (link.embed) {
+    const file = link.target ? (options.resolveFile?.(link.target) ?? null) : null;
+    if (file?.image) return [{ type: 'image', attrs: { fileId: file.fileId, alt: link.alias ?? '' } }];
+    if (file) {
+      const fileMarks = [...marks, { type: 'link', attrs: { href: link.target, fileRef: { ...file, embed: true } } }];
+      return [{ type: 'text', text: link.alias ?? file.name, marks: fileMarks }];
+    }
+  }
+  const id = link.target ? (options.resolvePage?.(link.target) ?? null) : null;
+  if (!id && options.keepUnresolved === false) {
+    return [marks.length ? { type: 'text', text: markup, marks: [...marks] } : { type: 'text', text: markup }];
+  }
+  const label = link.alias ?? (link.target.split('/').pop() || link.target);
+  // the written target is only needed while the page does not exist, resolved links follow the page
+  const attrs: Record<string, unknown> = id ? { id, label } : { id, label, target: link.target };
+  if (link.anchor !== null) attrs.anchor = link.anchor;
+  if (link.alias !== null) attrs.alias = link.alias;
+  if (link.embed) attrs.embed = true;
+  return [{ type: 'pageLink', attrs }];
 }
 
 function decodeEntities(text: string): string {
@@ -298,34 +472,12 @@ function sameMarks(a: DocMark[] = [], b: DocMark[] = []): boolean {
   );
 }
 
-function linkPages(nodes: DocNode[], options: ParseOptions): DocNode[] {
-  if (!options.resolvePage) return nodes;
-  const out: DocNode[] = [];
-  for (const node of nodes) {
-    const text = node.text ?? '';
-    if (node.type !== 'text' || node.marks?.some((mark) => mark.type === 'code') || !text.includes('[[')) {
-      out.push(node);
-      continue;
-    }
-    let last = 0;
-    for (const match of text.matchAll(WIKI_LINK)) {
-      const title = match[1]!.trim();
-      const id = options.resolvePage(title);
-      if (!id) continue;
-      if (match.index > last) out.push({ ...node, text: text.slice(last, match.index) });
-      out.push({ type: 'pageLink', attrs: { id, label: title } });
-      last = match.index + match[0].length;
-    }
-    if (last < text.length) out.push({ ...node, text: text.slice(last) });
-  }
-  return out;
-}
-
 // shapes the tree so the editor schema accepts it
-function normalize(node: DocNode): DocNode {
+function normalize(input: DocNode): DocNode {
+  // callouts read their title from the raw first line, before line breaks turn into spaces
+  const node = input.type === 'blockquote' ? toCallout(input) : input;
   const content = node.content?.flatMap((child) => liftMedia(normalize(child)));
   let next: DocNode = content ? { ...node, content } : { ...node };
-  if (next.type === 'blockquote') next = toCallout(next);
   if ((next.type === 'callout' || next.type === 'detailsContent') && (next.content ?? []).length === 0) {
     next = { ...next, content: [{ type: 'paragraph', content: [] }] };
   }
@@ -345,51 +497,103 @@ function normalize(node: DocNode): DocNode {
   if (next.content?.some((child) => child.type === 'bulletList')) {
     next = { ...next, content: next.content.flatMap(splitTaskLists) };
   }
-  if (next.type === 'paragraph' || next.type === 'heading') {
-    next = { ...next, content: (next.content ?? []).filter((child) => child.type !== 'text' || child.text) };
+  if (next.type === 'paragraph' || next.type === 'heading' || next.type === 'detailsSummary') {
+    const inline = mergeText(
+      (next.content ?? []).map((child) =>
+        child.type === 'softBreak' ? { type: 'text', text: ' ', ...marksOf(child) } : child,
+      ),
+    );
+    next = { ...next, content: inline.filter((child) => child.type !== 'text' || child.text) };
   }
   return next;
 }
 
-// images and file links alone in a paragraph become blocks, anywhere else they fall back to text
+function marksOf(node: DocNode): { marks?: DocMark[] } {
+  return node.marks?.length ? { marks: node.marks } : {};
+}
+
+// images and embeds become blocks, a paragraph that mixes them with text is split around them,
+// so nothing an image or embed points at is ever lost
 function liftMedia(node: DocNode): DocNode[] {
   if (node.type !== 'paragraph' || !node.content) return [node];
   const children = node.content;
-  const meaningful = children.filter(
-    (child) => !(child.type === 'hardBreak' || (child.type === 'text' && !child.text?.trim())),
-  );
-  if (meaningful.length > 0 && meaningful.every((child) => child.type === 'image')) return meaningful;
+  const blank = (child: DocNode) =>
+    child.type === 'hardBreak' || child.type === 'softBreak' || (child.type === 'text' && !child.text?.trim());
+  const meaningful = children.filter((child) => !blank(child));
+  // a lone link to a stored file is shown as an attachment
   const refs = new Set(meaningful.map((child) => fileRefOf(child)));
   const ref = refs.size === 1 ? [...refs][0] : undefined;
-  if (ref?.image) return [{ type: 'image', attrs: { fileId: ref.fileId, alt: '' } }];
-  if (ref) return [{ type: 'fileAttachment', attrs: { fileId: ref.fileId, name: ref.name } }];
-  const content = children.map((child): DocNode => {
-    if (child.type === 'image') return { type: 'text', text: String(child.attrs?.alt || 'image') };
-    if (!fileRefOf(child)) return child;
-    const marks = (child.marks ?? []).filter((mark) => !mark.attrs?.fileRef);
-    return marks.length ? { ...child, marks } : { type: 'text', text: child.text ?? '' };
-  });
-  return [{ ...node, content: mergeText(content) }];
+  if (ref && meaningful.every((child) => fileRefOf(child) === ref)) return [mediaBlock(ref)];
+  if (!meaningful.some((child) => child.type === 'image' || fileRefOf(child)?.embed)) {
+    return [{ ...node, content: children.map(plainFileLink) }];
+  }
+  const out: DocNode[] = [];
+  let run: DocNode[] = [];
+  const flush = () => {
+    while (run.length && blank(run[0]!)) run.shift();
+    while (run.length && blank(run[run.length - 1]!)) run.pop();
+    if (run.length) {
+      const content = mergeText(run);
+      const last = content[content.length - 1]!;
+      if (last.type === 'text') content[content.length - 1] = { ...last, text: last.text!.trimEnd() };
+      out.push({ ...node, content: content.filter((child) => child.type !== 'text' || child.text) });
+    }
+    run = [];
+  };
+  for (const child of children) {
+    const embed = fileRefOf(child);
+    if (child.type === 'image') {
+      flush();
+      out.push(child);
+    } else if (embed?.embed) {
+      flush();
+      out.push(mediaBlock(embed));
+    } else run.push(plainFileLink(child));
+  }
+  flush();
+  return out.length ? out : [{ ...node, content: [] }];
 }
 
-function fileRefOf(node: DocNode): { fileId: string; name: string; image: boolean } | undefined {
+function mediaBlock(ref: { fileId: string; name: string; image: boolean }): DocNode {
+  return ref.image
+    ? { type: 'image', attrs: { fileId: ref.fileId, alt: '' } }
+    : { type: 'fileAttachment', attrs: { fileId: ref.fileId, name: ref.name } };
+}
+
+// a link to a file inside a sentence stays an ordinary link to it
+function plainFileLink(child: DocNode): DocNode {
+  if (!fileRefOf(child)) return child;
+  const marks = (child.marks ?? []).map((mark) => (mark.attrs?.fileRef ? { type: 'link', attrs: { href: mark.attrs.href } } : mark));
+  return { ...child, marks };
+}
+
+function fileRefOf(node: DocNode): { fileId: string; name: string; image: boolean; embed?: boolean } | undefined {
   const ref = node.marks?.find((mark) => mark.attrs?.fileRef)?.attrs?.fileRef;
-  return ref as { fileId: string; name: string; image: boolean } | undefined;
+  return ref as { fileId: string; name: string; image: boolean; embed?: boolean } | undefined;
 }
 
-// github style alerts, a quote that starts with a note, tip or warning marker
+// a quote that starts with [!type] is a callout, the rest of that first line is its title
 function toCallout(quote: DocNode): DocNode {
   const [first, ...rest] = quote.content ?? [];
   const lead = first?.type === 'paragraph' ? first.content?.[0] : undefined;
-  const match = lead?.type === 'text' && !lead.marks?.length ? ALERT.exec(lead.text ?? '') : null;
+  const match = lead?.type === 'text' && !lead.marks?.length ? CALLOUT.exec(lead.text ?? '') : null;
   if (!first || !lead || !match) return quote;
-  const remainder = (lead.text ?? '').slice(match[0].length);
-  const inline = [...(remainder ? [{ ...lead, text: remainder }] : []), ...(first.content ?? []).slice(1)];
-  if (inline[0]?.type === 'hardBreak') inline.shift();
-  const content = inline.length ? [{ ...first, content: inline }, ...rest] : rest;
+  const inline = [
+    ...((lead.text ?? '').length > match[0].length ? [{ ...lead, text: lead.text!.slice(match[0].length) }] : []),
+    ...(first.content ?? []).slice(1),
+  ];
+  const breakAt = inline.findIndex((node) => node.type === 'softBreak' || node.type === 'hardBreak');
+  const titleNodes = breakAt === -1 ? inline : inline.slice(0, breakAt);
+  const body = breakAt === -1 ? [] : inline.slice(breakAt + 1);
+  const title = titleNodes.map((node) => inlineText(node)).join('').trim();
+  const kind = match[1]!.toLowerCase();
+  const attrs: Record<string, unknown> = { tone: calloutTone(kind), kind };
+  if (title) attrs.title = title;
+  if (match[2]) attrs.fold = match[2];
+  const content = body.length ? [{ ...first, content: body }, ...rest] : rest;
   return {
     type: 'callout',
-    attrs: { tone: TONES[match[1]!.toLowerCase()] ?? 'note' },
+    attrs,
     content: content.length ? content : [{ type: 'paragraph', content: [] }],
   };
 }
