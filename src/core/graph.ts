@@ -29,9 +29,18 @@ export interface GraphOptions {
   depth: number;
 }
 
-export const DEFAULT_GRAPH_OPTIONS: GraphOptions = { tags: false, hierarchy: false, orphans: true, focus: null, depth: 1 };
+export const DEFAULT_GRAPH_OPTIONS: GraphOptions = {
+  tags: false,
+  hierarchy: false,
+  orphans: true,
+  focus: null,
+  depth: 1,
+};
 
-export function buildGraph(state: WorkspaceState, options: GraphOptions): { nodes: GraphNode[]; links: GraphLink[] } {
+export function buildGraph(
+  state: WorkspaceState,
+  options: GraphOptions,
+): { nodes: GraphNode[]; links: GraphLink[] } {
   const pages = livePages(state.pages);
   const live = new Set(pages.map((page) => page.id));
   const nodes = new Map<string, GraphNode>();
@@ -50,9 +59,12 @@ export function buildGraph(state: WorkspaceState, options: GraphOptions): { node
   for (const page of pages) {
     const doc = state.docs[page.id];
     if (!doc) continue;
-    if (page.kind === 'canvas') for (const target of pagesInCanvas(canvasFromDoc(doc))) if (live.has(target)) addLink(page.id, target, 'link');
+    if (page.kind === 'canvas')
+      for (const target of pagesInCanvas(canvasFromDoc(doc)))
+        if (live.has(target)) addLink(page.id, target, 'link');
     for (const link of linksInDoc(doc)) if (live.has(link.targetId)) addLink(page.id, link.targetId, 'link');
-    if (options.hierarchy && page.parentId && live.has(page.parentId)) addLink(page.parentId, page.id, 'child');
+    if (options.hierarchy && page.parentId && live.has(page.parentId))
+      addLink(page.parentId, page.id, 'child');
     if (options.tags) {
       for (const tag of tagsOf(page, doc)) {
         const id = `#${tag.toLowerCase()}`;

@@ -166,7 +166,8 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
       if (!page.ok) return page;
       if (!PAGE_KINDS.includes(command.kind)) return fail('Unknown page kind.');
       if (page.value.kind === command.kind) return unchanged(state);
-      const database = command.kind === 'database' ? (page.value.database ?? { properties: [], views: [] }) : null;
+      const database =
+        command.kind === 'database' ? (page.value.database ?? { properties: [], views: [] }) : null;
       return updatePage(state, { ...page.value, kind: command.kind, database, updatedAt: command.now });
     }
     case 'page.setProperties': {
@@ -175,7 +176,8 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
       const properties = { ...page.value.properties };
       for (const [key, value] of Object.entries(command.values ?? {})) {
         if (!ID_PATTERN.test(key)) return fail('Invalid property.');
-        if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) delete properties[key];
+        if (value === null || value === '' || (Array.isArray(value) && value.length === 0))
+          delete properties[key];
         else if (validValue(value)) properties[key] = value;
         else return fail('Invalid property value.');
       }
@@ -220,7 +222,8 @@ function createPage(
     dailyDate: command.dailyDate ?? null,
     tags: normalizeTags(command.tags ?? []),
     properties: { ...(command.properties ?? {}) },
-    database: kind === 'database' ? (normalizeDatabase(command.database) ?? { properties: [], views: [] }) : null,
+    database:
+      kind === 'database' ? (normalizeDatabase(command.database) ?? { properties: [], views: [] }) : null,
   });
   const siblings = childrenOf(state.pages, command.parentId);
   const placed = placeAmong(siblings, page, command.index);
@@ -380,7 +383,9 @@ function setDocs(applied: Applied, docs: Record<PageId, DocNode>): Result<Applie
 
 function normalizeTags(tags: unknown): string[] {
   if (!Array.isArray(tags)) return [];
-  const result = tags.map((tag) => (typeof tag === 'string' ? normalizeTag(tag) : null)).filter((tag): tag is string => tag !== null);
+  const result = tags
+    .map((tag) => (typeof tag === 'string' ? normalizeTag(tag) : null))
+    .filter((tag): tag is string => tag !== null);
   return [...new Set(result)].slice(0, 100);
 }
 

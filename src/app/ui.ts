@@ -42,6 +42,8 @@ export interface UiState {
   renaming: PageId | null;
   // page whose title should take focus once it opens
   focusTitle: PageId | null;
+  // writing with nothing else on screen
+  focusMode: boolean;
 }
 
 let state: UiState = {
@@ -51,6 +53,7 @@ let state: UiState = {
   mobileSidebar: false,
   renaming: null,
   focusTitle: null,
+  focusMode: false,
 };
 const listeners = new Set<() => void>();
 let toastId = 0;

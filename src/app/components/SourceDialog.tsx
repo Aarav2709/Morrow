@@ -22,7 +22,12 @@ export function SourceDialog({
   const preview = useMemo(() => {
     if (language !== 'latex' || !text.trim()) return null;
     // katex output is plain markup, it never runs scripts or loads anything
-    return katex.renderToString(text, { throwOnError: false, displayMode: displayMode ?? false, strict: false, trust: false });
+    return katex.renderToString(text, {
+      throwOnError: false,
+      displayMode: displayMode ?? false,
+      strict: false,
+      trust: false,
+    });
   }, [text, language, displayMode]);
   const save = () => {
     closeDialog();
@@ -60,7 +65,9 @@ export function SourceDialog({
           }
         }}
       />
-      {preview && <div className="math-preview" aria-label="Preview" dangerouslySetInnerHTML={{ __html: preview }} />}
+      {preview && (
+        <div className="math-preview" aria-label="Preview" dangerouslySetInnerHTML={{ __html: preview }} />
+      )}
     </Dialog>
   );
 }

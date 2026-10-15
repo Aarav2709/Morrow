@@ -128,7 +128,9 @@ export const PageLink = Node.create<PageLinkOptions>({
         if (pos !== undefined && editor.isEditable) {
           const live = editor.state.doc.nodeAt(pos);
           if (live?.type === current.type)
-            editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, id: created, target: null }));
+            editor.view.dispatch(
+              editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, id: created, target: null }),
+            );
         }
         this.options.open(created);
       });

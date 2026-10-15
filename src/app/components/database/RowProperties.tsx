@@ -5,7 +5,17 @@ import { Popover } from '../Popover';
 import { NewProperty, PropertyInput } from './PropertyValue';
 
 // the values of a database row, shown at the top of its page
-export function RowProperties({ row, database, dbId, editable }: { row: PageMeta; database: DatabaseDef; dbId: PageId; editable: boolean }) {
+export function RowProperties({
+  row,
+  database,
+  dbId,
+  editable,
+}: {
+  row: PageMeta;
+  database: DatabaseDef;
+  dbId: PageId;
+  editable: boolean;
+}) {
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   if (database.properties.length === 0 && !editable) return null;
   return (
@@ -20,7 +30,11 @@ export function RowProperties({ row, database, dbId, editable }: { row: PageMeta
       ))}
       {editable && (
         <>
-          <button type="button" className="link-button row-prop-add" onClick={(event) => setMenu(event.currentTarget)}>
+          <button
+            type="button"
+            className="link-button row-prop-add"
+            onClick={(event) => setMenu(event.currentTarget)}
+          >
             <Plus size={13} /> Add a property
           </button>
           {menu && (

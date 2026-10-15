@@ -2,6 +2,7 @@ import {
   ArrowRightLeft,
   Copy,
   FolderOpen,
+  Globe,
   LayoutTemplate,
   Network,
   FileDown,
@@ -20,6 +21,7 @@ import {
   duplicatePage,
   exportPageMarkdown,
   importMarkdown,
+  publishSite,
   revealPage,
   saveAsTemplate,
   toggleFavorite,
@@ -50,12 +52,15 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     { label: 'Duplicate', icon: Copy, onSelect: () => duplicatePage(pageId) },
     { label: 'Move to…', icon: ArrowRightLeft, onSelect: () => openDialog({ kind: 'move', pageId }) },
     { label: 'Open local graph', icon: Network, onSelect: () => navigate({ name: 'graph', focus: pageId }) },
-    ...(page.kind === 'page' ? [{ label: 'Save as template', icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }] : []),
+    ...(page.kind === 'page'
+      ? [{ label: 'Save as template', icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }]
+      : []),
     ...(desktop?.vault && getSession().pathOf(pageId) !== null
       ? [{ label: 'Show in folder', icon: FolderOpen, onSelect: () => revealPage(pageId) }]
       : []),
     { separator: true },
     { label: 'Export as Markdown', icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
+    { label: 'Publish as a website', icon: Globe, onSelect: () => void publishSite(pageId) },
     { label: 'Import Markdown here', icon: FileUp, onSelect: () => void importMarkdown(pageId) },
     { separator: true },
     {

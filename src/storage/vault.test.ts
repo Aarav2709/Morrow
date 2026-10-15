@@ -53,7 +53,9 @@ describe('opening a folder of markdown files', () => {
     const vault = new MemoryVault(OBSIDIAN);
     const session = await open(vault);
     const state = session.getState();
-    const titles = Object.values(state.pages).map((page) => page.title).sort();
+    const titles = Object.values(state.pages)
+      .map((page) => page.title)
+      .sort();
     expect(titles).toEqual(['Board', 'Garden', 'Ideas', 'Loose idea', 'Projects', 'Welcome']);
     const garden = idOf(session, 'Garden');
     expect(state.pages[garden]!.parentId).toBe(idOf(session, 'Projects'));
@@ -80,6 +82,21 @@ describe('opening a folder of markdown files', () => {
     await session.close();
   });
 
+  it('changes only the frontmatter when only an icon or tags change', async () => {
+    const vault = new MemoryVault(OBSIDIAN);
+    const session = await open(vault);
+    const welcome = idOf(session, 'Welcome');
+    await run(session, { type: 'page.setIcon', id: welcome, icon: '📝', now: 5 });
+    await run(session, { type: 'page.setTags', id: welcome, tags: ['start', 'new'], now: 6 });
+    const text = vault.text('Welcome.md')!;
+    expect(text.slice(text.indexOf('# Hello'))).toBe(
+      OBSIDIAN['Welcome.md'].slice(OBSIDIAN['Welcome.md'].indexOf('# Hello')),
+    );
+    expect(text).toContain('icon: 📝');
+    expect(text).toContain('cssclasses: wide');
+    await session.close();
+  });
+
   it('renames the file and updates links in other files without touching the rest of them', async () => {
     const vault = new MemoryVault(OBSIDIAN);
     const session = await open(vault);
@@ -98,7 +115,11 @@ describe('opening a folder of markdown files', () => {
     expect(vault.dirs.has('Projects')).toBe(false);
     // the canvas follows the page to its new path
     expect(JSON.parse(vault.text('Board.canvas')!).nodes[1].file).toBe('Garden.md');
-    await run(session, { type: 'page.move', id: idOf(session, 'Garden'), parentId: idOf(session, 'Welcome') });
+    await run(session, {
+      type: 'page.move',
+      id: idOf(session, 'Garden'),
+      parentId: idOf(session, 'Welcome'),
+    });
     expect(vault.text('Welcome/Garden.md')).toBeDefined();
     await session.close();
   });
@@ -108,7 +129,9 @@ describe('opening a folder of markdown files', () => {
     const session = await open(vault);
     const projects = idOf(session, 'Projects');
     await run(session, { type: 'page.trash', id: projects, now: 99 });
-    expect(vault.paths()).toEqual(expect.arrayContaining(['.trash/Projects.md', '.trash/Projects/Garden.md']));
+    expect(vault.paths()).toEqual(
+      expect.arrayContaining(['.trash/Projects.md', '.trash/Projects/Garden.md']),
+    );
     expect(vault.text('Projects.md')).toBeUndefined();
 
     const reopened = await open(vault);
@@ -117,7 +140,9 @@ describe('opening a folder of markdown files', () => {
     expect(vault.text('Projects/Garden.md')).toBe(OBSIDIAN['Projects/Garden.md']);
     await run(reopened, { type: 'page.trash', id: projects, now: 100 });
     await run(reopened, { type: 'page.deleteForever', id: projects });
-    expect(vault.trashed).toEqual(expect.arrayContaining(['.trash/Projects.md', '.trash/Projects/Garden.md']));
+    expect(vault.trashed).toEqual(
+      expect.arrayContaining(['.trash/Projects.md', '.trash/Projects/Garden.md']),
+    );
     await session.close();
     await reopened.close();
   });
@@ -131,6 +156,19 @@ describe('opening a folder of markdown files', () => {
     const reopened = await open(vault);
     expect(reopened.getState().pages[ideas]).toMatchObject({ favorite: true, order: 0 });
     await reopened.close();
+    await session.close();
+  });
+
+  it('treats empty folders as pages, except the attachments folder', async () => {
+    const vault = new MemoryVault({ 'Note.md': 'hi\n' });
+    vault.dirs.add('attachments');
+    vault.dirs.add('Someday');
+    const session = await open(vault);
+    expect(
+      Object.values(session.getState().pages)
+        .map((page) => page.title)
+        .sort(),
+    ).toEqual(['Note', 'Someday']);
     await session.close();
   });
 
@@ -199,15 +237,43 @@ describe('databases and journals in files', () => {
     const session = await open(vault);
     const database = {
       properties: [
-        { id: 'status', name: 'Status', type: 'select' as const, options: [{ id: 'o1', name: 'Reading', color: 'blue' as const }] },
+        {
+          id: 'status',
+          name: 'Status',
+          type: 'select' as const,
+          options: [{ id: 'o1', name: 'Reading', color: 'blue' as const }],
+        },
         { id: 'pages', name: 'Pages', type: 'number' as const, options: [] },
       ],
-      views: [{ id: 'v', name: 'All', type: 'table' as const, filters: [], sorts: [], groupBy: null, dateProp: null, hidden: [] }],
+      views: [
+        {
+          id: 'v',
+          name: 'All',
+          type: 'table' as const,
+          filters: [],
+          sorts: [],
+          groupBy: null,
+          dateProp: null,
+          hidden: [],
+        },
+      ],
     };
-    await run(session, { type: 'page.create', id: 'db', parentId: null, now: 1, title: 'Books', kind: 'database' });
+    await run(session, {
+      type: 'page.create',
+      id: 'db',
+      parentId: null,
+      now: 1,
+      title: 'Books',
+      kind: 'database',
+    });
     await run(session, { type: 'database.set', id: 'db', database, now: 2 });
     await run(session, { type: 'page.create', id: 'row', parentId: 'db', now: 3, title: 'Piranesi' });
-    await run(session, { type: 'page.setProperties', id: 'row', values: { status: 'o1', pages: 272 }, now: 4 });
+    await run(session, {
+      type: 'page.setProperties',
+      id: 'row',
+      values: { status: 'o1', pages: 272 },
+      now: 4,
+    });
     expect(vault.text('Books/Piranesi.md')).toBe('---\nStatus: Reading\nPages: 272\n---\n');
     expect(vault.text('Books.md')).toContain('kind: database');
 
@@ -222,7 +288,10 @@ describe('databases and journals in files', () => {
   });
 
   it('names daily notes by date and titles them in words', async () => {
-    const vault = new MemoryVault({ 'Journal.md': '---\nkind: journal\n---\n', 'Journal/2026-10-15.md': 'Rain.\n' });
+    const vault = new MemoryVault({
+      'Journal.md': '---\nkind: journal\n---\n',
+      'Journal/2026-10-15.md': 'Rain.\n',
+    });
     const session = await open(vault);
     const day = Object.values(session.getState().pages).find((page) => page.dailyDate === '2026-10-15');
     expect(day?.title).toMatch(/2026/);

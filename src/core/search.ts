@@ -82,7 +82,8 @@ export function searchWorkspace(state: WorkspaceState, query: string, limit = 50
     if (phrase && body.folded.includes(phrase)) score += 6;
     // small recency bonus so fresh notes win ties
     score += Math.max(0, 2 - (Date.now() - page.updatedAt) / (1000 * 60 * 60 * 24 * 30));
-    const bodyTerm = phrase && body.folded.includes(phrase) ? phrase : terms.find((term) => body.folded.includes(term));
+    const bodyTerm =
+      phrase && body.folded.includes(phrase) ? phrase : terms.find((term) => body.folded.includes(term));
     const snippet = bodyTerm ? makeSnippet(body, bodyTerm) : null;
     results.push({
       page,

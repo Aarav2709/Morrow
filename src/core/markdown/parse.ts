@@ -423,13 +423,18 @@ function wikiNode(link: WikiLink, markup: string, options: ParseOptions, marks: 
     const file = link.target ? (options.resolveFile?.(link.target) ?? null) : null;
     if (file?.image) return [{ type: 'image', attrs: { fileId: file.fileId, alt: link.alias ?? '' } }];
     if (file) {
-      const fileMarks = [...marks, { type: 'link', attrs: { href: link.target, fileRef: { ...file, embed: true } } }];
+      const fileMarks = [
+        ...marks,
+        { type: 'link', attrs: { href: link.target, fileRef: { ...file, embed: true } } },
+      ];
       return [{ type: 'text', text: link.alias ?? file.name, marks: fileMarks }];
     }
   }
   const id = link.target ? (options.resolvePage?.(link.target) ?? null) : null;
   if (!id && options.keepUnresolved === false) {
-    return [marks.length ? { type: 'text', text: markup, marks: [...marks] } : { type: 'text', text: markup }];
+    return [
+      marks.length ? { type: 'text', text: markup, marks: [...marks] } : { type: 'text', text: markup },
+    ];
   }
   const label = link.alias ?? (link.target.split('/').pop() || link.target);
   // the written target is only needed while the page does not exist, resolved links follow the page
@@ -518,7 +523,9 @@ function liftMedia(node: DocNode): DocNode[] {
   if (node.type !== 'paragraph' || !node.content) return [node];
   const children = node.content;
   const blank = (child: DocNode) =>
-    child.type === 'hardBreak' || child.type === 'softBreak' || (child.type === 'text' && !child.text?.trim());
+    child.type === 'hardBreak' ||
+    child.type === 'softBreak' ||
+    (child.type === 'text' && !child.text?.trim());
   const meaningful = children.filter((child) => !blank(child));
   // a lone link to a stored file is shown as an attachment
   const refs = new Set(meaningful.map((child) => fileRefOf(child)));
@@ -563,11 +570,15 @@ function mediaBlock(ref: { fileId: string; name: string; image: boolean }): DocN
 // a link to a file inside a sentence stays an ordinary link to it
 function plainFileLink(child: DocNode): DocNode {
   if (!fileRefOf(child)) return child;
-  const marks = (child.marks ?? []).map((mark) => (mark.attrs?.fileRef ? { type: 'link', attrs: { href: mark.attrs.href } } : mark));
+  const marks = (child.marks ?? []).map((mark) =>
+    mark.attrs?.fileRef ? { type: 'link', attrs: { href: mark.attrs.href } } : mark,
+  );
   return { ...child, marks };
 }
 
-function fileRefOf(node: DocNode): { fileId: string; name: string; image: boolean; embed?: boolean } | undefined {
+function fileRefOf(
+  node: DocNode,
+): { fileId: string; name: string; image: boolean; embed?: boolean } | undefined {
   const ref = node.marks?.find((mark) => mark.attrs?.fileRef)?.attrs?.fileRef;
   return ref as { fileId: string; name: string; image: boolean; embed?: boolean } | undefined;
 }
@@ -579,13 +590,18 @@ function toCallout(quote: DocNode): DocNode {
   const match = lead?.type === 'text' && !lead.marks?.length ? CALLOUT.exec(lead.text ?? '') : null;
   if (!first || !lead || !match) return quote;
   const inline = [
-    ...((lead.text ?? '').length > match[0].length ? [{ ...lead, text: lead.text!.slice(match[0].length) }] : []),
+    ...((lead.text ?? '').length > match[0].length
+      ? [{ ...lead, text: lead.text!.slice(match[0].length) }]
+      : []),
     ...(first.content ?? []).slice(1),
   ];
   const breakAt = inline.findIndex((node) => node.type === 'softBreak' || node.type === 'hardBreak');
   const titleNodes = breakAt === -1 ? inline : inline.slice(0, breakAt);
   const body = breakAt === -1 ? [] : inline.slice(breakAt + 1);
-  const title = titleNodes.map((node) => inlineText(node)).join('').trim();
+  const title = titleNodes
+    .map((node) => inlineText(node))
+    .join('')
+    .trim();
   const kind = match[1]!.toLowerCase();
   const attrs: Record<string, unknown> = { tone: calloutTone(kind), kind };
   if (title) attrs.title = title;

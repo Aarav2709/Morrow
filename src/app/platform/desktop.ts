@@ -1,11 +1,8 @@
-export interface UpdateStatus {
-  state: 'idle' | 'checking' | 'none' | 'available' | 'downloading' | 'ready' | 'error';
-  version?: string;
-  error?: string;
-}
-
 export interface DesktopVaultApi {
-  state(): Promise<{ current: string | null; recent: Array<{ path: string; name: string; exists: boolean }> }>;
+  state(): Promise<{
+    current: string | null;
+    recent: Array<{ path: string; name: string; exists: boolean }>;
+  }>;
   choose(): Promise<string | null>;
   createDefault(): Promise<string>;
   select(dir: string): Promise<{ ok: boolean; error?: string }>;
@@ -31,9 +28,6 @@ export interface DesktopBridge {
   dataPath: string;
   onCommand(listener: (id: string) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
-  checkForUpdates(): Promise<void>;
-  installUpdate(): Promise<void>;
-  onUpdateStatus(listener: (status: UpdateStatus) => void): () => void;
   openExternal(url: string): Promise<void>;
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;

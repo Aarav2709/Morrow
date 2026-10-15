@@ -11,7 +11,6 @@ export interface Preferences {
   sidebarOpen: boolean;
   sidebarWidth: number;
   expanded: string[];
-  autoUpdate: boolean;
 }
 
 const KEY = 'morrow.preferences';
@@ -22,7 +21,6 @@ const defaults: Preferences = {
   sidebarOpen: true,
   sidebarWidth: 264,
   expanded: [],
-  autoUpdate: false,
 };
 
 // view preferences only, losing them never loses work
@@ -46,7 +44,6 @@ function read(): Preferences {
       expanded: Array.isArray(parsed.expanded)
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],
-      autoUpdate: parsed.autoUpdate === true,
     };
   } catch {
     return defaults;

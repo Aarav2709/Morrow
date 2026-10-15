@@ -30,7 +30,12 @@ export function splitFrontmatter(text: string): SplitFile {
     const data: unknown = parse(yaml, { maxAliasCount: 100, uniqueKeys: false });
     if (data === null || data === undefined) return { data: {}, head, body, error: null };
     if (!isRecord(data))
-      return { data: null, head, body, error: 'The properties at the top of the file are not a list of keys.' };
+      return {
+        data: null,
+        head,
+        body,
+        error: 'The properties at the top of the file are not a list of keys.',
+      };
     return { data, head, body, error: null };
   } catch (error) {
     return {

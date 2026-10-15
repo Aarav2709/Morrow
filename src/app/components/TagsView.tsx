@@ -24,8 +24,8 @@ export function TagsView() {
           <header className="collection-header">
             <h1>Tags</h1>
             <p className="muted">
-              Tags from page properties and every #tag written in your pages. A tag like #project/garden also counts as
-              #project.
+              Tags from page properties and every #tag written in your pages. A tag like #project/garden also
+              counts as #project.
             </p>
           </header>
           {tags.length === 0 ? (
@@ -37,7 +37,11 @@ export function TagsView() {
             <ul className="tag-cloud">
               {tags.map((entry) => (
                 <li key={entry.tag}>
-                  <button type="button" className="tag-chip large" onClick={() => navigate({ name: 'tag', tag: entry.tag })}>
+                  <button
+                    type="button"
+                    className="tag-chip large"
+                    onClick={() => navigate({ name: 'tag', tag: entry.tag })}
+                  >
                     #{entry.tag} <span className="tag-count">{entry.pages.length}</span>
                   </button>
                 </li>
@@ -82,7 +86,11 @@ export function TagView({ tag }: { tag: string }) {
           </header>
           <ul className="link-list">
             {pages.map((page) => (
-              <PageRow key={page.id} page={page} path={ancestorsOf(state.pages, page.id).reverse().map(displayTitle).join(' / ')} />
+              <PageRow
+                key={page.id}
+                page={page}
+                path={ancestorsOf(state.pages, page.id).reverse().map(displayTitle).join(' / ')}
+              />
             ))}
           </ul>
         </div>
@@ -135,7 +143,12 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
             #{tag}
           </button>
           {editable && (
-            <button type="button" className="tag-remove" aria-label={`Remove tag ${tag}`} onClick={() => save(page.tags.filter((item) => item !== tag))}>
+            <button
+              type="button"
+              className="tag-remove"
+              aria-label={`Remove tag ${tag}`}
+              onClick={() => save(page.tags.filter((item) => item !== tag))}
+            >
               <X size={11} />
             </button>
           )}
@@ -162,7 +175,8 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
               } else if (event.key === 'Escape') {
                 setDraft('');
                 setAdding(false);
-              } else if (event.key === 'Backspace' && !draft && page.tags.length) save(page.tags.slice(0, -1));
+              } else if (event.key === 'Backspace' && !draft && page.tags.length)
+                save(page.tags.slice(0, -1));
             }}
           />
         ) : (

@@ -161,7 +161,15 @@ export const KNOWN_NODE_TYPES = new Set([
   'rawBlock',
 ]);
 
-export const KNOWN_MARK_TYPES = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'link', 'highlight']);
+export const KNOWN_MARK_TYPES = new Set([
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'code',
+  'link',
+  'highlight',
+]);
 
 export type FileId = string;
 

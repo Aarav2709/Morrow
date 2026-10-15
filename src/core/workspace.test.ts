@@ -303,8 +303,9 @@ describe('sample workspace', () => {
     const { findUnknownTypes } = await import('./doc');
     let n = 0;
     const state = run(emptyWorkspace(), ...sampleCommands(() => `s${n++}`, 1000));
-    expect(Object.keys(state.pages)).toHaveLength(9);
-    for (const page of Object.values(state.pages)) {
+    expect(Object.keys(state.pages)).toHaveLength(6);
+    // the canvas is a json canvas file rather than markdown
+    for (const page of Object.values(state.pages).filter((candidate) => candidate.kind !== 'canvas')) {
       const doc = state.docs[page.id]!;
       expect(findUnknownTypes(doc)).toEqual([]);
       const parsed = markdownToPage(pageMarkdown(state, page.id), 'x', {

@@ -1,4 +1,12 @@
-import { forceCenter, forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY } from 'd3-force';
+import {
+  forceCenter,
+  forceCollide,
+  forceLink,
+  forceManyBody,
+  forceSimulation,
+  forceX,
+  forceY,
+} from 'd3-force';
 import type { Simulation, SimulationLinkDatum, SimulationNodeDatum } from 'd3-force';
 import { Network } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -71,7 +79,11 @@ export function GraphView({ focus }: { focus: PageId | null }) {
     if (!context) return;
     const colors = themeColors(wrap);
     const nodes: SimNode[] = graph.nodes.map((node) => ({ ...node }));
-    const links: SimLink[] = graph.links.map((link) => ({ source: link.source, target: link.target, kind: link.kind }));
+    const links: SimLink[] = graph.links.map((link) => ({
+      source: link.source,
+      target: link.target,
+      kind: link.kind,
+    }));
     const neighbours = new Map<string, Set<string>>();
     for (const link of graph.links) {
       neighbours.set(link.source, (neighbours.get(link.source) ?? new Set()).add(link.target));
@@ -88,7 +100,8 @@ export function GraphView({ focus }: { focus: PageId | null }) {
     let panning: { x: number; y: number; vx: number; vy: number } | null = null;
     let moved = false;
     let frame = 0;
-    const radius = (node: SimNode) => (node.kind === 'tag' ? 3 : 3 + Math.sqrt(node.degree) * 1.6) + (node.id === focus ? 2 : 0);
+    const radius = (node: SimNode) =>
+      (node.kind === 'tag' ? 3 : 3 + Math.sqrt(node.degree) * 1.6) + (node.id === focus ? 2 : 0);
 
     const draw = () => {
       frame = 0;
@@ -116,7 +129,12 @@ export function GraphView({ focus }: { focus: PageId | null }) {
         const on = !lit || lit.has(node.id);
         const found = folded ? matches(node) : true;
         context.globalAlpha = on && found ? 1 : 0.18;
-        context.fillStyle = node.id === focus || node === hover || (folded && found) ? colors.accent : node.kind === 'tag' ? colors.tag : colors.node;
+        context.fillStyle =
+          node.id === focus || node === hover || (folded && found)
+            ? colors.accent
+            : node.kind === 'tag'
+              ? colors.tag
+              : colors.node;
         context.beginPath();
         context.arc(node.x ?? 0, node.y ?? 0, radius(node), 0, Math.PI * 2);
         context.fill();
@@ -126,7 +144,8 @@ export function GraphView({ focus }: { focus: PageId | null }) {
       context.textBaseline = 'top';
       context.font = `${12 / Math.max(view.k, 0.6)}px ${getComputedStyle(wrap).fontFamily}`;
       for (const node of nodes) {
-        const show = view.k > 1.1 || (lit && lit.has(node.id)) || node.id === focus || (folded && matches(node));
+        const show =
+          view.k > 1.1 || (lit && lit.has(node.id)) || node.id === focus || (folded && matches(node));
         if (!show) continue;
         context.globalAlpha = lit && !lit.has(node.id) ? 0.2 : 1;
         context.fillStyle = node === hover ? colors.strong : colors.text;
@@ -155,17 +174,29 @@ export function GraphView({ focus }: { focus: PageId | null }) {
     observer.observe(wrap);
 
     const simulation: Simulation<SimNode, SimLink> = forceSimulation(nodes)
-      .force('link', forceLink<SimNode, SimLink>(links).id((node) => node.id).distance(50).strength(0.6))
+      .force(
+        'link',
+        forceLink<SimNode, SimLink>(links)
+          .id((node) => node.id)
+          .distance(50)
+          .strength(0.6),
+      )
       .force('charge', forceManyBody().strength(-90).distanceMax(400))
       .force('center', forceCenter(0, 0))
       .force('x', forceX(0).strength(0.04))
       .force('y', forceY(0).strength(0.04))
-      .force('collide', forceCollide<SimNode>((node) => radius(node) + 4))
+      .force(
+        'collide',
+        forceCollide<SimNode>((node) => radius(node) + 4),
+      )
       .on('tick', schedule);
 
     const toWorld = (event: PointerEvent | MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      return { x: (event.clientX - rect.left - width / 2 - view.x) / view.k, y: (event.clientY - rect.top - height / 2 - view.y) / view.k };
+      return {
+        x: (event.clientX - rect.left - width / 2 - view.x) / view.k,
+        y: (event.clientY - rect.top - height / 2 - view.y) / view.k,
+      };
     };
     const nodeAt = (event: PointerEvent | MouseEvent) => {
       const point = toWorld(event);
@@ -197,7 +228,11 @@ export function GraphView({ focus }: { focus: PageId | null }) {
         dragging.fy = point.y;
         moved = true;
       } else if (panning) {
-        view = { ...view, x: panning.vx + event.clientX - panning.x, y: panning.vy + event.clientY - panning.y };
+        view = {
+          ...view,
+          x: panning.vx + event.clientX - panning.x,
+          y: panning.vy + event.clientY - panning.y,
+        };
         moved = moved || Math.abs(event.clientX - panning.x) + Math.abs(event.clientY - panning.y) > 3;
         schedule();
       } else {
@@ -269,19 +304,44 @@ export function GraphView({ focus }: { focus: PageId | null }) {
         <span className="topbar-title">{focused ? `Graph around ${displayTitle(focused)}` : 'Graph'}</span>
       </TopBar>
       <div className="graph-wrap" ref={wrapRef}>
-        <canvas ref={canvasRef} className="graph-canvas" role="img" aria-label={`Graph of ${graph.nodes.length} pages and ${graph.links.length} links. Click a dot to open its page.`} />
+        <canvas
+          ref={canvasRef}
+          className="graph-canvas"
+          role="img"
+          aria-label={`Graph of ${graph.nodes.length} pages and ${graph.links.length} links. Click a dot to open its page.`}
+        />
         <div className="graph-controls popover">
-          <input className="text-input small" placeholder="Find in graph" aria-label="Find in graph" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input
+            className="text-input small"
+            placeholder="Find in graph"
+            aria-label="Find in graph"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
           <label className="checkbox-row">
-            <input type="checkbox" checked={options.tags} onChange={(event) => change({ tags: event.target.checked })} /> Tags
+            <input
+              type="checkbox"
+              checked={options.tags}
+              onChange={(event) => change({ tags: event.target.checked })}
+            />{' '}
+            Tags
           </label>
           <label className="checkbox-row">
-            <input type="checkbox" checked={options.hierarchy} onChange={(event) => change({ hierarchy: event.target.checked })} /> Subpages
+            <input
+              type="checkbox"
+              checked={options.hierarchy}
+              onChange={(event) => change({ hierarchy: event.target.checked })}
+            />{' '}
+            Subpages
           </label>
           {focus ? (
             <label className="checkbox-row">
               Depth
-              <select className="text-input small" value={options.depth} onChange={(event) => change({ depth: Number(event.target.value) })}>
+              <select
+                className="text-input small"
+                value={options.depth}
+                onChange={(event) => change({ depth: Number(event.target.value) })}
+              >
                 <option value={1}>1</option>
                 <option value={2}>2</option>
                 <option value={3}>3</option>
@@ -289,11 +349,20 @@ export function GraphView({ focus }: { focus: PageId | null }) {
             </label>
           ) : (
             <label className="checkbox-row">
-              <input type="checkbox" checked={options.orphans} onChange={(event) => change({ orphans: event.target.checked })} /> Unlinked pages
+              <input
+                type="checkbox"
+                checked={options.orphans}
+                onChange={(event) => change({ orphans: event.target.checked })}
+              />{' '}
+              Unlinked pages
             </label>
           )}
           {focus && (
-            <button type="button" className="link-button" onClick={() => navigate({ name: 'graph', focus: null })}>
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => navigate({ name: 'graph', focus: null })}
+            >
               <Network size={13} /> Whole graph
             </button>
           )}

@@ -50,7 +50,9 @@ export function placePages(
       if (list) list.push(page);
       else groups.set(dir, [page]);
     }
-    const dirs = new Set((byParent.get(parentId) ?? []).map((page) => (page.trashedAt !== null ? TRASH_DIR : folder)));
+    const dirs = new Set(
+      (byParent.get(parentId) ?? []).map((page) => (page.trashedAt !== null ? TRASH_DIR : folder)),
+    );
     for (const dir of dirs) assign(dir);
     for (const page of byParent.get(parentId) ?? []) {
       const placed = result.get(page.id);
@@ -66,11 +68,15 @@ export function placePages(
       taken = new Set();
       used.set(dir, taken);
     }
-    const isFree = (name: string) => !taken.has(name.toLowerCase()) && !reserved.has(joinPath(dir, name).toLowerCase());
+    const isFree = (name: string) =>
+      !taken.has(name.toLowerCase()) && !reserved.has(joinPath(dir, name).toLowerCase());
     const place = (page: PageMeta, name: string) => {
       taken.add(name.toLowerCase());
       const folder = joinPath(dir, name);
-      result.set(page.id, { file: folderOnly.has(page.id) ? null : `${folder}${pageExtension(page)}`, folder });
+      result.set(page.id, {
+        file: folderOnly.has(page.id) ? null : `${folder}${pageExtension(page)}`,
+        folder,
+      });
     };
     const later: PageMeta[] = [];
     for (const page of pages) {
@@ -81,7 +87,8 @@ export function placePages(
         name !== null &&
         before !== undefined &&
         joinPath(dir, name) === before.folder &&
-        (name.toLowerCase() === wanted.toLowerCase() || new RegExp(`^${escapeRegExp(wanted)} \\d+$`, 'i').test(name));
+        (name.toLowerCase() === wanted.toLowerCase() ||
+          new RegExp(`^${escapeRegExp(wanted)} \\d+$`, 'i').test(name));
       if (fits && isFree(name)) place(page, name);
       else later.push(page);
     }

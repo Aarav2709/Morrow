@@ -23,7 +23,13 @@ interface Viewport {
 
 type Interaction =
   | { kind: 'pan'; startX: number; startY: number; origin: Viewport }
-  | { kind: 'move'; startX: number; startY: number; origins: Map<string, { x: number; y: number }>; moved: boolean }
+  | {
+      kind: 'move';
+      startX: number;
+      startY: number;
+      origins: Map<string, { x: number; y: number }>;
+      moved: boolean;
+    }
   | { kind: 'resize'; id: string; startX: number; startY: number; width: number; height: number }
   | { kind: 'connect'; from: string; side: CanvasSide; x: number; y: number };
 
@@ -60,7 +66,12 @@ const NORMAL: Record<CanvasSide, { x: number; y: number }> = {
   right: { x: 1, y: 0 },
 };
 
-function edgePath(from: { x: number; y: number }, fromSide: CanvasSide, to: { x: number; y: number }, toSide: CanvasSide | null): string {
+function edgePath(
+  from: { x: number; y: number },
+  fromSide: CanvasSide,
+  to: { x: number; y: number },
+  toSide: CanvasSide | null,
+): string {
   const distance = Math.hypot(to.x - from.x, to.y - from.y);
   const bend = Math.min(150, Math.max(30, distance / 2));
   const a = NORMAL[fromSide];
@@ -72,7 +83,15 @@ function colorStyle(color: string | undefined): React.CSSProperties | undefined 
   return color?.startsWith('#') ? ({ '--card-color': color } as React.CSSProperties) : undefined;
 }
 
-export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: DocNode | undefined; editable: boolean }) {
+export function CanvasView({
+  pageId,
+  doc,
+  editable,
+}: {
+  pageId: PageId;
+  doc: DocNode | undefined;
+  editable: boolean;
+}) {
   const [data, setData] = useState<CanvasData>(() => canvasFromDoc(doc));
   const [view, setView] = useState<Viewport>({ x: 80, y: 80, zoom: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -159,7 +178,15 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
   };
 
   const updateNode = (id: string, patch: Partial<CanvasNode>, record = true) =>
-    commit({ ...dataRef.current, nodes: dataRef.current.nodes.map((node) => (node.id === id ? ({ ...node, ...patch } as CanvasNode) : node)) }, record);
+    commit(
+      {
+        ...dataRef.current,
+        nodes: dataRef.current.nodes.map((node) =>
+          node.id === id ? ({ ...node, ...patch } as CanvasNode) : node,
+        ),
+      },
+      record,
+    );
 
   const removeSelection = () => {
     if (selectedEdge) {
@@ -185,8 +212,18 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
     const minY = Math.min(...data.nodes.map((node) => node.y));
     const maxX = Math.max(...data.nodes.map((node) => node.x + node.width));
     const maxY = Math.max(...data.nodes.map((node) => node.y + node.height));
-    const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min((rect.width - 120) / (maxX - minX || 1), (rect.height - 120) / (maxY - minY || 1), 1.2)));
-    setView({ zoom, x: rect.width / 2 - ((minX + maxX) / 2) * zoom, y: rect.height / 2 - ((minY + maxY) / 2) * zoom });
+    const zoom = Math.min(
+      MAX_ZOOM,
+      Math.max(
+        MIN_ZOOM,
+        Math.min((rect.width - 120) / (maxX - minX || 1), (rect.height - 120) / (maxY - minY || 1), 1.2),
+      ),
+    );
+    setView({
+      zoom,
+      x: rect.width / 2 - ((minX + maxX) / 2) * zoom,
+      y: rect.height / 2 - ((minY + maxY) / 2) * zoom,
+    });
   };
 
   // start fitted to what is on the canvas
@@ -202,7 +239,11 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
     const py = (clientY ?? rect.top + rect.height / 2) - rect.top;
     setView((current) => {
       const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, current.zoom * factor));
-      return { zoom, x: px - ((px - current.x) / current.zoom) * zoom, y: py - ((py - current.y) / current.zoom) * zoom };
+      return {
+        zoom,
+        x: px - ((px - current.x) / current.zoom) * zoom,
+        y: py - ((py - current.y) / current.zoom) * zoom,
+      };
     });
   };
 
@@ -230,7 +271,14 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
       const id = handle.dataset.node!;
       if (handle.dataset.handle === 'resize') {
         const node = data.nodes.find((item) => item.id === id)!;
-        interaction.current = { kind: 'resize', id, startX: event.clientX, startY: event.clientY, width: node.width, height: node.height };
+        interaction.current = {
+          kind: 'resize',
+          id,
+          startX: event.clientX,
+          startY: event.clientY,
+          width: node.width,
+          height: node.height,
+        };
       } else {
         const point = toWorld(event.clientX, event.clientY);
         const side = handle.dataset.handle as CanvasSide;
@@ -251,7 +299,12 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
         for (const node of data.nodes) {
           if (node.type !== 'group' || !next.has(node.id)) continue;
           for (const inner of data.nodes) {
-            if (inner.x >= node.x && inner.y >= node.y && inner.x + inner.width <= node.x + node.width && inner.y + inner.height <= node.y + node.height)
+            if (
+              inner.x >= node.x &&
+              inner.y >= node.y &&
+              inner.x + inner.width <= node.x + node.width &&
+              inner.y + inner.height <= node.y + node.height
+            )
               moving.add(inner.id);
           }
         }
@@ -259,7 +312,11 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
           kind: 'move',
           startX: event.clientX,
           startY: event.clientY,
-          origins: new Map(data.nodes.filter((node) => moving.has(node.id)).map((node) => [node.id, { x: node.x, y: node.y }])),
+          origins: new Map(
+            data.nodes
+              .filter((node) => moving.has(node.id))
+              .map((node) => [node.id, { x: node.x, y: node.y }]),
+          ),
           moved: false,
         };
       }
@@ -276,7 +333,11 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
     const current = interaction.current;
     if (!current) return;
     if (current.kind === 'pan') {
-      setView({ ...current.origin, x: current.origin.x + event.clientX - current.startX, y: current.origin.y + event.clientY - current.startY });
+      setView({
+        ...current.origin,
+        x: current.origin.x + event.clientX - current.startX,
+        y: current.origin.y + event.clientY - current.startY,
+      });
     } else if (current.kind === 'move') {
       const dx = (event.clientX - current.startX) / view.zoom;
       const dy = (event.clientY - current.startY) / view.zoom;
@@ -291,7 +352,12 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
     } else if (current.kind === 'resize') {
       const width = Math.max(60, Math.round(current.width + (event.clientX - current.startX) / view.zoom));
       const height = Math.max(40, Math.round(current.height + (event.clientY - current.startY) / view.zoom));
-      setData({ ...dataRef.current, nodes: dataRef.current.nodes.map((node) => (node.id === current.id ? { ...node, width, height } : node)) });
+      setData({
+        ...dataRef.current,
+        nodes: dataRef.current.nodes.map((node) =>
+          node.id === current.id ? { ...node, width, height } : node,
+        ),
+      });
     } else if (current.kind === 'connect') {
       setLink({ from: current.from, side: current.side, ...toWorld(event.clientX, event.clientY) });
     }
@@ -303,14 +369,27 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
     if (!current) return;
     if (current.kind === 'move' && current.moved) commit(dataRef.current, false);
     else if (current.kind === 'resize') {
-      history.current.past.push({ ...dataRef.current, nodes: dataRef.current.nodes.map((node) => (node.id === current.id ? { ...node, width: current.width, height: current.height } : node)) });
+      history.current.past.push({
+        ...dataRef.current,
+        nodes: dataRef.current.nodes.map((node) =>
+          node.id === current.id ? { ...node, width: current.width, height: current.height } : node,
+        ),
+      });
       commit(dataRef.current, false);
     } else if (current.kind === 'connect') {
       setLink(null);
       const point = toWorld(event.clientX, event.clientY);
-      const target = [...data.nodes].reverse().find(
-        (node) => node.id !== current.from && node.type !== 'group' && point.x >= node.x && point.x <= node.x + node.width && point.y >= node.y && point.y <= node.y + node.height,
-      );
+      const target = [...data.nodes]
+        .reverse()
+        .find(
+          (node) =>
+            node.id !== current.from &&
+            node.type !== 'group' &&
+            point.x >= node.x &&
+            point.x <= node.x + node.width &&
+            point.y >= node.y &&
+            point.y <= node.y + node.height,
+        );
       if (target) {
         const from = data.nodes.find((node) => node.id === current.from)!;
         const edge: CanvasEdge = {
@@ -323,12 +402,38 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
         commit({ ...data, edges: [...data.edges, edge] });
       } else {
         // dropping in empty space makes a new card joined to this one
-        const card = { type: 'text' as const, text: '', x: Math.round(point.x - 125), y: Math.round(point.y - 30), width: 250, height: 60 };
+        const card = {
+          type: 'text' as const,
+          text: '',
+          x: Math.round(point.x - 125),
+          y: Math.round(point.y - 30),
+          width: 250,
+          height: 60,
+        };
         const id = newId().replace(/-/g, '').slice(0, 16);
         const node = { ...card, id } as CanvasNode;
         commit({
           nodes: [...data.nodes, node],
-          edges: [...data.edges, { id: `${id}e`, fromNode: current.from, toNode: id, fromSide: current.side, toSide: facing(node, anchor(data.nodes.find((n) => n.id === current.from)!, current.side).x, anchor(data.nodes.find((n) => n.id === current.from)!, current.side).y) }],
+          edges: [
+            ...data.edges,
+            {
+              id: `${id}e`,
+              fromNode: current.from,
+              toNode: id,
+              fromSide: current.side,
+              toSide: facing(
+                node,
+                anchor(
+                  data.nodes.find((n) => n.id === current.from)!,
+                  current.side,
+                ).x,
+                anchor(
+                  data.nodes.find((n) => n.id === current.from)!,
+                  current.side,
+                ).y,
+              ),
+            },
+          ],
         });
         setSelected(new Set([id]));
         setEditing(id);
@@ -346,12 +451,28 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
       else if (node?.type === 'page') openPage(node.pageId);
       else if (node?.type === 'link') openExternal(node.url);
       else if (node?.type === 'group')
-        openDialog({ kind: 'source', title: 'Group name', value: node.label ?? '', language: 'markdown', onSave: (label) => updateNode(node.id, { label: label.trim() || undefined } as Partial<CanvasNode>) });
+        openDialog({
+          kind: 'source',
+          title: 'Group name',
+          value: node.label ?? '',
+          language: 'markdown',
+          onSave: (label) => updateNode(node.id, { label: label.trim() || undefined } as Partial<CanvasNode>),
+        });
       return;
     }
     if (target.closest('.canvas-toolbar')) return;
     const point = toWorld(event.clientX, event.clientY);
-    addNode({ type: 'text', text: '', x: Math.round(point.x - 125), y: Math.round(point.y - 30), width: 250, height: 60 } as Omit<CanvasNode, 'id'>, true);
+    addNode(
+      {
+        type: 'text',
+        text: '',
+        x: Math.round(point.x - 125),
+        y: Math.round(point.y - 30),
+        width: 250,
+        height: 60,
+      } as Omit<CanvasNode, 'id'>,
+      true,
+    );
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -384,12 +505,23 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
       const step = event.shiftKey ? 50 : 10;
       const dx = event.key === 'ArrowLeft' ? -step : event.key === 'ArrowRight' ? step : 0;
       const dy = event.key === 'ArrowUp' ? -step : event.key === 'ArrowDown' ? step : 0;
-      commit({ ...data, nodes: data.nodes.map((node) => (selected.has(node.id) ? { ...node, x: node.x + dx, y: node.y + dy } : node)) });
+      commit({
+        ...data,
+        nodes: data.nodes.map((node) =>
+          selected.has(node.id) ? { ...node, x: node.x + dx, y: node.y + dy } : node,
+        ),
+      });
     }
   };
 
   const byId = useMemo(() => new Map(data.nodes.map((node) => [node.id, node])), [data.nodes]);
-  const ordered = useMemo(() => [...data.nodes.filter((node) => node.type === 'group'), ...data.nodes.filter((node) => node.type !== 'group')], [data.nodes]);
+  const ordered = useMemo(
+    () => [
+      ...data.nodes.filter((node) => node.type === 'group'),
+      ...data.nodes.filter((node) => node.type !== 'group'),
+    ],
+    [data.nodes],
+  );
   const selectedNodes = data.nodes.filter((node) => selected.has(node.id));
 
   return (
@@ -404,12 +536,29 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
-      style={{ '--grid-size': `${24 * view.zoom}px`, '--grid-x': `${view.x}px`, '--grid-y': `${view.y}px` } as React.CSSProperties}
+      style={
+        {
+          '--grid-size': `${24 * view.zoom}px`,
+          '--grid-x': `${view.x}px`,
+          '--grid-y': `${view.y}px`,
+        } as React.CSSProperties
+      }
     >
-      <div className="canvas-world" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}>
+      <div
+        className="canvas-world"
+        style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
+      >
         <svg className="canvas-edges" width="1" height="1" aria-hidden="true">
           <defs>
-            <marker id="canvas-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <marker
+              id="canvas-arrow"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
               <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
             </marker>
           </defs>
@@ -425,7 +574,11 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
             const path = edgePath(start, fromSide, finish, toSide);
             const mid = { x: (start.x + finish.x) / 2, y: (start.y + finish.y) / 2 };
             return (
-              <g key={edge.id} className={`canvas-edge${selectedEdge === edge.id ? ' is-selected' : ''}${edge.color ? ` canvas-color-${edge.color}` : ''}`} style={colorStyle(edge.color)}>
+              <g
+                key={edge.id}
+                className={`canvas-edge${selectedEdge === edge.id ? ' is-selected' : ''}${edge.color ? ` canvas-color-${edge.color}` : ''}`}
+                style={colorStyle(edge.color)}
+              >
                 <path
                   d={path}
                   className="canvas-edge-hit"
@@ -443,7 +596,12 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
                       value: edge.label ?? '',
                       language: 'markdown',
                       onSave: (label) =>
-                        commit({ ...dataRef.current, edges: dataRef.current.edges.map((item) => (item.id === edge.id ? { ...item, label: label.trim() || undefined } : item)) }),
+                        commit({
+                          ...dataRef.current,
+                          edges: dataRef.current.edges.map((item) =>
+                            item.id === edge.id ? { ...item, label: label.trim() || undefined } : item,
+                          ),
+                        }),
                     });
                   }}
                 />
@@ -454,7 +612,13 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
                   markerStart={edge.fromEnd === 'arrow' ? 'url(#canvas-arrow)' : undefined}
                 />
                 {edge.label && (
-                  <text x={mid.x} y={mid.y} className="canvas-edge-label" textAnchor="middle" dominantBaseline="middle">
+                  <text
+                    x={mid.x}
+                    y={mid.y}
+                    className="canvas-edge-label"
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                  >
                     {edge.label}
                   </text>
                 )}
@@ -462,7 +626,10 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
             );
           })}
           {link && byId.get(link.from) && (
-            <path d={edgePath(anchor(byId.get(link.from)!, link.side), link.side, link, null)} className="canvas-edge-line is-drafting" />
+            <path
+              d={edgePath(anchor(byId.get(link.from)!, link.side), link.side, link, null)}
+              className="canvas-edge-line is-drafting"
+            />
           )}
         </svg>
         {ordered.map((node) => (
@@ -483,19 +650,54 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
       <div className="canvas-toolbar" role="toolbar" aria-label="Canvas tools">
         {editable && (
           <>
-            <button type="button" className="icon-button" title="Add a card" aria-label="Add a card" onClick={() => {
-              const point = center();
-              addNode({ type: 'text', text: '', x: Math.round(point.x - 125), y: Math.round(point.y - 30), width: 250, height: 60 } as Omit<CanvasNode, 'id'>, true);
-            }}>
+            <button
+              type="button"
+              className="icon-button"
+              title="Add a card"
+              aria-label="Add a card"
+              onClick={() => {
+                const point = center();
+                addNode(
+                  {
+                    type: 'text',
+                    text: '',
+                    x: Math.round(point.x - 125),
+                    y: Math.round(point.y - 30),
+                    width: 250,
+                    height: 60,
+                  } as Omit<CanvasNode, 'id'>,
+                  true,
+                );
+              }}
+            >
               <StickyNote size={16} />
             </button>
-            <button type="button" className="icon-button" title="Add a page" aria-label="Add a page" onClick={(event) => setPageAnchor(event.currentTarget)}>
+            <button
+              type="button"
+              className="icon-button"
+              title="Add a page"
+              aria-label="Add a page"
+              onClick={(event) => setPageAnchor(event.currentTarget)}
+            >
               <FileText size={16} />
             </button>
-            <button type="button" className="icon-button" title="Add a group" aria-label="Add a group" onClick={() => {
-              const point = center();
-              addNode({ type: 'group', label: 'Group', x: Math.round(point.x - 200), y: Math.round(point.y - 150), width: 400, height: 300 } as Omit<CanvasNode, 'id'>);
-            }}>
+            <button
+              type="button"
+              className="icon-button"
+              title="Add a group"
+              aria-label="Add a group"
+              onClick={() => {
+                const point = center();
+                addNode({
+                  type: 'group',
+                  label: 'Group',
+                  x: Math.round(point.x - 200),
+                  y: Math.round(point.y - 150),
+                  width: 400,
+                  height: 300,
+                } as Omit<CanvasNode, 'id'>);
+              }}
+            >
               <Group size={16} />
             </button>
             <span className="toolbar-divider" />
@@ -508,14 +710,32 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
             <span className="toolbar-divider" />
           </>
         )}
-        <button type="button" className="icon-button" title="Zoom out" aria-label="Zoom out" onClick={() => zoomAt(1 / 1.25)}>
+        <button
+          type="button"
+          className="icon-button"
+          title="Zoom out"
+          aria-label="Zoom out"
+          onClick={() => zoomAt(1 / 1.25)}
+        >
           <Minus size={16} />
         </button>
         <span className="canvas-zoom">{Math.round(view.zoom * 100)}%</span>
-        <button type="button" className="icon-button" title="Zoom in" aria-label="Zoom in" onClick={() => zoomAt(1.25)}>
+        <button
+          type="button"
+          className="icon-button"
+          title="Zoom in"
+          aria-label="Zoom in"
+          onClick={() => zoomAt(1.25)}
+        >
           <Plus size={16} />
         </button>
-        <button type="button" className="icon-button" title="Fit everything in view" aria-label="Fit everything in view" onClick={fit}>
+        <button
+          type="button"
+          className="icon-button"
+          title="Fit everything in view"
+          aria-label="Fit everything in view"
+          onClick={fit}
+        >
           <Maximize size={16} />
         </button>
         {editable && (selectedNodes.length > 0 || selectedEdge) && (
@@ -529,19 +749,34 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
                 aria-label={color ? `Colour ${color}` : 'No colour'}
                 onClick={() => {
                   if (selectedEdge)
-                    commit({ ...data, edges: data.edges.map((edge) => (edge.id === selectedEdge ? { ...edge, color } : edge)) });
-                  else commit({ ...data, nodes: data.nodes.map((node) => (selected.has(node.id) ? { ...node, color } : node)) });
+                    commit({
+                      ...data,
+                      edges: data.edges.map((edge) => (edge.id === selectedEdge ? { ...edge, color } : edge)),
+                    });
+                  else
+                    commit({
+                      ...data,
+                      nodes: data.nodes.map((node) => (selected.has(node.id) ? { ...node, color } : node)),
+                    });
                 }}
               />
             ))}
-            <button type="button" className="icon-button" title="Delete" aria-label="Delete selection" onClick={removeSelection}>
+            <button
+              type="button"
+              className="icon-button"
+              title="Delete"
+              aria-label="Delete selection"
+              onClick={removeSelection}
+            >
               <Trash2 size={16} />
             </button>
           </>
         )}
       </div>
       {data.nodes.length === 0 && (
-        <p className="canvas-empty muted">Double-click anywhere to add a card. Drag from the dot on a card's edge to connect it to another.</p>
+        <p className="canvas-empty muted">
+          Double-click anywhere to add a card. Drag from the dot on a card's edge to connect it to another.
+        </p>
       )}
       {pageAnchor && (
         <PagePicker
@@ -550,7 +785,14 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
           onClose={() => setPageAnchor(null)}
           onPick={(id) => {
             const point = center();
-            addNode({ type: 'page', pageId: id, x: Math.round(point.x - 200), y: Math.round(point.y - 120), width: 400, height: 240 } as Omit<CanvasNode, 'id'>);
+            addNode({
+              type: 'page',
+              pageId: id,
+              x: Math.round(point.x - 200),
+              y: Math.round(point.y - 120),
+              width: 400,
+              height: 240,
+            } as Omit<CanvasNode, 'id'>);
             setPageAnchor(null);
           }}
         />
@@ -559,12 +801,28 @@ export function CanvasView({ pageId, doc, editable }: { pageId: PageId; doc: Doc
   );
 }
 
-function PagePicker({ anchor: element, exclude, onClose, onPick }: { anchor: HTMLElement; exclude: PageId; onClose: () => void; onPick: (id: PageId) => void }) {
+function PagePicker({
+  anchor: element,
+  exclude,
+  onClose,
+  onPick,
+}: {
+  anchor: HTMLElement;
+  exclude: PageId;
+  onClose: () => void;
+  onPick: (id: PageId) => void;
+}) {
   const [query, setQuery] = useState('');
   const pages = findPagesByTitle(getState(), query, 10).filter((page) => page.id !== exclude);
   return (
     <Popover anchor={element} onClose={onClose} label="Add a page" className="option-picker">
-      <input className="text-input small" data-autofocus placeholder="Find a page" aria-label="Find a page" value={query} onChange={(event) => setQuery(event.target.value)}
+      <input
+        className="text-input small"
+        data-autofocus
+        placeholder="Find a page"
+        aria-label="Find a page"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && pages[0]) onPick(pages[0].id);
         }}
@@ -595,7 +853,12 @@ function CanvasCard({
   editable: boolean;
   onText: (text: string) => void;
 }) {
-  const color = node.color && !node.color.startsWith('#') ? ` canvas-color-${node.color}` : node.color ? ' has-color' : '';
+  const color =
+    node.color && !node.color.startsWith('#')
+      ? ` canvas-color-${node.color}`
+      : node.color
+        ? ' has-color'
+        : '';
   return (
     <div
       className={`canvas-node canvas-${node.type}${selected ? ' is-selected' : ''}${color}`}
@@ -603,7 +866,8 @@ function CanvasCard({
       style={{ left: node.x, top: node.y, width: node.width, height: node.height, ...colorStyle(node.color) }}
     >
       {node.type === 'group' && <span className="canvas-group-label">{node.label ?? ''}</span>}
-      {node.type === 'text' && (editing ? <TextEditor text={node.text} onDone={onText} /> : <TextCard text={node.text} />)}
+      {node.type === 'text' &&
+        (editing ? <TextEditor text={node.text} onDone={onText} /> : <TextCard text={node.text} />)}
       {node.type === 'page' && <PageCard pageId={node.pageId} />}
       {node.type === 'file' && <FileCard path={node.file} />}
       {node.type === 'link' && (
@@ -615,7 +879,12 @@ function CanvasCard({
       {editable && selected && node.type !== 'group' && (
         <>
           {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
-            <span key={side} className={`canvas-handle canvas-handle-${side}`} data-handle={side} data-node={node.id} />
+            <span
+              key={side}
+              className={`canvas-handle canvas-handle-${side}`}
+              data-handle={side}
+              data-node={node.id}
+            />
           ))}
         </>
       )}
@@ -661,9 +930,19 @@ function TextCard({ text }: { text: string }) {
     <div className="canvas-text">
       {text.split('\n').map((line, index) => {
         const heading = /^(#{1,3})\s+(.*)$/.exec(line);
-        if (heading) return <p key={index} className={`canvas-h${heading[1]!.length}`}>{heading[2]}</p>;
+        if (heading)
+          return (
+            <p key={index} className={`canvas-h${heading[1]!.length}`}>
+              {heading[2]}
+            </p>
+          );
         const bullet = /^\s*[-*]\s+(.*)$/.exec(line);
-        if (bullet) return <p key={index} className="canvas-bullet">• {bullet[1]}</p>;
+        if (bullet)
+          return (
+            <p key={index} className="canvas-bullet">
+              • {bullet[1]}
+            </p>
+          );
         return <p key={index}>{line || ' '}</p>;
       })}
     </div>
@@ -673,7 +952,10 @@ function TextCard({ text }: { text: string }) {
 function PageCard({ pageId }: { pageId: PageId }) {
   const state = useWorkspace();
   const page = state.pages[pageId];
-  const snippet = useMemo(() => docToPlainText(state.docs[pageId] ?? { type: 'doc' }).slice(0, 400), [state.docs, pageId]);
+  const snippet = useMemo(
+    () => docToPlainText(state.docs[pageId] ?? { type: 'doc' }).slice(0, 400),
+    [state.docs, pageId],
+  );
   if (!page) return <span className="canvas-placeholder">This page no longer exists.</span>;
   return (
     <div className="canvas-page">

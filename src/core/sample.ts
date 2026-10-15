@@ -1,4 +1,5 @@
 import type { Command } from './commands';
+import { canvasDoc } from './canvas';
 import type { DatabaseDef, DocMark, DocNode, PageId } from './model';
 
 type Inline = string | DocNode;
@@ -19,15 +20,6 @@ const h = (level: number, text: string): DocNode => ({
   attrs: { level },
   content: [t(text)],
 });
-const ul = (...items: Inline[][]): DocNode => ({
-  type: 'bulletList',
-  content: items.map((item) => ({ type: 'listItem', content: [p(...item)] })),
-});
-const ol = (...items: Inline[][]): DocNode => ({
-  type: 'orderedList',
-  attrs: { start: 1 },
-  content: items.map((item) => ({ type: 'listItem', content: [p(...item)] })),
-});
 const tasks = (...items: Array<[boolean, ...Inline[]]>): DocNode => ({
   type: 'taskList',
   content: items.map(([checked, ...parts]) => ({
@@ -42,7 +34,6 @@ const code = (language: string, text: string): DocNode => ({
   attrs: { language },
   content: [t(text)],
 });
-const hr: DocNode = { type: 'horizontalRule' };
 const table = (header: string[], ...rows: string[][]): DocNode => ({
   type: 'table',
   content: [
@@ -56,18 +47,35 @@ const table = (header: string[], ...rows: string[][]): DocNode => ({
 const link = (id: PageId, label: string): DocNode => ({ type: 'pageLink', attrs: { id, label } });
 const doc = (...content: DocNode[]): DocNode => ({ type: 'doc', content });
 
-// first run content, built from the same commands as everything else
+const callout = (tone: string, title: string, ...content: DocNode[]): DocNode => ({
+  type: 'callout',
+  attrs: { tone, kind: tone, title },
+  content,
+});
+const toggle = (title: string, ...content: DocNode[]): DocNode => ({
+  type: 'details',
+  attrs: { open: false },
+  content: [
+    { type: 'detailsSummary', content: [t(title)] },
+    { type: 'detailsContent', content },
+  ],
+});
+const math = (latex: string): DocNode => ({ type: 'inlineMath', attrs: { latex } });
+const missing = (target: string): DocNode => ({
+  type: 'pageLink',
+  attrs: { id: null, label: target, target },
+});
+
+// first run content: one guide that shows every feature, with an example database and canvas inside it,
+// so deleting the guide removes everything it brought
 export function sampleCommands(newId: () => PageId, now: number): Command[] {
   const welcome = newId();
-  const writing = newId();
-  const projects = newId();
-  const garden = newId();
-  const shelves = newId();
-  const reading = newId();
+  const books = newId();
+  const board = newId();
   const author = newId();
   const status = newId();
   const [next, current, finished] = [newId(), newId(), newId()];
-  const books: DatabaseDef = {
+  const database: DatabaseDef = {
     properties: [
       { id: author, name: 'Author', type: 'text', options: [] },
       {
@@ -82,14 +90,32 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
       },
     ],
     views: [
-      { id: newId(), name: 'All books', type: 'table', filters: [], sorts: [], groupBy: null, dateProp: null, hidden: [] },
-      { id: newId(), name: 'Board', type: 'board', filters: [], sorts: [], groupBy: status, dateProp: null, hidden: [] },
+      {
+        id: newId(),
+        name: 'All books',
+        type: 'table',
+        filters: [],
+        sorts: [],
+        groupBy: null,
+        dateProp: null,
+        hidden: [],
+      },
+      {
+        id: newId(),
+        name: 'Board',
+        type: 'board',
+        filters: [],
+        sorts: [],
+        groupBy: status,
+        dateProp: null,
+        hidden: [],
+      },
     ],
   };
   const book = (title: string, by: string, state: string, offset: number): Command => ({
     type: 'page.create',
     id: newId(),
-    parentId: reading,
+    parentId: books,
     now: now - offset,
     title,
     properties: { [author]: by, [status]: state },
@@ -102,55 +128,22 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
       parentId: null,
       now,
       title: 'Welcome to Morrow',
+      icon: '👋',
+      tags: ['getting-started'],
       doc: doc(
         p(
-          'Morrow is a quiet place to write, plan and keep what you know. It works without an account, without the internet and without AI. Everything you write stays on this computer.',
+          'Morrow is a quiet place to write, plan and keep what you know. No account, no subscription, no AI and nothing sent anywhere. Every page is a plain Markdown file in the folder you chose.',
         ),
-        h(2, 'Getting around'),
-        ul(
-          [
-            'Press ',
-            t('/', 'code'),
-            ' on an empty line to add headings, lists, checklists, tables and more.',
-          ],
-          ['Type ', t('[[', 'code'), ' to link to another page. Linked pages show a backlink at the bottom.'],
-          ['Search everything with ', t('Ctrl K', 'code'), ', or ', t('⌘ K', 'code'), ' on a Mac.'],
-          ['Drag pages in the sidebar to reorder or nest them.'],
-          ['Tag pages with ', t('#ideas', 'code'), ' and see how everything connects in the ', t('Graph', 'bold'), '.'],
-          ['Make a database or a canvas from the ', t('+', 'code'), ' next to Pages.'],
+        callout(
+          'tip',
+          'This page is a guide',
+          p(
+            'Try everything on it, then delete it from its ',
+            t('•••', 'code'),
+            ' menu. Its examples go with it.',
+          ),
         ),
-        h(2, 'Try it'),
-        tasks(
-          [false, 'Create a page with ', t('Alt N', 'code')],
-          [false, "Open today's note with ", t('Alt D', 'code')],
-          [false, 'Look through ', link(writing, 'Writing in Morrow')],
-          [true, 'Install Morrow'],
-        ),
-        h(2, 'Your data is yours'),
-        p(
-          'Every page is a plain Markdown file in a folder you chose, saved as you type. Open the folder in any other app, sync it with any tool you like, or keep it under version control. Earlier versions of every page are kept in its ',
-          t('Page history', 'bold'),
-          '.',
-        ),
-        quote('Make the fundamental workflows excellent before adding more workflows.'),
-        h(3, 'Useful shortcuts'),
-        table(
-          ['Action', 'Windows and Linux', 'Mac'],
-          ['Search and commands', 'Ctrl K', '⌘ K'],
-          ['New page', 'Alt N', '⌥ N'],
-          ["Today's note", 'Alt D', '⌥ D'],
-          ['Move block up or down', 'Alt Shift ↑ ↓', '⌥ ⇧ ↑ ↓'],
-          ['Toggle sidebar', 'Ctrl \\', '⌘ \\'],
-        ),
-      ),
-    },
-    {
-      type: 'page.create',
-      id: writing,
-      parentId: welcome,
-      now: now - 1,
-      title: 'Writing in Morrow',
-      doc: doc(
+        h(2, 'Write'),
         p(
           'Text can be ',
           t('bold', 'bold'),
@@ -160,100 +153,136 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           t('underlined', 'underline'),
           ', ',
           t('struck through', 'strike'),
+          ', ',
+          t('highlighted', 'highlight'),
           ' or ',
-          t('inline code', 'code'),
-          '. Select some text to see the formatting toolbar, or use the usual shortcuts.',
-        ),
-        p(
-          'Links work too: ',
-          t('CommonMark', { type: 'link', attrs: { href: 'https://commonmark.org' } }),
-          ' is the Markdown flavour Morrow imports and exports.',
-        ),
-        h(2, 'Markdown shortcuts'),
-        p('Start a line with these characters and Morrow turns them into blocks as you type:'),
-        ol(
-          [t('#', 'code'), ' and a space for a heading, ', t('##', 'code'), ' for a smaller one'],
-          [t('-', 'code'), ' for a bulleted list, ', t('1.', 'code'), ' for a numbered list'],
-          [t('[ ]', 'code'), ' for a checklist item'],
-          [t('>', 'code'), ' for a quotation and ', t('```', 'code'), ' for a code block'],
-          [t('---', 'code'), ' for a divider'],
-        ),
-        code(
-          'ts',
-          'function tomorrow(today: Date): Date {\n  return new Date(today.getTime() + 24 * 60 * 60 * 1000);\n}',
-        ),
-        hr,
-        p(
-          'Hold ',
-          t('Alt', 'code'),
+          t('code', 'code'),
+          '. Select text for the toolbar. Press ',
+          t('/', 'code'),
+          ' on an empty line for every kind of block, or type Markdown like ',
+          t('#', 'code'),
+          ', ',
+          t('-', 'code'),
           ' and ',
-          t('Shift', 'code'),
-          ' and press the arrow keys to move the current block up or down, or drag it by the handle that appears on the left.',
+          t('[ ]', 'code'),
+          ' as you go.',
         ),
-      ),
-    },
-    {
-      type: 'page.create',
-      id: projects,
-      parentId: null,
-      now: now - 2,
-      title: 'Projects',
-      doc: doc(
-        p(
-          'Active projects live here as subpages. Open ',
-          link(garden, 'Garden redesign'),
-          ' to see a plan with tasks.',
+        toggle('Toggles fold content away. Click the arrow.', p('Hidden until you need it.')),
+        callout(
+          'warning',
+          'Callouts',
+          p('Click the word Warning above to change the colour, and give any callout a title.'),
         ),
-      ),
-    },
-    {
-      type: 'page.create',
-      id: garden,
-      parentId: projects,
-      now: now - 3,
-      title: 'Garden redesign',
-      doc: doc(
-        p('Goal: a low maintenance garden that looks good from the kitchen window in every season.'),
-        h(2, 'Next steps'),
+        h(2, 'Plan'),
         tasks(
-          [true, 'Measure the beds along the south fence'],
-          [false, 'Order cedar boards for two raised beds'],
-          [false, 'Ask the neighbours about sharing a compost bin'],
-          [false, 'Move the rosemary before the first frost'],
+          [false, 'Tick this. Every checklist item shows up in ', t('Tasks', 'bold'), ' in the sidebar.'],
+          [false, "Open today's note with ", t('Alt D', 'code')],
+          [true, 'Install Morrow'],
         ),
-        h(2, 'Planting plan'),
         table(
           ['Plant', 'Where', 'When'],
-          ['Tomatoes', 'Raised bed one', 'May'],
-          ['Lavender', 'Along the path', 'April'],
-          ['Garlic', 'Raised bed two', 'October'],
+          ['Tomatoes', 'Raised bed', 'May'],
+          ['Garlic', 'Raised bed', 'October'],
         ),
-        quote('The best time to plant a tree was twenty years ago. The second best time is now.'),
+        h(2, 'Connect'),
+        p(
+          'Type ',
+          t('[[', 'code'),
+          ' to link a page, like ',
+          link(books, 'Reading list'),
+          '. A link to a page that does not exist yet, like ',
+          missing('An idea for later'),
+          ', makes the page when you click it. Pages you link show a backlink at the bottom.',
+        ),
+        p(
+          'Tag anything with ',
+          t('#getting-started', 'code'),
+          ' or #ideas, then open ',
+          t('Tags', 'bold'),
+          ' or the ',
+          t('Graph', 'bold'),
+          ' in the sidebar to see how your pages connect.',
+        ),
+        h(2, 'Organise'),
+        p(
+          link(books, 'Reading list'),
+          ' is a database: its rows are pages, shown as a table, a board, a calendar, a list or a gallery. ',
+          link(board, 'Ideas board'),
+          ' is a canvas of cards and arrows. Make your own from the ',
+          t('+', 'code'),
+          ' next to Pages.',
+        ),
+        h(2, 'Think'),
+        p('Formulas are LaTeX: ', math('e^{i\\pi} + 1 = 0'), '. Click one to edit it.'),
+        code('ts', "const greeting: string = 'Code blocks are highlighted';"),
+        h(2, 'Keep'),
+        p(
+          'Pages save as you type, and earlier versions are kept in ',
+          t('Page history', 'bold'),
+          '. Edit the files in any other app and Morrow follows along. Bring in a Notion export or an Obsidian vault from ',
+          t('Import', 'bold'),
+          ', and save a page as a template from its menu.',
+        ),
+        quote('Make the fundamental workflows excellent before adding more workflows.'),
+        h(3, 'Shortcuts'),
+        table(
+          ['Action', 'Windows and Linux', 'Mac'],
+          ['Search and commands', 'Ctrl K', '⌘ K'],
+          ['New page', 'Alt N', '⌥ N'],
+          ["Today's note", 'Alt D', '⌥ D'],
+          ['Graph', 'Alt G', '⌥ G'],
+          ['Every shortcut', 'Ctrl /', '⌘ /'],
+        ),
       ),
     },
     {
       type: 'page.create',
-      id: shelves,
-      parentId: projects,
-      now: now - 4,
-      title: 'Kitchen shelves',
-      doc: doc(
-        p('Two floating oak shelves above the counter, 90 cm wide.'),
-        tasks([false, 'Find the studs and mark them'], [false, 'Buy brackets rated for 25 kg']),
-      ),
-    },
-    {
-      type: 'page.create',
-      id: reading,
-      parentId: null,
-      now: now - 5,
+      id: books,
+      parentId: welcome,
+      now: now - 1,
       title: 'Reading list',
       kind: 'database',
-      database: books,
+      database,
     },
-    book('Middlemarch', 'George Eliot', current, 6),
-    book('The Left Hand of Darkness', 'Ursula K. Le Guin', finished, 7),
-    book('Piranesi', 'Susanna Clarke', next, 8),
+    book('Middlemarch', 'George Eliot', current, 2),
+    book('The Left Hand of Darkness', 'Ursula K. Le Guin', finished, 3),
+    book('Piranesi', 'Susanna Clarke', next, 4),
+    {
+      type: 'page.create',
+      id: board,
+      parentId: welcome,
+      now: now - 5,
+      title: 'Ideas board',
+      kind: 'canvas',
+      doc: canvasDoc({
+        nodes: [
+          {
+            id: 'start',
+            type: 'text',
+            text: '# Canvas\nDouble-click anywhere to add a card.',
+            x: 0,
+            y: 0,
+            width: 280,
+            height: 110,
+          },
+          {
+            id: 'drag',
+            type: 'text',
+            text: 'Drag from the dot on a card to connect it.',
+            x: 380,
+            y: 0,
+            width: 260,
+            height: 80,
+            color: '5',
+          },
+          { id: 'page', type: 'page', pageId: welcome, x: 0, y: 180, width: 320, height: 200 },
+        ],
+        edges: [
+          { id: 'e1', fromNode: 'start', toNode: 'drag', fromSide: 'right', toSide: 'left' },
+          { id: 'e2', fromNode: 'start', toNode: 'page', fromSide: 'bottom', toSide: 'top' },
+        ],
+      }),
+    },
     { type: 'page.setFavorite', id: welcome, favorite: true },
   ];
 }

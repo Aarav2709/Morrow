@@ -44,13 +44,18 @@ export interface ReadPage {
 export function readPageText(text: string): ReadPage {
   const split = splitFrontmatter(text);
   const data = split.data ?? {};
-  const title = typeof data.title === 'string' && data.title.trim() ? data.title.replace(/[\r\n\t]+/g, ' ').slice(0, MAX_TITLE_LENGTH) : null;
+  const title =
+    typeof data.title === 'string' && data.title.trim()
+      ? data.title.replace(/[\r\n\t]+/g, ' ').slice(0, MAX_TITLE_LENGTH)
+      : null;
   const icon =
     typeof data.icon === 'string' && data.icon && [...data.icon].length <= MAX_ICON_LENGTH ? data.icon : null;
   const kind = FILE_KINDS.has(data.kind as PageKind) ? (data.kind as PageKind) : null;
   const extra: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(data)) if (!MANAGED_KEYS.has(key)) extra[key] = value;
-  const aliases = (Array.isArray(data.aliases) ? data.aliases : typeof data.aliases === 'string' ? [data.aliases] : [])
+  const aliases = (
+    Array.isArray(data.aliases) ? data.aliases : typeof data.aliases === 'string' ? [data.aliases] : []
+  )
     .filter((alias): alias is string => typeof alias === 'string' && alias.trim().length > 0)
     .map((alias) => alias.trim());
   return {
@@ -117,7 +122,8 @@ export function renderPageText(
   source: PageSource | null,
   body: string,
 ): string {
-  if (source?.rawData && source.rawHead && sameValue(frontmatter, source.rawData)) return source.rawHead + body;
+  if (source?.rawData && source.rawHead && sameValue(frontmatter, source.rawData))
+    return source.rawHead + body;
   return joinFrontmatter(frontmatter, body);
 }
 
@@ -151,7 +157,9 @@ export function readProperty(
 ): { value: PropValue; added: SelectOption[] } {
   const added: SelectOption[] = [];
   const optionFor = (name: string): string => {
-    const known = [...prop.options, ...added].find((option) => option.name.toLowerCase() === name.toLowerCase());
+    const known = [...prop.options, ...added].find(
+      (option) => option.name.toLowerCase() === name.toLowerCase(),
+    );
     if (known) return known.id;
     const option: SelectOption = {
       id: newOptionId(),
@@ -167,14 +175,20 @@ export function readProperty(
       return { value: Number.isFinite(value) && raw !== '' ? value : null, added };
     }
     case 'checkbox':
-      return { value: raw === true || (typeof raw === 'string' && /^(true|yes|x)$/i.test(raw.trim())), added };
+      return {
+        value: raw === true || (typeof raw === 'string' && /^(true|yes|x)$/i.test(raw.trim())),
+        added,
+      };
     case 'select': {
       const name = scalarText(Array.isArray(raw) ? raw[0] : raw);
       return { value: name ? optionFor(name) : null, added };
     }
     case 'multiSelect': {
       const list = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
-      const ids = list.map(scalarText).filter((name): name is string => !!name).map(optionFor);
+      const ids = list
+        .map(scalarText)
+        .filter((name): name is string => !!name)
+        .map(optionFor);
       return { value: ids.length ? [...new Set(ids)] : null, added };
     }
     case 'date': {
@@ -218,10 +232,14 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
 
 export function sameValue(a: unknown, b: unknown): boolean {
   if (a === b) return true;
-  if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((item, i) => sameValue(item, b[i]));
+  if (Array.isArray(a) && Array.isArray(b))
+    return a.length === b.length && a.every((item, i) => sameValue(item, b[i]));
   if (isRecord(a) && isRecord(b)) {
     const keys = Object.keys(a);
-    return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && sameValue(a[key], b[key]));
+    return (
+      keys.length === Object.keys(b).length &&
+      keys.every((key) => Object.hasOwn(b, key) && sameValue(a[key], b[key]))
+    );
   }
   return false;
 }

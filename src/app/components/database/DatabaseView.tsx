@@ -82,7 +82,10 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
   const [viewId, setViewId] = useState<string | null>(() => readViewChoice(page.id));
   const view = database.views.find((candidate) => candidate.id === viewId) ?? database.views[0] ?? null;
   const allRows = useMemo(() => rowsOf(state, page.id), [state, page.id]);
-  const rows = useMemo(() => (view ? visibleRows(allRows, view, database) : allRows), [allRows, view, database]);
+  const rows = useMemo(
+    () => (view ? visibleRows(allRows, view, database) : allRows),
+    [allRows, view, database],
+  );
   const [tabMenu, setTabMenu] = useState<{ view: ViewDef; anchor: HTMLElement } | null>(null);
   const [addMenu, setAddMenu] = useState<HTMLElement | null>(null);
 
@@ -123,14 +126,21 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
                   event.preventDefault();
                   setTabMenu({ view: candidate, anchor: event.currentTarget });
                 }}
-                onDoubleClick={(event) => editable && setTabMenu({ view: candidate, anchor: event.currentTarget })}
+                onDoubleClick={(event) =>
+                  editable && setTabMenu({ view: candidate, anchor: event.currentTarget })
+                }
               >
                 <Icon size={14} /> {candidate.name || VIEW_LABELS[candidate.type]}
               </button>
             );
           })}
           {editable && (
-            <button type="button" className="icon-button small" aria-label="Add a view" onClick={(event) => setAddMenu(event.currentTarget)}>
+            <button
+              type="button"
+              className="icon-button small"
+              aria-label="Add a view"
+              onClick={(event) => setAddMenu(event.currentTarget)}
+            >
               <Plus size={14} />
             </button>
           )}
@@ -138,9 +148,29 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
         <Toolbar dbId={page.id} database={database} view={view} editable={editable} />
       </div>
 
-      {view.type === 'table' && <TableView dbId={page.id} database={database} view={view} rows={rows} props={visible} editable={editable} />}
-      {view.type === 'board' && <BoardView dbId={page.id} database={database} view={view} rows={rows} props={visible} editable={editable} />}
-      {view.type === 'calendar' && <CalendarView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />}
+      {view.type === 'table' && (
+        <TableView
+          dbId={page.id}
+          database={database}
+          view={view}
+          rows={rows}
+          props={visible}
+          editable={editable}
+        />
+      )}
+      {view.type === 'board' && (
+        <BoardView
+          dbId={page.id}
+          database={database}
+          view={view}
+          rows={rows}
+          props={visible}
+          editable={editable}
+        />
+      )}
+      {view.type === 'calendar' && (
+        <CalendarView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />
+      )}
       {view.type === 'list' && <ListView rows={rows} props={visible} />}
       {view.type === 'gallery' && <GalleryView rows={rows} props={visible} />}
       {view.type !== 'table' && editable && (
@@ -149,7 +179,9 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
         </button>
       )}
       <p className="db-count muted small">
-        {rows.length === allRows.length ? `${rows.length} ${rows.length === 1 ? 'row' : 'rows'}` : `${rows.length} of ${allRows.length} rows`}
+        {rows.length === allRows.length
+          ? `${rows.length} ${rows.length === 1 ? 'row' : 'rows'}`
+          : `${rows.length} of ${allRows.length} rows`}
       </p>
 
       {addMenu && (
@@ -162,13 +194,20 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
             icon: VIEW_ICONS[type],
             onSelect: () => {
               const created = newView(type, database, newId);
-              if (updateDatabase(page.id, (current) => ({ ...current, views: [...current.views, created] }))) choose(created.id);
+              if (updateDatabase(page.id, (current) => ({ ...current, views: [...current.views, created] })))
+                choose(created.id);
             },
           }))}
         />
       )}
       {tabMenu && (
-        <ViewSettings dbId={page.id} database={database} view={tabMenu.view} anchor={tabMenu.anchor} onClose={() => setTabMenu(null)} />
+        <ViewSettings
+          dbId={page.id}
+          database={database}
+          view={tabMenu.view}
+          anchor={tabMenu.anchor}
+          onClose={() => setTabMenu(null)}
+        />
       )}
     </section>
   );
@@ -202,7 +241,12 @@ function ViewSettings({
           className="text-input small"
           value={view.name}
           editable
-          onCommit={(name) => updateView(dbId, view.id, (current) => ({ ...current, name: name.trim() || VIEW_LABELS[current.type] }))}
+          onCommit={(name) =>
+            updateView(dbId, view.id, (current) => ({
+              ...current,
+              name: name.trim() || VIEW_LABELS[current.type],
+            }))
+          }
         />
       </label>
       <label className="field">
@@ -214,7 +258,12 @@ function ViewSettings({
             updateView(dbId, view.id, (current) => {
               const type = event.target.value as ViewType;
               const fresh = newView(type, database, () => current.id);
-              return { ...current, type, groupBy: current.groupBy ?? fresh.groupBy, dateProp: current.dateProp ?? fresh.dateProp };
+              return {
+                ...current,
+                type,
+                groupBy: current.groupBy ?? fresh.groupBy,
+                dateProp: current.dateProp ?? fresh.dateProp,
+              };
             })
           }
         >
@@ -230,7 +279,10 @@ function ViewSettings({
           type="button"
           className="button small"
           onClick={() => {
-            updateDatabase(dbId, (current) => ({ ...current, views: [...current.views, { ...view, id: newId(), name: `${view.name} copy` }] }));
+            updateDatabase(dbId, (current) => ({
+              ...current,
+              views: [...current.views, { ...view, id: newId(), name: `${view.name} copy` }],
+            }));
             onClose();
           }}
         >
@@ -241,7 +293,10 @@ function ViewSettings({
           className="button small danger"
           disabled={database.views.length <= 1}
           onClick={() => {
-            updateDatabase(dbId, (current) => ({ ...current, views: current.views.filter((candidate) => candidate.id !== view.id) }));
+            updateDatabase(dbId, (current) => ({
+              ...current,
+              views: current.views.filter((candidate) => candidate.id !== view.id),
+            }));
             onClose();
           }}
         >
@@ -254,16 +309,37 @@ function ViewSettings({
 
 type ToolPanel = 'filter' | 'sort' | 'properties' | 'layout';
 
-function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: DatabaseDef; view: ViewDef; editable: boolean }) {
+function Toolbar({
+  dbId,
+  database,
+  view,
+  editable,
+}: {
+  dbId: PageId;
+  database: DatabaseDef;
+  view: ViewDef;
+  editable: boolean;
+}) {
   const [panel, setPanel] = useState<{ kind: ToolPanel; anchor: HTMLElement } | null>(null);
-  const open = (kind: ToolPanel) => (event: React.MouseEvent<HTMLElement>) => setPanel({ kind, anchor: event.currentTarget });
+  const open = (kind: ToolPanel) => (event: React.MouseEvent<HTMLElement>) =>
+    setPanel({ kind, anchor: event.currentTarget });
   const names = [{ id: TITLE_PROP, name: 'Name', type: 'text' as const }, ...database.properties];
   return (
     <div className="db-tools">
-      <button type="button" className={`text-tool${view.filters.length ? ' is-active' : ''}`} onClick={open('filter')} disabled={!editable}>
+      <button
+        type="button"
+        className={`text-tool${view.filters.length ? ' is-active' : ''}`}
+        onClick={open('filter')}
+        disabled={!editable}
+      >
         <Filter size={13} /> Filter{view.filters.length ? ` ${view.filters.length}` : ''}
       </button>
-      <button type="button" className={`text-tool${view.sorts.length ? ' is-active' : ''}`} onClick={open('sort')} disabled={!editable}>
+      <button
+        type="button"
+        className={`text-tool${view.sorts.length ? ' is-active' : ''}`}
+        onClick={open('sort')}
+        disabled={!editable}
+      >
         <ArrowDownUp size={13} /> Sort{view.sorts.length ? ` ${view.sorts.length}` : ''}
       </button>
       {(view.type === 'board' || view.type === 'calendar') && (
@@ -276,7 +352,9 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
       </button>
       {panel?.kind === 'filter' && (
         <Popover anchor={panel.anchor} onClose={() => setPanel(null)} label="Filters" className="db-panel">
-          {view.filters.length === 0 && <p className="muted small">No filters. Rows that match every filter are shown.</p>}
+          {view.filters.length === 0 && (
+            <p className="muted small">No filters. Rows that match every filter are shown.</p>
+          )}
           {view.filters.map((rule) => {
             const type = propType(database, rule.prop) ?? 'text';
             const prop = database.properties.find((candidate) => candidate.id === rule.prop);
@@ -289,17 +367,31 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
               }));
             return (
               <div key={rule.id} className="db-rule">
-                <select className="text-input small" aria-label="Property" value={rule.prop} onChange={(event) => {
-                  const nextType = propType(database, event.target.value) ?? 'text';
-                  change({ prop: event.target.value, op: filterOpsFor(nextType === 'title' ? 'text' : nextType)[0]!, value: null });
-                }}>
+                <select
+                  className="text-input small"
+                  aria-label="Property"
+                  value={rule.prop}
+                  onChange={(event) => {
+                    const nextType = propType(database, event.target.value) ?? 'text';
+                    change({
+                      prop: event.target.value,
+                      op: filterOpsFor(nextType === 'title' ? 'text' : nextType)[0]!,
+                      value: null,
+                    });
+                  }}
+                >
                   {names.map((item) => (
                     <option key={item.id} value={item.id}>
                       {item.name}
                     </option>
                   ))}
                 </select>
-                <select className="text-input small" aria-label="Condition" value={rule.op} onChange={(event) => change({ op: event.target.value as FilterOp })}>
+                <select
+                  className="text-input small"
+                  aria-label="Condition"
+                  value={rule.op}
+                  onChange={(event) => change({ op: event.target.value as FilterOp })}
+                >
                   {ops.map((op) => (
                     <option key={op} value={op}>
                       {FILTER_LABELS[op]}
@@ -308,7 +400,12 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
                 </select>
                 {needsValue &&
                   (prop && (prop.type === 'select' || prop.type === 'multiSelect') ? (
-                    <select className="text-input small" aria-label="Value" value={String(rule.value ?? '')} onChange={(event) => change({ value: event.target.value || null })}>
+                    <select
+                      className="text-input small"
+                      aria-label="Value"
+                      value={String(rule.value ?? '')}
+                      onChange={(event) => change({ value: event.target.value || null })}
+                    >
                       <option value="">Choose</option>
                       {prop.options.map((option) => (
                         <option key={option.id} value={option.id}>
@@ -322,14 +419,26 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
                       aria-label="Value"
                       type={prop?.type === 'number' ? 'number' : prop?.type === 'date' ? 'date' : 'text'}
                       value={rule.value === null ? '' : String(rule.value)}
-                      onChange={(event) => change({ value: prop?.type === 'number' && event.target.value ? Number(event.target.value) : event.target.value })}
+                      onChange={(event) =>
+                        change({
+                          value:
+                            prop?.type === 'number' && event.target.value
+                              ? Number(event.target.value)
+                              : event.target.value,
+                        })
+                      }
                     />
                   ))}
                 <button
                   type="button"
                   className="icon-button tiny"
                   aria-label="Remove filter"
-                  onClick={() => updateView(dbId, view.id, (current) => ({ ...current, filters: current.filters.filter((item) => item.id !== rule.id) }))}
+                  onClick={() =>
+                    updateView(dbId, view.id, (current) => ({
+                      ...current,
+                      filters: current.filters.filter((item) => item.id !== rule.id),
+                    }))
+                  }
                 >
                   <X size={13} />
                 </button>
@@ -340,7 +449,10 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
             type="button"
             className="link-button"
             onClick={() =>
-              updateView(dbId, view.id, (current) => ({ ...current, filters: [...current.filters, { id: newId(), prop: TITLE_PROP, op: 'contains', value: '' }] }))
+              updateView(dbId, view.id, (current) => ({
+                ...current,
+                filters: [...current.filters, { id: newId(), prop: TITLE_PROP, op: 'contains', value: '' }],
+              }))
             }
           >
             <Plus size={13} /> Add a filter
@@ -357,14 +469,21 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
                 aria-label="Sort by"
                 value={sort.prop}
                 onChange={(event) =>
-                  updateView(dbId, view.id, (current) => ({ ...current, sorts: current.sorts.map((item, i) => (i === index ? { ...item, prop: event.target.value } : item)) }))
+                  updateView(dbId, view.id, (current) => ({
+                    ...current,
+                    sorts: current.sorts.map((item, i) =>
+                      i === index ? { ...item, prop: event.target.value } : item,
+                    ),
+                  }))
                 }
               >
-                {[...names, { id: 'created', name: 'Created' }, { id: 'updated', name: 'Edited' }].map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
+                {[...names, { id: 'created', name: 'Created' }, { id: 'updated', name: 'Edited' }].map(
+                  (item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ),
+                )}
               </select>
               <select
                 className="text-input small"
@@ -373,7 +492,9 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
                 onChange={(event) =>
                   updateView(dbId, view.id, (current) => ({
                     ...current,
-                    sorts: current.sorts.map((item, i) => (i === index ? { ...item, dir: event.target.value === 'desc' ? 'desc' : 'asc' } : item)),
+                    sorts: current.sorts.map((item, i) =>
+                      i === index ? { ...item, dir: event.target.value === 'desc' ? 'desc' : 'asc' } : item,
+                    ),
                   }))
                 }
               >
@@ -384,7 +505,12 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
                 type="button"
                 className="icon-button tiny"
                 aria-label="Remove sort"
-                onClick={() => updateView(dbId, view.id, (current) => ({ ...current, sorts: current.sorts.filter((_item, i) => i !== index) }))}
+                onClick={() =>
+                  updateView(dbId, view.id, (current) => ({
+                    ...current,
+                    sorts: current.sorts.filter((_item, i) => i !== index),
+                  }))
+                }
               >
                 <X size={13} />
               </button>
@@ -393,7 +519,12 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
           <button
             type="button"
             className="link-button"
-            onClick={() => updateView(dbId, view.id, (current) => ({ ...current, sorts: [...current.sorts, { prop: TITLE_PROP, dir: 'asc' }] }))}
+            onClick={() =>
+              updateView(dbId, view.id, (current) => ({
+                ...current,
+                sorts: [...current.sorts, { prop: TITLE_PROP, dir: 'asc' }],
+              }))
+            }
           >
             <Plus size={13} /> Add a sort
           </button>
@@ -408,13 +539,19 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
               value={(view.type === 'board' ? view.groupBy : view.dateProp) ?? ''}
               onChange={(event) =>
                 updateView(dbId, view.id, (current) =>
-                  current.type === 'board' ? { ...current, groupBy: event.target.value || null } : { ...current, dateProp: event.target.value || null },
+                  current.type === 'board'
+                    ? { ...current, groupBy: event.target.value || null }
+                    : { ...current, dateProp: event.target.value || null },
                 )
               }
             >
               <option value="">None</option>
               {database.properties
-                .filter((prop) => (view.type === 'board' ? ['select', 'multiSelect', 'checkbox'].includes(prop.type) : prop.type === 'date'))
+                .filter((prop) =>
+                  view.type === 'board'
+                    ? ['select', 'multiSelect', 'checkbox'].includes(prop.type)
+                    : prop.type === 'date',
+                )
                 .map((prop) => (
                   <option key={prop.id} value={prop.id}>
                     {prop.name}
@@ -441,7 +578,9 @@ function Toolbar({ dbId, database, view, editable }: { dbId: PageId; database: D
                     onClick={() =>
                       updateView(dbId, view.id, (current) => ({
                         ...current,
-                        hidden: hidden ? current.hidden.filter((id) => id !== prop.id) : [...current.hidden, prop.id],
+                        hidden: hidden
+                          ? current.hidden.filter((id) => id !== prop.id)
+                          : [...current.hidden, prop.id],
                       }))
                     }
                   >
@@ -482,11 +621,23 @@ function PropertySettings({
       type === 'select' || type === 'multiSelect'
         ? prop.type === 'select' || prop.type === 'multiSelect'
           ? prop.options
-          : optionsFromValues(prop, rows.map((row) => row.properties[prop.id] ?? null), newId)
+          : optionsFromValues(
+              prop,
+              rows.map((row) => row.properties[prop.id] ?? null),
+              newId,
+            )
         : [];
     const next: PropDef = { ...prop, type, options };
     const commands: Command[] = [
-      { type: 'database.set', id: dbId, now: Date.now(), database: { ...database, properties: database.properties.map((item) => (item.id === prop.id ? next : item)) } },
+      {
+        type: 'database.set',
+        id: dbId,
+        now: Date.now(),
+        database: {
+          ...database,
+          properties: database.properties.map((item) => (item.id === prop.id ? next : item)),
+        },
+      },
       ...rows.map<Command>((row) => ({
         type: 'page.setProperties',
         id: row.id,
@@ -508,7 +659,13 @@ function PropertySettings({
           editable
           onCommit={(name) => {
             const clean = name.trim();
-            if (!clean || reservedPropertyName(clean) || database.properties.some((item) => item.id !== prop.id && item.name.toLowerCase() === clean.toLowerCase())) {
+            if (
+              !clean ||
+              reservedPropertyName(clean) ||
+              database.properties.some(
+                (item) => item.id !== prop.id && item.name.toLowerCase() === clean.toLowerCase(),
+              )
+            ) {
               toast('That name is empty or already used.', { tone: 'error' });
               return;
             }
@@ -518,7 +675,11 @@ function PropertySettings({
       </label>
       <label className="field">
         <span>Type</span>
-        <select className="text-input small" value={prop.type} onChange={(event) => changeType(event.target.value as PropType)}>
+        <select
+          className="text-input small"
+          value={prop.type}
+          onChange={(event) => changeType(event.target.value as PropType)}
+        >
           {PROP_TYPES.map((item) => (
             <option key={item} value={item}>
               {PROP_LABELS[item]}
@@ -540,7 +701,9 @@ function PropertySettings({
                   name.trim() &&
                   updateProp(dbId, prop.id, (current) => ({
                     ...current,
-                    options: current.options.map((item) => (item.id === option.id ? { ...item, name: name.trim() } : item)),
+                    options: current.options.map((item) =>
+                      item.id === option.id ? { ...item, name: name.trim() } : item,
+                    ),
                   }))
                 }
               />
@@ -551,11 +714,17 @@ function PropertySettings({
                 onChange={(event) =>
                   updateProp(dbId, prop.id, (current) => ({
                     ...current,
-                    options: current.options.map((item) => (item.id === option.id ? { ...item, color: event.target.value as typeof option.color } : item)),
+                    options: current.options.map((item) =>
+                      item.id === option.id
+                        ? { ...item, color: event.target.value as typeof option.color }
+                        : item,
+                    ),
                   }))
                 }
               >
-                {(['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'] as const).map((color) => (
+                {(
+                  ['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'] as const
+                ).map((color) => (
                   <option key={color} value={color}>
                     {color}
                   </option>
@@ -565,7 +734,12 @@ function PropertySettings({
                 type="button"
                 className="icon-button tiny"
                 aria-label={`Delete option ${option.name}`}
-                onClick={() => updateProp(dbId, prop.id, (current) => ({ ...current, options: current.options.filter((item) => item.id !== option.id) }))}
+                onClick={() =>
+                  updateProp(dbId, prop.id, (current) => ({
+                    ...current,
+                    options: current.options.filter((item) => item.id !== option.id),
+                  }))
+                }
               >
                 <X size={13} />
               </button>
@@ -644,7 +818,13 @@ function RowTitle({ row, editable, autoFocus }: { row: PageMeta; editable: boole
         onCommit={(title) => run({ type: 'page.rename', id: row.id, title, now: Date.now() })}
       />
       {autoFocus && <FocusLast />}
-      <button type="button" className="icon-button tiny db-open" aria-label={`Open ${displayTitle(row)}`} title="Open" onClick={() => openPage(row.id)}>
+      <button
+        type="button"
+        className="icon-button tiny db-open"
+        aria-label={`Open ${displayTitle(row)}`}
+        title="Open"
+        onClick={() => openPage(row.id)}
+      >
         <Maximize2 size={13} />
       </button>
     </div>
@@ -674,14 +854,24 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
             </th>
             {props.map((prop) => (
               <th key={prop.id} scope="col">
-                <button type="button" className="db-header" disabled={!editable} onClick={(event) => setHeader({ prop, anchor: event.currentTarget })}>
+                <button
+                  type="button"
+                  className="db-header"
+                  disabled={!editable}
+                  onClick={(event) => setHeader({ prop, anchor: event.currentTarget })}
+                >
                   {prop.name}
                 </button>
               </th>
             ))}
             {editable && (
               <th className="db-col-add">
-                <button type="button" className="icon-button tiny" aria-label="Add a property" onClick={(event) => setAdding(event.currentTarget)}>
+                <button
+                  type="button"
+                  className="icon-button tiny"
+                  aria-label="Add a property"
+                  onClick={(event) => setAdding(event.currentTarget)}
+                >
                   <Plus size={13} />
                 </button>
               </th>
@@ -717,7 +907,14 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         </button>
       )}
       {header && (
-        <PropertySettings dbId={dbId} database={database} prop={header.prop} view={view} anchor={header.anchor} onClose={() => setHeader(null)} />
+        <PropertySettings
+          dbId={dbId}
+          database={database}
+          prop={header.prop}
+          view={view}
+          anchor={header.anchor}
+          onClose={() => setHeader(null)}
+        />
       )}
       {adding && (
         <Popover anchor={adding} onClose={() => setAdding(null)} label="New property" className="db-panel">
@@ -734,7 +931,9 @@ function Card({ row, props, cover }: { row: PageMeta; props: PropDef[]; cover?: 
   const firstImage = useMemo(() => {
     if (!cover) return null;
     const doc = state.docs[row.id];
-    const node = doc?.content?.find((child) => child.type === 'image' && typeof child.attrs?.fileId === 'string');
+    const node = doc?.content?.find(
+      (child) => child.type === 'image' && typeof child.attrs?.fileId === 'string',
+    );
     return node ? String(node.attrs!.fileId) : null;
   }, [cover, state.docs, row.id]);
   useEffect(() => {
@@ -746,7 +945,11 @@ function Card({ row, props, cover }: { row: PageMeta; props: PropDef[]; cover?: 
   }, [firstImage]);
   return (
     <button type="button" className="db-card" onClick={() => openPage(row.id)}>
-      {cover && <span className="db-cover">{image ? <img src={image} alt="" /> : <span className="db-cover-empty" />}</span>}
+      {cover && (
+        <span className="db-cover">
+          {image ? <img src={image} alt="" /> : <span className="db-cover-empty" />}
+        </span>
+      )}
       <span className="db-card-title">
         {row.icon && <span className="db-card-icon">{row.icon}</span>}
         {displayTitle(row)}
@@ -766,7 +969,10 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
   const prop = database.properties.find((candidate) => candidate.id === view.groupBy);
   const groups = groupRows(rows, view.groupBy, database);
   const [over, setOver] = useState<string | null>(null);
-  if (!prop) return <p className="muted db-hint">Choose a select or checkbox property to group cards by, under Group.</p>;
+  if (!prop)
+    return (
+      <p className="muted db-hint">Choose a select or checkbox property to group cards by, under Group.</p>
+    );
   const shown = props.filter((item) => item.id !== prop.id);
   const valueFor = (key: string | null): PropValue => {
     if (prop.type === 'checkbox') return key === 'true';
@@ -811,7 +1017,11 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
               </div>
             ))}
             {editable && (
-              <button type="button" className="db-new-row" onClick={() => newRowAndOpen(dbId, { [prop.id]: valueFor(group.key) })}>
+              <button
+                type="button"
+                className="db-new-row"
+                onClick={() => newRowAndOpen(dbId, { [prop.id]: valueFor(group.key) })}
+              >
                 <Plus size={13} /> New
               </button>
             )}
@@ -833,7 +1043,10 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
   // weeks start on monday
   const start = new Date(month);
   start.setDate(1 - ((month.getDay() + 6) % 7));
-  const days = Array.from({ length: 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
+  const days = Array.from(
+    { length: 42 },
+    (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i),
+  );
   const byDay = new Map<string, PageMeta[]>();
   for (const row of rows) {
     const value = row.properties[prop.id];
@@ -845,10 +1058,19 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
     <div className="db-calendar">
       <header className="db-calendar-head">
         <h3>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h3>
-        <button type="button" className="icon-button small" aria-label="Previous month" onClick={() => shift(-1)}>
+        <button
+          type="button"
+          className="icon-button small"
+          aria-label="Previous month"
+          onClick={() => shift(-1)}
+        >
           <ChevronLeft size={15} />
         </button>
-        <button type="button" className="button small" onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}>
+        <button
+          type="button"
+          className="button small"
+          onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}
+        >
           Today
         </button>
         <button type="button" className="icon-button small" aria-label="Next month" onClick={() => shift(1)}>
@@ -895,7 +1117,12 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
                 </button>
               ))}
               {editable && (
-                <button type="button" className="db-day-add" aria-label={`New row on ${day.toLocaleDateString()}`} onClick={() => newRowAndOpen(dbId, { [prop.id]: key })}>
+                <button
+                  type="button"
+                  className="db-day-add"
+                  aria-label={`New row on ${day.toLocaleDateString()}`}
+                  onClick={() => newRowAndOpen(dbId, { [prop.id]: key })}
+                >
                   <Plus size={12} />
                 </button>
               )}
@@ -938,4 +1165,3 @@ function GalleryView({ rows, props }: { rows: PageMeta[]; props: PropDef[] }) {
     </div>
   );
 }
-

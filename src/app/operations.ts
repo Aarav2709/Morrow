@@ -1,4 +1,5 @@
 import { strToU8, unzipSync, zipSync } from 'fflate';
+import katex from 'katex';
 import {
   dailyInsertIndex,
   dailyTitle,
@@ -14,6 +15,7 @@ import { canvasDoc, emptyCanvas } from '../core/canvas';
 import { defaultDatabase } from '../core/database';
 import { displayTitle } from '../core/model';
 import type { FileId, FileMeta, PageId, PageKind, Snapshot } from '../core/model';
+import { buildSite } from '../core/site';
 import { applyTemplate, dailyTemplate, findTemplatesPage, TEMPLATES_TITLE } from '../core/templates';
 import {
   attachmentNames,
@@ -124,24 +126,6 @@ export function createTemplatesPage(): PageId | null {
   }
   const id = createPage({ title: TEMPLATES_TITLE, kind: 'templates', open: false });
   if (!id) return null;
-  const template = createPage({ parentId: id, title: 'Meeting notes', open: false });
-  if (template) {
-    run({
-      type: 'page.setDoc',
-      id: template,
-      now: Date.now(),
-      doc: {
-        type: 'doc',
-        content: [
-          { type: 'paragraph', content: [{ type: 'text', text: 'Date: {{date:dddd, D MMMM YYYY}}' }] },
-          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Agenda' }] },
-          { type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph' }] }] },
-          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Actions' }] },
-          { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph' }] }] },
-        ],
-      },
-    });
-  }
   expandPage(id);
   openPage(id);
   return id;
@@ -169,7 +153,9 @@ export function createFromTemplate(templateId: PageId, parentId: PageId | null):
     icon: template.icon,
     tags: template.tags,
     doc,
-    ...(template.kind === 'database' && template.database ? { kind: 'database' as const, database: template.database } : {}),
+    ...(template.kind === 'database' && template.database
+      ? { kind: 'database' as const, database: template.database }
+      : {}),
   });
   if (!result.ok) return null;
   expandPage(parentId);
@@ -196,7 +182,10 @@ export function saveAsTemplate(id: PageId): void {
     tags: page.tags,
     doc: state.docs[id] ?? { type: 'doc', content: [{ type: 'paragraph' }] },
   });
-  if (result.ok) toast(`Saved “${displayTitle(page)}” as a template.`, { action: { label: 'Open', run: () => openPage(copy) } });
+  if (result.ok)
+    toast(`Saved “${displayTitle(page)}” as a template.`, {
+      action: { label: 'Open', run: () => openPage(copy) },
+    });
 }
 
 function createTemplatesPageQuietly(): PageId | null {
@@ -370,6 +359,42 @@ export async function exportAllMarkdown(): Promise<void> {
   saveFile(`morrow-markdown-${stamp()}.zip`, zipBytes(entries), 'application/zip');
 }
 
+// a folder of plain html pages to put on any web host, a free alternative to paid publishing services
+export async function publishSite(rootId: PageId | null = null): Promise<void> {
+  commitEditors();
+  const state = getState();
+  const root = rootId ? state.pages[rootId] : undefined;
+  const location = getSession().location;
+  const title = root
+    ? displayTitle(root)
+    : location
+      ? (location.split(/[\\/]/).filter(Boolean).pop() ?? 'Morrow')
+      : 'Morrow';
+  try {
+    const site = buildSite(state, {
+      rootId,
+      title,
+      // mathml shows formulas in every current browser without shipping fonts
+      renderMath: (latex, display) =>
+        katex.renderToString(latex, { output: 'mathml', displayMode: display, throwOnError: false }),
+    });
+    const folder = safeFileName(title);
+    const entries: Record<string, Uint8Array> = {};
+    for (const file of site.files) entries[`${folder}/${file.path}`] = strToU8(file.content);
+    for (const [fileId, path] of site.assets) {
+      const file = await getSession().getFile(fileId);
+      if (file) entries[`${folder}/${path}`] = new Uint8Array(file.data);
+    }
+    saveFile(`${folder}-website-${stamp()}.zip`, zipBytes(entries), 'application/zip');
+    const pages = site.files.filter((file) => file.path.endsWith('.html')).length;
+    toast(`Made a website of ${plural(pages, 'page')}. Unzip it and upload the folder to any web host.`, {
+      durationMs: 10_000,
+    });
+  } catch (error) {
+    toast(`The website could not be made: ${message(error)}`, { tone: 'error' });
+  }
+}
+
 const MAX_IMPORT_BYTES = 500 * 1024 * 1024;
 
 // notion exports sometimes wrap their parts in further zips
@@ -424,7 +449,10 @@ export async function importMarkdown(parentId: PageId | null = null): Promise<vo
     const pages = [...(archive?.pages ?? []), ...(loose?.pages ?? [])];
     if (pages.length === 0) throw new Error('No Markdown files were found.');
     const docs = Object.fromEntries(
-      Object.entries({ ...archive?.docs, ...loose?.docs }).map(([id, doc]) => [id, remapFileIds(doc, fileIds)]),
+      Object.entries({ ...archive?.docs, ...loose?.docs }).map(([id, doc]) => [
+        id,
+        remapFileIds(doc, fileIds),
+      ]),
     );
     const result = run({ type: 'pages.insert', pages, docs });
     if (!result.ok) return;
@@ -468,7 +496,9 @@ export async function restoreBackup(): Promise<void> {
       missing.forEach((backupFile, index) => fileIds.set(backupFile.id, stored.value[index]!.id));
     }
     if (plan.pages.length > 0) {
-      const docs = Object.fromEntries(Object.entries(plan.docs).map(([id, doc]) => [id, remapFileIds(doc, fileIds)]));
+      const docs = Object.fromEntries(
+        Object.entries(plan.docs).map(([id, doc]) => [id, remapFileIds(doc, fileIds)]),
+      );
       const result = run({ type: 'pages.insert', pages: plan.pages, docs });
       if (!result.ok) return;
     }

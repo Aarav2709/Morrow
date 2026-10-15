@@ -1,4 +1,12 @@
-import { Extension, InputRule, Mark, markInputRule, markPasteRule, mergeAttributes, Node } from '@tiptap/core';
+import {
+  Extension,
+  InputRule,
+  Mark,
+  markInputRule,
+  markPasteRule,
+  mergeAttributes,
+  Node,
+} from '@tiptap/core';
 import type { Editor, NodeViewRenderer } from '@tiptap/core';
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { BlockMath, InlineMath } from '@tiptap/extension-mathematics';
@@ -228,7 +236,11 @@ export const CodeBlock = CodeBlockLowlight.extend({
       }
       const sync = () => {
         const language = String(current.attrs.language ?? '');
-        if (language && !CODE_LANGUAGES.includes(language) && ![...select.options].some((o) => o.value === language)) {
+        if (
+          language &&
+          !CODE_LANGUAGES.includes(language) &&
+          ![...select.options].some((o) => o.value === language)
+        ) {
           const option = document.createElement('option');
           option.value = language;
           option.textContent = language;
@@ -238,7 +250,9 @@ export const CodeBlock = CodeBlockLowlight.extend({
         select.disabled = !editor.isEditable;
       };
       sync();
-      select.addEventListener('change', () => setAttrs(editor.view, getPos, { language: select.value || null }));
+      select.addEventListener('change', () =>
+        setAttrs(editor.view, getPos, { language: select.value || null }),
+      );
       const pre = document.createElement('pre');
       const code = document.createElement('code');
       pre.append(code);
@@ -259,7 +273,12 @@ export const CodeBlock = CodeBlockLowlight.extend({
   },
 }).configure({ lowlight, defaultLanguage: null, HTMLAttributes: { spellcheck: 'false' } });
 
-const TONE_LABELS: Record<CalloutTone, string> = { note: 'Note', tip: 'Tip', warning: 'Warning', danger: 'Danger' };
+const TONE_LABELS: Record<CalloutTone, string> = {
+  note: 'Note',
+  tip: 'Tip',
+  warning: 'Warning',
+  danger: 'Danger',
+};
 
 // callouts keep their obsidian type, an optional title and whether they start folded
 export function calloutNodeView(): NodeViewRenderer {
@@ -285,7 +304,9 @@ export function calloutNodeView(): NodeViewRenderer {
     body.className = 'callout-body';
     dom.append(header, body);
     const sync = () => {
-      const value = (CALLOUT_TONES as readonly string[]).includes(String(current.attrs.tone)) ? (current.attrs.tone as CalloutTone) : 'note';
+      const value = (CALLOUT_TONES as readonly string[]).includes(String(current.attrs.tone))
+        ? (current.attrs.tone as CalloutTone)
+        : 'note';
       dom.dataset.tone = value;
       const kind = String(current.attrs.kind ?? value);
       tone.textContent = kind.charAt(0).toUpperCase() + kind.slice(1);
@@ -306,7 +327,9 @@ export function calloutNodeView(): NodeViewRenderer {
       // a custom obsidian type keeps its name while it already looks right
       setAttrs(editor.view, getPos, { tone: next, kind: kind && calloutTone(kind) === next ? kind : next });
     });
-    title.addEventListener('change', () => setAttrs(editor.view, getPos, { title: title.value.trim() || null }));
+    title.addEventListener('change', () =>
+      setAttrs(editor.view, getPos, { title: title.value.trim() || null }),
+    );
     title.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
         event.preventDefault();
@@ -314,7 +337,9 @@ export function calloutNodeView(): NodeViewRenderer {
         editor.commands.focus();
       }
     });
-    fold.addEventListener('click', () => setAttrs(editor.view, getPos, { fold: current.attrs.fold === '-' ? '+' : '-' }));
+    fold.addEventListener('click', () =>
+      setAttrs(editor.view, getPos, { fold: current.attrs.fold === '-' ? '+' : '-' }),
+    );
     return {
       dom,
       contentDOM: body,
@@ -337,7 +362,12 @@ function tagDecorations(doc: PmNode): DecorationSet {
   const decorations: Decoration[] = [];
   doc.descendants((node, pos, parent) => {
     if (parent?.type.name === 'codeBlock') return false;
-    if (!node.isText || !node.text || node.marks.some((mark) => mark.type.name === 'code' || mark.type.name === 'link')) return true;
+    if (
+      !node.isText ||
+      !node.text ||
+      node.marks.some((mark) => mark.type.name === 'code' || mark.type.name === 'link')
+    )
+      return true;
     for (const match of node.text.matchAll(TAG_PATTERN)) {
       const from = pos + match.index + match[1]!.length;
       const to = from + match[2]!.length + 1;

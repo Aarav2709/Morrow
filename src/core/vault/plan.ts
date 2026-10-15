@@ -79,7 +79,11 @@ export function planMoves(previous: Layout, next: Layout): VaultOp[] {
   const moving = [...next]
     .filter(([id, target]) => {
       const before = previous.get(id);
-      return before && (before.folder !== target.folder || (before.file !== null && target.file !== null && before.file !== target.file));
+      return (
+        before &&
+        (before.folder !== target.folder ||
+          (before.file !== null && target.file !== null && before.file !== target.file))
+      );
     })
     .sort(([, a], [, b]) => depth(a.folder) - depth(b.folder));
 
@@ -100,7 +104,8 @@ export function planMoves(previous: Layout, next: Layout): VaultOp[] {
 // what a list of applied operations did to the layout, used to keep track after a partial failure
 export function replayRename(layout: Map<PageId, Placement>, from: string, to: string): void {
   const prefix = `${from}/`;
-  const move = (path: string) => (path === from ? to : path.startsWith(prefix) ? to + path.slice(from.length) : path);
+  const move = (path: string) =>
+    path === from ? to : path.startsWith(prefix) ? to + path.slice(from.length) : path;
   for (const [id, placement] of layout) {
     const folder = move(placement.folder);
     const file = placement.file === null ? null : move(placement.file);

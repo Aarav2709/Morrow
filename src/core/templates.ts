@@ -17,7 +17,11 @@ export function listTemplates(state: WorkspaceState): PageMeta[] {
 }
 
 export function dailyTemplate(state: WorkspaceState): PageMeta | null {
-  return listTemplates(state).find((page) => page.title.trim().toLowerCase() === DAILY_TEMPLATE_TITLE.toLowerCase()) ?? null;
+  return (
+    listTemplates(state).find(
+      (page) => page.title.trim().toLowerCase() === DAILY_TEMPLATE_TITLE.toLowerCase(),
+    ) ?? null
+  );
 }
 
 const pad = (value: number, size = 2) => String(value).padStart(size, '0');
@@ -42,8 +46,9 @@ export function formatDate(date: Date, format: string, locale?: string): string 
     mm: () => pad(date.getMinutes()),
     ss: () => pad(date.getSeconds()),
   };
-  return format.replace(/\[([^\]]*)\]|YYYY|YY|MMMM|MMM|MM|M|DD|D|dddd|ddd|HH|H|mm|ss/g, (match, literal: string | undefined) =>
-    literal !== undefined ? literal : (tokens[match]?.() ?? match),
+  return format.replace(
+    /\[([^\]]*)\]|YYYY|YY|MMMM|MMM|MM|M|DD|D|dddd|ddd|HH|H|mm|ss/g,
+    (match, literal: string | undefined) => (literal !== undefined ? literal : (tokens[match]?.() ?? match)),
   );
 }
 
@@ -54,12 +59,15 @@ export interface TemplateValues {
 
 // fills {{title}}, {{date}}, {{time}} and {{date:FORMAT}} in every piece of text
 export function fillTemplate(text: string, values: TemplateValues): string {
-  return text.replace(/\{\{\s*(title|date|time)(?::([^}]*))?\s*\}\}/gi, (_match, name: string, format?: string) => {
-    const key = name.toLowerCase();
-    if (key === 'title') return values.title;
-    if (key === 'time') return formatDate(values.date, format?.trim() || 'HH:mm');
-    return formatDate(values.date, format?.trim() || 'YYYY-MM-DD');
-  });
+  return text.replace(
+    /\{\{\s*(title|date|time)(?::([^}]*))?\s*\}\}/gi,
+    (_match, name: string, format?: string) => {
+      const key = name.toLowerCase();
+      if (key === 'title') return values.title;
+      if (key === 'time') return formatDate(values.date, format?.trim() || 'HH:mm');
+      return formatDate(values.date, format?.trim() || 'YYYY-MM-DD');
+    },
+  );
 }
 
 export function applyTemplate(doc: DocNode, values: TemplateValues): DocNode {

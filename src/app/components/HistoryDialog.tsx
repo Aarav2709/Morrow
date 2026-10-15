@@ -24,10 +24,10 @@ function extensionsForPreview() {
     createPage: () => null,
     onBlockMenu: () => {},
     resolvePage: () => null,
-  resolveTarget: () => null,
-  createFromTarget: () => null,
-  openTag: () => {},
-  createChild: () => null,
+    resolveTarget: () => null,
+    createFromTarget: () => null,
+    openTag: () => {},
+    createChild: () => null,
   });
   return previewExtensions;
 }

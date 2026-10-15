@@ -93,7 +93,10 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       return target ? `[${name}](${formatHref(target)})` : `*[attachment: ${name}]*`;
     }
     case 'callout': {
-      const kind = typeof node.attrs?.kind === 'string' && node.attrs.kind ? node.attrs.kind : String(node.attrs?.tone ?? 'note');
+      const kind =
+        typeof node.attrs?.kind === 'string' && node.attrs.kind
+          ? node.attrs.kind
+          : String(node.attrs?.tone ?? 'note');
       const fold = node.attrs?.fold === '+' || node.attrs?.fold === '-' ? node.attrs.fold : '';
       const title = typeof node.attrs?.title === 'string' && node.attrs.title ? ` ${node.attrs.title}` : '';
       const body = blocks(node.content ?? [], options);

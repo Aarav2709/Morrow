@@ -1,4 +1,4 @@
-// pages kept by morrow 1.0 inside the app's own storage, copied once into a vault folder
+// pages kept by earlier builds of morrow inside the app's own storage, copied once into a vault folder
 import { fileIdsInDoc, remapFileIds } from '../core/doc';
 import type { FileId, PageMeta } from '../core/model';
 import { fail, ok } from '../core/result';
@@ -7,7 +7,7 @@ import { openRepository } from '../storage/repository';
 import type { WorkspaceSession } from '../storage/session';
 
 const LEGACY_DB = 'morrow';
-// set by the vault chooser when pages from morrow 1.0 should be copied into the folder being opened
+// set by the vault chooser when pages from an earlier build should be copied into the folder being opened
 export const COPY_LEGACY_KEY = 'morrow.copyLegacy';
 const MIGRATED_KEY = 'morrow.legacyMigrated';
 
@@ -33,7 +33,6 @@ export async function legacyPageCount(): Promise<number> {
   }
 }
 
-
 // copies every page, image and earlier version into the open vault, the old copy is left as it was
 export async function copyLegacyInto(session: WorkspaceSession): Promise<Result<number>> {
   const repository = await openRepository(LEGACY_DB);
@@ -57,7 +56,12 @@ export async function copyLegacyInto(session: WorkspaceSession): Promise<Result<
     }
     const taken = new Set(Object.keys(session.getState().pages));
     const incoming: PageMeta[] = pages.filter((page) => !taken.has(page.id));
-    const incomingDocs = Object.fromEntries(incoming.map((page) => [page.id, remapFileIds(docs[page.id] ?? { type: 'doc', content: [{ type: 'paragraph' }] }, ids)]));
+    const incomingDocs = Object.fromEntries(
+      incoming.map((page) => [
+        page.id,
+        remapFileIds(docs[page.id] ?? { type: 'doc', content: [{ type: 'paragraph' }] }, ids),
+      ]),
+    );
     const result = session.execute({ type: 'pages.insert', pages: incoming, docs: incomingDocs });
     if (!result.ok) return fail(result.error);
     if (!(await session.flush())) return fail('The pages could not be written to the folder.');

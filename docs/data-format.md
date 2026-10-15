@@ -3,7 +3,7 @@
 A Morrow vault is an ordinary folder of Markdown files. Every page is a file you
 can open, edit, move, sync or version with any other tool, and Morrow picks up
 those changes while it runs. This document describes exactly what Morrow reads
-and writes, so the folder stays useful with or without Morrow. Every 2.x release
+and writes, so the folder stays useful with or without Morrow. Every 1.x release
 will keep reading this format.
 
 ## Pages and folders

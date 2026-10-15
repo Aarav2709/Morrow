@@ -60,7 +60,9 @@ export function canvasFromDoc(doc: DocNode | undefined): CanvasData {
 }
 
 const num = (value: unknown, fallback: number) =>
-  typeof value === 'number' && Number.isFinite(value) ? Math.max(-MAX_COORD, Math.min(MAX_COORD, value)) : fallback;
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(-MAX_COORD, Math.min(MAX_COORD, value))
+    : fallback;
 const str = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
 const side = (value: unknown): CanvasSide | undefined =>
   CANVAS_SIDES.includes(value as CanvasSide) ? (value as CanvasSide) : undefined;
@@ -95,7 +97,8 @@ export function readCanvas(raw: unknown, pageAt: (path: string) => PageId | null
       node = pageId
         ? { ...base, type: 'page', pageId, ...(subpath ? { subpath } : {}) }
         : { ...base, type: 'file', file: item.file, ...(subpath ? { subpath } : {}) };
-    } else if (item.type === 'link' && typeof item.url === 'string') node = { ...base, type: 'link', url: item.url };
+    } else if (item.type === 'link' && typeof item.url === 'string')
+      node = { ...base, type: 'link', url: item.url };
     else if (item.type === 'group') {
       const label = str(item.label);
       node = { ...base, type: 'group', ...(label ? { label } : {}) };
@@ -144,7 +147,15 @@ export function writeCanvas(data: CanvasData, pathOf: (id: PageId) => string | n
 
 export function canvasText(data: CanvasData): string {
   return data.nodes
-    .map((node) => (node.type === 'text' ? node.text : node.type === 'group' ? (node.label ?? '') : node.type === 'link' ? node.url : ''))
+    .map((node) =>
+      node.type === 'text'
+        ? node.text
+        : node.type === 'group'
+          ? (node.label ?? '')
+          : node.type === 'link'
+            ? node.url
+            : '',
+    )
     .filter(Boolean)
     .join('\n');
 }

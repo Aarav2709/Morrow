@@ -1,13 +1,4 @@
-import {
-  Download,
-  FileUp,
-  FolderArchive,
-  FolderOpen,
-  HardDrive,
-  Paperclip,
-  RefreshCw,
-  Upload,
-} from 'lucide-react';
+import { Download, FileUp, FolderArchive, FolderOpen, HardDrive, Paperclip, Upload } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageId } from '../../core/model';
@@ -22,11 +13,9 @@ import {
   importMarkdown,
   restoreBackup,
   unusedFiles,
-  writeAutoBackup,
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
-import type { UpdateStatus } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, ThemePreference, WritingFont } from '../platform/preferences';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
@@ -142,7 +131,10 @@ function SettingsDialog() {
   const vault = getSession().location;
 
   useEffect(() => {
-    if (vault) void legacyPageCount().then(setLegacy).catch(() => setLegacy(0));
+    if (vault)
+      void legacyPageCount()
+        .then(setLegacy)
+        .catch(() => setLegacy(0));
   }, [vault]);
 
   useEffect(() => {
@@ -222,7 +214,8 @@ function SettingsDialog() {
         )}
         {legacy > 0 && (
           <p className="muted small">
-            {legacy} page{legacy === 1 ? '' : 's'} from Morrow 1.0 are still in the app's own storage.{' '}
+            {legacy} page{legacy === 1 ? '' : 's'} from an earlier version of Morrow are still in the app's
+            own storage.{' '}
             <button
               type="button"
               className="link-button"
@@ -273,17 +266,7 @@ function SettingsDialog() {
             </span>
           </button>
         </div>
-        {desktop ? (
-          <p className="muted small">
-            Morrow also keeps automatic backups of your workspace while it runs.{' '}
-            <button type="button" className="link-button" onClick={() => void desktop?.showBackupsFolder()}>
-              Show automatic backups
-            </button>{' '}
-            <button type="button" className="link-button" onClick={() => void writeAutoBackup(true)}>
-              Back up now
-            </button>
-          </p>
-        ) : (
+        {!desktop && (
           <p className="muted small">
             {persisted === true && 'This browser has agreed to keep your data even when storage runs low. '}
             {persisted === false && (
@@ -305,7 +288,6 @@ function SettingsDialog() {
       </section>
 
       <AttachmentsSection />
-      {desktop && <UpdatesSection />}
 
       <section className="settings-section">
         <h3>About</h3>
@@ -351,69 +333,6 @@ function AttachmentsSection() {
       </div>
       <p className="muted small">
         Files stay while any page, trashed page or page version uses them. Backups include them.
-      </p>
-    </section>
-  );
-}
-
-function updateText(status: UpdateStatus | null): string {
-  switch (status?.state) {
-    case 'checking':
-      return 'Checking for updates…';
-    case 'none':
-      return 'Morrow is up to date.';
-    case 'available':
-    case 'downloading':
-      return `Downloading Morrow ${status.version ?? ''}…`;
-    case 'ready':
-      return `Morrow ${status.version ?? ''} is ready to install.`;
-    case 'error':
-      return `Update check failed: ${status.error ?? 'unknown error'}`;
-    default:
-      return 'Updates are only checked when you ask, or automatically if you turn that on.';
-  }
-}
-
-function UpdatesSection() {
-  const prefs = usePreferences();
-  const [status, setStatus] = useState<UpdateStatus | null>(null);
-  useEffect(() => desktop?.onUpdateStatus(setStatus), []);
-  return (
-    <section className="settings-section">
-      <h3>Updates</h3>
-      <label className="setting-row checkbox-row">
-        <span className="setting-label">Check for updates automatically</span>
-        <input
-          type="checkbox"
-          checked={prefs.autoUpdate}
-          onChange={(event) => setPreferences({ autoUpdate: event.target.checked })}
-        />
-      </label>
-      <div className="setting-row">
-        <span className="muted small" role="status">
-          {updateText(status)}
-        </span>
-        {status?.state === 'ready' ? (
-          <button
-            type="button"
-            className="button small primary"
-            onClick={() => void desktop?.installUpdate()}
-          >
-            Restart and update
-          </button>
-        ) : (
-          <button
-            type="button"
-            className="button small"
-            disabled={status?.state === 'checking' || status?.state === 'downloading'}
-            onClick={() => void desktop?.checkForUpdates()}
-          >
-            <RefreshCw size={14} /> Check now
-          </button>
-        )}
-      </div>
-      <p className="muted small">
-        Checking contacts GitHub to look for a newer release. Nothing about you or your pages is sent.
       </p>
     </section>
   );

@@ -15,7 +15,6 @@ import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { autoUpdater } from 'electron-updater';
 import {
   applyOps,
   chooseFolder,
@@ -65,7 +64,6 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null;
 let readyToClose = false;
-let installingUpdate = false;
 
 const backupsDir = () => path.join(app.getPath('userData'), 'Backups');
 const windowStateFile = () => path.join(app.getPath('userData'), 'window-state.json');
@@ -90,7 +88,6 @@ if (!app.requestSingleInstanceLock()) {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
     });
     registerIpc();
-    registerUpdates();
     // macos needs its system menu for copy, paste and quit, other platforms get no menu bar
     Menu.setApplicationMenu(IS_MAC ? buildMacMenu() : null);
     await createWindow();
@@ -127,7 +124,10 @@ async function serveVaultFile(request: Request): Promise<Response> {
   const response = await net.fetch(pathToFileURL(file).toString());
   // svg images can carry scripts, they are only ever shown as images
   const headers = new Headers(response.headers);
-  headers.set('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
+  headers.set(
+    'Content-Security-Policy',
+    "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+  );
   headers.set('X-Content-Type-Options', 'nosniff');
   return new Response(response.body, { status: response.status, headers });
 }
@@ -259,7 +259,6 @@ async function createWindow(): Promise<void> {
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null;
     closeVault();
-    if (installingUpdate) autoUpdater.quitAndInstall();
   });
 
   await window.loadURL(DEV_URL ?? `${APP_ORIGIN}/index.html`);
@@ -356,37 +355,6 @@ function registerVaultIpc(): void {
   handle('vault:list', (relative) => listDir(relative));
   handle('vault:reveal', (relative) => revealInFolder(relative ?? ''));
   handle('vault:current', () => currentVault());
-}
-
-// updates come from the project's github releases and are only checked when the person asks
-function registerUpdates(): void {
-  const send = (status: { state: string; version?: string; error?: string }) =>
-    mainWindow?.webContents.send('morrow:update-status', status);
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
-  autoUpdater.allowPrerelease = app.getVersion().includes('-');
-  autoUpdater.on('checking-for-update', () => send({ state: 'checking' }));
-  autoUpdater.on('update-not-available', () => send({ state: 'none' }));
-  autoUpdater.on('update-available', (info) => send({ state: 'downloading', version: info.version }));
-  autoUpdater.on('update-downloaded', (info) => send({ state: 'ready', version: info.version }));
-  autoUpdater.on('error', (error) => send({ state: 'error', error: error.message }));
-  ipcMain.handle('morrow:check-updates', async (event) => {
-    if (!fromApp(event)) return;
-    if (!app.isPackaged) {
-      send({ state: 'error', error: 'updates only work in an installed copy of Morrow' });
-      return;
-    }
-    await autoUpdater
-      .checkForUpdates()
-      .catch((error: Error) => send({ state: 'error', error: error.message }));
-  });
-  ipcMain.handle('morrow:install-update', (event) => {
-    if (!fromApp(event)) return;
-    // the window closes through the normal path first, so pending edits are saved before installing
-    installingUpdate = true;
-    if (mainWindow) mainWindow.close();
-    else autoUpdater.quitAndInstall();
-  });
 }
 
 // writes to a temporary file first so a crash never leaves a half written backup

@@ -5,7 +5,16 @@ import { PROP_TYPES } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { newId } from '../../platform/files';
 import { toast } from '../../ui';
-import type { ColorName, DatabaseDef, PageId, PageMeta, PropDef, PropType, PropValue, SelectOption } from '../../../core/model';
+import type {
+  ColorName,
+  DatabaseDef,
+  PageId,
+  PageMeta,
+  PropDef,
+  PropType,
+  PropValue,
+  SelectOption,
+} from '../../../core/model';
 import { openExternal } from '../../platform/desktop';
 import { Popover } from '../Popover';
 import { ensureOption, setValue, updateDatabase } from './data';
@@ -118,7 +127,12 @@ export function PropertyInput({
             onCommit={(text) => setValue(row.id, prop.id, text.trim() || null)}
           />
           {typeof value === 'string' && /^https?:\/\//i.test(value) && (
-            <button type="button" className="icon-button tiny" aria-label="Open link" onClick={() => openExternal(value)}>
+            <button
+              type="button"
+              className="icon-button tiny"
+              aria-label="Open link"
+              onClick={() => openExternal(value)}
+            >
               <ExternalLink size={13} />
             </button>
           )}
@@ -143,7 +157,14 @@ export function PropertyInput({
             })}
           </button>
           {picker && (
-            <OptionPicker dbId={dbId} prop={prop} selected={ids} anchor={picker} onClose={() => setPicker(null)} row={row} />
+            <OptionPicker
+              dbId={dbId}
+              prop={prop}
+              selected={ids}
+              anchor={picker}
+              onClose={() => setPicker(null)}
+              row={row}
+            />
           )}
         </>
       );
@@ -226,7 +247,9 @@ function OptionPicker({
 }) {
   const [query, setQuery] = useState('');
   const multi = prop.type === 'multiSelect';
-  const shown = prop.options.filter((option) => option.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const shown = prop.options.filter((option) =>
+    option.name.toLowerCase().includes(query.trim().toLowerCase()),
+  );
   const exact = prop.options.some((option) => option.name.toLowerCase() === query.trim().toLowerCase());
   const choose = (id: string) => {
     if (multi) {
@@ -304,17 +327,31 @@ function OptionPicker({
   );
 }
 
-export function NewProperty({ dbId, database, onDone }: { dbId: PageId; database: DatabaseDef; onDone?: () => void }) {
+export function NewProperty({
+  dbId,
+  database,
+  onDone,
+}: {
+  dbId: PageId;
+  database: DatabaseDef;
+  onDone?: () => void;
+}) {
   const [name, setName] = useState('');
   const [type, setType] = useState<PropType>('text');
   const add = () => {
     const clean = name.trim();
     if (!clean) return;
-    if (reservedPropertyName(clean) || database.properties.some((prop) => prop.name.toLowerCase() === clean.toLowerCase())) {
+    if (
+      reservedPropertyName(clean) ||
+      database.properties.some((prop) => prop.name.toLowerCase() === clean.toLowerCase())
+    ) {
       toast(`“${clean}” is already used, choose another name.`, { tone: 'error' });
       return;
     }
-    updateDatabase(dbId, (current) => ({ ...current, properties: [...current.properties, { id: newId(), name: clean, type, options: [] }] }));
+    updateDatabase(dbId, (current) => ({
+      ...current,
+      properties: [...current.properties, { id: newId(), name: clean, type, options: [] }],
+    }));
     setName('');
     onDone?.();
   };
@@ -326,8 +363,19 @@ export function NewProperty({ dbId, database, onDone }: { dbId: PageId; database
         add();
       }}
     >
-      <input className="text-input small" placeholder="New property" aria-label="New property name" value={name} onChange={(event) => setName(event.target.value)} />
-      <select className="text-input small" aria-label="Type" value={type} onChange={(event) => setType(event.target.value as PropType)}>
+      <input
+        className="text-input small"
+        placeholder="New property"
+        aria-label="New property name"
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+      />
+      <select
+        className="text-input small"
+        aria-label="Type"
+        value={type}
+        onChange={(event) => setType(event.target.value as PropType)}
+      >
         {PROP_TYPES.map((item) => (
           <option key={item} value={item}>
             {PROP_LABELS[item]}
@@ -340,4 +388,3 @@ export function NewProperty({ dbId, database, onDone }: { dbId: PageId; database
     </form>
   );
 }
-

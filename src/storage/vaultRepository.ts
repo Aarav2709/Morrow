@@ -12,9 +12,23 @@ import type { Result } from '../core/result';
 import { childrenOf } from '../core/tree';
 import { linkTargets, placePages } from '../core/vault/layout';
 import type { Placement } from '../core/vault/layout';
-import { loadVault, makeResolver, MAX_PAGE_BYTES, parseOptions, readRegistry, resolveFile } from '../core/vault/load';
+import {
+  loadVault,
+  makeResolver,
+  MAX_PAGE_BYTES,
+  parseOptions,
+  readRegistry,
+  resolveFile,
+} from '../core/vault/load';
 import type { LoadedVault, RegistryEntry, Resolver } from '../core/vault/load';
-import { composeFrontmatter, impliedTitle, managedFrontmatter, readPageText, readProperty, renderPageText } from '../core/vault/pageFile';
+import {
+  composeFrontmatter,
+  impliedTitle,
+  managedFrontmatter,
+  readPageText,
+  readProperty,
+  renderPageText,
+} from '../core/vault/pageFile';
 import type { PageSource } from '../core/vault/pageFile';
 import {
   ATTACHMENTS_DIR,
@@ -92,9 +106,15 @@ export class VaultRepository implements WorkspaceRepository {
       this.registryText = scan.registry === null ? null : JSON.stringify(scan.registry);
       this.recentText = scan.recent === null ? null : JSON.stringify(scan.recent);
       this.registryDirty = loaded.registryChanged;
-      this.lastState = { pages: Object.fromEntries(loaded.pages.map((page) => [page.id, page])), docs: loaded.docs };
+      this.lastState = {
+        pages: Object.fromEntries(loaded.pages.map((page) => [page.id, page])),
+        docs: loaded.docs,
+      };
       this.stopWatching = this.bridge.onChange((changes) => this.onChanges(changes));
-      const firstRun = scan.files.length === 0 && scan.registry === null && scan.folders.every((folder) => isHiddenPath(folder.path) || folder.path === TRASH_DIR);
+      const firstRun =
+        scan.files.length === 0 &&
+        scan.registry === null &&
+        scan.folders.every((folder) => isHiddenPath(folder.path) || folder.path === TRASH_DIR);
       return ok({
         pages: loaded.pages,
         docs: loaded.docs,
@@ -147,31 +167,52 @@ export class VaultRepository implements WorkspaceRepository {
     const oldTargets = linkTargets(previous);
     const newTargets = linkTargets(next);
     const retargeted = new Set<PageId>();
-    for (const [id, target] of newTargets) if (oldTargets.has(id) && oldTargets.get(id) !== target) retargeted.add(id);
+    for (const [id, target] of newTargets)
+      if (oldTargets.has(id) && oldTargets.get(id) !== target) retargeted.add(id);
     const movedPages = new Set<PageId>();
     for (const [id, placement] of next) {
       const before = previous.get(id);
-      if (before && (before.file !== placement.file || before.folder !== placement.folder)) movedPages.add(id);
+      if (before && (before.file !== placement.file || before.folder !== placement.folder))
+        movedPages.add(id);
     }
 
     const candidates = new Set<PageId>([...docChanged, ...metaChanged]);
-    for (const [id, placement] of next) if (!previous.has(id) || movedPages.has(id) || (placement.file && !this.texts.has(id))) candidates.add(id);
+    for (const [id, placement] of next)
+      if (!previous.has(id) || movedPages.has(id) || (placement.file && !this.texts.has(id)))
+        candidates.add(id);
     if (retargeted.size > 0 || movedPages.size > 0) {
       for (const [id, doc] of Object.entries(state.docs)) {
-        if (linksTo(doc, retargeted) || (state.pages[id]?.kind === 'canvas' && linksTo(doc, movedPages))) candidates.add(id);
+        if (linksTo(doc, retargeted) || (state.pages[id]?.kind === 'canvas' && linksTo(doc, movedPages)))
+          candidates.add(id);
       }
     }
     for (const id of metaChanged) {
-      if (state.pages[id]?.kind === 'database') for (const child of childrenOf(state.pages, id, true)) candidates.add(child.id);
+      if (state.pages[id]?.kind === 'database')
+        for (const child of childrenOf(state.pages, id, true)) candidates.add(child.id);
     }
 
     const resolveOld = retargeted.size > 0 ? makeResolver(state, previous, this.sources) : null;
     for (const id of candidates) {
       const placement = next.get(id);
       if (!state.pages[id] || !placement?.file || this.locked.has(id)) continue;
-      const text = this.render(state, next, newTargets, id, docChanged.has(id), previous.get(id), resolveOld, retargeted);
+      const text = this.render(
+        state,
+        next,
+        newTargets,
+        id,
+        docChanged.has(id),
+        previous.get(id),
+        resolveOld,
+        retargeted,
+      );
       if (text === null || text === this.texts.get(id)) continue;
-      ops.push({ op: 'write', path: placement.file, text, expect: this.texts.has(id) ? this.texts.get(id)! : null, id });
+      ops.push({
+        op: 'write',
+        path: placement.file,
+        text,
+        expect: this.texts.has(id) ? this.texts.get(id)! : null,
+        id,
+      });
     }
 
     // folders emptied by removals and moves are tidied away, folders with other files stay
@@ -189,10 +230,14 @@ export class VaultRepository implements WorkspaceRepository {
     for (const snapshot of batch.snapshots ?? []) ops.push(await this.historyOp(snapshot));
 
     const registry = this.registryFor(state, next);
-    if (registry.workspace !== this.registryText) ops.push({ op: 'write', path: REGISTRY_PATH, text: registry.workspace });
-    if (registry.recent !== this.recentText) ops.push({ op: 'write', path: RECENT_PATH, text: registry.recent });
+    if (registry.workspace !== this.registryText)
+      ops.push({ op: 'write', path: REGISTRY_PATH, text: registry.workspace });
+    if (registry.recent !== this.recentText)
+      ops.push({ op: 'write', path: RECENT_PATH, text: registry.recent });
     // the shell only removes empty folders, a folder page keeps its folder because the folder is the page
-    const folderPages = new Set([...next.values()].filter((p) => p.file === null).map((p) => p.folder.toLowerCase()));
+    const folderPages = new Set(
+      [...next.values()].filter((p) => p.file === null).map((p) => p.folder.toLowerCase()),
+    );
     for (const folder of [...emptied].sort((a, b) => b.length - a.length)) {
       if (!folderPages.has(folder.toLowerCase())) ops.push({ op: 'rmdir', path: folder });
     }
@@ -210,7 +255,11 @@ export class VaultRepository implements WorkspaceRepository {
     if (doc && !isDocEmpty(doc)) return true;
     const parent = page.parentId ? state.pages[page.parentId] : undefined;
     const placement = this.layout.get(id);
-    const managed = managedFrontmatter(page, placement ? basename(placement.folder) : '', parent?.kind === 'database' ? parent.database : null);
+    const managed = managedFrontmatter(
+      page,
+      placement ? basename(placement.folder) : '',
+      parent?.kind === 'database' ? parent.database : null,
+    );
     return managed.size > 0;
   }
 
@@ -227,7 +276,8 @@ export class VaultRepository implements WorkspaceRepository {
     const page = state.pages[id]!;
     const placement = layout.get(id)!;
     const doc = state.docs[id];
-    if (page.kind === 'canvas') return writeCanvas(canvasFromDoc(doc), (pageId) => layout.get(pageId)?.file ?? null);
+    if (page.kind === 'canvas')
+      return writeCanvas(canvasFromDoc(doc), (pageId) => layout.get(pageId)?.file ?? null);
     if (!doc) return null;
     const dir = dirname(placement.file!);
     let source = this.sources.get(id) ?? null;
@@ -238,10 +288,12 @@ export class VaultRepository implements WorkspaceRepository {
     }
     let body: string;
     if (source && source.body !== null) {
-      body = resolveOld ? retargetLinks(source.body, (target) => {
-        const found = resolveOld.resolve(target, before ? dirname(before.folder) : dir);
-        return found && retargeted.has(found) ? (targets.get(found) ?? null) : null;
-      }) : source.body;
+      body = resolveOld
+        ? retargetLinks(source.body, (target) => {
+            const found = resolveOld.resolve(target, before ? dirname(before.folder) : dir);
+            return found && retargeted.has(found) ? (targets.get(found) ?? null) : null;
+          })
+        : source.body;
       if (body !== source.body) {
         source = { ...source, body };
         this.sources.set(id, source);
@@ -250,11 +302,16 @@ export class VaultRepository implements WorkspaceRepository {
       body = docToMarkdown(doc, {
         linkTarget: (pageId) => targets.get(pageId) ?? null,
         titleOf: (pageId) => (state.pages[pageId] ? displayTitle(state.pages[pageId]) : null),
-        filePath: (fileId) => (fileId.includes('/') || fileId.includes('.') ? relativePath(dir, fileId) : null),
+        filePath: (fileId) =>
+          fileId.includes('/') || fileId.includes('.') ? relativePath(dir, fileId) : null,
       });
     }
     const parent = page.parentId ? state.pages[page.parentId] : undefined;
-    const managed = managedFrontmatter(page, basename(placement.folder), parent?.kind === 'database' ? parent.database : null);
+    const managed = managedFrontmatter(
+      page,
+      basename(placement.folder),
+      parent?.kind === 'database' ? parent.database : null,
+    );
     return renderPageText(composeFrontmatter(managed, source), source, body);
   }
 
@@ -323,10 +380,15 @@ export class VaultRepository implements WorkspaceRepository {
     }
   }
 
-  private registryFor(state: WorkspaceState, layout: Map<PageId, Placement>): { workspace: string; recent: string } {
+  private registryFor(
+    state: WorkspaceState,
+    layout: Map<PageId, Placement>,
+  ): { workspace: string; recent: string } {
     const pages: Record<string, RegistryEntry> = {};
     const opened: Array<[PageId, number]> = [];
-    for (const [id, placement] of [...layout].sort(([, a], [, b]) => (a.file ?? a.folder).localeCompare(b.file ?? b.folder))) {
+    for (const [id, placement] of [...layout].sort(([, a], [, b]) =>
+      (a.file ?? a.folder).localeCompare(b.file ?? b.folder),
+    )) {
       const page = state.pages[id];
       if (!page) continue;
       const entry: RegistryEntry = { id, created: page.createdAt, order: page.order };
@@ -359,13 +421,24 @@ export class VaultRepository implements WorkspaceRepository {
     try {
       const text = await this.bridge.readText(this.historyPath(pageId));
       const raw: unknown = text ? JSON.parse(text) : null;
-      const items = raw && typeof raw === 'object' && Array.isArray((raw as { snapshots?: unknown }).snapshots) ? (raw as { snapshots: unknown[] }).snapshots : [];
+      const items =
+        raw && typeof raw === 'object' && Array.isArray((raw as { snapshots?: unknown }).snapshots)
+          ? (raw as { snapshots: unknown[] }).snapshots
+          : [];
       list = items.flatMap((item) => {
         if (!item || typeof item !== 'object') return [];
         const snapshot = item as Partial<Snapshot>;
         const doc = validateDoc(snapshot.doc);
         if (typeof snapshot.id !== 'string' || typeof snapshot.createdAt !== 'number' || !doc.ok) return [];
-        return [{ id: snapshot.id, pageId, title: String(snapshot.title ?? ''), doc: doc.value, createdAt: snapshot.createdAt }];
+        return [
+          {
+            id: snapshot.id,
+            pageId,
+            title: String(snapshot.title ?? ''),
+            doc: doc.value,
+            createdAt: snapshot.createdAt,
+          },
+        ];
       });
     } catch {
       list = [];
@@ -387,7 +460,13 @@ export class VaultRepository implements WorkspaceRepository {
     const page = this.lastState?.pages[pageId];
     const doc = page?.kind === 'canvas' ? safeCanvas(text) : markdownToDoc(readPageText(text).body);
     if (!doc) return;
-    const snapshot: Snapshot = { id: this.newId(), pageId, title: page?.title ?? '', doc, createdAt: Date.now() };
+    const snapshot: Snapshot = {
+      id: this.newId(),
+      pageId,
+      title: page?.title ?? '',
+      doc,
+      createdAt: Date.now(),
+    };
     const op = await this.historyOp(snapshot);
     await this.bridge.apply([op]);
   }
@@ -412,7 +491,14 @@ export class VaultRepository implements WorkspaceRepository {
     const metas: FileMeta[] = [];
     for (const file of files) {
       const dot = file.meta.name.lastIndexOf('.');
-      const ext = dot > 0 ? file.meta.name.slice(dot).replace(/[^.A-Za-z0-9]/g, '').slice(0, 10).toLowerCase() : '';
+      const ext =
+        dot > 0
+          ? file.meta.name
+              .slice(dot)
+              .replace(/[^.A-Za-z0-9]/g, '')
+              .slice(0, 10)
+              .toLowerCase()
+          : '';
       const base = safeFileName(dot > 0 ? file.meta.name.slice(0, dot) : file.meta.name, 80);
       let path = joinPath(ATTACHMENTS_DIR, `${base}${ext}`);
       for (let n = 2; this.others.has(path) || (await this.bridge.exists(path)); n++) {
@@ -437,7 +523,13 @@ export class VaultRepository implements WorkspaceRepository {
 
   async listFiles(): Promise<FileMeta[]> {
     const files = await this.bridge.listFiles(ATTACHMENTS_DIR).catch(() => []);
-    return files.map((file) => ({ id: file.path, name: basename(file.path), type: mimeOf(file.path), size: file.size, createdAt: file.mtime }));
+    return files.map((file) => ({
+      id: file.path,
+      name: basename(file.path),
+      type: mimeOf(file.path),
+      size: file.size,
+      createdAt: file.mtime,
+    }));
   }
 
   async deleteFiles(ids: FileId[]): Promise<void> {
@@ -469,7 +561,10 @@ export class VaultRepository implements WorkspaceRepository {
     result.commit(new Set(accepted));
   }
 
-  readChanges(changes: VaultChange[], state: WorkspaceState): { patch: ExternalPatch; commit: (accepted: Set<PageId>) => void } | null {
+  readChanges(
+    changes: VaultChange[],
+    state: WorkspaceState,
+  ): { patch: ExternalPatch; commit: (accepted: Set<PageId>) => void } | null {
     const latest = new Map<string, VaultChange>();
     for (const change of changes) {
       if (isHiddenPath(change.path)) continue;
@@ -487,7 +582,8 @@ export class VaultRepository implements WorkspaceRepository {
     if (pageChanges.length === 0) return null;
 
     const byFile = new Map<string, PageId>();
-    for (const [id, placement] of this.layout) if (placement.file) byFile.set(placement.file.toLowerCase(), id);
+    for (const [id, placement] of this.layout)
+      if (placement.file) byFile.set(placement.file.toLowerCase(), id);
     const layout = new Map(this.layout);
     const pages = new Map<PageId, PageMeta>();
     const docs: Record<PageId, DocNode> = {};
@@ -506,11 +602,23 @@ export class VaultRepository implements WorkspaceRepository {
     for (const change of deleted) {
       const lower = change.path.toLowerCase();
       const ids = change.dir
-        ? [...this.layout].filter(([, p]) => p.folder.toLowerCase() === lower || p.folder.toLowerCase().startsWith(`${lower}/`)).map(([id]) => id)
+        ? [...this.layout]
+            .filter(
+              ([, p]) => p.folder.toLowerCase() === lower || p.folder.toLowerCase().startsWith(`${lower}/`),
+            )
+            .map(([id]) => id)
         : [byFile.get(lower)].filter((id): id is PageId => id !== undefined);
       for (const id of ids) {
         const text = this.texts.get(id);
-        const target = text !== undefined ? written.find((candidate) => candidate.text === text && !byFile.has(candidate.path.toLowerCase()) && !moves.has(candidate.path)) : undefined;
+        const target =
+          text !== undefined
+            ? written.find(
+                (candidate) =>
+                  candidate.text === text &&
+                  !byFile.has(candidate.path.toLowerCase()) &&
+                  !moves.has(candidate.path),
+              )
+            : undefined;
         if (target) {
           moves.set(target.path, id);
           continue;
@@ -528,7 +636,8 @@ export class VaultRepository implements WorkspaceRepository {
 
     const ownerOf = (folder: string): PageId | null => {
       const lower = folder.toLowerCase();
-      for (const [id, placement] of layout) if (placement.folder.toLowerCase() === lower && !removed.has(id)) return id;
+      for (const [id, placement] of layout)
+        if (placement.folder.toLowerCase() === lower && !removed.has(id)) return id;
       return null;
     };
     const ensureFolder = (folder: string): PageId | null => {
@@ -538,7 +647,16 @@ export class VaultRepository implements WorkspaceRepository {
       const parentId = ensureFolder(dirname(folder));
       const id = this.newId();
       const now = Date.now();
-      pages.set(id, newPageMeta({ id, parentId, title: basename(folder), createdAt: now, order: Number.MAX_SAFE_INTEGER }));
+      pages.set(
+        id,
+        newPageMeta({
+          id,
+          parentId,
+          title: basename(folder),
+          createdAt: now,
+          order: Number.MAX_SAFE_INTEGER,
+        }),
+      );
       docs[id] = emptyDoc();
       layout.set(id, { file: null, folder });
       becameFolders.add(id);
@@ -559,7 +677,14 @@ export class VaultRepository implements WorkspaceRepository {
       }
       const current = pageOf(id);
       const parentId = parentFolder === TRASH_DIR ? (current?.parentId ?? null) : ensureFolder(parentFolder);
-      const base = current ?? newPageMeta({ id, parentId, createdAt: change.birthtime || Date.now(), order: Number.MAX_SAFE_INTEGER });
+      const base =
+        current ??
+        newPageMeta({
+          id,
+          parentId,
+          createdAt: change.birthtime || Date.now(),
+          order: Number.MAX_SAFE_INTEGER,
+        });
       const page: PageMeta = { ...base, parentId, updatedAt: change.mtime || Date.now() };
       if (parentFolder === TRASH_DIR) page.trashedAt = page.trashedAt ?? Date.now();
       else if (dirname(this.layout.get(id)?.folder ?? '') === TRASH_DIR) page.trashedAt = null;
@@ -639,9 +764,16 @@ export class VaultRepository implements WorkspaceRepository {
     const resolver = makeResolver(merged, layout, this.sources);
     if (extension(path) === 'canvas') {
       try {
-        const data = readCanvas(JSON.parse(text || '{}'), (target) => resolver.byPath(stripExtension(target)));
+        const data = readCanvas(JSON.parse(text || '{}'), (target) =>
+          resolver.byPath(stripExtension(target)),
+        );
         if (!data) return { ok: false };
-        return { ok: true, page: { ...base, kind: 'canvas', title: name }, doc: canvasDoc(data), source: null };
+        return {
+          ok: true,
+          page: { ...base, kind: 'canvas', title: name },
+          doc: canvasDoc(data),
+          source: null,
+        };
       } catch {
         return { ok: false };
       }
@@ -667,9 +799,13 @@ export class VaultRepository implements WorkspaceRepository {
     }
     const index = new Map([...this.others].map((other) => [other.toLowerCase(), other]));
     const names = new Map<string, string[]>();
-    for (const other of this.others) names.set(basename(other).toLowerCase(), [...(names.get(basename(other).toLowerCase()) ?? []), other]);
+    for (const other of this.others)
+      names.set(basename(other).toLowerCase(), [...(names.get(basename(other).toLowerCase()) ?? []), other]);
     const dir = dirname(path);
-    const doc = markdownToDoc(read.body, parseOptions(dir, resolver, (href) => resolveFile(dir, href, index, names)));
+    const doc = markdownToDoc(
+      read.body,
+      parseOptions(dir, resolver, (href) => resolveFile(dir, href, index, names)),
+    );
     const valid = validateDoc(doc);
     if (!valid.ok) return { ok: false };
     return { ok: true, page, doc: valid.value, source: read.source };
@@ -681,7 +817,8 @@ function linksTo(doc: DocNode, ids: Set<PageId>): boolean {
   let found = false;
   walk(doc, (node) => {
     if (found) return false;
-    if (node.type === 'pageLink' && typeof node.attrs?.id === 'string' && ids.has(node.attrs.id)) found = true;
+    if (node.type === 'pageLink' && typeof node.attrs?.id === 'string' && ids.has(node.attrs.id))
+      found = true;
     if (node.type === 'canvas' && Array.isArray(node.attrs?.nodes)) {
       for (const item of node.attrs.nodes as Array<{ type?: string; pageId?: string }>) {
         if (item.type === 'page' && item.pageId && ids.has(item.pageId)) found = true;
@@ -695,7 +832,8 @@ function linksTo(doc: DocNode, ids: Set<PageId>): boolean {
 function hasFileRefs(doc: DocNode): boolean {
   let found = false;
   walk(doc, (node) => {
-    if ((node.type === 'image' && typeof node.attrs?.fileId === 'string') || node.type === 'fileAttachment') found = true;
+    if ((node.type === 'image' && typeof node.attrs?.fileId === 'string') || node.type === 'fileAttachment')
+      found = true;
     return !found;
   });
   return found;

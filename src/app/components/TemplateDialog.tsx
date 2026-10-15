@@ -18,9 +18,9 @@ export function TemplateDialog({ parentId }: { parentId: PageId | null }) {
         <div className="empty-state compact">
           <LayoutTemplate size={24} strokeWidth={1.5} />
           <p>
-            Templates are the pages inside your Templates page. Write {'{{date}}'}, {'{{time}}'} or {'{{title}}'} and they
-            are filled in when a page is made from the template. A template called “Daily note” is used for every new
-            daily note.
+            Templates are the pages inside your Templates page. Write {'{{date}}'}, {'{{time}}'} or{' '}
+            {'{{title}}'} and they are filled in when a page is made from the template. A template called
+            “Daily note” is used for every new daily note.
           </p>
           <button
             type="button"

@@ -101,7 +101,11 @@ export function defaultDatabase(newId: () => string): DatabaseDef {
   };
   const date: PropDef = { id: newId(), name: 'Date', type: 'date', options: [] };
   const database: DatabaseDef = { properties: [status, date], views: [] };
-  database.views = [newView('table', database, newId), newView('board', database, newId), newView('calendar', database, newId)];
+  database.views = [
+    newView('table', database, newId),
+    newView('board', database, newId),
+    newView('calendar', database, newId),
+  ];
   return database;
 }
 
@@ -158,9 +162,15 @@ function compareValues(a: PropValue, b: PropValue, prop: PropDef | undefined): n
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   if (typeof a === 'boolean' && typeof b === 'boolean') return Number(b) - Number(a);
   if (prop?.type === 'select') {
-    return prop.options.findIndex((option) => option.id === a) - prop.options.findIndex((option) => option.id === b);
+    return (
+      prop.options.findIndex((option) => option.id === a) -
+      prop.options.findIndex((option) => option.id === b)
+    );
   }
-  return formatValue(prop, a).localeCompare(formatValue(prop, b), undefined, { numeric: true, sensitivity: 'base' });
+  return formatValue(prop, a).localeCompare(formatValue(prop, b), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
 }
 
 export function matchesFilter(page: PageMeta, rule: FilterRule, database: DatabaseDef): boolean {
@@ -184,7 +194,8 @@ export function matchesFilter(page: PageMeta, rule: FilterRule, database: Databa
     case 'gt':
     case 'lt': {
       if (isEmpty(value) || wanted === null || wanted === '') return false;
-      const order = typeof value === 'number' ? value - Number(wanted) : String(value).localeCompare(String(wanted));
+      const order =
+        typeof value === 'number' ? value - Number(wanted) : String(value).localeCompare(String(wanted));
       return rule.op === 'gt' ? order > 0 : order < 0;
     }
     case 'is':
@@ -193,7 +204,8 @@ export function matchesFilter(page: PageMeta, rule: FilterRule, database: Databa
       if (wanted === null || wanted === '') same = isEmpty(value);
       else if (Array.isArray(value)) same = value.includes(String(wanted));
       else if (typeof value === 'number') same = value === Number(wanted);
-      else if (prop?.type === 'select' || rule.prop === TITLE_PROP || prop?.type === 'date') same = String(value ?? '').toLowerCase() === String(wanted).toLowerCase();
+      else if (prop?.type === 'select' || rule.prop === TITLE_PROP || prop?.type === 'date')
+        same = String(value ?? '').toLowerCase() === String(wanted).toLowerCase();
       else same = text === String(wanted).toLowerCase();
       return rule.op === 'is' ? same : !same;
     }
@@ -236,13 +248,28 @@ export function groupRows(rows: PageMeta[], propId: string | null, database: Dat
   if (!prop) return [{ key: null, label: 'All', color: 'gray', rows }];
   if (prop.type === 'checkbox') {
     return [
-      { key: 'false', label: 'Not checked', color: 'gray', rows: rows.filter((row) => row.properties[prop.id] !== true) },
-      { key: 'true', label: 'Checked', color: 'green', rows: rows.filter((row) => row.properties[prop.id] === true) },
+      {
+        key: 'false',
+        label: 'Not checked',
+        color: 'gray',
+        rows: rows.filter((row) => row.properties[prop.id] !== true),
+      },
+      {
+        key: 'true',
+        label: 'Checked',
+        color: 'green',
+        rows: rows.filter((row) => row.properties[prop.id] === true),
+      },
     ];
   }
   const groups: RowGroup[] = [
     { key: null, label: `No ${prop.name.toLowerCase() || 'value'}`, color: 'gray', rows: [] },
-    ...prop.options.map((option) => ({ key: option.id, label: option.name, color: option.color, rows: [] as PageMeta[] })),
+    ...prop.options.map((option) => ({
+      key: option.id,
+      label: option.name,
+      color: option.color,
+      rows: [] as PageMeta[],
+    })),
   ];
   for (const row of rows) {
     const value = row.properties[prop.id];
@@ -274,7 +301,9 @@ export function convertValue(from: PropDef, to: PropDef, value: PropValue): Prop
     }
     case 'multiSelect': {
       const names = text.split(',').map((name) => name.trim().toLowerCase());
-      const ids = to.options.filter((option) => names.includes(option.name.toLowerCase())).map((option) => option.id);
+      const ids = to.options
+        .filter((option) => names.includes(option.name.toLowerCase()))
+        .map((option) => option.id);
       return ids.length ? ids : null;
     }
     default:
@@ -300,12 +329,19 @@ export function inferType(values: string[]): PropType {
   if (filled.length === 0) return 'text';
   if (filled.every((value) => /^(yes|no|true|false)$/i.test(value))) return 'checkbox';
   if (filled.every((value) => /^-?\d+(\.\d+)?$/.test(value.replace(/,/g, '')))) return 'number';
-  if (filled.every((value) => !Number.isNaN(Date.parse(value)) && /\d{4}|\d{1,2} \w+ \d{2,4}|\w+ \d{1,2}, \d{4}/.test(value)))
+  if (
+    filled.every(
+      (value) =>
+        !Number.isNaN(Date.parse(value)) && /\d{4}|\d{1,2} \w+ \d{2,4}|\w+ \d{1,2}, \d{4}/.test(value),
+    )
+  )
     return 'date';
   if (filled.every((value) => /^https?:\/\/\S+$/i.test(value))) return 'url';
   const distinct = new Set(filled.map((value) => value.toLowerCase()));
   if (filled.some((value) => value.includes(', ')) && distinct.size < Math.max(4, filled.length)) {
-    const parts = new Set(filled.flatMap((value) => value.split(',').map((part) => part.trim().toLowerCase())));
+    const parts = new Set(
+      filled.flatMap((value) => value.split(',').map((part) => part.trim().toLowerCase())),
+    );
     if (parts.size <= 30) return 'multiSelect';
   }
   // a few short values that repeat look like a status or a category
@@ -339,7 +375,9 @@ export function parseCellValue(prop: PropDef, raw: string): PropValue {
       return prop.options.find((option) => option.name.toLowerCase() === value.toLowerCase())?.id ?? null;
     case 'multiSelect': {
       const names = value.split(',').map((part) => part.trim().toLowerCase());
-      const ids = prop.options.filter((option) => names.includes(option.name.toLowerCase())).map((option) => option.id);
+      const ids = prop.options
+        .filter((option) => names.includes(option.name.toLowerCase()))
+        .map((option) => option.id);
       return ids.length ? ids : null;
     }
     default:
@@ -356,7 +394,8 @@ export function databaseFromTable(header: string[], rows: string[][], newId: () 
   header.slice(1).forEach((rawName, offset) => {
     const column = offset + 1;
     let name = rawName.trim() || `Column ${column + 1}`;
-    for (let n = 2; used.has(name.toLowerCase()) || reserved.has(name); n++) name = `${rawName.trim() || 'Column'} ${n}`;
+    for (let n = 2; used.has(name.toLowerCase()) || reserved.has(name); n++)
+      name = `${rawName.trim() || 'Column'} ${n}`;
     used.add(name.toLowerCase());
     const values = rows.map((row) => row[column] ?? '');
     const type = inferType(values);
@@ -375,7 +414,9 @@ export function databaseFromTable(header: string[], rows: string[][], newId: () 
   });
   const database: DatabaseDef = { properties, views: [] };
   database.views = [newView('table', database, newId)];
-  if (properties.some((prop) => prop.type === 'select')) database.views.push(newView('board', database, newId));
-  if (properties.some((prop) => prop.type === 'date')) database.views.push(newView('calendar', database, newId));
+  if (properties.some((prop) => prop.type === 'select'))
+    database.views.push(newView('board', database, newId));
+  if (properties.some((prop) => prop.type === 'date'))
+    database.views.push(newView('calendar', database, newId));
   return database;
 }

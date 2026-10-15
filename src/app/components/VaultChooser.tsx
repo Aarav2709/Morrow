@@ -19,15 +19,15 @@ export function VaultChooser({ legacy }: { legacy: number }) {
       <Logo size={36} />
       <h1>Where should your notes live?</h1>
       <p className="boot-text">
-        Morrow keeps every page as a plain Markdown file in a folder you choose. Open the folder in any other app,
-        sync it with any tool you like, or keep it under version control. It is yours.
+        Morrow keeps every page as a plain Markdown file in a folder you choose. Open the folder in any other
+        app, sync it with any tool you like, or keep it under version control. It is yours.
       </p>
       {legacy > 0 && (
         <label className="vault-legacy">
           <input type="checkbox" checked={copy} onChange={(event) => setCopy(event.target.checked)} />
           <span>
-            Copy my {legacy} existing page{legacy === 1 ? '' : 's'} into this folder. The original copy stays where it
-            is.
+            Copy my {legacy} existing page{legacy === 1 ? '' : 's'} into this folder. The original copy stays
+            where it is.
           </span>
         </label>
       )}
@@ -43,7 +43,9 @@ export function VaultChooser({ legacy }: { legacy: number }) {
           <FolderOpen size={20} strokeWidth={1.5} />
           <span>
             <strong>Open a folder</strong>
-            <span className="muted">Any folder, including an Obsidian vault or a folder of Markdown files.</span>
+            <span className="muted">
+              Any folder, including an Obsidian vault or a folder of Markdown files.
+            </span>
           </span>
         </button>
       </div>
@@ -55,7 +57,11 @@ export function VaultChooser({ legacy }: { legacy: number }) {
           <ul className="link-list">
             {recent.map((item) => (
               <li key={item.path}>
-                <button type="button" className="link-row" onClick={() => void switchVault(item.path, options)}>
+                <button
+                  type="button"
+                  className="link-row"
+                  onClick={() => void switchVault(item.path, options)}
+                >
                   <span className="link-row-title">
                     {item.name}
                     <span className="link-row-path">{item.path}</span>

@@ -27,13 +27,6 @@ contextBridge.exposeInMainWorld('morrow', {
     return () => listeners.delete(listener);
   },
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.send('morrow:theme', theme),
-  checkForUpdates: () => ipcRenderer.invoke('morrow:check-updates'),
-  installUpdate: () => ipcRenderer.invoke('morrow:install-update'),
-  onUpdateStatus(listener: (status: unknown) => void) {
-    const handler = (_event: unknown, status: unknown) => listener(status);
-    ipcRenderer.on('morrow:update-status', handler);
-    return () => ipcRenderer.removeListener('morrow:update-status', handler);
-  },
   openExternal: (url: string) => ipcRenderer.invoke('morrow:open-external', url),
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
@@ -50,7 +43,8 @@ contextBridge.exposeInMainWorld('morrow', {
     apply: (ops: unknown) => ipcRenderer.invoke('vault:apply', ops),
     readText: (path: string) => ipcRenderer.invoke('vault:read-text', path),
     readBytes: (path: string) => ipcRenderer.invoke('vault:read-bytes', path),
-    createFile: (path: string, data: ArrayBuffer) => ipcRenderer.invoke('vault:create-file', path, new Uint8Array(data)),
+    createFile: (path: string, data: ArrayBuffer) =>
+      ipcRenderer.invoke('vault:create-file', path, new Uint8Array(data)),
     exists: (path: string) => ipcRenderer.invoke('vault:exists', path),
     list: (path: string) => ipcRenderer.invoke('vault:list', path),
     reveal: (path?: string) => ipcRenderer.invoke('vault:reveal', path ?? ''),

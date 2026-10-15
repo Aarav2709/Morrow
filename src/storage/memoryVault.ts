@@ -49,7 +49,13 @@ export class MemoryVault implements VaultBridge {
       const text = this.text(path);
       return text ? (JSON.parse(text) as unknown) : null;
     };
-    return { files, folders, others, registry: json(`${MORROW_DIR}/workspace.json`), recent: json(`${MORROW_DIR}/recent.json`) };
+    return {
+      files,
+      folders,
+      others,
+      registry: json(`${MORROW_DIR}/workspace.json`),
+      recent: json(`${MORROW_DIR}/recent.json`),
+    };
   }
 
   async apply(ops: VaultOp[]): Promise<VaultOpResult[]> {
@@ -67,7 +73,8 @@ export class MemoryVault implements VaultBridge {
       case 'write': {
         if (op.expect !== undefined) {
           const current = this.text(op.path) ?? null;
-          if (current !== op.expect) return { ok: false, code: 'conflict', message: 'changed on disk', current };
+          if (current !== op.expect)
+            return { ok: false, code: 'conflict', message: 'changed on disk', current };
         }
         this.put(op.path, op.text);
         return { ok: true };
@@ -75,9 +82,11 @@ export class MemoryVault implements VaultBridge {
       case 'rename': {
         const isFile = this.files.has(op.from);
         const isDir = this.dirs.has(op.from);
-        if (!isFile && !isDir) return op.optional ? { ok: true } : { ok: false, code: 'error', message: `${op.from} is missing` };
+        if (!isFile && !isDir)
+          return op.optional ? { ok: true } : { ok: false, code: 'error', message: `${op.from} is missing` };
         const caseOnly = op.from.toLowerCase() === op.to.toLowerCase();
-        if (!caseOnly && (this.files.has(op.to) || this.dirs.has(op.to))) return { ok: false, code: 'exists', message: `${op.to} exists` };
+        if (!caseOnly && (this.files.has(op.to) || this.dirs.has(op.to)))
+          return { ok: false, code: 'exists', message: `${op.to} exists` };
         if (isFile) {
           const data = this.files.get(op.from)!;
           this.files.delete(op.from);
@@ -131,7 +140,11 @@ export class MemoryVault implements VaultBridge {
   async listFiles(dir: string): Promise<VaultFileInfo[]> {
     return [...this.files]
       .filter(([path]) => path.startsWith(`${dir}/`))
-      .map(([path, data]) => ({ path, size: typeof data === 'string' ? data.length : data.byteLength, mtime: this.clock }));
+      .map(([path, data]) => ({
+        path,
+        size: typeof data === 'string' ? data.length : data.byteLength,
+        mtime: this.clock,
+      }));
   }
 
   onChange(listener: (changes: VaultChange[]) => void): () => void {

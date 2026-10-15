@@ -12,6 +12,7 @@ import { readPageText, readProperty } from './pageFile';
 import type { PageSource } from './pageFile';
 import { impliedTitle } from './pageFile';
 import {
+  ATTACHMENTS_DIR,
   basename,
   dirname,
   extension,
@@ -87,7 +88,8 @@ export function readRegistry(raw: unknown): Map<string, RegistryEntry> {
   const pages = isRecord(raw) && isRecord(raw.pages) ? raw.pages : {};
   const seen = new Set<string>();
   for (const [path, value] of Object.entries(pages)) {
-    if (!isRecord(value) || typeof value.id !== 'string' || !ID_PATTERN.test(value.id) || seen.has(value.id)) continue;
+    if (!isRecord(value) || typeof value.id !== 'string' || !ID_PATTERN.test(value.id) || seen.has(value.id))
+      continue;
     seen.add(value.id);
     const num = (field: unknown) => (typeof field === 'number' && Number.isFinite(field) ? field : undefined);
     const entry: RegistryEntry = { id: value.id };
@@ -140,10 +142,18 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
   const filed = new Set(candidates.map((candidate) => candidate.folder.toLowerCase()));
   for (const folder of scan.folders) {
     if (folder.path === TRASH_DIR || isHiddenPath(folder.path)) continue;
+    // the attachments folder holds files, it only becomes a page if someone keeps notes in it
+    if (folder.path === ATTACHMENTS_DIR && !pageFolders.has(folder.path)) continue;
     if (!pageFolders.has(folder.path) && !folder.empty) continue;
     if (filed.has(folder.path.toLowerCase())) continue;
     filed.add(folder.path.toLowerCase());
-    candidates.push({ key: folder.path, folder: folder.path, file: null, mtime: folder.mtime, birthtime: folder.mtime });
+    candidates.push({
+      key: folder.path,
+      folder: folder.path,
+      file: null,
+      mtime: folder.mtime,
+      birthtime: folder.mtime,
+    });
   }
   // a folder that holds pages but was not listed still needs a page
   for (const dir of pageFolders) {
@@ -309,7 +319,10 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
   const docs: Record<PageId, DocNode> = {};
   for (const [id, { body, file }] of bodies) {
     const dir = dirname(file);
-    const doc = markdownToDoc(body, parseOptions(dir, resolver, (href) => resolveFile(dir, href, otherIndex, otherNames)));
+    const doc = markdownToDoc(
+      body,
+      parseOptions(dir, resolver, (href) => resolveFile(dir, href, otherIndex, otherNames)),
+    );
     const valid = validateDoc(doc);
     if (valid.ok) docs[id] = valid.value;
     else {
@@ -328,7 +341,8 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
   }
 
   const reserved = new Set<string>();
-  for (const folder of scan.folders) if (!filed.has(folder.path.toLowerCase())) reserved.add(folder.path.toLowerCase());
+  for (const folder of scan.folders)
+    if (!filed.has(folder.path.toLowerCase())) reserved.add(folder.path.toLowerCase());
 
   return {
     pages: [...pages.values()],
@@ -375,7 +389,12 @@ export function resolveFile(
   const hit =
     (relative !== null ? index.get(relative.toLowerCase()) : undefined) ??
     index.get(decoded.replace(/^\/+/, '').toLowerCase()) ??
-    (decoded.includes('/') ? undefined : names.get(decoded.toLowerCase())?.slice().sort((a, b) => a.length - b.length)[0]);
+    (decoded.includes('/')
+      ? undefined
+      : names
+          .get(decoded.toLowerCase())
+          ?.slice()
+          .sort((a, b) => a.length - b.length)[0]);
   return hit ? { fileId: hit, name: basename(hit), image: isImagePath(hit) } : null;
 }
 
@@ -401,7 +420,8 @@ export function makeResolver(
   const paths = new Map<string, PageId>();
   const names = new Map<string, PageId[]>();
   const titles = new Map<string, PageId[]>();
-  const add = (map: Map<string, PageId[]>, key: string, id: PageId) => map.set(key, [...(map.get(key) ?? []), id]);
+  const add = (map: Map<string, PageId[]>, key: string, id: PageId) =>
+    map.set(key, [...(map.get(key) ?? []), id]);
   for (const [id, placement] of layout) {
     if (!state.pages[id]) continue;
     const lower = placement.folder.toLowerCase();
@@ -418,7 +438,11 @@ export function makeResolver(
     return [...ids].sort((a, b) => {
       const pa = layout.get(a)?.folder ?? '';
       const pb = layout.get(b)?.folder ?? '';
-      return Number(isInTrash(pa)) - Number(isInTrash(pb)) || pa.split('/').length - pb.split('/').length || compareSiblings(state.pages[a]!, state.pages[b]!);
+      return (
+        Number(isInTrash(pa)) - Number(isInTrash(pb)) ||
+        pa.split('/').length - pb.split('/').length ||
+        compareSiblings(state.pages[a]!, state.pages[b]!)
+      );
     })[0]!;
   };
   const byPath = (path: string) => paths.get(path.replace(/^\/+/, '').toLowerCase()) ?? null;

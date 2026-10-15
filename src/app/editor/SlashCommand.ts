@@ -198,7 +198,9 @@ export const BLOCK_ITEMS: BlockItem[] = [
     hint: '$$',
     keywords: 'math equation latex katex tex formula',
     run: (e, r) => {
-      chain(e, r).insertContent({ type: 'blockMath', attrs: { latex: '' } }).run();
+      chain(e, r)
+        .insertContent({ type: 'blockMath', attrs: { latex: '' } })
+        .run();
       // the formula opens for typing straight away
       editMathNear(e, r.from);
     },

@@ -2,10 +2,10 @@ import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import { ArrowUpRight, FileWarning, RotateCcw, Smile, Trash2 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { docToPlainText, findUnknownTypes } from '../../core/doc';
-import { backlinksTo } from '../../core/links';
+import { docToPlainText, findUnknownTypes, inlineText } from '../../core/doc';
+import { backlinksTo, unlinkedMentions } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
-import type { PageId, PageMeta } from '../../core/model';
+import type { DocNode, PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
 import { findDatabaseOf } from '../../core/database';
 import { PageEditor } from '../editor/PageEditor';
@@ -92,7 +92,11 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
         {trashed && (
           <div className="banner" role="note">
             <span>This canvas is in the trash.</span>
-            <button type="button" className="button small" onClick={() => restorePage(findTrashedAncestor(state.pages, id) ?? id)}>
+            <button
+              type="button"
+              className="button small"
+              onClick={() => restorePage(findTrashedAncestor(state.pages, id) ?? id)}
+            >
               <RotateCcw size={14} /> Restore
             </button>
           </div>
@@ -133,6 +137,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
             </button>
           </div>
         )}
+        {page.kind !== 'database' && !unreadable && <Outline doc={doc} />}
         <article className={`page font-${prefs.font} width-${prefs.width}`}>
           <div className="page-icon-row">
             {page.icon ? (
@@ -169,7 +174,9 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
             />
           </h1>
           {page.kind !== 'database' && <PageTags page={page} editable={!trashed && !unreadable} />}
-          {database?.database && <RowProperties row={page} database={database.database} dbId={database.id} editable={!trashed} />}
+          {database?.database && (
+            <RowProperties row={page} database={database.database} dbId={database.id} editable={!trashed} />
+          )}
           {page.kind === 'database' ? (
             <Suspense fallback={<div className="database" aria-busy="true" />}>
               <DatabaseView page={page} editable={!trashed && !unreadable} />
@@ -332,24 +339,104 @@ function Subpages({ parentId }: { parentId: PageId }) {
 function Backlinks({ id }: { id: PageId }) {
   const state = useWorkspace();
   const backlinks = useMemo(() => backlinksTo(state, id), [state, id]);
-  if (backlinks.length === 0) return null;
+  const [showMentions, setShowMentions] = useState(false);
+  const mentions = useMemo(
+    () => (showMentions ? unlinkedMentions(state, id) : []),
+    [state, id, showMentions],
+  );
+  const title = displayTitle(state.pages[id]);
+  const mentionsSection = (
+    <section className="page-section" aria-label="Unlinked mentions">
+      <button
+        type="button"
+        className="section-label link-button mentions-toggle"
+        aria-expanded={showMentions}
+        onClick={() => setShowMentions((open) => !open)}
+      >
+        {showMentions ? 'Hide' : 'Find'} pages that mention “{title}” without linking
+      </button>
+      {showMentions &&
+        (mentions.length === 0 ? (
+          <p className="muted small">No other page mentions it.</p>
+        ) : (
+          <ul className="link-list">
+            {mentions.map(({ source, context }) => (
+              <li key={source.id}>
+                <button
+                  type="button"
+                  className="link-row backlink"
+                  onClick={() => openPage(source.id, title)}
+                >
+                  <span className="link-row-title">
+                    {displayTitle(source)} <ArrowUpRight size={13} />
+                  </span>
+                  <span className="backlink-context">{context}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+    </section>
+  );
+  if (backlinks.length === 0) return mentionsSection;
   return (
-    <section className="page-section" aria-label="Backlinks">
-      <h2 className="section-label">
-        Linked from {backlinks.length} page{backlinks.length === 1 ? '' : 's'}
-      </h2>
-      <ul className="link-list">
-        {backlinks.map(({ source, contexts }) => (
-          <li key={source.id}>
-            <button type="button" className="link-row backlink" onClick={() => openPage(source.id)}>
-              <span className="link-row-title">
-                {displayTitle(source)} <ArrowUpRight size={13} />
-              </span>
-              {contexts[0] && <span className="backlink-context">{contexts[0]}</span>}
+    <>
+      <section className="page-section" aria-label="Backlinks">
+        <h2 className="section-label">
+          Linked from {backlinks.length} page{backlinks.length === 1 ? '' : 's'}
+        </h2>
+        <ul className="link-list">
+          {backlinks.map(({ source, contexts }) => (
+            <li key={source.id}>
+              <button type="button" className="link-row backlink" onClick={() => openPage(source.id)}>
+                <span className="link-row-title">
+                  {displayTitle(source)} <ArrowUpRight size={13} />
+                </span>
+                {contexts[0] && <span className="backlink-context">{contexts[0]}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {mentionsSection}
+    </>
+  );
+}
+
+interface Heading {
+  level: number;
+  text: string;
+}
+
+function headingsOf(doc: DocNode): Heading[] {
+  return (doc.content ?? [])
+    .filter((node) => node.type === 'heading')
+    .map((node) => ({ level: Number(node.attrs?.level ?? 1), text: inlineText(node).trim() }))
+    .filter((heading) => heading.text);
+}
+
+// a list of the page's headings beside long pages, click one to jump to it
+function Outline({ doc }: { doc: DocNode }) {
+  const headings = useMemo(() => headingsOf(doc), [doc]);
+  if (headings.length < 3) return null;
+  const jump = (index: number) => {
+    const elements = document.querySelectorAll<HTMLElement>(
+      '.editor-surface .prose > h1, .editor-surface .prose > h2, .editor-surface .prose > h3',
+    );
+    elements[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  return (
+    <nav className="page-outline" aria-label="Outline">
+      <p className="page-outline-title">On this page</p>
+      <ul>
+        {headings.map((heading, index) => (
+          <li key={index} style={{ '--level': heading.level } as React.CSSProperties}>
+            <button type="button" onClick={() => jump(index)}>
+              {heading.text}
             </button>
           </li>
         ))}
       </ul>
-    </section>
+    </nav>
   );
 }

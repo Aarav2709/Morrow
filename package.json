@@ -2,7 +2,7 @@
   "name": "morrow",
   "productName": "Morrow",
   "private": true,
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, no AI.",
   "license": "Apache-2.0",
   "author": {
@@ -146,8 +146,5 @@
         "repo": "Morrow"
       }
     ]
-  },
-  "dependencies": {
-    "electron-updater": "^6.8.9"
   }
 }

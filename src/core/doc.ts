@@ -79,7 +79,8 @@ export function docToPlainText(doc: DocNode): string {
     // canvases are searched by the words on their cards
     if (node.type === 'canvas' && Array.isArray(node.attrs?.nodes)) {
       for (const card of node.attrs.nodes as Array<{ text?: unknown; label?: unknown; url?: unknown }>) {
-        for (const value of [card.text, card.label, card.url]) if (typeof value === 'string' && value) lines.push(value);
+        for (const value of [card.text, card.label, card.url])
+          if (typeof value === 'string' && value) lines.push(value);
       }
     }
     if (node.type === 'fileAttachment' && node.attrs?.name) lines.push(String(node.attrs.name));

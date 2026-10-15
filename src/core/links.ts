@@ -1,4 +1,5 @@
-import { inlineText } from './doc';
+import { docToPlainText, inlineText } from './doc';
+import { displayTitle } from './model';
 import type { DocNode, PageId, PageMeta, WorkspaceState } from './model';
 import { livePages } from './tree';
 
@@ -74,4 +75,37 @@ export function refreshLinkLabels(doc: DocNode, titleOf: (id: PageId) => string 
     return { ...node, content: node.content.map(visit) };
   };
   return visit(doc);
+}
+
+export interface Mention {
+  source: PageMeta;
+  context: string;
+}
+
+// pages that name this page in their text without linking to it, so a link is easy to add
+export function unlinkedMentions(state: WorkspaceState, targetId: PageId, limit = 20): Mention[] {
+  const target = state.pages[targetId];
+  const title = target ? displayTitle(target).trim() : '';
+  if (title.length < 3 || title === 'Untitled') return [];
+  const pattern = new RegExp(
+    `(^|[^\\p{L}\\p{N}])${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^\\p{L}\\p{N}])`,
+    'iu',
+  );
+  const result: Mention[] = [];
+  for (const page of livePages(state.pages)) {
+    if (page.id === targetId || result.length >= limit) continue;
+    const doc = state.docs[page.id];
+    if (!doc || linksInDoc(doc).some((link) => link.targetId === targetId)) continue;
+    const text = docToPlainText(doc);
+    const match = pattern.exec(text);
+    if (!match) continue;
+    const at = match.index + match[1]!.length;
+    const lineStart = text.lastIndexOf('\n', at) + 1;
+    const lineEnd = text.indexOf('\n', at);
+    result.push({
+      source: page,
+      context: text.slice(lineStart, lineEnd === -1 ? undefined : lineEnd).slice(0, 200),
+    });
+  }
+  return result.sort((a, b) => b.source.updatedAt - a.source.updatedAt);
 }

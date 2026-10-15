@@ -53,9 +53,9 @@ think, on your own computer.
 
 ## Status
 
-Version **2.0.0** keeps pages as files in a folder. Morrow 1.0 kept them inside
-the app; the first time 2.0 opens it offers to copy those pages into the folder
-you choose and leaves the original copy untouched. The macOS and Linux builds
+Version **1.0.0**. Pages are files in a folder you choose. Earlier builds kept
+them inside the app; the first time this version opens it offers to copy those
+pages into the folder and leaves the original copy untouched. The macOS and Linux builds
 are produced by the release workflow but have not yet been tried on real
 machines, and builds are not code signed yet.
 
@@ -97,8 +97,8 @@ npm run dev        # opens the desktop app with live reload
 
 On Windows `npm run dist` produces `Morrow-Setup-<version>.exe` and a portable
 `.exe`. Pushing a tag such as `v1.0.0` builds Windows, macOS and Linux versions
-on GitHub and attaches them to a release; installed copies can then update
-themselves if the person allows it. Builds are signed automatically once the
+on GitHub and attaches them to a release. Morrow never checks for updates on
+its own; new versions are downloaded from the releases page. Builds are signed automatically once the
 signing secrets (`CSC_LINK` and `CSC_KEY_PASSWORD`, plus `APPLE_ID`,
 `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for macOS) are added to the
 repository. Until then Windows SmartScreen and macOS Gatekeeper warn the first
@@ -109,7 +109,7 @@ time Morrow is opened.
 In the folder you chose, as Markdown files. The format, including frontmatter,
 databases, canvases and the small `.morrow` folder Morrow keeps beside your
 pages, is documented in [docs/data-format.md](docs/data-format.md), and every
-2.x release will keep reading it. Morrow's own settings and automatic backups of
+1.x release will keep reading it. Morrow's own settings and automatic backups of
 your pages live in `%APPDATA%\Morrow` on Windows, `~/Library/Application
 Support/Morrow` on macOS and `~/.config/Morrow` on Linux. The browser version
 keeps pages in the browser's storage instead.

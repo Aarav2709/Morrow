@@ -11,15 +11,17 @@ import { HomeView, TasksView, TrashView } from './components/Views';
 import { commitEditors, undoRedo } from './editor/commits';
 import { writeAutoBackup } from './operations';
 import { desktop } from './platform/desktop';
-import { getPreferences, resolvedTheme, usePreferences } from './platform/preferences';
+import { resolvedTheme, usePreferences } from './platform/preferences';
 import { useRoute } from './router';
-import { getUi, setUi, toast, useUi } from './ui';
+import { getUi, setUi, useUi } from './ui';
 import { getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
 
 // the graph pulls in a physics library, it is only loaded when opened
-const GraphView = lazy(() => import('./components/GraphView').then((module) => ({ default: module.GraphView })));
+const GraphView = lazy(() =>
+  import('./components/GraphView').then((module) => ({ default: module.GraphView })),
+);
 
 function useTheme(theme: 'system' | 'light' | 'dark') {
   useEffect(() => {
@@ -42,6 +44,10 @@ function useGlobalShortcuts() {
       if (event.defaultPrevented || event.isComposing) return;
       const ui = getUi();
       if (ui.dialog) return;
+      if (event.key === 'Escape' && ui.focusMode && !ui.palette) {
+        setUi({ focusMode: false });
+        return;
+      }
       if (matchesShortcut(event, 'Mod+P')) {
         event.preventDefault();
         setUi({ palette: !ui.palette });
@@ -93,28 +99,12 @@ function useLifecycle() {
       runAction(id);
     });
 
-    // updates are only looked for when the person turned that on
-    const updateCheck =
-      desktop && getPreferences().autoUpdate
-        ? setTimeout(() => void desktop?.checkForUpdates(), 15_000)
-        : null;
-    let announced = false;
-    const stopUpdates = desktop?.onUpdateStatus((status) => {
-      if (status.state !== 'ready' || announced) return;
-      announced = true;
-      toast(`Morrow ${status.version ?? ''} is ready to install.`, {
-        durationMs: 60_000,
-        action: { label: 'Restart', run: () => void desktop?.installUpdate() },
-      });
-    });
     const first = desktop ? setTimeout(() => void writeAutoBackup(), 30_000) : null;
     const timer = desktop ? setInterval(() => void writeAutoBackup(), AUTO_BACKUP_MS) : null;
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('visibilitychange', onVisibility);
       unsubscribe?.();
-      stopUpdates?.();
-      if (updateCheck) clearTimeout(updateCheck);
       if (first) clearTimeout(first);
       if (timer) clearInterval(timer);
     };
@@ -159,7 +149,7 @@ export function App() {
 
   return (
     <div
-      className={`app${prefs.sidebarOpen ? '' : ' sidebar-collapsed'}${ui.mobileSidebar ? ' mobile-sidebar-open' : ''}`}
+      className={`app${prefs.sidebarOpen ? '' : ' sidebar-collapsed'}${ui.mobileSidebar ? ' mobile-sidebar-open' : ''}${ui.focusMode ? ' focus-mode' : ''}`}
     >
       <Sidebar />
       <div className="scrim" aria-hidden="true" onClick={() => setUi({ mobileSidebar: false })} />

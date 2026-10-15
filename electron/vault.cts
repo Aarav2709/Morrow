@@ -43,14 +43,22 @@ const listFile = () => path.join(app.getPath('userData'), 'vaults.json');
 let root: string | null = null;
 let realRoot: string | null = null;
 let watcher: FSWatcher | null = null;
+// on linux every folder gets its own watcher, see startWatching
+const folderWatchers = new Map<string, FSWatcher>();
+const MAX_WATCHED_FOLDERS = 20_000;
 
 export async function readVaultList(): Promise<VaultList> {
   try {
     const raw = JSON.parse(await readFile(listFile(), 'utf8')) as Partial<VaultList>;
     const recent = Array.isArray(raw.recent)
-      ? raw.recent.filter((item) => item && typeof item.path === 'string' && path.isAbsolute(item.path)).slice(0, 20)
+      ? raw.recent
+          .filter((item) => item && typeof item.path === 'string' && path.isAbsolute(item.path))
+          .slice(0, 20)
       : [];
-    return { current: typeof raw.current === 'string' && path.isAbsolute(raw.current) ? raw.current : null, recent };
+    return {
+      current: typeof raw.current === 'string' && path.isAbsolute(raw.current) ? raw.current : null,
+      recent,
+    };
   } catch {
     return { current: null, recent: [] };
   }
@@ -76,7 +84,11 @@ export async function vaultState(): Promise<{
 }> {
   const list = await readVaultList();
   const recent = await Promise.all(
-    list.recent.map(async (item) => ({ path: item.path, name: path.basename(item.path), exists: await isDirectory(item.path) })),
+    list.recent.map(async (item) => ({
+      path: item.path,
+      name: path.basename(item.path),
+      exists: await isDirectory(item.path),
+    })),
   );
   const current = list.current && (await isDirectory(list.current)) ? list.current : null;
   return { current, recent };
@@ -87,10 +99,16 @@ export async function selectVault(dir: string): Promise<{ ok: boolean; error?: s
   const resolved = path.resolve(dir);
   if (!(await isDirectory(resolved))) return { ok: false, error: 'That folder does not exist any more.' };
   if (resolved === path.parse(resolved).root || resolved === app.getPath('home'))
-    return { ok: false, error: 'Choose a folder of its own for your notes, not your whole drive or home folder.' };
+    return {
+      ok: false,
+      error: 'Choose a folder of its own for your notes, not your whole drive or home folder.',
+    };
   const list = await readVaultList();
   list.current = resolved;
-  list.recent = [{ path: resolved, openedAt: Date.now() }, ...list.recent.filter((item) => item.path !== resolved)].slice(0, 20);
+  list.recent = [
+    { path: resolved, openedAt: Date.now() },
+    ...list.recent.filter((item) => item.path !== resolved),
+  ].slice(0, 20);
   await writeVaultList(list);
   return { ok: true };
 }
@@ -141,6 +159,8 @@ export async function openVault(dir: string, onChanges: (changes: VaultChange[])
 export function closeVault(): void {
   watcher?.close();
   watcher = null;
+  for (const folder of folderWatchers.values()) folder.close();
+  folderWatchers.clear();
   root = null;
   realRoot = null;
 }
@@ -152,11 +172,17 @@ export function currentVault(): string | null {
 // a vault relative path to an absolute one, refusing anything that would leave the vault
 function resolveInVault(relative: unknown): string {
   if (!root) throw new Error('No vault is open.');
-  if (typeof relative !== 'string' || relative.length === 0 || relative.length > 4096 || relative.includes('\0'))
+  if (
+    typeof relative !== 'string' ||
+    relative.length === 0 ||
+    relative.length > 4096 ||
+    relative.includes('\0')
+  )
     throw new Error('Invalid path.');
   if (path.isAbsolute(relative) || relative.includes('\\')) throw new Error('Invalid path.');
   const absolute = path.resolve(root, relative);
-  if (absolute !== root && !absolute.startsWith(root + path.sep)) throw new Error('That path is outside the vault.');
+  if (absolute !== root && !absolute.startsWith(root + path.sep))
+    throw new Error('That path is outside the vault.');
   return absolute;
 }
 
@@ -165,7 +191,8 @@ async function checkReal(absolute: string): Promise<void> {
   let dir = path.dirname(absolute);
   while (!(await exists(dir))) dir = path.dirname(dir);
   const real = await realpath(dir);
-  if (!realRoot || (real !== realRoot && !real.startsWith(realRoot + path.sep))) throw new Error('That path is outside the vault.');
+  if (!realRoot || (real !== realRoot && !real.startsWith(realRoot + path.sep)))
+    throw new Error('That path is outside the vault.');
 }
 
 const toRelative = (absolute: string) => path.relative(root!, absolute).split(path.sep).join('/');
@@ -201,7 +228,12 @@ export async function scanVault(): Promise<unknown> {
           }
           const text = await readFile(absolute, 'utf8').catch(() => null);
           if (text === null) continue;
-          files.push({ path: relative, text, mtime: info.mtimeMs, birthtime: info.birthtimeMs || info.ctimeMs });
+          files.push({
+            path: relative,
+            text,
+            mtime: info.mtimeMs,
+            birthtime: info.birthtimeMs || info.ctimeMs,
+          });
         } else others.push(relative);
       }
     }
@@ -260,7 +292,8 @@ async function applyOne(op: VaultOp): Promise<VaultOpResult> {
       if (!(await exists(from)))
         return op.optional ? { ok: true } : { ok: false, code: 'error', message: `${op.from} is missing.` };
       const caseOnly = from.toLowerCase() === to.toLowerCase();
-      if (!caseOnly && (await exists(to))) return { ok: false, code: 'exists', message: `${op.to} already exists.` };
+      if (!caseOnly && (await exists(to)))
+        return { ok: false, code: 'exists', message: `${op.to} already exists.` };
       await checkReal(from);
       await checkReal(to);
       await mkdir(path.dirname(to), { recursive: true });
@@ -337,7 +370,9 @@ export async function pathExists(relative: unknown): Promise<boolean> {
   return exists(resolveInVault(relative));
 }
 
-export async function listDir(relative: unknown): Promise<Array<{ path: string; size: number; mtime: number }>> {
+export async function listDir(
+  relative: unknown,
+): Promise<Array<{ path: string; size: number; mtime: number }>> {
   const dir = resolveInVault(relative);
   const result: Array<{ path: string; size: number; mtime: number }> = [];
   const walk = async (current: string, depth: number): Promise<void> => {
@@ -358,7 +393,7 @@ export async function listDir(relative: unknown): Promise<Array<{ path: string; 
 }
 
 export function revealInFolder(relative: unknown): void {
-  shell.showItemInFolder(relative === '' || relative === undefined ? root ?? '' : resolveInVault(relative));
+  shell.showItemInFolder(relative === '' || relative === undefined ? (root ?? '') : resolveInVault(relative));
 }
 
 // the absolute path of a vault file for the file protocol, null when it is outside the vault
@@ -375,6 +410,12 @@ function startWatching(onChanges: (changes: VaultChange[]) => void): void {
   if (!root) return;
   const pending = new Set<string>();
   let timer: ReturnType<typeof setTimeout> | null = null;
+  const queue = (relative: string) => {
+    if (!relative || relative.includes(TEMP_MARK) || isHidden(relative)) return;
+    pending.add(relative);
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => void flush(), 150);
+  };
   const flush = async () => {
     timer = null;
     const paths = [...pending];
@@ -385,24 +426,37 @@ function startWatching(onChanges: (changes: VaultChange[]) => void): void {
       const absolute = path.join(root, relative);
       const info = await stat(absolute).catch(() => null);
       if (!info) {
-        changes.push({ path: relative, text: null, mtime: Date.now(), birthtime: 0, dir: !isPage(relative), other: !isPage(relative) });
+        unwatchFolders(absolute);
+        changes.push({
+          path: relative,
+          text: null,
+          mtime: Date.now(),
+          birthtime: 0,
+          dir: !isPage(relative),
+          other: !isPage(relative),
+        });
       } else if (info.isDirectory()) {
         // a folder moved in from elsewhere arrives as one event, its contents are reported one by one
+        if (perFolder) await watchTree(absolute, queue);
         changes.push(...(await describeFolder(absolute)));
       } else if (info.isFile()) {
-        changes.push(...(await describeFile(absolute, info.mtimeMs, info.birthtimeMs || info.ctimeMs, info.size)));
+        changes.push(
+          ...(await describeFile(absolute, info.mtimeMs, info.birthtimeMs || info.ctimeMs, info.size)),
+        );
       }
     }
     if (changes.length) onChanges(changes);
   };
+  // linux's recursive watching follows files by inode and loses a file once it is replaced by a save,
+  // watching each folder sees every name that changes inside it, however the file was written
+  const perFolder = process.platform === 'linux';
+  if (perFolder) {
+    void watchTree(root, queue);
+    return;
+  }
   try {
     watcher = watch(root, { recursive: true }, (_event, filename) => {
-      if (!filename) return;
-      const relative = filename.toString().split(path.sep).join('/');
-      if (relative.includes(TEMP_MARK) || isHidden(relative)) return;
-      pending.add(relative);
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => void flush(), 150);
+      if (filename) queue(filename.toString().split(path.sep).join('/'));
     });
     watcher.on('error', () => undefined);
   } catch {
@@ -410,7 +464,43 @@ function startWatching(onChanges: (changes: VaultChange[]) => void): void {
   }
 }
 
-async function describeFile(absolute: string, mtime: number, birthtime: number, size: number): Promise<VaultChange[]> {
+async function watchTree(dir: string, queue: (relative: string) => void, depth = 0): Promise<void> {
+  if (!root || depth > MAX_DEPTH || folderWatchers.size >= MAX_WATCHED_FOLDERS) return;
+  const relative = toRelative(dir);
+  if (relative && isHidden(relative)) return;
+  if (!folderWatchers.has(dir)) {
+    try {
+      const folder = watch(dir, (_event, name) => {
+        if (name) queue(toRelative(path.join(dir, name.toString())));
+      });
+      folder.on('error', () => unwatchFolders(dir));
+      folderWatchers.set(dir, folder);
+    } catch {
+      return;
+    }
+  }
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (entry.isDirectory() && !entry.isSymbolicLink())
+      await watchTree(path.join(dir, entry.name), queue, depth + 1);
+  }
+}
+
+function unwatchFolders(dir: string): void {
+  for (const [folder, handle] of folderWatchers) {
+    if (folder === dir || folder.startsWith(dir + path.sep)) {
+      handle.close();
+      folderWatchers.delete(folder);
+    }
+  }
+}
+
+async function describeFile(
+  absolute: string,
+  mtime: number,
+  birthtime: number,
+  size: number,
+): Promise<VaultChange[]> {
   const relative = toRelative(absolute);
   if (!isPage(relative)) return [{ path: relative, text: '', mtime, birthtime, other: true }];
   if (size > MAX_TEXT_BYTES) return [];
@@ -429,7 +519,10 @@ async function describeFolder(dir: string, depth = 0): Promise<VaultChange[]> {
     if (entry.isDirectory()) changes.push(...(await describeFolder(absolute, depth + 1)));
     else if (entry.isFile()) {
       const info = await stat(absolute).catch(() => null);
-      if (info) changes.push(...(await describeFile(absolute, info.mtimeMs, info.birthtimeMs || info.ctimeMs, info.size)));
+      if (info)
+        changes.push(
+          ...(await describeFile(absolute, info.mtimeMs, info.birthtimeMs || info.ctimeMs, info.size)),
+        );
     }
   }
   return changes;

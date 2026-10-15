@@ -159,7 +159,10 @@ describe('notion and folder imports', () => {
     expect(status).toMatchObject({ name: 'Status', type: 'select' });
     const optionId = (name: string) => status.options.find((option) => option.name === name)!.id;
     expect(byTitle('Middlemarch').properties).toEqual({ [status.id]: optionId('Reading') });
-    expect(byTitle('Piranesi, a novel')).toMatchObject({ parentId: reading.id, properties: { [status.id]: optionId('Next') } });
+    expect(byTitle('Piranesi, a novel')).toMatchObject({
+      parentId: reading.id,
+      properties: { [status.id]: optionId('Next') },
+    });
     // the property lines notion writes into each row page are dropped, the values live in the database
     expect(plan.docs[byTitle('Middlemarch').id]).toEqual({ type: 'doc', content: [{ type: 'paragraph' }] });
   });

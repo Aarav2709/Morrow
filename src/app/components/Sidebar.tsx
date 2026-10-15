@@ -80,7 +80,11 @@ export function newPageEntries(parentId: PageId | null) {
     { label: 'Page', icon: FileText, onSelect: () => createPage({ parentId }) },
     { label: 'Database', icon: Table2, onSelect: () => createPage({ parentId, kind: 'database' }) },
     { label: 'Canvas', icon: LayoutDashboard, onSelect: () => createPage({ parentId, kind: 'canvas' }) },
-    { label: 'From a template…', icon: LayoutTemplate, onSelect: () => openDialog({ kind: 'template', parentId }) },
+    {
+      label: 'From a template…',
+      icon: LayoutTemplate,
+      onSelect: () => openDialog({ kind: 'template', parentId }),
+    },
   ];
 }
 
@@ -128,7 +132,10 @@ export function Sidebar() {
   const openTasks = useMemo(() => collectTasks(state).filter((task) => !task.checked).length, [state]);
   const tagCount = useMemo(() => collectTags(state).length, [state]);
   const [newMenu, setNewMenu] = useState<HTMLElement | null>(null);
-  const [vaultMenu, setVaultMenu] = useState<{ anchor: HTMLElement; recent: Array<{ path: string; name: string; exists: boolean }> } | null>(null);
+  const [vaultMenu, setVaultMenu] = useState<{
+    anchor: HTMLElement;
+    recent: Array<{ path: string; name: string; exists: boolean }>;
+  } | null>(null);
   const location = getSession().location;
   const todayKey = dateKey(new Date());
   const isToday = activeId !== null && state.pages[activeId]?.dailyDate === todayKey;
@@ -300,7 +307,9 @@ export function Sidebar() {
         />
         <NavItem icon={Settings} label="Settings" onClick={() => openDialog({ kind: 'settings' })} />
       </div>
-      {newMenu && <Menu anchor={newMenu} label="New" entries={newPageEntries(null)} onClose={() => setNewMenu(null)} />}
+      {newMenu && (
+        <Menu anchor={newMenu} label="New" entries={newPageEntries(null)} onClose={() => setNewMenu(null)} />
+      )}
       {vaultMenu && (
         <Menu
           anchor={vaultMenu.anchor}

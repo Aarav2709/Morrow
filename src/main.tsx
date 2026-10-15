@@ -36,7 +36,6 @@ type BootState =
   | { kind: 'choose'; legacy: number }
   | { kind: 'ready' };
 
-
 // the theme is applied before react renders so there is no flash
 document.documentElement.dataset.theme = resolvedTheme(getPreferences().theme);
 // the desktop window has no title bar, styles use this to make room for the native buttons
@@ -59,8 +58,12 @@ async function openWorkspace(): Promise<BootState> {
   if (copyLegacy) {
     const copied = await copyLegacyInto(session);
     if (copied.ok && copied.value > 0)
-      toast(`Copied ${copied.value} page${copied.value === 1 ? '' : 's'} from Morrow 1.0 into this folder. The original copy was left as it was.`, { durationMs: 12_000 });
-    else if (!copied.ok) toast(`Your earlier pages could not be copied: ${copied.error}`, { tone: 'error', durationMs: 12_000 });
+      toast(
+        `Copied ${copied.value} page${copied.value === 1 ? '' : 's'} from the earlier version into this folder. The original copy was left as it was.`,
+        { durationMs: 12_000 },
+      );
+    else if (!copied.ok)
+      toast(`Your earlier pages could not be copied: ${copied.error}`, { tone: 'error', durationMs: 12_000 });
   } else if (session.firstRun) {
     const seeded = session.executeAll(sampleCommands(newId, Date.now()));
     if (seeded.ok) await session.flush();
@@ -161,7 +164,10 @@ function Boot() {
 
 // the browser version can be installed and used offline, the desktop app does not need this
 if (!desktop && import.meta.env.PROD && 'serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => undefined));
+  window.addEventListener(
+    'load',
+    () => void navigator.serviceWorker.register('./sw.js').catch(() => undefined),
+  );
 }
 
 createRoot(document.getElementById('root')!).render(

@@ -5,17 +5,7 @@ export const MORROW_DIR = '.morrow';
 export const ATTACHMENTS_DIR = 'attachments';
 export const PAGE_EXTENSIONS = ['.md', '.canvas'] as const;
 
-export const IMAGE_EXTENSIONS = new Set([
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'webp',
-  'svg',
-  'avif',
-  'bmp',
-  'ico',
-]);
+export const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif', 'bmp', 'ico']);
 
 export function dirname(path: string): string {
   const index = path.lastIndexOf('/');

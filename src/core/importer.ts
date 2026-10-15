@@ -144,7 +144,9 @@ export function planArchiveImport(
         const value = parseCellValue(prop, cells[column + 1] ?? '');
         if (value !== null) values[prop.id] = value;
       });
-      const match = rowPages.find(([, row]) => !claimed.has(row.id) && (titles.get(row.id) ?? row.title).trim() === title);
+      const match = rowPages.find(
+        ([, row]) => !claimed.has(row.id) && (titles.get(row.id) ?? row.title).trim() === title,
+      );
       if (match) {
         claimed.add(match[1].id);
         extras.set(match[1].id, { properties: values });
@@ -152,7 +154,9 @@ export function planArchiveImport(
         if (doc) docs[match[1].id] = withoutPropertyLines(doc, header!.slice(1));
       } else {
         const id = newId();
-        newRows.push(newPageMeta({ id, parentId: page.id, title, order: index, createdAt: now, properties: values }));
+        newRows.push(
+          newPageMeta({ id, parentId: page.id, title, order: index, createdAt: now, properties: values }),
+        );
         docs[id] = emptyDoc();
       }
     });
