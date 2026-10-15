@@ -1,5 +1,6 @@
 import { openDB } from 'idb';
 import { afterEach, describe, expect, it } from 'vitest';
+import { SCHEMA_VERSION } from '../core/model';
 import type { DocNode } from '../core/model';
 import { openRepository } from './repository';
 import { WorkspaceSession } from './session';
@@ -115,7 +116,7 @@ describe('upgrading from version 1', () => {
     await session.close();
 
     const upgraded = await openDB(name);
-    expect(await upgraded.get('meta', 'schemaVersion')).toBe(2);
+    expect(await upgraded.get('meta', 'schemaVersion')).toBe(SCHEMA_VERSION);
     upgraded.close();
   });
 });

@@ -1,5 +1,5 @@
 import { markdownToPage } from './markdown/parse';
-import { emptyDoc } from './model';
+import { emptyDoc, newPageMeta } from './model';
 import type { DocNode, FileMeta, PageId, PageMeta, WorkspaceState } from './model';
 import { pageIdByTitle } from './search';
 import { childrenOf } from './tree';
@@ -136,20 +136,13 @@ export function planArchiveImport(
     const parent = pageAt(dirname(key))?.id ?? parentId;
     const order = counters.get(parent) ?? (parent === parentId ? base : 0);
     counters.set(parent, order + 1);
-    return {
+    return newPageMeta({
       id: page.id,
       parentId: parent,
       title: titles.get(page.id) ?? page.title,
-      icon: null,
-      kind: 'page',
       order,
       createdAt: now,
-      updatedAt: now,
-      trashedAt: null,
-      favorite: false,
-      dailyDate: null,
-      lastOpenedAt: null,
-    };
+    });
   });
 
   return {

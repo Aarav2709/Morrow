@@ -181,6 +181,71 @@ describe('reading stored data', () => {
     const page = result.value.pages[0] as PageMeta;
     expect(page).toMatchObject({ parentId: null, favorite: false, trashedAt: null, kind: 'page' });
   });
+
+  it('opens format 2 data from Morrow 1.0 with the newer fields defaulted', () => {
+    const result = readWorkspace(2, {
+      pages: [{ id: 'old', parentId: null, title: 'From 1.0', kind: 'journal', order: 0 }],
+      docs: { old: doc('kept') },
+    });
+    if (!result.ok) throw new Error(result.error);
+    expect(result.value.pages[0]).toMatchObject({
+      kind: 'journal',
+      tags: [],
+      properties: {},
+      database: null,
+    });
+    expect(result.value.docs.old).toEqual(doc('kept'));
+  });
+
+  it('keeps valid database fields and drops malformed parts', () => {
+    const result = readWorkspace(SCHEMA_VERSION, {
+      pages: [
+        {
+          id: 'db',
+          title: 'Books',
+          kind: 'database',
+          tags: ['reading', 'reading', 4],
+          properties: { status: 'opt1', pages: 320, bad: { nested: true }, 'bad key': 'x' },
+          database: {
+            properties: [
+              {
+                id: 'status',
+                name: 'Status',
+                type: 'select',
+                options: [{ id: 'opt1', name: 'Read', color: 'teal' }],
+              },
+              { id: 'weird', name: 'Weird', type: 'formula' },
+            ],
+            views: [
+              {
+                id: 'v1',
+                name: 'All',
+                type: 'table',
+                filters: [{ id: 'f', prop: 'status', op: 'is', value: 'opt1' }],
+              },
+              { id: 'v2', type: 'timeline' },
+            ],
+          },
+        },
+      ],
+      docs: {},
+    });
+    if (!result.ok) throw new Error(result.error);
+    const page = result.value.pages[0]!;
+    expect(page.kind).toBe('database');
+    expect(page.tags).toEqual(['reading']);
+    expect(page.properties).toEqual({ status: 'opt1', pages: 320 });
+    expect(page.database?.properties).toEqual([
+      {
+        id: 'status',
+        name: 'Status',
+        type: 'select',
+        options: [{ id: 'opt1', name: 'Read', color: 'gray' }],
+      },
+    ]);
+    expect(page.database?.views.map((view) => view.id)).toEqual(['v1']);
+    expect(page.database?.views[0]?.filters).toHaveLength(1);
+  });
 });
 
 describe('markdown files', () => {

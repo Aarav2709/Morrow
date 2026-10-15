@@ -6,7 +6,7 @@ import { MAX_SNAPSHOTS_PER_PAGE, snapshotDue, snapshotsToPrune, SNAPSHOT_INTERVA
 import { parseCsv, planArchiveImport } from './importer';
 import { markdownToDoc } from './markdown/parse';
 import { docToMarkdown } from './markdown/serialize';
-import { emptyWorkspace, SCHEMA_VERSION } from './model';
+import { emptyWorkspace, newPageMeta, SCHEMA_VERSION } from './model';
 import type { DocNode, PageMeta, WorkspaceState } from './model';
 import {
   base64ToBytes,
@@ -257,20 +257,15 @@ describe('large workspaces', () => {
     const docs: Record<string, DocNode> = {};
     for (let i = 0; i < 10_000; i++) {
       const id = `p${i}`;
-      pages.push({
-        id,
-        parentId: i < 100 ? null : `p${i % 100}`,
-        title: `Page number ${i}`,
-        icon: null,
-        kind: 'page',
-        order: i,
-        createdAt: i,
-        updatedAt: i,
-        trashedAt: null,
-        favorite: false,
-        dailyDate: null,
-        lastOpenedAt: null,
-      });
+      pages.push(
+        newPageMeta({
+          id,
+          parentId: i < 100 ? null : `p${i % 100}`,
+          title: `Page number ${i}`,
+          order: i,
+          createdAt: i,
+        }),
+      );
       docs[id] = {
         type: 'doc',
         content: Array.from({ length: 8 }, (_, j) => ({

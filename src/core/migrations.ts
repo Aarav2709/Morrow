@@ -1,6 +1,27 @@
 import { isRecord, validateDoc } from './doc';
-import { MAX_ICON_LENGTH, MAX_TITLE_LENGTH, SCHEMA_VERSION } from './model';
-import type { DocNode, PageId, PageMeta } from './model';
+import {
+  COLORS,
+  MAX_ICON_LENGTH,
+  MAX_TITLE_LENGTH,
+  PAGE_KINDS,
+  PROP_TYPES,
+  SCHEMA_VERSION,
+  VIEW_TYPES,
+} from './model';
+import type {
+  ColorName,
+  DatabaseDef,
+  DocNode,
+  FilterOp,
+  PageId,
+  PageKind,
+  PageMeta,
+  PropDef,
+  PropType,
+  PropValue,
+  ViewDef,
+  ViewType,
+} from './model';
 import { fail, ok } from './result';
 import type { Result } from './result';
 
@@ -22,6 +43,8 @@ export interface LoadedWorkspace {
 const MIGRATIONS: Record<number, (data: RawWorkspace) => RawWorkspace> = {
   // version 2 added stored files and page history, pages and documents kept their shape
   1: (data) => data,
+  // version 3 added tags, database properties and new page kinds, normalizePage fills their defaults
+  2: (data) => data,
 };
 
 export function migrate(version: number, data: RawWorkspace): Result<RawWorkspace> {
@@ -59,7 +82,7 @@ export function normalizePage(raw: unknown): PageMeta | null {
     title:
       typeof raw.title === 'string' ? raw.title.replace(/[\r\n\t]+/g, ' ').slice(0, MAX_TITLE_LENGTH) : '',
     icon,
-    kind: raw.kind === 'journal' ? 'journal' : 'page',
+    kind: PAGE_KINDS.includes(raw.kind as PageKind) ? (raw.kind as PageKind) : 'page',
     order: num(raw.order, 0),
     createdAt: num(raw.createdAt, updatedAt),
     updatedAt,
@@ -69,6 +92,95 @@ export function normalizePage(raw: unknown): PageMeta | null {
       typeof raw.dailyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.dailyDate) ? raw.dailyDate : null,
     lastOpenedAt:
       typeof raw.lastOpenedAt === 'number' && Number.isFinite(raw.lastOpenedAt) ? raw.lastOpenedAt : null,
+    tags: Array.isArray(raw.tags)
+      ? [...new Set(raw.tags.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0))]
+      : [],
+    properties: normalizeProperties(raw.properties),
+    database: normalizeDatabase(raw.database),
+  };
+}
+
+const MAX_NAME_LENGTH = 200;
+const FILTER_OPS = new Set<FilterOp>([
+  'contains',
+  'notContains',
+  'is',
+  'isNot',
+  'empty',
+  'notEmpty',
+  'gt',
+  'lt',
+  'checked',
+  'unchecked',
+]);
+
+const nameOf = (value: unknown, fallback: string) =>
+  typeof value === 'string' ? value.slice(0, MAX_NAME_LENGTH) : fallback;
+const validId = (value: unknown): value is string => typeof value === 'string' && ID_PATTERN.test(value);
+const records = (value: unknown) => (Array.isArray(value) ? value.filter(isRecord) : []);
+
+function normalizeValue(value: unknown): PropValue | undefined {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (Array.isArray(value) && value.every((item) => typeof item === 'string')) return value as string[];
+  return undefined;
+}
+
+function normalizeProperties(raw: unknown): Record<string, PropValue> {
+  if (!isRecord(raw)) return {};
+  const result: Record<string, PropValue> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const normalized = normalizeValue(value);
+    if (ID_PATTERN.test(key) && normalized !== undefined) result[key] = normalized;
+  }
+  return result;
+}
+
+function normalizeProp(raw: Record<string, unknown>): PropDef | null {
+  if (!validId(raw.id) || !PROP_TYPES.includes(raw.type as PropType)) return null;
+  return {
+    id: raw.id,
+    name: nameOf(raw.name, ''),
+    type: raw.type as PropType,
+    options: records(raw.options)
+      .filter((option) => validId(option.id))
+      .map((option) => ({
+        id: option.id as string,
+        name: nameOf(option.name, ''),
+        color: COLORS.includes(option.color as ColorName) ? (option.color as ColorName) : 'gray',
+      })),
+  };
+}
+
+function normalizeView(raw: Record<string, unknown>): ViewDef | null {
+  if (!validId(raw.id) || !VIEW_TYPES.includes(raw.type as ViewType)) return null;
+  const propRef = (value: unknown) => (typeof value === 'string' && value.length <= 64 ? value : null);
+  return {
+    id: raw.id,
+    name: nameOf(raw.name, ''),
+    type: raw.type as ViewType,
+    filters: records(raw.filters).flatMap((filter) => {
+      const prop = propRef(filter.prop);
+      const value = normalizeValue(filter.value);
+      if (!validId(filter.id) || !prop || !FILTER_OPS.has(filter.op as FilterOp) || value === undefined)
+        return [];
+      return [{ id: filter.id, prop, op: filter.op as FilterOp, value }];
+    }),
+    sorts: records(raw.sorts).flatMap((sort) => {
+      const prop = propRef(sort.prop);
+      return prop ? [{ prop, dir: sort.dir === 'desc' ? ('desc' as const) : ('asc' as const) }] : [];
+    }),
+    groupBy: propRef(raw.groupBy),
+    dateProp: propRef(raw.dateProp),
+    hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((id): id is string => propRef(id) !== null) : [],
+  };
+}
+
+function normalizeDatabase(raw: unknown): DatabaseDef | null {
+  if (!isRecord(raw)) return null;
+  return {
+    properties: records(raw.properties).flatMap((prop) => normalizeProp(prop) ?? []),
+    views: records(raw.views).flatMap((view) => normalizeView(view) ?? []),
   };
 }
 

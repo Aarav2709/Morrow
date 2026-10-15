@@ -17,8 +17,26 @@ export type PageKind = 'page' | 'journal' | 'templates' | 'database' | 'canvas';
 export const PAGE_KINDS: readonly PageKind[] = ['page', 'journal', 'templates', 'database', 'canvas'];
 
 export type PropType = 'text' | 'number' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'url';
-export const PROP_TYPES: readonly PropType[] = ['text', 'number', 'select', 'multiSelect', 'date', 'checkbox', 'url'];
-export const COLORS = ['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'] as const;
+export const PROP_TYPES: readonly PropType[] = [
+  'text',
+  'number',
+  'select',
+  'multiSelect',
+  'date',
+  'checkbox',
+  'url',
+];
+export const COLORS = [
+  'gray',
+  'brown',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'purple',
+  'pink',
+  'red',
+] as const;
 export type ColorName = (typeof COLORS)[number];
 
 export interface SelectOption {
@@ -35,16 +53,7 @@ export interface PropDef {
 }
 
 export type FilterOp =
-  | 'contains'
-  | 'notContains'
-  | 'is'
-  | 'isNot'
-  | 'empty'
-  | 'notEmpty'
-  | 'gt'
-  | 'lt'
-  | 'checked'
-  | 'unchecked';
+  'contains' | 'notContains' | 'is' | 'isNot' | 'empty' | 'notEmpty' | 'gt' | 'lt' | 'checked' | 'unchecked';
 
 export interface FilterRule {
   id: string;
@@ -120,7 +129,8 @@ export interface WorkspaceState {
   docs: Readonly<Record<PageId, DocNode>>;
 }
 
-// anything outside these sets is preserved but opened read only
+// anything outside these sets is preserved but opened read only, so a type belongs here only
+// once the editor registers it, otherwise the editor would drop it on load and the next save loses it
 export const KNOWN_NODE_TYPES = new Set([
   'doc',
   'paragraph',
@@ -146,15 +156,9 @@ export const KNOWN_NODE_TYPES = new Set([
   'details',
   'detailsSummary',
   'detailsContent',
-  'codeBlock',
-  'inlineMath',
-  'blockMath',
-  'pageEmbed',
-  'databaseView',
-  'canvas',
 ]);
 
-export const KNOWN_MARK_TYPES = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'link', 'textColor', 'highlight']);
+export const KNOWN_MARK_TYPES = new Set(['bold', 'italic', 'underline', 'strike', 'code', 'link']);
 
 export type FileId = string;
 

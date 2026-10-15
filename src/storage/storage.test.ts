@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Command } from '../core/commands';
+import { newPageMeta } from '../core/model';
 import type { DocNode } from '../core/model';
 import { openRepository } from './repository';
 import type { WorkspaceRepository, WriteBatch } from './repository';
@@ -171,22 +172,7 @@ describe('session', () => {
     const name = freshName();
     const repository = await openRepository(name);
     await repository.write({
-      pages: [
-        {
-          id: 'x',
-          parentId: null,
-          title: 'Broken',
-          icon: null,
-          kind: 'page',
-          order: 0,
-          createdAt: 0,
-          updatedAt: 0,
-          trashedAt: null,
-          favorite: false,
-          dailyDate: null,
-          lastOpenedAt: null,
-        },
-      ],
+      pages: [newPageMeta({ id: 'x', parentId: null, title: 'Broken' })],
       docs: [{ id: 'x', doc: { type: 'unknown-root' } as DocNode }],
       removed: [],
     });

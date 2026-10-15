@@ -1,6 +1,6 @@
 // every workspace change goes through here, pure and never throwing
 import { validateDoc } from './doc';
-import { emptyDoc, MAX_ICON_LENGTH, MAX_TITLE_LENGTH } from './model';
+import { emptyDoc, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, newPageMeta, PAGE_KINDS } from './model';
 import type { DocNode, PageId, PageKind, PageMeta, WorkspaceState } from './model';
 import { errorMessage, fail, ok } from './result';
 import type { Result } from './result';
@@ -164,20 +164,15 @@ function createPage(
   if (command.dailyDate != null && !DATE_PATTERN.test(command.dailyDate)) return fail('Invalid daily date.');
   const doc = validateDoc(command.doc ?? emptyDoc());
   if (!doc.ok) return doc;
-  const page: PageMeta = {
+  const page = newPageMeta({
     id: command.id,
     parentId: command.parentId,
     title: normalizeTitle(command.title ?? ''),
     icon: icon.value,
-    kind: command.kind === 'journal' ? 'journal' : 'page',
-    order: 0,
+    kind: command.kind && PAGE_KINDS.includes(command.kind) ? command.kind : 'page',
     createdAt: command.now,
-    updatedAt: command.now,
-    trashedAt: null,
-    favorite: false,
     dailyDate: command.dailyDate ?? null,
-    lastOpenedAt: null,
-  };
+  });
   const siblings = childrenOf(state.pages, command.parentId);
   const placed = placeAmong(siblings, page, command.index);
   return setDocs(withChanges(state, { pages: placed }), { [page.id]: doc.value });

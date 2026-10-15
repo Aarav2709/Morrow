@@ -3,7 +3,7 @@ import { findDailyNote, findJournal } from './daily';
 import { refreshLinkLabels } from './links';
 import { markdownToPage } from './markdown/parse';
 import { pageToMarkdown } from './markdown/serialize';
-import { displayTitle, SCHEMA_VERSION } from './model';
+import { displayTitle, newPageMeta, SCHEMA_VERSION } from './model';
 import type { DocNode, FileId, FileMeta, PageId, PageMeta, WorkspaceState } from './model';
 import { readWorkspace } from './migrations';
 import { errorMessage, fail, ok } from './result';
@@ -180,20 +180,9 @@ export function planMarkdownImport(
   const docs: Record<PageId, DocNode> = {};
   drafts.forEach((draft, index) => {
     const parsed = markdownToPage(draft.file.text, draft.fallback, { resolvePage });
-    pages.push({
-      id: draft.id,
-      parentId,
-      title: parsed.title,
-      icon: null,
-      kind: 'page',
-      order: base + index,
-      createdAt: now,
-      updatedAt: now,
-      trashedAt: null,
-      favorite: false,
-      dailyDate: null,
-      lastOpenedAt: null,
-    });
+    pages.push(
+      newPageMeta({ id: draft.id, parentId, title: parsed.title, order: base + index, createdAt: now }),
+    );
     docs[draft.id] = parsed.doc;
   });
   return { pages, docs, skipped: 0, problems: [] };
