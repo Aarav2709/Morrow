@@ -5,8 +5,6 @@ and ideas. Every page is a plain Markdown file in a folder you choose. No
 account, no subscription, no cloud and no AI. Just a calm place to write and
 think, on your own computer.
 
-![Morrow showing a page with a cover, an icon, a checklist, a date, columns and a diagram](ss.png)
-
 ## Why Morrow
 
 - **Yours.** Your notes are a folder of Markdown files. Open them in any app,
