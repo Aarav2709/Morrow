@@ -42,7 +42,12 @@ jobs:
           done
           # without a certificate the mac app gets a free ad hoc signature, apple silicon refuses to open
           # an app with none at all and calls it damaged
-          if [ -z "$CSC_LINK" ]; then echo "BUILDER_ARGS=-c.mac.identity=-" >> "$GITHUB_ENV"; fi
-      - run: npx electron-builder --publish always ${{ env.BUILDER_ARGS }}
+          if [ -z "$CSC_LINK" ] && [ "$RUNNER_OS" = macOS ]; then
+            echo "BUILDER_ARGS=--config.mac.identity=-" >> "$GITHUB_ENV"
+          fi
+      # bash on every system, powershell would split the option above at its dots
+      - name: Build and publish
+        shell: bash
+        run: npx electron-builder --publish always $BUILDER_ARGS
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
