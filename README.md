@@ -141,6 +141,16 @@ deleting it never touches a page. Morrow's settings and automatic backups live
 in `%APPDATA%\Morrow` on Windows, `~/Library/Application Support/Morrow` on
 macOS and `~/.config/Morrow` on Linux.
 
+## How Morrow was made
+
+Morrow is built with the **help** of AI coding tools. I laid the foundation and
+did most of the frontend, while AI helped research features, wrote most of the
+backend and the code connecting it to the interface, built larger features such
+as databases, canvas drawing and the welcome guide, and handled most debugging
+and optimisation. I decide what goes into Morrow and test every change myself.
+"Morrow does not have AI features" refers to the app itself: nothing in it uses
+AI or sends your notes anywhere.
+
 ## Licence
 
 Morrow is licensed under the [Apache License 2.0](LICENSE). The licences of the
