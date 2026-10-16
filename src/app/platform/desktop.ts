@@ -83,6 +83,7 @@ export interface DesktopBridge {
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   showBackupsFolder(): Promise<void>;
+  exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
 }
 
 declare global {

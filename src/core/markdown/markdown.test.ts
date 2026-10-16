@@ -251,3 +251,47 @@ describe('colours', () => {
     expect(doc.content![0]!.content![0]!.marks).toEqual([{ type: 'textColor', attrs: { color: 'red' } }]);
   });
 });
+
+describe('layout blocks', () => {
+  it('keeps columns, a table of contents and dates through a save and load', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'tableOfContents' },
+        { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Plan' }] },
+        {
+          type: 'columns',
+          content: [
+            { type: 'column', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Left' }] }] },
+            {
+              type: 'column',
+              content: [
+                { type: 'paragraph', content: [{ type: 'text', text: 'Right' }] },
+                {
+                  type: 'bulletList',
+                  content: [
+                    {
+                      type: 'listItem',
+                      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'item' }] }],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Due ' },
+            { type: 'dateMention', attrs: { date: '2026-10-20' } },
+          ],
+        },
+      ],
+    };
+    const markdown = docToMarkdown(doc);
+    expect(markdown).toContain('<!-- toc -->');
+    expect(markdown).toContain('[[2026-10-20]]');
+    expect(markdownToDoc(markdown)).toEqual(doc);
+  });
+});

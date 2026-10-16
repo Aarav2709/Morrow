@@ -1,6 +1,4 @@
-import '@fontsource/ibm-plex-sans/400.css';
-import '@fontsource/ibm-plex-sans/500.css';
-import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource-variable/inter/index.css';
 import '@fontsource-variable/source-serif-4/index.css';
 import '@fontsource-variable/source-serif-4/wght-italic.css';
 import '@fontsource-variable/jetbrains-mono/index.css';
@@ -9,6 +7,7 @@ import './app/styles/app.css';
 import './app/styles/editor.css';
 import './app/styles/features.css';
 import './app/styles/color.css';
+import './app/styles/blocks.css';
 import 'katex/dist/katex.min.css';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';

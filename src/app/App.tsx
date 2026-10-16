@@ -7,6 +7,7 @@ import { TagsView, TagView } from './components/TagsView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PageView } from './components/PageView';
 import { Toasts } from './components/primitives';
+import { TabBar } from './components/TabBar';
 import { Sidebar } from './components/Sidebar';
 import { HomeView } from './components/Home';
 import { TasksView, TrashView } from './components/Views';
@@ -17,6 +18,8 @@ import { desktop } from './platform/desktop';
 import { resolvedTheme, usePreferences } from './platform/preferences';
 import { useRoute } from './router';
 import { getUi, setUi, toast, useUi } from './ui';
+import { loadCustomCss } from './customCss';
+import { startTabs } from './tabs';
 import { getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
@@ -102,6 +105,7 @@ function useLifecycle() {
       runAction(id);
     });
 
+    void loadCustomCss();
     const stopSync = startAutoSync();
     // a vault just copied from another computer fills up straight away
     const copyFrom = sessionStorage.getItem('morrow.syncAfterOpen');
@@ -142,6 +146,7 @@ export function App() {
     document.documentElement.dataset.colorful = prefs.colorful ? 'true' : 'false';
   }, [prefs.accent, prefs.colorful]);
   useGlobalShortcuts();
+  useEffect(() => startTabs(), []);
   useLifecycle();
 
   useEffect(() => {
@@ -182,6 +187,7 @@ export function App() {
       <Sidebar />
       <div className="scrim" aria-hidden="true" onClick={() => setUi({ mobileSidebar: false })} />
       <main className="main">
+        <TabBar />
         <ErrorBoundary resetKey={window.location.hash}>
           <Suspense fallback={<div className="view" aria-busy="true" />}>{view}</Suspense>
         </ErrorBoundary>

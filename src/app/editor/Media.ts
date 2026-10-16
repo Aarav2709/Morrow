@@ -134,10 +134,44 @@ export const FileAttachment = Node.create({
         void downloadFile(String(node.attrs.fileId ?? ''));
       });
       dom.append(name, meta, save);
-      return { dom };
+      // sound, video and pdfs play right on the page
+      const kind = mediaKind(String(node.attrs.name ?? ''));
+      if (!kind) return { dom };
+      const shell = document.createElement('div');
+      shell.className = `media-block media-${kind}`;
+      shell.contentEditable = 'false';
+      const player =
+        kind === 'pdf'
+          ? document.createElement('iframe')
+          : document.createElement(kind === 'audio' ? 'audio' : 'video');
+      if (player instanceof HTMLMediaElement) {
+        player.controls = true;
+        player.preload = 'metadata';
+      } else {
+        player.title = String(node.attrs.name ?? 'PDF');
+      }
+      dom.classList.add('is-compact');
+      shell.append(player, dom);
+      void fileUrl(String(node.attrs.fileId ?? '')).then((url) => {
+        if (url) player.src = url;
+        else shell.classList.add('is-missing');
+      });
+      return {
+        dom: shell,
+        stopEvent: (event) => event.target === player,
+        ignoreMutation: () => true,
+      };
     };
   },
 });
+
+export function mediaKind(name: string): 'audio' | 'video' | 'pdf' | null {
+  const extension = /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase() ?? '';
+  if (['mp3', 'wav', 'ogg', 'oga', 'm4a', 'aac', 'flac', 'opus', 'weba'].includes(extension)) return 'audio';
+  if (['mp4', 'webm', 'mov', 'm4v', 'ogv'].includes(extension)) return 'video';
+  if (extension === 'pdf') return 'pdf';
+  return null;
+}
 
 function safeHost(src: string): string {
   try {

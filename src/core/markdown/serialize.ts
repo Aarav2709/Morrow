@@ -110,6 +110,15 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       const body = blocks(node.content ?? [], options);
       return prefixLines(`[!${kind}]${fold}${title}\n${body}`, '> ', '>');
     }
+    case 'tableOfContents':
+      return '<!-- toc -->';
+    case 'columns': {
+      // plain html wrappers, other markdown apps show the columns one after another
+      const columns = (node.content ?? []).map(
+        (column) => `<div data-column>\n\n${blocks(column.content ?? [], options)}\n\n</div>`,
+      );
+      return `<div data-columns>\n${columns.join('\n')}\n</div>`;
+    }
     case 'details': {
       const [summary, content] = node.content ?? [];
       const title = summary ? escapeHtml(inline(summary.content ?? [], options)) : '';
@@ -214,6 +223,13 @@ function inline(nodes: DocNode[], options: SerializeOptions, inTable = false): s
     if (node.type === 'pageLink') {
       closeTo(0);
       out += pendingSpace + wikiLink(node, options, inTable);
+      pendingSpace = '';
+      continue;
+    }
+    if (node.type === 'dateMention') {
+      // dates are written as links to that day's note, the way obsidian names daily notes
+      closeTo(0);
+      out += `${pendingSpace}[[${String(node.attrs?.date ?? '')}]]`;
       pendingSpace = '';
       continue;
     }

@@ -321,3 +321,44 @@ describe('large workspaces', () => {
     expect(() => (childrenOf(state.pages, null) as PageMeta[]).push(state.pages.a!)).toThrow();
   });
 });
+
+describe('relation and formula properties', () => {
+  it('writes relations as wiki links and reads them back', async () => {
+    const { readProperty, writeProperty } = await import('./vault/pageFile');
+    const prop = { id: 'rel', name: 'Projects', type: 'relation' as const, options: [] };
+    const written = writeProperty(prop, ['Garden', 'House']);
+    expect(written).toEqual(['[[Garden]]', '[[House]]']);
+    expect(readProperty(prop, written, () => 'x').value).toEqual(['Garden', 'House']);
+    expect(readProperty(prop, '[[A|alias]], [[B]]', () => 'x').value).toEqual(['A', 'B']);
+  });
+
+  it('computes formulas from other properties and never stores them', async () => {
+    const { valueOf } = await import('./database');
+    const { writeProperty } = await import('./vault/pageFile');
+    const database = {
+      properties: [
+        { id: 'p', name: 'Price', type: 'number' as const, options: [] },
+        { id: 'q', name: 'Count', type: 'number' as const, options: [] },
+        {
+          id: 'f',
+          name: 'Total',
+          type: 'formula' as const,
+          options: [],
+          formula: 'prop("Price") * prop("Count")',
+        },
+        {
+          id: 'g',
+          name: 'Label',
+          type: 'formula' as const,
+          options: [],
+          formula: 'concat(prop("Name"), ": ", prop("Total"))',
+        },
+      ],
+      views: [],
+    };
+    const row = { ...newPageMeta({ id: 'r', parentId: null }), title: 'Tea', properties: { p: 2.5, q: 4 } };
+    expect(valueOf(row, 'f', database)).toBe(10);
+    expect(valueOf(row, 'g', database)).toBe('Tea: 10');
+    expect(writeProperty(database.properties[2]!, 10)).toBeUndefined();
+  });
+});

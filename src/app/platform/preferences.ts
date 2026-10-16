@@ -32,12 +32,12 @@ export interface Preferences {
 const KEY = 'morrow.preferences';
 const defaults: Preferences = {
   theme: 'system',
-  font: 'serif',
+  font: 'sans',
   width: 'comfortable',
   sidebarOpen: true,
   sidebarWidth: 264,
   expanded: [],
-  accent: 'ember',
+  accent: 'ocean',
   colorful: true,
 };
 

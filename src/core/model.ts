@@ -16,7 +16,8 @@ export type PageId = string;
 export type PageKind = 'page' | 'journal' | 'templates' | 'database' | 'canvas';
 export const PAGE_KINDS: readonly PageKind[] = ['page', 'journal', 'templates', 'database', 'canvas'];
 
-export type PropType = 'text' | 'number' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'url';
+export type PropType =
+  'text' | 'number' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'url' | 'relation' | 'formula';
 export const PROP_TYPES: readonly PropType[] = [
   'text',
   'number',
@@ -25,6 +26,8 @@ export const PROP_TYPES: readonly PropType[] = [
   'date',
   'checkbox',
   'url',
+  'relation',
+  'formula',
 ];
 export const COLORS = [
   'gray',
@@ -50,6 +53,8 @@ export interface PropDef {
   name: string;
   type: PropType;
   options: SelectOption[];
+  // the expression a formula property computes, see core/formula
+  formula?: string;
 }
 
 export type FilterOp =
@@ -174,6 +179,10 @@ export const KNOWN_NODE_TYPES = new Set([
   'inlineMath',
   'blockMath',
   'rawBlock',
+  'columns',
+  'column',
+  'tableOfContents',
+  'dateMention',
 ]);
 
 export const KNOWN_MARK_TYPES = new Set([

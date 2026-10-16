@@ -1,7 +1,21 @@
-import { FileText, Group, Maximize, Minus, Plus, Redo2, StickyNote, Trash2, Undo2 } from 'lucide-react';
+import {
+  Eraser,
+  FileText,
+  Group,
+  Highlighter,
+  Maximize,
+  Minus,
+  MousePointer2,
+  Pencil,
+  Plus,
+  Redo2,
+  StickyNote,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { canvasDoc, canvasFromDoc, CANVAS_COLORS } from '../../core/canvas';
-import type { CanvasData, CanvasEdge, CanvasNode, CanvasSide } from '../../core/canvas';
+import type { CanvasData, CanvasEdge, CanvasNode, CanvasSide, CanvasStroke } from '../../core/canvas';
 import { docToPlainText } from '../../core/doc';
 import { displayTitle } from '../../core/model';
 import type { DocNode, PageId } from '../../core/model';
@@ -13,6 +27,7 @@ import { newId } from '../platform/files';
 import { openPage } from '../router';
 import { openDialog } from '../ui';
 import { getState, run, useWorkspace } from '../workspace';
+import { Emoji } from './Emoji';
 import { Popover } from './Popover';
 
 interface Viewport {
@@ -31,7 +46,43 @@ type Interaction =
       moved: boolean;
     }
   | { kind: 'resize'; id: string; startX: number; startY: number; width: number; height: number }
-  | { kind: 'connect'; from: string; side: CanvasSide; x: number; y: number };
+  | { kind: 'connect'; from: string; side: CanvasSide; x: number; y: number }
+  | { kind: 'draw'; points: number[] }
+  | { kind: 'erase'; removed: boolean };
+
+type Tool = 'select' | 'pen' | 'highlighter' | 'eraser';
+const INK_WIDTHS = [2, 4, 8];
+// the preset colours as ink, matching the card colours json canvas defines
+const INK_COLORS: Record<string, string> = {
+  '1': '#e5484d',
+  '2': '#e8803a',
+  '3': '#d6a72a',
+  '4': '#4d9a5c',
+  '5': '#3f9bb3',
+  '6': '#8b5fc7',
+};
+
+export function inkColor(color: string | undefined): string {
+  if (!color) return 'var(--text)';
+  return INK_COLORS[color] ?? color;
+}
+
+// a smooth line through the points, each corner becomes a curve through the midpoints
+export function strokePath(points: number[]): string {
+  if (points.length < 2) return '';
+  if (points.length <= 4) {
+    const [x, y] = points;
+    const [x2, y2] = points.length === 4 ? [points[2]!, points[3]!] : [x! + 0.01, y!];
+    return `M ${x} ${y} L ${x2} ${y2}`;
+  }
+  let path = `M ${points[0]} ${points[1]}`;
+  for (let i = 2; i < points.length - 2; i += 2) {
+    const midX = (points[i]! + points[i + 2]!) / 2;
+    const midY = (points[i + 1]! + points[i + 3]!) / 2;
+    path += ` Q ${points[i]} ${points[i + 1]} ${midX} ${midY}`;
+  }
+  return `${path} L ${points[points.length - 2]} ${points[points.length - 1]}`;
+}
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 3;
@@ -99,6 +150,11 @@ export function CanvasView({
   const [editing, setEditing] = useState<string | null>(null);
   const [pageAnchor, setPageAnchor] = useState<HTMLElement | null>(null);
   // the edge being drawn from a card's handle
+  const [tool, setTool] = useState<Tool>('select');
+  const [ink, setInk] = useState<{ color?: string; width: number }>({ width: 4 });
+  // the line being drawn right now, in canvas coordinates
+  const [draft, setDraft] = useState<number[] | null>(null);
+  const activeDrawing = useRef<string | null>(null);
   const [link, setLink] = useState<{ from: string; side: CanvasSide; x: number; y: number } | null>(null);
   const interaction = useRef<Interaction | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -260,11 +316,132 @@ export function CanvasView({
     return () => element.removeEventListener('wheel', onWheel);
   });
 
+  // a finished line joins the drawing it was drawn on or next to, otherwise it starts a new one
+  const finishStroke = (points: number[]) => {
+    if (points.length === 2) points.push(points[0]! + 0.5, points[1]! + 0.5);
+    const highlighter = tool === 'highlighter';
+    const width = highlighter ? ink.width * 3.5 : ink.width;
+    const xs = points.filter((_, index) => index % 2 === 0);
+    const ys = points.filter((_, index) => index % 2 === 1);
+    const box = {
+      minX: Math.min(...xs),
+      minY: Math.min(...ys),
+      maxX: Math.max(...xs),
+      maxY: Math.max(...ys),
+    };
+    const current = dataRef.current;
+    const near = current.nodes.find(
+      (node): node is Extract<CanvasNode, { type: 'drawing' }> =>
+        node.type === 'drawing' &&
+        node.id === activeDrawing.current &&
+        box.maxX > node.x - 160 &&
+        box.minX < node.x + node.width + 160 &&
+        box.maxY > node.y - 160 &&
+        box.minY < node.y + node.height + 160,
+    );
+    const absolute = (near?.strokes ?? []).map((stroke) => ({
+      ...stroke,
+      points: stroke.points.map((value, index) => value + (index % 2 === 0 ? near!.x : near!.y)),
+    }));
+    const stroke: CanvasStroke = {
+      points,
+      width,
+      ...(ink.color ? { color: ink.color } : {}),
+      ...(highlighter ? { highlighter: true } : {}),
+    };
+    const all = [...absolute, stroke];
+    const pad = Math.max(...all.map((item) => item.width)) / 2 + 6;
+    const allX = all.flatMap((item) => item.points.filter((_, index) => index % 2 === 0));
+    const allY = all.flatMap((item) => item.points.filter((_, index) => index % 2 === 1));
+    const x = Math.floor(Math.min(...allX) - pad);
+    const y = Math.floor(Math.min(...allY) - pad);
+    const node: CanvasNode = {
+      id: near?.id ?? newId().replace(/-/g, '').slice(0, 16),
+      type: 'drawing',
+      x,
+      y,
+      width: Math.ceil(Math.max(...allX) + pad - x),
+      height: Math.ceil(Math.max(...allY) + pad - y),
+      strokes: all.map((item) => ({
+        ...item,
+        points: item.points.map((value, index) => Math.round((value - (index % 2 === 0 ? x : y)) * 10) / 10),
+      })),
+    };
+    activeDrawing.current = node.id;
+    commit({
+      ...current,
+      nodes: near
+        ? current.nodes.map((item) => (item.id === near.id ? node : item))
+        : [...current.nodes, node],
+    });
+  };
+
+  // removes every line passing under the eraser, and drawings left empty
+  const eraseAt = (px: number, py: number) => {
+    const radius = 10 / view.zoom;
+    const current = dataRef.current;
+    let changed = false;
+    const nodes = current.nodes.flatMap<CanvasNode>((node) => {
+      if (node.type !== 'drawing') return [node];
+      if (
+        px < node.x - radius ||
+        px > node.x + node.width + radius ||
+        py < node.y - radius ||
+        py > node.y + node.height + radius
+      )
+        return [node];
+      const strokes = node.strokes.filter((stroke) => {
+        const reach = radius + stroke.width / 2;
+        for (let i = 0; i < stroke.points.length; i += 2) {
+          if (Math.hypot(stroke.points[i]! + node.x - px, stroke.points[i + 1]! + node.y - py) <= reach)
+            return false;
+        }
+        return true;
+      });
+      if (strokes.length === node.strokes.length) return [node];
+      changed = true;
+      return strokes.length ? [{ ...node, strokes }] : [];
+    });
+    if (!changed) return;
+    if (interaction.current?.kind === 'erase') interaction.current.removed = true;
+    const next = {
+      nodes,
+      edges: current.edges.filter(
+        (edge) => nodes.some((n) => n.id === edge.fromNode) && nodes.some((n) => n.id === edge.toNode),
+      ),
+    };
+    dataRef.current = next;
+    setData(next);
+  };
+
+  const chooseTool = (next: Tool) => {
+    setTool(next);
+    activeDrawing.current = null;
+    if (next !== 'select') {
+      setSelected(new Set());
+      setEditing(null);
+    }
+  };
+
   const onPointerDown = (event: React.PointerEvent) => {
     if (event.button !== 0 && event.button !== 1) return;
     const target = event.target as HTMLElement;
     if (target.closest('.canvas-toolbar, textarea, input, button:not(.canvas-node)')) return;
     rootRef.current?.focus();
+    if (editable && tool !== 'select' && event.button === 0) {
+      const point = toWorld(event.clientX, event.clientY);
+      if (tool === 'eraser') {
+        history.current.past = [...history.current.past.slice(-MAX_HISTORY + 1), dataRef.current];
+        history.current.future = [];
+        interaction.current = { kind: 'erase', removed: false };
+        eraseAt(point.x, point.y);
+      } else {
+        interaction.current = { kind: 'draw', points: [point.x, point.y] };
+        setDraft([point.x, point.y]);
+      }
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+      return;
+    }
     const handle = target.closest<HTMLElement>('[data-handle]');
     const nodeElement = target.closest<HTMLElement>('[data-node]');
     if (handle && editable) {
@@ -332,6 +509,24 @@ export function CanvasView({
   const onPointerMove = (event: React.PointerEvent) => {
     const current = interaction.current;
     if (!current) return;
+    if (current.kind === 'draw') {
+      const point = toWorld(event.clientX, event.clientY);
+      const last = current.points.length;
+      // points closer than a pixel add nothing but weight
+      if (
+        Math.hypot(point.x - current.points[last - 2]!, point.y - current.points[last - 1]!) * view.zoom <
+        1.5
+      )
+        return;
+      current.points.push(point.x, point.y);
+      setDraft([...current.points]);
+      return;
+    }
+    if (current.kind === 'erase') {
+      const point = toWorld(event.clientX, event.clientY);
+      eraseAt(point.x, point.y);
+      return;
+    }
     if (current.kind === 'pan') {
       setView({
         ...current.origin,
@@ -367,8 +562,36 @@ export function CanvasView({
     const current = interaction.current;
     interaction.current = null;
     if (!current) return;
+    if (current.kind === 'draw') {
+      setDraft(null);
+      finishStroke(current.points);
+      return;
+    }
+    if (current.kind === 'erase') {
+      if (current.removed) commit(dataRef.current, false);
+      else history.current.past.pop();
+      return;
+    }
     if (current.kind === 'move' && current.moved) commit(dataRef.current, false);
     else if (current.kind === 'resize') {
+      const resized = dataRef.current.nodes.find((node) => node.id === current.id);
+      if (
+        resized?.type === 'drawing' &&
+        (resized.width !== current.width || resized.height !== current.height)
+      ) {
+        const sx = resized.width / current.width;
+        const sy = resized.height / current.height;
+        const strokes = resized.strokes.map((stroke) => ({
+          ...stroke,
+          points: stroke.points.map((value, index) => (index % 2 === 0 ? value * sx : value * sy)),
+        }));
+        dataRef.current = {
+          ...dataRef.current,
+          nodes: dataRef.current.nodes.map((node) =>
+            node.id === resized.id ? { ...resized, strokes } : node,
+          ),
+        };
+      }
       history.current.past.push({
         ...dataRef.current,
         nodes: dataRef.current.nodes.map((node) =>
@@ -478,6 +701,28 @@ export function CanvasView({
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (editing || (event.target as HTMLElement).closest('input, textarea')) return;
     const mod = event.ctrlKey || event.metaKey;
+    if (!mod && editable && !event.altKey) {
+      const key = event.key.toLowerCase();
+      const chosen: Tool | null =
+        key === 'v'
+          ? 'select'
+          : key === 'p'
+            ? 'pen'
+            : key === 'h'
+              ? 'highlighter'
+              : key === 'e'
+                ? 'eraser'
+                : null;
+      if (chosen) {
+        event.preventDefault();
+        chooseTool(chosen);
+        return;
+      }
+      if (event.key === 'Escape' && tool !== 'select') {
+        chooseTool('select');
+        return;
+      }
+    }
     if (mod && event.key.toLowerCase() === 'z') {
       event.preventDefault();
       if (event.shiftKey) redo();
@@ -527,7 +772,7 @@ export function CanvasView({
   return (
     <div
       ref={rootRef}
-      className="canvas-view"
+      className={`canvas-view tool-${tool}`}
       tabIndex={0}
       role="application"
       aria-label="Canvas. Double-click to add a card, drag to move, Delete to remove."
@@ -549,6 +794,18 @@ export function CanvasView({
         style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})` }}
       >
         <svg className="canvas-edges" width="1" height="1" aria-hidden="true">
+          {draft && (
+            <path
+              d={strokePath(draft)}
+              className="canvas-ink-draft"
+              fill="none"
+              stroke={inkColor(ink.color)}
+              strokeWidth={tool === 'highlighter' ? ink.width * 3.5 : ink.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={tool === 'highlighter' ? 0.35 : 1}
+            />
+          )}
           <defs>
             <marker
               id="canvas-arrow"
@@ -650,6 +907,53 @@ export function CanvasView({
       <div className="canvas-toolbar" role="toolbar" aria-label="Canvas tools">
         {editable && (
           <>
+            {(
+              [
+                ['select', MousePointer2, 'Select and move (V)'],
+                ['pen', Pencil, 'Pen (P)'],
+                ['highlighter', Highlighter, 'Highlighter (H)'],
+                ['eraser', Eraser, 'Eraser (E)'],
+              ] as const
+            ).map(([value, Icon, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={`icon-button${tool === value ? ' is-tool' : ''}`}
+                title={label}
+                aria-label={label}
+                aria-pressed={tool === value}
+                onClick={() => chooseTool(value)}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
+            {(tool === 'pen' || tool === 'highlighter') && (
+              <>
+                <span className="toolbar-divider" />
+                {[undefined, ...CANVAS_COLORS].map((color) => (
+                  <button
+                    key={color ?? 'ink'}
+                    type="button"
+                    className={`canvas-swatch ink-swatch${ink.color === color ? ' is-active' : ''}`}
+                    style={{ '--card-color': inkColor(color) } as React.CSSProperties}
+                    aria-label={color ? `Ink colour ${color}` : 'Ink in the text colour'}
+                    onClick={() => setInk((current) => ({ ...current, color }))}
+                  />
+                ))}
+                {INK_WIDTHS.map((width) => (
+                  <button
+                    key={width}
+                    type="button"
+                    className={`icon-button ink-width${ink.width === width ? ' is-tool' : ''}`}
+                    aria-label={`Line width ${width}`}
+                    onClick={() => setInk((current) => ({ ...current, width }))}
+                  >
+                    <span style={{ width: width + 4, height: width + 4 }} />
+                  </button>
+                ))}
+              </>
+            )}
+            <span className="toolbar-divider" />
             <button
               type="button"
               className="icon-button"
@@ -869,6 +1173,7 @@ function CanvasCard({
       {node.type === 'text' &&
         (editing ? <TextEditor text={node.text} onDone={onText} /> : <TextCard text={node.text} />)}
       {node.type === 'page' && <PageCard pageId={node.pageId} />}
+      {node.type === 'drawing' && <DrawingCard node={node} />}
       {node.type === 'file' && <FileCard path={node.file} />}
       {node.type === 'link' && (
         <div className="canvas-link">
@@ -876,7 +1181,7 @@ function CanvasCard({
           <span className="muted small">{node.url}</span>
         </div>
       )}
-      {editable && selected && node.type !== 'group' && (
+      {editable && selected && node.type !== 'group' && node.type !== 'drawing' && (
         <>
           {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
             <span
@@ -890,6 +1195,31 @@ function CanvasCard({
       )}
       {editable && selected && <span className="canvas-resize" data-handle="resize" data-node={node.id} />}
     </div>
+  );
+}
+
+function DrawingCard({ node }: { node: Extract<CanvasNode, { type: 'drawing' }> }) {
+  return (
+    <svg
+      className="canvas-drawing"
+      width={node.width}
+      height={node.height}
+      viewBox={`0 0 ${node.width} ${node.height}`}
+      aria-label="Drawing"
+    >
+      {node.strokes.map((stroke, index) => (
+        <path
+          key={index}
+          d={strokePath(stroke.points)}
+          fill="none"
+          stroke={inkColor(stroke.color)}
+          strokeWidth={stroke.width}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity={stroke.highlighter ? 0.35 : 1}
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -960,7 +1290,7 @@ function PageCard({ pageId }: { pageId: PageId }) {
   return (
     <div className="canvas-page">
       <strong className="canvas-page-title">
-        {page.icon && <span>{page.icon} </span>}
+        {page.icon && <Emoji emoji={page.icon} />}
         {displayTitle(page)}
       </strong>
       <p className="canvas-page-text">{snippet}</p>

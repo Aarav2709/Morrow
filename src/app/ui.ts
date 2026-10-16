@@ -47,6 +47,8 @@ export interface UiState {
   focusTitle: PageId | null;
   // writing with nothing else on screen
   focusMode: boolean;
+  // page shown as its markdown source instead of in the editor
+  sourceMode: PageId | null;
 }
 
 let state: UiState = {
@@ -57,6 +59,7 @@ let state: UiState = {
   renaming: null,
   focusTitle: null,
   focusMode: false,
+  sourceMode: null,
 };
 const listeners = new Set<() => void>();
 let toastId = 0;

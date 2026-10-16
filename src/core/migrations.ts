@@ -152,6 +152,9 @@ function normalizeProp(raw: Record<string, unknown>): PropDef | null {
         name: nameOf(option.name, ''),
         color: COLORS.includes(option.color as ColorName) ? (option.color as ColorName) : 'gray',
       })),
+    ...(raw.type === 'formula' && typeof raw.formula === 'string'
+      ? { formula: raw.formula.slice(0, 2000) }
+      : {}),
   };
 }
 

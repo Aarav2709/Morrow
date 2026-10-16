@@ -1,6 +1,11 @@
 import { Check, ExternalLink, Plus, X } from 'lucide-react';
 import { useState } from 'react';
-import { formatValue, PROP_LABELS } from '../../../core/database';
+import { formatValue, formulaResult, PROP_LABELS } from '../../../core/database';
+import { displayTitle } from '../../../core/model';
+import { findPagesByTitle, resolveLinkTarget } from '../../../core/search';
+import { openPage } from '../../router';
+import { useWorkspace } from '../../workspace';
+import { PageIcon } from '../Sidebar';
 import { PROP_TYPES } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { newId } from '../../platform/files';
@@ -52,9 +57,43 @@ export function PropertyDisplay({ prop, value }: { prop: PropDef; value: PropVal
       );
     case 'date':
       return <span className="prop-text">{formatDay(String(value))}</span>;
+    case 'relation':
+      return <RelationChips targets={Array.isArray(value) ? value : [String(value)]} />;
     default:
       return <span className="prop-text">{formatValue(prop, value)}</span>;
   }
+}
+
+// related pages as small links, a name that no longer matches a page is shown faded
+function RelationChips({ targets }: { targets: string[] }) {
+  const state = useWorkspace();
+  return (
+    <>
+      {targets.map((target) => {
+        const id = resolveLinkTarget(state, target);
+        const page = id ? state.pages[id] : undefined;
+        return (
+          <span
+            key={target}
+            role="link"
+            tabIndex={0}
+            className={`relation-chip${page ? '' : ' is-missing'}`}
+            data-page-id={page?.id}
+            title={page ? `Open ${displayTitle(page)}` : `“${target}” does not exist`}
+            onClick={(event) => {
+              if (!page) return;
+              event.stopPropagation();
+              openPage(page.id);
+            }}
+            onKeyDown={(event) => event.key === 'Enter' && page && openPage(page.id)}
+          >
+            {page && <PageIcon page={page} />}
+            {page ? displayTitle(page) : target}
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 export function formatDay(key: string): string {
@@ -81,6 +120,34 @@ export function PropertyInput({
   const label = `${prop.name} of ${row.title || 'Untitled'}`;
 
   switch (prop.type) {
+    case 'formula':
+      return <FormulaCell dbId={dbId} prop={prop} row={row} />;
+    case 'relation': {
+      const targets = Array.isArray(value) ? value : typeof value === 'string' ? [value] : [];
+      return (
+        <>
+          <button
+            type="button"
+            className="prop-select"
+            aria-label={label}
+            disabled={!editable}
+            onClick={(event) => setPicker(event.currentTarget)}
+          >
+            {targets.length === 0 && editable && <span className="prop-empty">Empty</span>}
+            <RelationChips targets={targets} />
+          </button>
+          {picker && (
+            <RelationPicker
+              row={row}
+              prop={prop}
+              targets={targets}
+              anchor={picker}
+              onClose={() => setPicker(null)}
+            />
+          )}
+        </>
+      );
+    }
     case 'checkbox':
       return (
         <input
@@ -386,5 +453,82 @@ export function NewProperty({
         Add
       </button>
     </form>
+  );
+}
+
+function FormulaCell({ dbId, prop, row }: { dbId: PageId; prop: PropDef; row: PageMeta }) {
+  const state = useWorkspace();
+  const database = state.pages[dbId]?.database;
+  if (!database) return null;
+  const result = formulaResult(row, prop, database);
+  if (result.error)
+    return (
+      <span className="formula-error" title={result.error}>
+        Error
+      </span>
+    );
+  return <span className="prop-text formula-value">{formatValue(prop, result.value)}</span>;
+}
+
+// pick pages to relate a row to, searching every page by title
+function RelationPicker({
+  row,
+  prop,
+  targets,
+  anchor,
+  onClose,
+}: {
+  row: PageMeta;
+  prop: PropDef;
+  targets: string[];
+  anchor: HTMLElement;
+  onClose: () => void;
+}) {
+  const state = useWorkspace();
+  const [query, setQuery] = useState('');
+  const chosen = new Set(targets.map((target) => target.toLowerCase()));
+  const found = findPagesByTitle(state, query, 12).filter((page) => page.id !== row.id);
+  const toggle = (title: string) => {
+    const next = chosen.has(title.toLowerCase())
+      ? targets.filter((target) => target.toLowerCase() !== title.toLowerCase())
+      : [...targets, title];
+    setValue(row.id, prop.id, next.length ? next : null);
+  };
+  return (
+    <Popover
+      anchor={anchor}
+      onClose={onClose}
+      label={`Relate ${row.title || 'Untitled'}`}
+      className="db-panel relation-picker"
+    >
+      <input
+        className="text-input small"
+        data-autofocus
+        placeholder="Search pages"
+        aria-label="Search pages"
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      <ul className="relation-list">
+        {found.map((page) => {
+          const title = displayTitle(page);
+          const on = chosen.has(title.toLowerCase());
+          return (
+            <li key={page.id}>
+              <button
+                type="button"
+                className={`relation-option${on ? ' is-on' : ''}`}
+                onClick={() => toggle(title)}
+              >
+                <PageIcon page={page} />
+                <span>{title}</span>
+                {on && <Check size={13} />}
+              </button>
+            </li>
+          );
+        })}
+        {found.length === 0 && <li className="muted small">No pages match.</li>}
+      </ul>
+    </Popover>
   );
 }

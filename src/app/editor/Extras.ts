@@ -1,3 +1,4 @@
+import type { Mermaid } from 'mermaid';
 import {
   Extension,
   InputRule,
@@ -18,6 +19,7 @@ import { common, createLowlight } from 'lowlight';
 import { CALLOUT_TONES, calloutTone, COLORS } from '../../core/model';
 import type { CalloutTone, ColorName } from '../../core/model';
 import { tagColor } from '../../core/tags';
+import { emojiElement } from '../components/Emoji';
 import { openDialog } from '../ui';
 
 declare module '@tiptap/core' {
@@ -259,7 +261,59 @@ function currentView(_node: PmNode): EditorView | null {
 export { MathViewTracker };
 
 const lowlight = createLowlight(common);
-export const CODE_LANGUAGES = lowlight.listLanguages().sort();
+export const CODE_LANGUAGES = [...lowlight.listLanguages(), 'mermaid'].sort();
+
+// mermaid is large, it loads the first time a page has a diagram on it
+let mermaidReady: Promise<Mermaid> | null = null;
+let diagramCount = 0;
+export async function renderMermaid(source: string): Promise<{ html: string; error: boolean }> {
+  if (!source.trim()) return { html: '', error: false };
+  mermaidReady ??= import('mermaid').then(({ default: mermaid }) => {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    // the base theme tinted with morrow's colours, so diagrams belong on the page
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: 'base',
+      fontFamily: 'Inter Variable, system-ui, sans-serif',
+      themeVariables: dark
+        ? {
+            background: '#191919',
+            primaryColor: '#1d2b3f',
+            primaryBorderColor: '#4c8df6',
+            primaryTextColor: '#e8e8e8',
+            secondaryColor: '#2a2140',
+            tertiaryColor: '#202020',
+            lineColor: '#8b9099',
+            textColor: '#e8e8e8',
+            fontSize: '14px',
+          }
+        : {
+            background: '#ffffff',
+            primaryColor: '#e9f2fe',
+            primaryBorderColor: '#2f80ed',
+            primaryTextColor: '#1f2328',
+            secondaryColor: '#f1eafe',
+            tertiaryColor: '#f7f7f5',
+            lineColor: '#8a8f98',
+            textColor: '#1f2328',
+            fontSize: '14px',
+          },
+    });
+    return mermaid;
+  });
+  try {
+    const mermaid = await mermaidReady;
+    const { svg } = await mermaid.render(`morrow-diagram-${++diagramCount}`, source);
+    return { html: svg, error: false };
+  } catch (error) {
+    document.querySelectorAll('[id^="dmorrow-diagram-"]').forEach((element) => element.remove());
+    return {
+      html: `This diagram has a mistake: ${error instanceof Error ? error.message.split('\n')[0] : 'unknown'}`,
+      error: true,
+    };
+  }
+}
 
 // highlighted code, the language is picked from a list above each block
 export const CodeBlock = CodeBlockLowlight.extend({
@@ -304,7 +358,57 @@ export const CodeBlock = CodeBlockLowlight.extend({
       const pre = document.createElement('pre');
       const code = document.createElement('code');
       pre.append(code);
-      dom.append(select, pre);
+      // mermaid blocks draw their diagram underneath, the code folds away once there is one
+      const diagram = document.createElement('div');
+      diagram.className = 'mermaid-diagram';
+      diagram.contentEditable = 'false';
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'code-toggle';
+      toggle.contentEditable = 'false';
+      let showCode = current.textContent.trim() === '';
+      let drawn = '';
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const isMermaid = () => current.attrs.language === 'mermaid';
+      const layout = () => {
+        const mermaid = isMermaid();
+        dom.classList.toggle('is-mermaid', mermaid);
+        dom.classList.toggle('hide-code', mermaid && !showCode);
+        diagram.hidden = !mermaid;
+        toggle.hidden = !mermaid;
+        toggle.textContent = showCode ? 'Hide code' : 'Edit diagram';
+      };
+      const draw = () => {
+        if (!isMermaid()) return;
+        const source = current.textContent;
+        if (source === drawn) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          drawn = source;
+          void renderMermaid(source).then((result) => {
+            if (drawn !== source) return;
+            diagram.classList.toggle('is-error', result.error);
+            if (result.error) diagram.textContent = result.html;
+            else diagram.innerHTML = result.html;
+          });
+        }, 350);
+      };
+      toggle.addEventListener('click', (event) => {
+        event.preventDefault();
+        showCode = !showCode;
+        layout();
+      });
+      diagram.addEventListener('dblclick', () => {
+        showCode = true;
+        layout();
+      });
+      dom.append(select, toggle, pre, diagram);
+      layout();
+      draw();
+      const ours = (target: EventTarget | globalThis.Node | null) =>
+        select.contains(target as globalThis.Node) ||
+        toggle.contains(target as globalThis.Node) ||
+        diagram.contains(target as globalThis.Node);
       return {
         dom,
         contentDOM: code,
@@ -312,10 +416,15 @@ export const CodeBlock = CodeBlockLowlight.extend({
           if (updated.type !== current.type) return false;
           current = updated;
           sync();
+          layout();
+          draw();
           return true;
         },
-        stopEvent: (event) => select.contains(event.target as globalThis.Node),
-        ignoreMutation: (mutation) => select.contains(mutation.target),
+        stopEvent: (event) => ours(event.target),
+        ignoreMutation: (mutation) => ours(mutation.target),
+        destroy: () => {
+          if (timer) clearTimeout(timer);
+        },
       };
     };
   },
@@ -388,7 +497,10 @@ export function calloutNodeView(): NodeViewRenderer {
         : 'note';
       dom.dataset.tone = value;
       const kind = String(current.attrs.kind ?? value);
-      tone.textContent = `${KIND_EMOJI[kind.toLowerCase()] ?? '📝'} ${kind.charAt(0).toUpperCase() + kind.slice(1)}`;
+      tone.replaceChildren(
+        emojiElement(KIND_EMOJI[kind.toLowerCase()] ?? '📝'),
+        document.createTextNode(` ${kind.charAt(0).toUpperCase() + kind.slice(1)}`),
+      );
       tone.title = `${TONE_LABELS[value]}, click to change`;
       if (document.activeElement !== title) title.value = String(current.attrs.title ?? '');
       title.readOnly = !editor.isEditable;

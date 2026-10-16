@@ -53,6 +53,7 @@ import { openDialog, setUi, useUi } from '../ui';
 import { run, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
 import { pageMenuEntries } from './pageMenu';
+import { Emoji } from './Emoji';
 import { Logo } from './primitives';
 
 const DRAG_TYPE = 'application/x-morrow-page';
@@ -69,7 +70,7 @@ export function pageIcon(page: PageMeta): LucideIcon {
 
 export function PageIcon({ page }: { page: PageMeta }) {
   if (page.encrypted) return <Lock size={15} strokeWidth={1.75} className="icon-kind-locked" />;
-  if (page.icon) return <>{page.icon}</>;
+  if (page.icon) return <Emoji emoji={page.icon} />;
   // each kind of page has its own colour when colourful pages are on
   const kind = page.dailyDate ? 'daily' : page.kind;
   const props = { size: 15, strokeWidth: 1.75, className: `icon-kind-${kind}` };

@@ -7,7 +7,9 @@ import {
   Globe,
   LayoutTemplate,
   Network,
+  FileCode2,
   FileDown,
+  FileText,
   FileUp,
   History,
   Pencil,
@@ -22,6 +24,7 @@ import {
   createPage,
   duplicatePage,
   exportPageMarkdown,
+  exportPagePdf,
   importMarkdown,
   publishSite,
   revealPage,
@@ -31,7 +34,7 @@ import {
 } from '../operations';
 import { desktop } from '../platform/desktop';
 import { navigate } from '../router';
-import { openDialog } from '../ui';
+import { getUi, openDialog, setUi } from '../ui';
 import { getSession, getState } from '../workspace';
 import type { MenuEntry } from './Menu';
 
@@ -80,8 +83,18 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
             },
           ]
       : []),
+    ...(page.kind === 'page' && !getSession().unreadable.has(pageId)
+      ? [
+          getUi().sourceMode === pageId
+            ? { label: 'Back to the editor', icon: FileText, onSelect: () => setUi({ sourceMode: null }) }
+            : { label: 'Edit as Markdown', icon: FileCode2, onSelect: () => setUi({ sourceMode: pageId }) },
+        ]
+      : []),
     { separator: true },
     { label: 'Export as Markdown', icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
+    ...(desktop && page.kind !== 'canvas'
+      ? [{ label: 'Export as PDF', icon: FileText, onSelect: () => void exportPagePdf(pageId) }]
+      : []),
     { label: 'Publish as a website', icon: Globe, onSelect: () => void publishSite(pageId) },
     { label: 'Import Markdown here', icon: FileUp, onSelect: () => void importMarkdown(pageId) },
     { separator: true },

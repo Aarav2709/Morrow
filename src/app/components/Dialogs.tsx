@@ -21,9 +21,11 @@ import { ACCENT_LABELS, ACCENTS } from '../platform/preferences';
 import type { PageWidth, ThemePreference, WritingFont } from '../platform/preferences';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
 import { closeDialog, toast, useUi } from '../ui';
+import { previewCustomCss, saveCustomCss, useCustomCss } from '../customCss';
 import { chooseVaultFolder } from '../vaults';
 import { getSession, run, useWorkspace } from '../workspace';
-import { HistoryDialog, IconDialog } from './HistoryDialog';
+import { EmojiPicker } from './EmojiPicker';
+import { HistoryDialog } from './HistoryDialog';
 import { CaptureDialog } from './CaptureDialog';
 import { EncryptDialog } from './EncryptDialog';
 import { SourceDialog } from './SourceDialog';
@@ -45,7 +47,7 @@ export function Dialogs() {
       return <HistoryDialog pageId={dialog.pageId} />;
     case 'icon':
       return (
-        <IconDialog
+        <EmojiPicker
           pageId={dialog.pageId}
           onPick={(icon) => run({ type: 'page.setIcon', id: dialog.pageId, icon, now: Date.now() })}
         />
@@ -208,6 +210,7 @@ function SettingsDialog() {
             onChange={(event) => setPreferences({ colorful: event.target.checked })}
           />
         </label>
+        <CustomCssSetting />
       </section>
 
       <section className="settings-section">
@@ -458,5 +461,72 @@ function MoveDialog({ pageId }: { pageId: PageId }) {
         {targets.length === 0 && query && <li className="muted move-empty">No matching pages.</li>}
       </ul>
     </Dialog>
+  );
+}
+
+// styles of your own, saved in the vault and shown as you type
+function CustomCssSetting() {
+  const saved = useCustomCss();
+  const [draft, setDraft] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const text = draft ?? saved;
+  return (
+    <div className="setting-block">
+      <button
+        type="button"
+        className="setting-row link-row"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+      >
+        <span className="setting-label">
+          Custom CSS
+          <span className="muted small"> Restyle anything, saved in your vault as .morrow/style.css</span>
+        </span>
+        <span className="muted small">{saved.trim() ? 'On' : 'None'}</span>
+      </button>
+      {open && (
+        <>
+          <textarea
+            className="text-input css-input"
+            spellCheck={false}
+            aria-label="Custom CSS"
+            placeholder={'.page-title { letter-spacing: -0.03em; }\n:root { --accent: #e5484d; }'}
+            value={text}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              previewCustomCss(event.target.value);
+            }}
+          />
+          <div className="setting-actions">
+            <button
+              type="button"
+              className="button primary small"
+              disabled={draft === null || draft === saved}
+              onClick={() =>
+                void saveCustomCss(text)
+                  .then(() => {
+                    setDraft(null);
+                    toast('Custom CSS saved.');
+                  })
+                  .catch(() => toast('Could not save the CSS.', { tone: 'error' }))
+              }
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className="button small"
+              disabled={draft === null}
+              onClick={() => {
+                setDraft(null);
+                previewCustomCss(saved);
+              }}
+            >
+              Discard changes
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

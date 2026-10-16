@@ -6,6 +6,7 @@ import {
   Copy,
   Download,
   FileDown,
+  FileText,
   FileUp,
   FolderArchive,
   FolderOpen,
@@ -30,6 +31,7 @@ import {
   Sun,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import type { PageId } from '../core/model';
 import { isEffectivelyTrashed } from '../core/tree';
@@ -40,6 +42,7 @@ import {
   exportAllMarkdown,
   exportBackup,
   exportPageMarkdown,
+  exportPagePdf,
   importMarkdown,
   openToday,
   publishSite,
@@ -48,6 +51,7 @@ import {
   trashPage,
 } from './operations';
 import { desktop, isMac } from './platform/desktop';
+import { closeTab, openTab } from './tabs';
 import { chooseVaultFolder } from './vaults';
 import { getPreferences, resolvedTheme, setPreferences } from './platform/preferences';
 import { navigate, parseRoute } from './router';
@@ -73,6 +77,32 @@ const onLivePage = ({ pageId }: ActionContext) =>
   pageId !== null && !isEffectivelyTrashed(getState().pages, pageId);
 
 export const ACTIONS: Action[] = [
+  {
+    id: 'tab.new',
+    label: 'New tab',
+    group: 'View',
+    icon: Plus,
+    shortcut: 'Mod+T',
+    keywords: 'tabs open',
+    run: () => openTab(),
+  },
+  {
+    id: 'tab.close',
+    label: 'Close tab',
+    group: 'View',
+    icon: X,
+    shortcut: 'Mod+W',
+    keywords: 'tabs',
+    run: () => closeTab(),
+  },
+  {
+    id: 'tab.duplicate',
+    label: 'Open this page in a new tab',
+    group: 'View',
+    icon: Plus,
+    keywords: 'tabs split',
+    run: () => openTab(window.location.hash || '#/'),
+  },
   {
     id: 'page.new',
     label: 'New page',
@@ -282,6 +312,15 @@ export const ACTIONS: Action[] = [
     keywords: 'download md',
     enabled: ({ pageId }) => pageId !== null,
     run: ({ pageId }) => pageId && void exportPageMarkdown(pageId),
+  },
+  {
+    id: 'page.exportPdf',
+    label: 'Export page as PDF',
+    group: 'Page',
+    icon: FileText,
+    keywords: 'print pdf save document',
+    enabled: ({ pageId }) => pageId !== null && desktop !== null,
+    run: ({ pageId }) => pageId && void exportPagePdf(pageId),
   },
   {
     id: 'page.trash',

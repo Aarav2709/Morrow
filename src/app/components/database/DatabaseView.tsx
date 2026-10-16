@@ -32,10 +32,14 @@ import {
   VIEW_LABELS,
   visibleRows,
   newView,
+  formatValue,
+  formulaResult,
+  valueOf,
 } from '../../../core/database';
 import { displayTitle, PROP_TYPES, VIEW_TYPES } from '../../../core/model';
 import type { Command } from '../../../core/commands';
 import type {
+  DocNode,
   DatabaseDef,
   FilterOp,
   PageId,
@@ -54,6 +58,7 @@ import { toast } from '../../ui';
 import { run, runAll, useWorkspace } from '../../workspace';
 import { Menu } from '../Menu';
 import { Popover } from '../Popover';
+import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
 import { createRow, setValue, updateDatabase, updateProp, updateView } from './data';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
@@ -171,8 +176,8 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       {view.type === 'calendar' && (
         <CalendarView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />
       )}
-      {view.type === 'list' && <ListView rows={rows} props={visible} />}
-      {view.type === 'gallery' && <GalleryView rows={rows} props={visible} />}
+      {view.type === 'list' && <ListView rows={rows} props={visible} database={database} />}
+      {view.type === 'gallery' && <GalleryView rows={rows} props={visible} database={database} />}
       {view.type !== 'table' && editable && (
         <button type="button" className="db-new-row" onClick={() => newRowAndOpen(page.id, {})}>
           <Plus size={14} /> New
@@ -687,6 +692,7 @@ function PropertySettings({
           ))}
         </select>
       </label>
+      {prop.type === 'formula' && <FormulaField dbId={dbId} prop={prop} database={database} />}
       {(prop.type === 'select' || prop.type === 'multiSelect') && (
         <ul className="db-prop-list">
           {prop.options.map((option) => (
@@ -925,7 +931,17 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
   );
 }
 
-function Card({ row, props, cover }: { row: PageMeta; props: PropDef[]; cover?: boolean }) {
+function Card({
+  row,
+  props,
+  database,
+  cover,
+}: {
+  row: PageMeta;
+  props: PropDef[];
+  database: DatabaseDef;
+  cover?: boolean;
+}) {
   const state = useWorkspace();
   const [image, setImage] = useState<string | null>(null);
   const firstImage = useMemo(() => {
@@ -936,6 +952,7 @@ function Card({ row, props, cover }: { row: PageMeta; props: PropDef[]; cover?: 
     );
     return node ? String(node.attrs!.fileId) : null;
   }, [cover, state.docs, row.id]);
+  const progress = useMemo(() => taskProgress(state.docs[row.id]), [state.docs, row.id]);
   useEffect(() => {
     let live = true;
     if (firstImage) void fileUrl(firstImage).then((url) => live && setImage(url));
@@ -951,23 +968,51 @@ function Card({ row, props, cover }: { row: PageMeta; props: PropDef[]; cover?: 
         </span>
       )}
       <span className="db-card-title">
-        {row.icon && <span className="db-card-icon">{row.icon}</span>}
+        {row.icon && <Emoji emoji={row.icon} className="db-card-icon" />}
         {displayTitle(row)}
       </span>
       <span className="db-card-props">
         {props.map((prop) => (
-          <PropertyDisplay key={prop.id} prop={prop} value={row.properties[prop.id] ?? null} />
+          <PropertyDisplay key={prop.id} prop={prop} value={valueOf(row, prop.id, database)} />
         ))}
       </span>
+      {progress.total > 0 && (
+        <span className="db-progress" title={`${progress.done} of ${progress.total} tasks done`}>
+          <span className="db-progress-bar">
+            <span style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} />
+          </span>
+          <span className="db-progress-label">
+            {progress.done}/{progress.total}
+          </span>
+        </span>
+      )}
     </button>
   );
+}
+
+// how many of the checklist items in a page are ticked
+function taskProgress(doc: DocNode | undefined): { done: number; total: number } {
+  let done = 0;
+  let total = 0;
+  const visit = (node: DocNode) => {
+    if (node.type === 'taskItem') {
+      total++;
+      if (node.attrs?.checked === true) done++;
+    }
+    for (const child of node.content ?? []) visit(child);
+  };
+  if (doc) visit(doc);
+  return { done, total };
 }
 
 const DRAG = 'application/x-morrow-row';
 
 function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
   const prop = database.properties.find((candidate) => candidate.id === view.groupBy);
-  const groups = groupRows(rows, view.groupBy, database);
+  // an empty column for rows without a value only adds noise
+  const groups = groupRows(rows, view.groupBy, database).filter(
+    (group) => group.key !== null || group.rows.length > 0,
+  );
   const [over, setOver] = useState<string | null>(null);
   if (!prop)
     return (
@@ -986,7 +1031,7 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
         return (
           <section
             key={key}
-            className={`db-column${over === key ? ' is-over' : ''}`}
+            className={`db-column color-${group.color ?? 'gray'}${over === key ? ' is-over' : ''}`}
             aria-label={group.label}
             onDragOver={(event) => {
               if (!editable || !event.dataTransfer.types.includes(DRAG)) return;
@@ -1001,6 +1046,7 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
             }}
           >
             <header className="db-column-head">
+              <span className="db-column-dot" aria-hidden="true" />
               <Chip option={{ name: group.label, color: group.color }} />
               <span className="muted small">{group.rows.length}</span>
             </header>
@@ -1013,7 +1059,7 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
                   event.dataTransfer.effectAllowed = 'move';
                 }}
               >
-                <Card row={row} props={shown} />
+                <Card row={row} props={shown} database={database} />
               </div>
             ))}
             {editable && (
@@ -1134,7 +1180,7 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
   );
 }
 
-function ListView({ rows, props }: { rows: PageMeta[]; props: PropDef[] }) {
+function ListView({ rows, props, database }: { rows: PageMeta[]; props: PropDef[]; database: DatabaseDef }) {
   return (
     <ul className="link-list db-list">
       {rows.map((row) => (
@@ -1146,7 +1192,7 @@ function ListView({ rows, props }: { rows: PageMeta[]; props: PropDef[] }) {
             <span className="link-row-title">{displayTitle(row)}</span>
             <span className="db-card-props">
               {props.map((prop) => (
-                <PropertyDisplay key={prop.id} prop={prop} value={row.properties[prop.id] ?? null} />
+                <PropertyDisplay key={prop.id} prop={prop} value={valueOf(row, prop.id, database)} />
               ))}
             </span>
           </button>
@@ -1156,12 +1202,84 @@ function ListView({ rows, props }: { rows: PageMeta[]; props: PropDef[] }) {
   );
 }
 
-function GalleryView({ rows, props }: { rows: PageMeta[]; props: PropDef[] }) {
+function GalleryView({
+  rows,
+  props,
+  database,
+}: {
+  rows: PageMeta[];
+  props: PropDef[];
+  database: DatabaseDef;
+}) {
   return (
     <div className="db-gallery">
       {rows.map((row) => (
-        <Card key={row.id} row={row} props={props} cover />
+        <Card key={row.id} row={row} props={props} database={database} cover />
       ))}
+    </div>
+  );
+}
+
+const FORMULA_EXAMPLES = [
+  'prop("Price") * prop("Count")',
+  'if(prop("Done"), "✅", "⏳")',
+  'dateBetween(prop("Due"), today(), "days")',
+  'concat(prop("Name"), " · ", prop("Status"))',
+];
+
+// the expression a formula property runs, checked against the first row as you type
+function FormulaField({ dbId, prop, database }: { dbId: PageId; prop: PropDef; database: DatabaseDef }) {
+  const [draft, setDraft] = useState(prop.formula ?? '');
+  const state = useWorkspace();
+  const sample = rowsOf(state, dbId)[0];
+  const preview = sample ? formulaResult(sample, { ...prop, formula: draft }, database) : null;
+  const save = () => {
+    if (draft !== (prop.formula ?? ''))
+      updateProp(dbId, prop.id, (current) => ({ ...current, formula: draft }));
+  };
+  return (
+    <div className="field formula-field">
+      <span>Formula</span>
+      <textarea
+        className="text-input small formula-input"
+        spellCheck={false}
+        value={draft}
+        placeholder='prop("Price") * prop("Count")'
+        aria-label="Formula"
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            save();
+          }
+        }}
+      />
+      {preview?.error ? (
+        <span className="formula-error">{preview.error}</span>
+      ) : preview && draft.trim() ? (
+        <span className="muted small">
+          First row: <strong>{formatValue(prop, preview.value) || 'empty'}</strong>
+        </span>
+      ) : null}
+      <details className="formula-help">
+        <summary>How formulas work</summary>
+        <p className="muted small">
+          Use <code>prop("Name")</code> for another property, maths like <code>+ - * / ^</code>, comparisons
+          like <code>&gt; == !=</code>, <code>and</code>, <code>or</code>, <code>not</code>, and functions:
+          if, empty, round, floor, ceil, abs, min, max, sum, length, concat, join, upper, lower, contains,
+          replace, slice, today, now, dateAdd, dateBetween, year, month, day.
+        </p>
+        <ul className="formula-examples">
+          {FORMULA_EXAMPLES.map((example) => (
+            <li key={example}>
+              <button type="button" className="link-button" onClick={() => setDraft(example)}>
+                <code>{example}</code>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </details>
     </div>
   );
 }

@@ -259,6 +259,30 @@ interface Builder {
 // toggles and notion asides become blocks, any other html is kept exactly as written
 function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
   const html = source.trim();
+  if (/^<!--\s*toc\s*-->$/i.test(html)) {
+    b.push({ type: 'tableOfContents' });
+    return;
+  }
+  // column wrappers come as runs of bare tags, each one opens or closes a level
+  const layoutTags = html.match(/<div data-columns>|<div data-column>|<\/div>/gi);
+  if (layoutTags && html.replace(/<div data-columns>|<div data-column>|<\/div>/gi, '').trim() === '') {
+    const inLayout = b.stack.some((node) => node.type === 'columns');
+    if (inLayout || /<div data-columns>/i.test(html)) {
+      for (const tag of layoutTags) {
+        if (/data-columns/i.test(tag)) {
+          const node: DocNode = { type: 'columns', content: [] };
+          b.push(node);
+          b.stack.push(node);
+        } else if (/data-column/i.test(tag)) {
+          if (b.top().type !== 'columns') continue;
+          const node: DocNode = { type: 'column', content: [] };
+          b.push(node);
+          b.stack.push(node);
+        } else if (b.top().type === 'column' || b.top().type === 'columns') b.close();
+      }
+      return;
+    }
+  }
   const details = /^<details[^>]*>/i.exec(html);
   const aside = /^<aside[^>]*>/i.exec(html);
   if (details) {
@@ -442,6 +466,15 @@ function wikiNode(link: WikiLink, markup: string, options: ParseOptions, marks: 
     }
   }
   const id = link.target ? (options.resolvePage?.(link.target) ?? null) : null;
+  // [[2026-10-16]] with no page of that name is a date, it opens that day's note
+  if (
+    !id &&
+    !link.embed &&
+    link.alias === null &&
+    link.anchor === null &&
+    /^\d{4}-\d{2}-\d{2}$/.test(link.target)
+  )
+    return [{ type: 'dateMention', attrs: { date: link.target } }];
   if (!id && options.keepUnresolved === false) {
     return [
       marks.length ? { type: 'text', text: markup, marks: [...marks] } : { type: 'text', text: markup },

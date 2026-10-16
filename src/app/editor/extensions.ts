@@ -13,12 +13,14 @@ import { MarkdownPaste } from './MarkdownPaste';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
+import { Column, Columns, DateMention, TableOfContents } from './Structure';
 
 export interface ExtensionOptions extends PageLinkOptions {
   onBlockMenu: (request: BlockMenuRequest) => void;
   resolvePage: (title: string) => string | null;
   openTag: (tag: string) => void;
   createChild: (kind: 'database' | 'canvas') => string | null;
+  openDate: (date: Date) => void;
 }
 
 export function createExtensions(options: ExtensionOptions): AnyExtension[] {
@@ -61,6 +63,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     }),
     PageLink.configure({
       getTitle: options.getTitle,
+      ...(options.getIcon ? { getIcon: options.getIcon } : {}),
       subscribe: options.subscribe,
       open: options.open,
       findPages: options.findPages,
@@ -68,12 +71,17 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       resolveTarget: options.resolveTarget,
       createFromTarget: options.createFromTarget,
       renderEmbed: options.renderEmbed,
+      ...(options.mountEmbed ? { mountEmbed: options.mountEmbed } : {}),
     }),
     SlashCommand.configure({ createChild: options.createChild }),
     Image,
     FileAttachment,
     FileDrop,
     Callout,
+    Columns,
+    Column,
+    TableOfContents,
+    DateMention.configure({ openDate: options.openDate, findPages: options.findPages }),
     Details.configure({ persist: true, HTMLAttributes: { class: 'toggle' } }),
     DetailsSummary,
     DetailsContent,

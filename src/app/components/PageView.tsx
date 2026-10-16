@@ -9,7 +9,9 @@ import type { DocNode, PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
 import { findDatabaseOf } from '../../core/database';
 import { PageEditor } from '../editor/PageEditor';
+import { SourceEditor } from './SourceEditor';
 import { CoverBanner, CoverPicker } from './Cover';
+import { Emoji } from './Emoji';
 import { LockedPage } from './EncryptDialog';
 import { RowProperties } from './database/RowProperties';
 import { PageTags } from './TagsView';
@@ -50,6 +52,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
   // enter in the title can arrive before the editor exists, focus it once it does
   const focusWhenReady = useRef(false);
   const prefs = usePreferences();
+  const ui = useUi();
 
   useEffect(() => {
     if (state.pages[id]) run({ type: 'page.markOpened', id, now: Date.now() });
@@ -143,8 +146,8 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
         {page.kind !== 'database' && !unreadable && <Outline doc={doc} />}
         <CoverBanner page={page} editable={!trashed} />
         <article className={`page font-${prefs.font} width-${prefs.width}${page.cover ? ' has-cover' : ''}`}>
-          <div className="page-icon-row">
-            {page.icon ? (
+          {page.icon && (
+            <div className="page-icon-row">
               <button
                 type="button"
                 className="page-icon"
@@ -152,10 +155,13 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
                 disabled={trashed}
                 onClick={() => openDialog({ kind: 'icon', pageId: id })}
               >
-                {page.icon}
+                <Emoji emoji={page.icon} />
               </button>
-            ) : (
-              !trashed && (
+            </div>
+          )}
+          {!trashed && (!page.icon || !page.cover) && (
+            <div className="page-header-actions">
+              {!page.icon && (
                 <button
                   type="button"
                   className="add-icon"
@@ -163,21 +169,21 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
                 >
                   <Smile size={14} /> Add icon
                 </button>
-              )
-            )}
-            {!page.cover && !trashed && (
-              <button
-                type="button"
-                className="add-icon"
-                onClick={(event) => setCoverPicker(event.currentTarget)}
-              >
-                <ImageIcon size={14} /> Add cover
-              </button>
-            )}
-            {coverPicker && (
-              <CoverPicker page={page} anchor={coverPicker} onClose={() => setCoverPicker(null)} />
-            )}
-          </div>
+              )}
+              {!page.cover && (
+                <button
+                  type="button"
+                  className="add-icon"
+                  onClick={(event) => setCoverPicker(event.currentTarget)}
+                >
+                  <ImageIcon size={14} /> Add cover
+                </button>
+              )}
+            </div>
+          )}
+          {coverPicker && (
+            <CoverPicker page={page} anchor={coverPicker} onClose={() => setCoverPicker(null)} />
+          )}
           <h1 className="page-title-heading">
             <TitleField
               page={page}
@@ -204,6 +210,16 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
               The content of this page could not be read. It has been left untouched in storage and is
               protected from changes. Saving a backup will not include it.
             </div>
+          ) : ui.sourceMode === id && page.kind === 'page' ? (
+            <>
+              <div className="banner source-banner" role="note">
+                <span>You are editing this page as Markdown.</span>
+                <button type="button" className="button small" onClick={() => setUi({ sourceMode: null })}>
+                  Back to the editor
+                </button>
+              </div>
+              <SourceEditor pageId={id} doc={doc} editable={!trashed} />
+            </>
           ) : (
             <PageBody
               id={id}

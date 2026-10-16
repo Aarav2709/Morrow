@@ -56,8 +56,8 @@
 .font-sans .prose h1,
 .font-sans .prose h2,
 .font-sans .prose h3 {
-  font-weight: 600;
-  letter-spacing: -0.018em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .prose h1 {

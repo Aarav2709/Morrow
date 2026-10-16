@@ -16,6 +16,8 @@ import type {
   ViewType,
   WorkspaceState,
 } from './model';
+import { computeFormula } from './formula';
+import type { FormulaValue } from './formula';
 import { childrenOf } from './tree';
 
 // pseudo properties every row has
@@ -31,6 +33,8 @@ export const PROP_LABELS: Record<PropType, string> = {
   date: 'Date',
   checkbox: 'Checkbox',
   url: 'Link',
+  relation: 'Relation',
+  formula: 'Formula',
 };
 
 export const VIEW_LABELS: Record<ViewType, string> = {
@@ -118,11 +122,39 @@ export function findDatabaseOf(state: WorkspaceState, page: PageMeta): PageMeta 
   return parent?.kind === 'database' && parent.database ? parent : null;
 }
 
-export function valueOf(page: PageMeta, propId: string): PropValue {
+export function valueOf(page: PageMeta, propId: string, database?: DatabaseDef): PropValue {
   if (propId === TITLE_PROP) return displayTitle(page);
   if (propId === CREATED_PROP) return page.createdAt;
   if (propId === UPDATED_PROP) return page.updatedAt;
+  const prop = database?.properties.find((candidate) => candidate.id === propId);
+  if (prop?.type === 'formula') return formulaResult(page, prop, database!).value;
   return page.properties[propId] ?? null;
+}
+
+// a formula's value for one row, other properties are found by name with prop("Name")
+export function formulaResult(
+  page: PageMeta,
+  prop: PropDef,
+  database: DatabaseDef,
+  depth = 0,
+): { value: FormulaValue; error: string | null } {
+  if (depth > 8) return { value: null, error: 'Formulas refer to each other in a loop' };
+  return computeFormula(prop.formula ?? '', (name) => {
+    const wanted = name.trim().toLowerCase();
+    const other = database.properties.find((candidate) => candidate.name.toLowerCase() === wanted);
+    if (!other) {
+      if (['title', 'name'].includes(wanted)) return displayTitle(page);
+      if (wanted === 'created') return page.createdAt;
+      if (wanted === 'updated' || wanted === 'edited') return page.updatedAt;
+      return null;
+    }
+    if (other.type === 'formula') return formulaResult(page, other, database, depth + 1).value;
+    const value = page.properties[other.id] ?? null;
+    if (other.type === 'checkbox') return value === true;
+    if (other.type === 'number' || typeof value === 'boolean') return value as FormulaValue;
+    const text = formatValue(other, value);
+    return text === '' ? null : text;
+  });
 }
 
 export function propType(database: DatabaseDef, propId: string): PropType | 'title' | null {
@@ -145,6 +177,16 @@ export function formatValue(prop: PropDef | undefined, value: PropValue): string
         .join(', ');
     case 'checkbox':
       return value === true ? 'Yes' : 'No';
+    case 'relation':
+      return (Array.isArray(value) ? value : [value]).join(', ');
+    case 'formula':
+      return typeof value === 'number'
+        ? String(Math.round(value * 1e6) / 1e6)
+        : typeof value === 'boolean'
+          ? value
+            ? 'Yes'
+            : 'No'
+          : String(value);
     default:
       return String(value);
   }
@@ -175,7 +217,7 @@ function compareValues(a: PropValue, b: PropValue, prop: PropDef | undefined): n
 
 export function matchesFilter(page: PageMeta, rule: FilterRule, database: DatabaseDef): boolean {
   const prop = database.properties.find((candidate) => candidate.id === rule.prop);
-  const value = valueOf(page, rule.prop);
+  const value = valueOf(page, rule.prop, database);
   const text = formatValue(prop, value).toLowerCase();
   const wanted = rule.value;
   switch (rule.op) {
@@ -219,8 +261,8 @@ export function sortRows(rows: PageMeta[], sorts: SortRule[], database: Database
   return [...rows].sort((a, b) => {
     for (const sort of sorts) {
       const prop = database.properties.find((candidate) => candidate.id === sort.prop);
-      const va = valueOf(a, sort.prop);
-      const vb = valueOf(b, sort.prop);
+      const va = valueOf(a, sort.prop, database);
+      const vb = valueOf(b, sort.prop, database);
       let order = compareValues(va, vb, prop);
       if (sort.dir === 'desc' && !isEmpty(va) && !isEmpty(vb)) order = -order;
       if (order !== 0) return order;
@@ -306,6 +348,15 @@ export function convertValue(from: PropDef, to: PropDef, value: PropValue): Prop
         .map((option) => option.id);
       return ids.length ? ids : null;
     }
+    case 'relation':
+      return text
+        ? text
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean)
+        : null;
+    case 'formula':
+      return null;
     default:
       return text || null;
   }

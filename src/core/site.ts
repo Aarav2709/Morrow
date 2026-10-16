@@ -1,7 +1,7 @@
 // turns pages into a small static website: plain html files, one stylesheet, no scripts and nothing loaded from elsewhere
 import { canvasFromDoc } from './canvas';
-import { formatValue, rowsOf } from './database';
-import { docToPlainText } from './doc';
+import { formatValue, rowsOf, valueOf } from './database';
+import { docToPlainText, inlineText } from './doc';
 import { linksInDoc } from './links';
 import { displayTitle } from './model';
 import type { DocMark, DocNode, FileId, PageId, PageMeta, WorkspaceState } from './model';
@@ -203,6 +203,13 @@ function wrapMarks(html: string, marks: DocMark[] = []): string {
   return out;
 }
 
+function formatDate(key: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return key;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 function inline(nodes: DocNode[] = [], context: RenderContext): string {
   return nodes
     .map((node) => {
@@ -217,6 +224,8 @@ function inline(nodes: DocNode[] = [], context: RenderContext): string {
             ? context.renderMath(latex, false)
             : `<code class="math">${escape(latex)}</code>`;
         }
+        case 'dateMention':
+          return `<time class="date-mention" datetime="${escape(String(node.attrs?.date ?? ''))}">${escape(formatDate(String(node.attrs?.date ?? '')))}</time>`;
         case 'pageLink': {
           const id = typeof node.attrs?.id === 'string' ? node.attrs.id : null;
           const label = escape(
@@ -269,6 +278,20 @@ export function docToHtml(doc: DocNode, context: RenderContext): string {
             : '';
         return `<aside class="callout tone-${escape(String(node.attrs?.tone ?? 'note'))}">${title}${children()}</aside>`;
       }
+      case 'columns':
+        return `<div class="columns" style="--columns:${(node.content ?? []).length}">${children()}</div>`;
+      case 'column':
+        return `<div class="column">${children()}</div>`;
+      case 'tableOfContents': {
+        const headings = (doc.content ?? []).filter((child) => child.type === 'heading');
+        if (!headings.length) return '';
+        return `<nav class="toc">${headings
+          .map(
+            (heading) =>
+              `<p class="toc-${Math.min(3, Number(heading.attrs?.level ?? 1))}">${escape(inlineText(heading))}</p>`,
+          )
+          .join('')}</nav>`;
+      }
       case 'details': {
         const [summary, content] = node.content ?? [];
         return `<details><summary>${inline(summary?.content, context)}</summary>${(content?.content ?? []).map(block).join('\n')}</details>`;
@@ -315,7 +338,7 @@ export function docToHtml(doc: DocNode, context: RenderContext): string {
   return (doc.content ?? []).map(block).join('\n');
 }
 
-function databaseHtml(state: WorkspaceState, page: PageMeta, context: RenderContext): string {
+export function databaseHtml(state: WorkspaceState, page: PageMeta, context: RenderContext): string {
   const database = page.database!;
   const rows = rowsOf(state, page.id);
   const head = `<tr><th>Name</th>${database.properties.map((prop) => `<th>${escape(prop.name)}</th>`).join('')}</tr>`;
@@ -324,7 +347,7 @@ function databaseHtml(state: WorkspaceState, page: PageMeta, context: RenderCont
       const target = context.href(row.id);
       const title = escape(displayTitle(row));
       const cells = database.properties
-        .map((prop) => `<td>${escape(formatValue(prop, row.properties[prop.id] ?? null))}</td>`)
+        .map((prop) => `<td>${escape(formatValue(prop, valueOf(row, prop.id, database)))}</td>`)
         .join('');
       return `<tr><td>${target ? `<a href="${target}">${title}</a>` : title}</td>${cells}</tr>`;
     })

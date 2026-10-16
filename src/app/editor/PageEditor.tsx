@@ -2,13 +2,14 @@ import { Editor, Extension } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
 import { EditorContent } from '@tiptap/react';
 import katex from 'katex';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { docToHtml } from '../../core/site';
 import { displayTitle } from '../../core/model';
 import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle, pageIdByTitle, resolveLinkTarget } from '../../core/search';
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
-import { createPage } from '../operations';
+import { createPage, openToday } from '../operations';
 import { navigate, openPage } from '../router';
 import { getSession, getState, run } from '../workspace';
 import type { BlockMenuRequest } from './BlockHandle';
@@ -28,6 +29,29 @@ interface Props {
 }
 
 const COMMIT_DELAY_MS = 250;
+
+const EmbeddedDatabase = lazy(() =>
+  import('../components/database/EmbeddedDatabase').then((module) => ({ default: module.EmbeddedDatabase })),
+);
+
+// databases embed as the real thing, with their views, filters and editing
+function mountEmbed(
+  id: PageId,
+  hostId: PageId,
+  element: HTMLElement,
+  editable: boolean,
+): (() => void) | null {
+  const page = getState().pages[id];
+  if (!page?.database || id === hostId) return null;
+  const root = createRoot(element);
+  root.render(
+    <Suspense fallback={null}>
+      <EmbeddedDatabase pageId={id} editable={editable} />
+    </Suspense>,
+  );
+  // react cannot unmount a root in the middle of rendering another one
+  return () => setTimeout(() => root.unmount());
+}
 
 // the html of a page shown inside another, never the page itself so embeds cannot loop
 const embedCache = new WeakMap<object, string>();
@@ -112,6 +136,7 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
       extensions: [
         ...createExtensions({
           getTitle: titleOf,
+          getIcon: (id) => getState().pages[id]?.icon ?? null,
           subscribe: (listener) => getSession().subscribe(listener),
           open: (id) => openPage(id),
           findPages: (query) =>
@@ -131,7 +156,9 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
           createFromTarget: (target) => createPage({ title: target.split('/').pop() || target, open: false }),
           openTag: (tag) => navigate({ name: 'tag', tag }),
           renderEmbed: (id) => embedHtml(id, pageId),
+          mountEmbed: (id, element, canEdit) => mountEmbed(id, pageId, element, canEdit),
           createChild: (kind) => createPage({ parentId: pageId, kind, open: false }),
+          openDate: (date) => openToday(date),
           onBlockMenu: setBlockMenu,
           resolvePage: (title) => pageIdByTitle(getState(), title),
         }),

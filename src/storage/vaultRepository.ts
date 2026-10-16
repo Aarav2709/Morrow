@@ -467,12 +467,12 @@ export class VaultRepository implements WorkspaceRepository {
   }
 
   async readMeta(name: string): Promise<string | null> {
-    if (!/^[\w-]+\.json$/.test(name)) return null;
+    if (!/^[\w-]+\.(json|css)$/.test(name)) return null;
     return this.bridge.readText(`${MORROW_DIR}/${name}`);
   }
 
   async writeMeta(name: string, text: string): Promise<void> {
-    if (!/^[\w-]+\.json$/.test(name)) return;
+    if (!/^[\w-]+\.(json|css)$/.test(name)) return;
     const [result] = await this.bridge.apply([{ op: 'write', path: `${MORROW_DIR}/${name}`, text }]);
     if (result && !result.ok) throw new Error(result.message);
   }

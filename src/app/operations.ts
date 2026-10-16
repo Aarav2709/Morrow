@@ -373,6 +373,25 @@ export async function exportPageMarkdown(id: PageId): Promise<void> {
   saveFile(`${name}.zip`, zipBytes(entries), 'application/zip');
 }
 
+// the open page exactly as it looks, through the system's pdf printer
+export async function exportPagePdf(id: PageId): Promise<void> {
+  commitEditors();
+  const page = getState().pages[id];
+  if (!page || !desktop) return;
+  const route = parseRoute(location.hash);
+  if (route.name !== 'page' || route.id !== id) openPage(id);
+  // pictures and diagrams get a moment to finish drawing
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  document.documentElement.classList.add('is-printing');
+  try {
+    const result = await desktop.exportPdf(displayTitle(page));
+    if (result.ok) toast(`Saved ${result.path.split(/[\\/]/).pop() ?? 'the PDF'}.`);
+    else if (result.error) toast(`Could not export the PDF: ${result.error}`, { tone: 'error' });
+  } finally {
+    document.documentElement.classList.remove('is-printing');
+  }
+}
+
 async function backupFiles(includeAttachments = true): Promise<BackupFile[]> {
   if (!includeAttachments) return [];
   const ids = referencedFileIds(getState());

@@ -3,6 +3,11 @@ import type { Editor, Range } from '@tiptap/core';
 import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import {
+  CalendarDays,
+  Columns2,
+  Columns3,
+  ListTree,
+  Workflow,
   ChevronRight,
   Highlighter,
   LayoutDashboard,
@@ -41,16 +46,28 @@ export interface SlashOptions {
   createChild: (kind: 'database' | 'canvas') => string | null;
 }
 
-const linkChild = (editor: Editor, range: Range, options: SlashOptions, kind: 'database' | 'canvas') => {
+const linkChild = (
+  editor: Editor,
+  range: Range,
+  options: SlashOptions,
+  kind: 'database' | 'canvas',
+  embed = false,
+) => {
   const id = options.createChild(kind);
   if (!id) return;
+  const label = kind === 'database' ? 'Database' : 'Canvas';
   chain(editor, range)
     .insertContent([
-      { type: 'pageLink', attrs: { id, label: kind === 'database' ? 'Database' : 'Canvas' } },
+      { type: 'pageLink', attrs: embed ? { id, label, embed: true } : { id, label } },
       { type: 'text', text: ' ' },
     ])
     .run();
 };
+
+const SAMPLE_DIAGRAM = `flowchart LR
+  Idea --> Draft --> Review
+  Review -->|changes| Draft
+  Review --> Done`;
 
 const chain = (editor: Editor, range: Range) => editor.chain().focus().deleteRange(range);
 
@@ -240,6 +257,62 @@ export const BLOCK_ITEMS: BlockItem[] = [
     run: (e, r, options) => linkChild(e, r, options, 'canvas'),
   },
   {
+    id: 'inlineDatabase',
+    title: 'Inline database',
+    description: 'A database shown right on this page',
+    icon: Table2,
+    keywords: 'notion inline table board embedded view',
+    run: (e, r, options) => linkChild(e, r, options, 'database', true),
+  },
+  {
+    id: 'columns2',
+    title: '2 columns',
+    description: 'Put blocks side by side',
+    icon: Columns2,
+    keywords: 'columns layout side by side split',
+    run: (e, r) => chain(e, r).setColumns(2).run(),
+  },
+  {
+    id: 'columns3',
+    title: '3 columns',
+    description: 'Three blocks side by side',
+    icon: Columns3,
+    keywords: 'columns layout side by side split',
+    run: (e, r) => chain(e, r).setColumns(3).run(),
+  },
+  {
+    id: 'toc',
+    title: 'Table of contents',
+    description: 'Every heading on this page',
+    icon: ListTree,
+    keywords: 'toc outline contents headings index',
+    run: (e, r) => chain(e, r).insertContent({ type: 'tableOfContents' }).run(),
+  },
+  {
+    id: 'diagram',
+    title: 'Diagram',
+    description: 'Flowcharts and more with Mermaid',
+    icon: Workflow,
+    keywords: 'mermaid flowchart sequence gantt chart graph uml',
+    run: (e, r) =>
+      chain(e, r)
+        .insertContent({
+          type: 'codeBlock',
+          attrs: { language: 'mermaid' },
+          content: [{ type: 'text', text: SAMPLE_DIAGRAM }],
+        })
+        .run(),
+  },
+  {
+    id: 'date',
+    title: 'Date',
+    description: 'Mention a day, like @tomorrow',
+    icon: CalendarDays,
+    hint: '@',
+    keywords: 'date day today tomorrow reminder mention due',
+    run: (e, r) => chain(e, r).insertContent('@').run(),
+  },
+  {
     id: 'embed',
     title: 'Embed a page',
     description: 'Show another page inside this one',
@@ -259,10 +332,22 @@ export const BLOCK_ITEMS: BlockItem[] = [
   },
 ];
 
+// blocks whose name matches come before blocks that only match a keyword, so /diagram finds the diagram
 export function filterBlocks(query: string): BlockItem[] {
   const folded = foldText(query.trim());
   if (!folded) return BLOCK_ITEMS;
-  return BLOCK_ITEMS.filter((item) => foldText(`${item.title} ${item.keywords}`).includes(folded));
+  const words = folded.split(/\s+/);
+  const rank = (item: BlockItem): number => {
+    const title = foldText(item.title);
+    if (title.startsWith(folded)) return 0;
+    if (title.includes(folded)) return 1;
+    const haystack = `${title} ${foldText(item.keywords)}`;
+    return words.every((word) => haystack.includes(word)) ? 2 : -1;
+  };
+  return BLOCK_ITEMS.map((item) => ({ item, score: rank(item) }))
+    .filter((entry) => entry.score >= 0)
+    .sort((a, b) => a.score - b.score)
+    .map((entry) => entry.item);
 }
 
 export const SlashCommand = Extension.create<SlashOptions>({
@@ -278,11 +363,14 @@ export const SlashCommand = Extension.create<SlashOptions>({
         pluginKey: new PluginKey('slashCommand'),
         char: '/',
         startOfLine: false,
+        // names like "2 columns" have spaces, a sentence typed after a slash simply finds nothing
+        allowSpaces: true,
         allow: ({ state }) => {
           const parent = state.selection.$from.parent;
           return parent.type.name !== 'codeBlock';
         },
-        items: ({ query }) => filterBlocks(query).slice(0, 20),
+        items: ({ query }) =>
+          query.length > 40 || /\s{2}/.test(query) ? [] : filterBlocks(query).slice(0, 40),
         command: ({ editor, range, props }) => {
           const item = BLOCK_ITEMS.find((candidate) => candidate.id === props.id);
           item?.run(editor, range, options);

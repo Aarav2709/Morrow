@@ -58,47 +58,67 @@
   display: inline-flex;
   align-items: center;
   max-width: 100%;
-  padding: 1px 7px;
-  border-radius: 4px;
+  padding: 1px 8px;
+  border-radius: 5px;
   font-size: var(--text-sm);
-  line-height: 1.5;
+  font-weight: 500;
+  line-height: 1.55;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: var(--c-gray);
-  color: var(--c-gray-text);
+  background: var(--solid, var(--solid-gray));
+  color: var(--on-solid, #fff);
+}
+/* solid colours with white text, like the status and tag chips in appflowy and notion */
+:root {
+  --solid-gray: #8e8e93;
+  --solid-brown: #a2724f;
+  --solid-orange: #f2711c;
+  --solid-yellow: #f5b800;
+  --solid-green: #22a565;
+  --solid-blue: #2f80ed;
+  --solid-purple: #8b5cf6;
+  --solid-pink: #e64a98;
+  --solid-red: #eb4d4d;
+}
+:root[data-theme='dark'] {
+  --solid-gray: #6e6e73;
+  --solid-brown: #8c6142;
+  --solid-orange: #dd6a1c;
+  --solid-yellow: #d9a300;
+  --solid-green: #1f9259;
+  --solid-blue: #2a72d4;
+  --solid-purple: #7c4ff0;
+  --solid-pink: #d13f88;
+  --solid-red: #d64545;
+}
+.chip.color-gray {
+  --solid: var(--solid-gray);
 }
 .chip.color-brown {
-  background: var(--c-brown);
-  color: var(--c-brown-text);
+  --solid: var(--solid-brown);
 }
 .chip.color-orange {
-  background: var(--c-orange);
-  color: var(--c-orange-text);
+  --solid: var(--solid-orange);
 }
 .chip.color-yellow {
-  background: var(--c-yellow);
-  color: var(--c-yellow-text);
+  --solid: var(--solid-yellow);
+  --on-solid: #2b2100;
 }
 .chip.color-green {
-  background: var(--c-green);
-  color: var(--c-green-text);
+  --solid: var(--solid-green);
 }
 .chip.color-blue {
-  background: var(--c-blue);
-  color: var(--c-blue-text);
+  --solid: var(--solid-blue);
 }
 .chip.color-purple {
-  background: var(--c-purple);
-  color: var(--c-purple-text);
+  --solid: var(--solid-purple);
 }
 .chip.color-pink {
-  background: var(--c-pink);
-  color: var(--c-pink-text);
+  --solid: var(--solid-pink);
 }
 .chip.color-red {
-  background: var(--c-red);
-  color: var(--c-red-text);
+  --solid: var(--solid-red);
 }
 
 /* editor additions */

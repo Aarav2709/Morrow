@@ -134,7 +134,7 @@ kbd,
 }
 
 .boot h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 26px;
   font-weight: 600;
 }
@@ -218,7 +218,7 @@ kbd,
 }
 
 .brand-name {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 17px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -745,12 +745,16 @@ button.crumb:hover {
   padding: 0;
   margin: 24px 0 18px;
   background: transparent;
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 40px;
-  font-weight: 650;
+  font-weight: 700;
   line-height: 1.18;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.022em;
   color: var(--text);
+}
+
+.page.font-serif .page-title {
+  font-family: var(--font-serif);
 }
 
 .page.font-sans .page-title {
@@ -798,7 +802,7 @@ button.crumb:hover {
 
 .readonly-text {
   white-space: pre-wrap;
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 17px;
   line-height: 1.7;
   color: var(--text-muted);
@@ -879,7 +883,7 @@ button.crumb:hover {
 }
 
 .backlink-context {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 14.5px;
   color: var(--text-muted);
   display: -webkit-box;
@@ -901,7 +905,7 @@ button.crumb:hover {
 }
 
 .empty-state h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 24px;
   color: var(--text);
 }
@@ -927,7 +931,7 @@ button.crumb:hover {
 }
 
 .home-greeting {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 42px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -975,7 +979,7 @@ button.crumb:hover {
 }
 
 .home-empty h2 {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 22px;
 }
 
@@ -988,7 +992,7 @@ button.crumb:hover {
 }
 
 .collection-header h1 {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 36px;
   font-weight: 650;
   letter-spacing: -0.015em;
@@ -1047,7 +1051,7 @@ button.crumb:hover {
   flex: 1;
   min-width: 0;
   text-align: left;
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 16px;
   padding: 3px 0;
 }
@@ -1237,7 +1241,7 @@ input[type='checkbox']:checked::after {
 }
 
 .dialog-header h2 {
-  font-family: var(--font-serif);
+  font-family: var(--font-ui);
   font-size: 20px;
   font-weight: 600;
 }
@@ -1712,22 +1716,44 @@ input[type='checkbox']:checked::after {
 /* page icon */
 
 .page-icon-row {
-  min-height: 28px;
-  margin-top: 18px;
+  margin-top: 28px;
   display: flex;
   align-items: flex-end;
 }
 
 .page-icon {
-  font-size: 54px;
+  font-family: var(--font-emoji), sans-serif;
+  font-size: 64px;
   line-height: 1;
-  padding: 4px;
-  margin-left: -4px;
-  border-radius: var(--radius);
+  width: 80px;
+  height: 80px;
+  display: grid;
+  place-items: center;
+  margin-left: -8px;
+  border-radius: var(--radius-lg);
 }
 
 .page-icon:hover:not(:disabled) {
   background: var(--hover);
+}
+
+/* add icon and add cover sit together above the title and show on hover */
+.page-header-actions {
+  display: flex;
+  gap: 2px;
+  height: 28px;
+  margin: 18px 0 -6px -8px;
+  opacity: 0;
+  transition: opacity 120ms var(--ease);
+}
+
+.page-icon-row + .page-header-actions {
+  margin-top: 6px;
+}
+
+.page:hover .page-header-actions,
+.page-header-actions:focus-within {
+  opacity: 1;
 }
 
 .add-icon {
@@ -1735,26 +1761,14 @@ input[type='checkbox']:checked::after {
   align-items: center;
   gap: 6px;
   padding: 3px 8px;
-  margin-left: -8px;
   border-radius: var(--radius-sm);
   color: var(--text-faint);
   font-size: var(--text-sm);
-  opacity: 0;
-  transition: opacity 120ms var(--ease);
-}
-
-.page:hover .add-icon,
-.add-icon:focus-visible {
-  opacity: 1;
 }
 
 .add-icon:hover {
   background: var(--hover);
   color: var(--text-muted);
-}
-
-.page-icon-row + .page-title {
-  margin-top: 8px;
 }
 
 .icon-grid {

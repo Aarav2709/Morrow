@@ -141,6 +141,14 @@ export function writeProperty(prop: PropDef, value: PropValue | undefined): unkn
       const option = prop.options.find((candidate) => candidate.id === value);
       return option?.name;
     }
+    case 'formula':
+      // computed every time, never written
+      return undefined;
+    case 'relation': {
+      // links in the frontmatter, the way obsidian writes them, so the related pages show up in its graph too
+      const targets = (Array.isArray(value) ? value : [String(value)]).filter(Boolean);
+      return targets.length ? targets.map((target) => `[[${target}]]`) : undefined;
+    }
     case 'multiSelect': {
       const names = (Array.isArray(value) ? value : [])
         .map((id) => prop.options.find((option) => option.id === id)?.name)
@@ -194,6 +202,21 @@ export function readProperty(
         .map(optionFor);
       return { value: ids.length ? [...new Set(ids)] : null, added };
     }
+    case 'formula':
+      return { value: null, added };
+    case 'relation': {
+      const list = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/,(?![^[]*\]\])/) : [];
+      const targets = list
+        .map(scalarText)
+        .map((text) =>
+          (text ?? '')
+            .replace(/^\[\[|\]\]$/g, '')
+            .split('|')[0]!
+            .trim(),
+        )
+        .filter(Boolean);
+      return { value: targets.length ? [...new Set(targets)].slice(0, 500) : null, added };
+    }
     case 'date': {
       const text = raw instanceof Date ? raw.toISOString() : scalarText(raw);
       const match = text ? /^\d{4}-\d{2}-\d{2}/.exec(text) : null;
@@ -219,6 +242,7 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       name: prop.name,
       type: prop.type,
       ...(prop.options.length ? { options: prop.options.map((option) => ({ ...option })) } : {}),
+      ...(prop.type === 'formula' && prop.formula ? { formula: prop.formula } : {}),
     })),
     views: database.views.map((view) => ({
       id: view.id,

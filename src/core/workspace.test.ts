@@ -214,7 +214,7 @@ describe('reading stored data', () => {
                 type: 'select',
                 options: [{ id: 'opt1', name: 'Read', color: 'teal' }],
               },
-              { id: 'weird', name: 'Weird', type: 'formula' },
+              { id: 'weird', name: 'Weird', type: 'spreadsheet' },
             ],
             views: [
               {
@@ -303,7 +303,7 @@ describe('sample workspace', () => {
     const { findUnknownTypes } = await import('./doc');
     let n = 0;
     const state = run(emptyWorkspace(), ...sampleCommands(() => `s${n++}`, 1000));
-    expect(Object.keys(state.pages)).toHaveLength(6);
+    expect(Object.keys(state.pages)).toHaveLength(17);
     // the canvas is a json canvas file rather than markdown
     for (const page of Object.values(state.pages).filter((candidate) => candidate.kind !== 'canvas')) {
       const doc = state.docs[page.id]!;

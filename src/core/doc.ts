@@ -56,6 +56,7 @@ export function inlineText(node: DocNode): string {
   if (node.type === 'text') return node.text ?? '';
   if (node.type === 'hardBreak') return '\n';
   if (node.type === 'pageLink') return String(node.attrs?.alias ?? node.attrs?.label ?? '');
+  if (node.type === 'dateMention') return String(node.attrs?.date ?? '');
   if (node.type === 'inlineMath') return String(node.attrs?.latex ?? '');
   return (node.content ?? []).map(inlineText).join('');
 }

@@ -32,6 +32,7 @@ function extensionsForPreview() {
     openTag: () => {},
     createChild: () => null,
     renderEmbed: () => null,
+    openDate: () => {},
   });
   return previewExtensions;
 }
@@ -202,121 +203,5 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
         ),
       )}
     </div>
-  );
-}
-
-const ICONS = [
-  '📝',
-  '📄',
-  '📚',
-  '📖',
-  '🗒️',
-  '📌',
-  '📎',
-  '🔖',
-  '🗂️',
-  '📁',
-  '📅',
-  '🗓️',
-  '⏰',
-  '✅',
-  '☑️',
-  '⭐',
-  '💡',
-  '🔥',
-  '🎯',
-  '🚀',
-  '🧭',
-  '🧪',
-  '🔬',
-  '🧠',
-  '💬',
-  '✉️',
-  '📞',
-  '🏠',
-  '🏡',
-  '🌱',
-  '🌿',
-  '🌳',
-  '🌸',
-  '🌻',
-  '🍂',
-  '❄️',
-  '☀️',
-  '🌙',
-  '🌊',
-  '⛰️',
-  '🏕️',
-  '✈️',
-  '🚲',
-  '🚗',
-  '🗺️',
-  '🍳',
-  '🥗',
-  '☕',
-  '🍷',
-  '🎵',
-  '🎨',
-  '📷',
-  '🎬',
-  '🎮',
-  '⚽',
-  '🏃',
-  '🧘',
-  '💪',
-  '❤️',
-  '💼',
-  '💰',
-  '📈',
-  '🛒',
-  '🧾',
-  '🔧',
-  '🛠️',
-  '💻',
-  '🖥️',
-  '📱',
-  '🔒',
-  '🔑',
-  '⚙️',
-  '🧩',
-  '🎁',
-  '🐶',
-  '🐱',
-  '👶',
-  '👥',
-  '🙂',
-  '✨',
-];
-
-export function IconDialog({ pageId, onPick }: { pageId: PageId; onPick: (icon: string | null) => void }) {
-  const state = useWorkspace();
-  const page = state.pages[pageId];
-  if (!page) return null;
-  const pick = (icon: string | null) => {
-    onPick(icon);
-    closeDialog();
-  };
-  return (
-    <Dialog title="Choose an icon" size="small" onClose={closeDialog}>
-      <div className="icon-grid" role="listbox" aria-label="Icons">
-        {ICONS.map((icon) => (
-          <button
-            key={icon}
-            type="button"
-            role="option"
-            aria-selected={page.icon === icon}
-            className={`icon-choice${page.icon === icon ? ' is-active' : ''}`}
-            onClick={() => pick(icon)}
-          >
-            {icon}
-          </button>
-        ))}
-      </div>
-      {page.icon && (
-        <button type="button" className="button small icon-remove" onClick={() => pick(null)}>
-          Remove icon
-        </button>
-      )}
-    </Dialog>
   );
 }

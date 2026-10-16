@@ -23,7 +23,43 @@ export type CanvasNode =
   // any other file in the vault, such as an image
   | (CanvasNodeBase & { type: 'file'; file: string; subpath?: string })
   | (CanvasNodeBase & { type: 'link'; url: string })
-  | (CanvasNodeBase & { type: 'group'; label?: string });
+  | (CanvasNodeBase & { type: 'group'; label?: string })
+  // freehand ink, morrow's own addition to json canvas, other apps skip it
+  | (CanvasNodeBase & { type: 'drawing'; strokes: CanvasStroke[] });
+
+export interface CanvasStroke {
+  // x and y pairs relative to the drawing's top left corner
+  points: number[];
+  width: number;
+  color?: string;
+  highlighter?: boolean;
+}
+
+const MAX_POINTS = 20_000;
+
+export function readStrokes(raw: unknown): CanvasStroke[] {
+  if (!Array.isArray(raw)) return [];
+  const strokes: CanvasStroke[] = [];
+  for (const item of raw.slice(0, 2000)) {
+    if (!isRecord(item) || !Array.isArray(item.points)) continue;
+    const points = item.points
+      .slice(0, MAX_POINTS * 2)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+    if (points.length < 2) continue;
+    const stroke: CanvasStroke = {
+      points: points.length % 2 ? points.slice(0, -1) : points,
+      width: typeof item.width === 'number' && item.width > 0 ? Math.min(80, item.width) : 3,
+    };
+    const tint =
+      typeof item.color === 'string' && (/^[1-6]$/.test(item.color) || /^#[0-9a-f]{3,8}$/i.test(item.color))
+        ? item.color
+        : undefined;
+    if (tint) stroke.color = tint;
+    if (item.highlighter === true) stroke.highlighter = true;
+    strokes.push(stroke);
+  }
+  return strokes;
+}
 
 export interface CanvasEdge {
   id: string;
@@ -102,6 +138,9 @@ export function readCanvas(raw: unknown, pageAt: (path: string) => PageId | null
     else if (item.type === 'group') {
       const label = str(item.label);
       node = { ...base, type: 'group', ...(label ? { label } : {}) };
+    } else if (item.type === 'drawing') {
+      const strokes = readStrokes(item.strokes);
+      if (strokes.length) node = { ...base, type: 'drawing', strokes };
     }
     if (!node) continue;
     ids.add(node.id);

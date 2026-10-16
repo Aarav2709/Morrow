@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld('morrow', {
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
   writeAutoBackup: (json: string) => ipcRenderer.invoke('morrow:write-backup', json),
+  exportPdf: (name: string) => ipcRenderer.invoke('morrow:export-pdf', name),
   sync: {
     status: () => ipcRenderer.invoke('sync:status'),
     enable: (enabled: boolean) => ipcRenderer.invoke('sync:enable', enabled),

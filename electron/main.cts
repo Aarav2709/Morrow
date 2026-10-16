@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  dialog,
   globalShortcut,
   ipcMain,
   Menu,
@@ -159,12 +160,13 @@ async function serveVaultFile(request: Request): Promise<Response> {
   const file = url.host === 'vault' ? vaultFilePath(relative) : null;
   if (!file || !existsSync(file)) return new Response('Not found', { status: 404 });
   const response = await net.fetch(pathToFileURL(file).toString());
-  // svg images can carry scripts, they are only ever shown as images
+  // svg images can carry scripts, they are only ever shown as images, pdfs open in the built in viewer
   const headers = new Headers(response.headers);
-  headers.set(
-    'Content-Security-Policy',
-    "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
-  );
+  if (!/\.pdf$/i.test(file))
+    headers.set(
+      'Content-Security-Policy',
+      "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'",
+    );
   headers.set('X-Content-Type-Options', 'nosniff');
   return new Response(response.body, { status: response.status, headers });
 }
@@ -227,6 +229,8 @@ async function createWindow(): Promise<void> {
       backgroundThrottling: !HIDDEN,
       // hidden test windows still paint, so they can be screenshotted
       offscreen: HIDDEN,
+      // the built in pdf viewer, for pdfs attached to pages
+      plugins: true,
     },
   });
   mainWindow = window;
@@ -355,6 +359,34 @@ function registerIpc(): void {
     await shell.openPath(backupsDir());
   });
   registerVaultIpc();
+  // prints the page as it looks, with print styles hiding the rest of the app, and saves it where asked
+  ipcMain.handle('morrow:export-pdf', async (event, name: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!fromApp(event) || !window) return { ok: false, error: 'Not allowed.' };
+    const base =
+      (typeof name === 'string' ? name : 'Page')
+        .replace(/[\\/:*?"<>|\x00-\x1f]+/g, ' ')
+        .trim()
+        .slice(0, 120) || 'Page';
+    const choice = await dialog.showSaveDialog(window, {
+      title: 'Export as PDF',
+      defaultPath: path.join(app.getPath('documents'), `${base}.pdf`),
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+    });
+    if (choice.canceled || !choice.filePath) return { ok: false, error: null };
+    try {
+      const data = await event.sender.printToPDF({
+        printBackground: true,
+        pageSize: 'A4',
+        margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 },
+        generateDocumentOutline: true,
+      });
+      await writeFile(choice.filePath, data);
+      return { ok: true, path: choice.filePath };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
   ipcMain.handle('morrow:write-backup', async (event, json: unknown) => {
     if (!fromApp(event)) return { ok: false, error: 'Not allowed.' };
     if (typeof json !== 'string' || json.length > MAX_BACKUP_BYTES)
@@ -467,6 +499,19 @@ function buildMacMenu(): Menu {
         { role: 'selectAll' },
       ],
     },
-    { role: 'windowMenu' },
+    {
+      // cmd w closes the tab, the window closes with cmd shift w
+      label: 'Window',
+      submenu: [
+        { label: 'New Tab', accelerator: 'Cmd+T', registerAccelerator: false, click: send('tab.new') },
+        { label: 'Close Tab', accelerator: 'Cmd+W', registerAccelerator: false, click: send('tab.close') },
+        { role: 'close', accelerator: 'Cmd+Shift+W' },
+        { type: 'separator' },
+        { role: 'minimize' },
+        { role: 'zoom' },
+        { type: 'separator' },
+        { role: 'front' },
+      ],
+    },
   ]);
 }

@@ -3,12 +3,15 @@ import { PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import { FilePlus2, FileText } from 'lucide-react';
 import type { PageId } from '../../core/model';
+import { emojiElement } from '../components/Emoji';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
 
 export interface PageLinkOptions {
   // live title or null when the page is missing or trashed
   getTitle: (id: PageId) => string | null;
+  // the linked page's emoji, shown in front of its name like notion does
+  getIcon?: (id: PageId) => string | null;
   subscribe: (listener: () => void) => () => void;
   open: (id: PageId) => void;
   findPages: (query: string) => Array<{ id: PageId; title: string; path: string }>;
@@ -19,6 +22,8 @@ export interface PageLinkOptions {
   createFromTarget: (target: string) => PageId | null;
   // an embedded page shows the other page's content as html, read only
   renderEmbed: (id: PageId) => string | null;
+  // some pages, like databases, embed as a live view instead, the result removes it again
+  mountEmbed?: (id: PageId, element: HTMLElement, editable: boolean) => (() => void) | null;
 }
 
 const CREATE_PREFIX = 'create:';
@@ -97,6 +102,7 @@ export const PageLink = Node.create<PageLinkOptions>({
       const wrapper = embedded ? document.createElement('span') : null;
       const body = embedded ? document.createElement('span') : null;
       let lastHtml: string | null = null;
+      let mounted: { id: PageId; unmount: () => void } | null = null;
       if (wrapper && body) {
         wrapper.className = 'page-embed';
         wrapper.contentEditable = 'false';
@@ -116,6 +122,12 @@ export const PageLink = Node.create<PageLinkOptions>({
         const anchor = typeof current.attrs.anchor === 'string' ? current.attrs.anchor : null;
         const name = title ?? String(current.attrs.label || target() || 'Missing page');
         dom.textContent = alias ?? (anchor ? `${name} › ${anchor}` : name);
+        const icon = id ? (this.options.getIcon?.(id) ?? null) : null;
+        if (icon) {
+          const image = emojiElement(icon);
+          image.classList.add('page-link-icon');
+          dom.prepend(image);
+        }
         dom.href = id ? `#/page/${id}` : '#';
         dom.dataset.pageId = id ?? '';
         const unresolved = id === null && target() !== '';
@@ -127,7 +139,22 @@ export const PageLink = Node.create<PageLinkOptions>({
           : title === null
             ? 'This page was deleted or moved to the trash'
             : `Open ${title}`;
-        if (body) {
+        if (body && mounted && mounted.id !== id) {
+          mounted.unmount();
+          mounted = null;
+          body.replaceChildren();
+        }
+        if (body && id && !mounted && this.options.mountEmbed) {
+          const unmount = this.options.mountEmbed(id, body, editor.isEditable);
+          if (unmount) {
+            mounted = { id, unmount };
+            lastHtml = null;
+            body.hidden = false;
+            wrapper?.classList.add('is-live');
+          }
+        }
+        if (body && !mounted) {
+          wrapper?.classList.remove('is-live');
           const html = id ? this.options.renderEmbed(id) : null;
           if (html !== lastHtml) {
             lastHtml = html;
@@ -167,7 +194,13 @@ export const PageLink = Node.create<PageLinkOptions>({
           refresh();
           return true;
         },
-        destroy: unsubscribe,
+        // a live embed handles its own clicks and typing, the editor leaves it alone
+        stopEvent: (event) => !!mounted && !!body?.contains(event.target as globalThis.Node),
+        ignoreMutation: () => true,
+        destroy: () => {
+          unsubscribe();
+          mounted?.unmount();
+        },
       };
     };
   },
