@@ -266,44 +266,63 @@ export const CODE_LANGUAGES = [...lowlight.listLanguages(), 'mermaid'].sort();
 // mermaid is large, it loads the first time a page has a diagram on it
 let mermaidReady: Promise<Mermaid> | null = null;
 let diagramCount = 0;
+let diagramTheme: string | null = null;
+
+function configureMermaid(mermaid: Mermaid): void {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  // the base theme tinted with morrow's colours, so diagrams belong on the page
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: 'base',
+    fontFamily: 'Inter Variable, system-ui, sans-serif',
+    themeVariables: dark
+      ? {
+          background: '#191919',
+          primaryColor: '#1d2b3f',
+          primaryBorderColor: '#4c8df6',
+          primaryTextColor: '#e8e8e8',
+          secondaryColor: '#2a2140',
+          tertiaryColor: '#202020',
+          lineColor: '#8b9099',
+          textColor: '#e8e8e8',
+          fontSize: '14px',
+        }
+      : {
+          background: '#ffffff',
+          primaryColor: '#e9f2fe',
+          primaryBorderColor: '#2f80ed',
+          primaryTextColor: '#1f2328',
+          secondaryColor: '#f1eafe',
+          tertiaryColor: '#f7f7f5',
+          lineColor: '#8a8f98',
+          textColor: '#1f2328',
+          fontSize: '14px',
+        },
+  });
+}
+
+// diagrams on screen draw themselves again when the theme changes
+const redrawers = new Set<() => void>();
+let themeWatcher: MutationObserver | null = null;
+function onThemeChange(redraw: () => void): () => void {
+  if (!themeWatcher) {
+    themeWatcher = new MutationObserver(() => redrawers.forEach((fn) => fn()));
+    themeWatcher.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+  redrawers.add(redraw);
+  return () => redrawers.delete(redraw);
+}
 export async function renderMermaid(source: string): Promise<{ html: string; error: boolean }> {
   if (!source.trim()) return { html: '', error: false };
-  mermaidReady ??= import('mermaid').then(({ default: mermaid }) => {
-    const dark = document.documentElement.dataset.theme === 'dark';
-    // the base theme tinted with morrow's colours, so diagrams belong on the page
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'strict',
-      theme: 'base',
-      fontFamily: 'Inter Variable, system-ui, sans-serif',
-      themeVariables: dark
-        ? {
-            background: '#191919',
-            primaryColor: '#1d2b3f',
-            primaryBorderColor: '#4c8df6',
-            primaryTextColor: '#e8e8e8',
-            secondaryColor: '#2a2140',
-            tertiaryColor: '#202020',
-            lineColor: '#8b9099',
-            textColor: '#e8e8e8',
-            fontSize: '14px',
-          }
-        : {
-            background: '#ffffff',
-            primaryColor: '#e9f2fe',
-            primaryBorderColor: '#2f80ed',
-            primaryTextColor: '#1f2328',
-            secondaryColor: '#f1eafe',
-            tertiaryColor: '#f7f7f5',
-            lineColor: '#8a8f98',
-            textColor: '#1f2328',
-            fontSize: '14px',
-          },
-    });
-    return mermaid;
-  });
+  mermaidReady ??= import('mermaid').then(({ default: mermaid }) => mermaid);
   try {
     const mermaid = await mermaidReady;
+    const theme = document.documentElement.dataset.theme ?? 'light';
+    if (theme !== diagramTheme) {
+      diagramTheme = theme;
+      configureMermaid(mermaid);
+    }
     const { svg } = await mermaid.render(`morrow-diagram-${++diagramCount}`, source);
     return { html: svg, error: false };
   } catch (error) {
@@ -405,6 +424,10 @@ export const CodeBlock = CodeBlockLowlight.extend({
       dom.append(select, toggle, pre, diagram);
       layout();
       draw();
+      const stopWatching = onThemeChange(() => {
+        drawn = '';
+        draw();
+      });
       const ours = (target: EventTarget | globalThis.Node | null) =>
         select.contains(target as globalThis.Node) ||
         toggle.contains(target as globalThis.Node) ||
@@ -424,6 +447,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
         ignoreMutation: (mutation) => ours(mutation.target),
         destroy: () => {
           if (timer) clearTimeout(timer);
+          stopWatching();
         },
       };
     };

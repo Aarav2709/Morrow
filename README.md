@@ -5,7 +5,7 @@ and ideas. Every page is a plain Markdown file in a folder you choose. No
 account, no subscription, no cloud and no AI. Just a calm place to write and
 think, on your own computer.
 
-![Morrow showing a project page with a checklist and a table](ss.png)
+![Morrow showing a page with a cover, an icon, a checklist, a date, columns and a diagram](ss.png)
 
 ## Why Morrow
 
@@ -123,30 +123,12 @@ npm run dev        # opens the desktop app with live reload
 | `npm run check` | Type check, lint, tests and build together          |
 
 On Windows `npm run dist` produces `Morrow-Setup-<version>.exe` and a portable
-`.exe`. Pushing a tag such as `v1.0.0` builds Windows, macOS and Linux versions
-on GitHub and attaches them to a release. Morrow never checks for updates on
+`.exe`. Morrow never checks for updates on
 its own; new versions are downloaded from the releases page. Builds are signed automatically once the
 signing secrets (`CSC_LINK` and `CSC_KEY_PASSWORD`, plus `APPLE_ID`,
 `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for macOS) are added to the
 repository. Until then Windows SmartScreen and macOS Gatekeeper warn the first
 time Morrow is opened.
-
-## Signing builds for free
-
-Unsigned builds work, but Windows SmartScreen and macOS Gatekeeper warn the
-first time they open. What it costs to remove those warnings:
-
-| Platform | Free option                                             | Notes                                                                                                                                                                                                                                                                                             |
-| -------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Windows  | [SignPath Foundation](https://signpath.org)             | Free code signing for open source projects with an OSI licence (Morrow's Apache 2.0 qualifies). Apply with the public repository; once accepted, the release workflow uploads the built `.exe` to SignPath's GitHub action and gets it back signed. The publisher shown is "SignPath Foundation". |
-| Windows  | [Microsoft Store](https://storedeveloper.microsoft.com) | Registration is free for individual developers since September 2025. Add an `appx` target to electron-builder and submit the package; Microsoft signs what it publishes, so Store installs never show SmartScreen.                                                                                |
-| macOS    | none                                                    | Apple requires a paid Developer Program membership ($99 a year) for a Developer ID certificate and notarisation. Without it, people open Morrow once from **System Settings → Privacy & Security → Open Anyway**, or run `xattr -cr /Applications/Morrow.app`.                                    |
-| Linux    | not needed                                              | AppImage, deb and rpm packages are not signed by convention. Publishing a `SHA256SUMS` file with each release, signed with your GPG key, lets people check their download.                                                                                                                        |
-
-With a certificate, signing is already wired up: add `CSC_LINK` and
-`CSC_KEY_PASSWORD` (and `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` and
-`APPLE_TEAM_ID` for macOS) as repository secrets and the release workflow signs
-everything it builds.
 
 ## Where your data lives
 

@@ -308,14 +308,14 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         bullets(
           [
             b('Your files, forever.'),
-            ' Pages are Markdown, canvases are JSON Canvas, databases are folders of pages. Open them in Obsidian, VS Code or any editor.',
+            ' Pages are Markdown, canvases are JSON Canvas, databases are folders of pages. Open them in any text editor.',
           ],
           [
-            b('Notion’s power, offline.'),
+            b('Powerful databases, offline.'),
             ' Databases with board, table, calendar, list and gallery views, relations and formulas, all on your own computer.',
           ],
           [
-            b('Obsidian’s freedom, without the setup.'),
+            b('Everything built in.'),
             ' Links, backlinks, a graph, canvases and daily notes work the moment you open the app. No plugins to hunt for.',
           ],
           [
@@ -409,7 +409,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         callout(
           'tip',
           'A tip',
-          p('Callouts are Obsidian callouts in the file, so they look the same there.'),
+          p('Callouts are saved as standard Markdown callouts, so other Markdown apps show them too.'),
         ),
         callout('warning', 'A warning', p('Use these for things that matter.')),
         callout('danger', 'Danger', p('And these for things that really matter.')),
@@ -577,7 +577,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           date(day(7)),
           '. Click one to open that day’s note. In the file it is a link like ',
           k(`[[${day(0)}]]`),
-          ', the way Obsidian names daily notes.',
+          ', the common way daily notes are named.',
         ),
         h(1, 'Tags'),
         p(
@@ -663,7 +663,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
       5,
       doc(
         p(
-          'A database is a page whose subpages are its rows. Each row is a full page with its own content, plus properties like status, dates and numbers. In your vault a database is a folder, and each row is a Markdown file with its properties at the top, readable by Obsidian and anything else.',
+          'A database is a page whose subpages are its rows. Each row is a full page with its own content, plus properties like status, dates and numbers. In your vault a database is a folder, and each row is a Markdown file with its properties at the top, readable by any Markdown app.',
         ),
         h(1, 'An example'),
         p(
@@ -770,7 +770,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         p(
           'A canvas is an endless whiteboard of cards, pages, arrows, groups and freehand ink. Open the ',
           link(board, 'Ideas board'),
-          ' below to try it. Canvases are saved as JSON Canvas files, which Obsidian opens too.',
+          ' below to try it. Canvases are saved as open JSON Canvas files.',
         ),
         h(1, 'Cards and arrows'),
         bullets(
@@ -944,17 +944,17 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           ' and turn on sync on two computers on the same network. Pair them once with the code one of them shows, and from then on they keep each other up to date directly, with no cloud in between. When both change the same page, both versions are kept so nothing is lost.',
         ),
         p(
-          'You can also put the vault folder in any sync service you already trust, such as Syncthing, iCloud Drive or Dropbox.',
+          'You can also put the vault folder in any sync service you already trust, such as a synced cloud drive.',
         ),
         h(1, 'Bring your notes in'),
         bullets(
           [
-            'From Notion: export your workspace as Markdown and CSV, then choose the zip in ',
+            'From other note apps: export your workspace as Markdown and CSV, then choose the zip in ',
             b('Import'),
             '. Databases come across as databases.',
           ],
           [
-            'From Obsidian: open your vault folder as a Morrow vault. Links, tags, callouts and canvases already work.',
+            'From a folder of Markdown notes: open it as a Morrow vault. Wiki links, tags, callouts and canvases already work.',
           ],
           ['Markdown files and folders from anywhere else, and CSV files as databases.'],
         ),
@@ -968,7 +968,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         p(
           'Choose ',
           b('Publish as a website'),
-          ' from a page’s menu to turn it and its subpages into a small static site, with navigation and working links. Upload the folder to any host, such as GitHub Pages or Netlify.',
+          ' from a page’s menu to turn it and its subpages into a small static site, with navigation and working links. Upload the folder to any static web host.',
         ),
       ),
     ),

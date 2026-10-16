@@ -127,7 +127,7 @@ export const ACTIONS: Action[] = [
     label: 'New database',
     group: 'General',
     icon: Table2,
-    keywords: 'table board kanban calendar gallery notion collection',
+    keywords: 'table board kanban calendar gallery collection',
     run: () => createPage({ kind: 'database' }),
   },
   {
@@ -170,7 +170,7 @@ export const ACTIONS: Action[] = [
     group: 'General',
     icon: GraduationCap,
     shortcut: 'Alt+R',
-    keywords: 'flashcards spaced repetition study learn anki',
+    keywords: 'flashcards spaced repetition study learn',
     run: () => navigate({ name: 'review' }),
   },
   {
@@ -195,7 +195,7 @@ export const ACTIONS: Action[] = [
     label: 'Open another vault',
     group: 'Data',
     icon: FolderOpen,
-    keywords: 'folder switch vault obsidian',
+    keywords: 'folder switch vault',
     enabled: () => desktop?.vault !== undefined,
     run: () => void chooseVaultFolder(),
   },
@@ -336,7 +336,7 @@ export const ACTIONS: Action[] = [
     label: 'Import Markdown files',
     group: 'Data',
     icon: FileUp,
-    keywords: 'md obsidian',
+    keywords: 'md markdown',
     run: () => void importMarkdown(),
   },
   {

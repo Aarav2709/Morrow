@@ -44,7 +44,7 @@ export function VaultChooser({ legacy }: { legacy: number }) {
           <span>
             <strong>Open a folder</strong>
             <span className="muted">
-              Any folder, including an Obsidian vault or a folder of Markdown files.
+              Any folder, including an existing vault or a folder of Markdown files.
             </span>
           </span>
         </button>

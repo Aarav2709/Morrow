@@ -4,6 +4,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, no AI.",
+  "desktopName": "morrow.desktop",
   "license": "Apache-2.0",
   "author": {
     "name": "Aarav Gupta and Morrow contributors"
@@ -139,7 +140,8 @@
       "category": "Office",
       "icon": "build/icon.png",
       "synopsis": "A local first workspace for notes and ideas",
-      "maintainer": "Aarav Gupta <Aarav2709@users.noreply.github.com>"
+      "maintainer": "Aarav Gupta <Aarav2709@users.noreply.github.com>",
+      "syncDesktopName": true
     },
     "publish": [
       {

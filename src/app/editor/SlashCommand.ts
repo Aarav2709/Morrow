@@ -245,7 +245,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
     title: 'Database',
     description: 'Table, board and calendar of pages',
     icon: Table2,
-    keywords: 'notion collection kanban board calendar gallery table',
+    keywords: 'collection kanban board calendar gallery table',
     run: (e, r, options) => linkChild(e, r, options, 'database'),
   },
   {
@@ -261,7 +261,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
     title: 'Inline database',
     description: 'A database shown right on this page',
     icon: Table2,
-    keywords: 'notion inline table board embedded view',
+    keywords: 'inline table board embedded view',
     run: (e, r, options) => linkChild(e, r, options, 'database', true),
   },
   {
