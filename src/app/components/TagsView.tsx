@@ -2,7 +2,7 @@ import { Hash, Plus, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageMeta } from '../../core/model';
-import { collectTags, pagesWithTag } from '../../core/tags';
+import { collectTags, pagesWithTag, tagColor } from '../../core/tags';
 import { ancestorsOf } from '../../core/tree';
 import { normalizeTag } from '../../core/vault/frontmatter';
 import { navigate, openPage } from '../router';
@@ -39,7 +39,7 @@ export function TagsView() {
                 <li key={entry.tag}>
                   <button
                     type="button"
-                    className="tag-chip large"
+                    className={`tag-chip large tag-${tagColor(entry.tag)}`}
                     onClick={() => navigate({ name: 'tag', tag: entry.tag })}
                   >
                     #{entry.tag} <span className="tag-count">{entry.pages.length}</span>
@@ -138,7 +138,7 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
   return (
     <div className="page-tags" aria-label="Tags">
       {page.tags.map((tag) => (
-        <span key={tag} className="tag-chip">
+        <span key={tag} className={`tag-chip tag-${tagColor(tag)}`}>
           <button type="button" className="tag-chip-name" onClick={() => navigate({ name: 'tag', tag })}>
             #{tag}
           </button>

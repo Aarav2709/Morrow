@@ -31,6 +31,22 @@ contextBridge.exposeInMainWorld('morrow', {
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
   writeAutoBackup: (json: string) => ipcRenderer.invoke('morrow:write-backup', json),
+  sync: {
+    status: () => ipcRenderer.invoke('sync:status'),
+    enable: (enabled: boolean) => ipcRenderer.invoke('sync:enable', enabled),
+    setName: (name: string) => ipcRenderer.invoke('sync:name', name),
+    startPairing: () => ipcRenderer.invoke('sync:start-pairing'),
+    stopPairing: () => ipcRenderer.invoke('sync:stop-pairing'),
+    pair: (target: unknown, code: string) => ipcRenderer.invoke('sync:pair', target, code),
+    forget: (id: string) => ipcRenderer.invoke('sync:forget', id),
+    request: (peerId: string, payload: unknown) => ipcRenderer.invoke('sync:request', peerId, payload),
+    mark: (peerId: string) => ipcRenderer.invoke('sync:mark', peerId),
+    onEvent(listener: (event: unknown) => void) {
+      const handler = (_event: unknown, event: unknown) => listener(event);
+      ipcRenderer.on('sync:event', handler);
+      return () => ipcRenderer.removeListener('sync:event', handler);
+    },
+  },
   vault: {
     state: () => ipcRenderer.invoke('vault:state'),
     choose: () => ipcRenderer.invoke('vault:choose'),
@@ -48,6 +64,15 @@ contextBridge.exposeInMainWorld('morrow', {
     exists: (path: string) => ipcRenderer.invoke('vault:exists', path),
     list: (path: string) => ipcRenderer.invoke('vault:list', path),
     reveal: (path?: string) => ipcRenderer.invoke('vault:reveal', path ?? ''),
+    manifest: () => ipcRenderer.invoke('vault:manifest'),
+    identity: () => ipcRenderer.invoke('vault:identity'),
+    readSynced: (path: string) => ipcRenderer.invoke('vault:read-synced', path),
+    writeSynced: (path: string, data: string, expect: string | null) =>
+      ipcRenderer.invoke('vault:write-synced', path, data, expect),
+    prepareCopy: (dir: string, vaultId: string) => ipcRenderer.invoke('vault:prepare-copy', dir, vaultId),
+    syncBase: (peerId: string) => ipcRenderer.invoke('vault:sync-base', peerId),
+    saveSyncBase: (peerId: string, files: unknown) =>
+      ipcRenderer.invoke('vault:save-sync-base', peerId, files),
     onChanges(listener: (changes: unknown) => void) {
       const handler = (_event: unknown, changes: unknown) => listener(changes);
       ipcRenderer.on('vault:changes', handler);

@@ -3,6 +3,9 @@ import type { JSONContent } from '@tiptap/core';
 import { History } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { docToPlainText } from '../../core/doc';
+import { diffLines } from '../../core/diff';
+import type { DiffLine } from '../../core/diff';
+import { docToMarkdown } from '../../core/markdown/serialize';
 import { displayTitle } from '../../core/model';
 import type { PageId, Snapshot } from '../../core/model';
 import { createExtensions } from '../editor/extensions';
@@ -28,6 +31,7 @@ function extensionsForPreview() {
     createFromTarget: () => null,
     openTag: () => {},
     createChild: () => null,
+    renderEmbed: () => null,
   });
   return previewExtensions;
 }
@@ -37,6 +41,7 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
   const page = state.pages[pageId];
   const [versions, setVersions] = useState<Snapshot[] | null>(null);
   const [selected, setSelected] = useState(0);
+  const [mode, setMode] = useState<'changes' | 'version'>('changes');
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,6 +56,12 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
   }, [pageId]);
 
   const snapshot = versions?.[selected];
+  const current = state.docs[pageId];
+  // what changed from that version to the page as it is now
+  const changes = useMemo(() => {
+    if (!snapshot || !current) return [];
+    return diffLines(docToMarkdown(snapshot.doc), docToMarkdown(current));
+  }, [snapshot, current]);
   const html = useMemo(() => {
     if (!snapshot) return '';
     try {
@@ -112,7 +123,25 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
             })}
           </ul>
           <div className="history-preview">
-            <div ref={previewRef} className="prose preview" dangerouslySetInnerHTML={{ __html: html }} />
+            <div className="segmented history-mode" role="radiogroup" aria-label="Show">
+              {(['changes', 'version'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === value}
+                  className={mode === value ? 'is-active' : ''}
+                  onClick={() => setMode(value)}
+                >
+                  {value === 'changes' ? 'Changes since then' : 'That version'}
+                </button>
+              ))}
+            </div>
+            {mode === 'changes' ? (
+              <DiffView lines={changes} />
+            ) : (
+              <div ref={previewRef} className="prose preview" dangerouslySetInnerHTML={{ __html: html }} />
+            )}
             {snapshot && (
               <div className="history-actions">
                 <button
@@ -128,6 +157,51 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
         </div>
       )}
     </Dialog>
+  );
+}
+
+// shows removed lines in red and added lines in green, long unchanged stretches fold away
+function DiffView({ lines }: { lines: DiffLine[] }) {
+  if (lines.every((line) => line.kind === 'same'))
+    return <p className="muted history-same">This version is the same as the page now.</p>;
+  const rows: Array<DiffLine | { kind: 'gap'; count: number }> = [];
+  let run: DiffLine[] = [];
+  const flush = (end: boolean) => {
+    if (run.length > 6) {
+      if (rows.length > 0) rows.push(...run.slice(0, 2));
+      rows.push({ kind: 'gap', count: run.length - (rows.length > 0 ? 2 : 0) - (end ? 0 : 2) });
+      if (!end) rows.push(...run.slice(-2));
+    } else rows.push(...run);
+    run = [];
+  };
+  for (const line of lines) {
+    if (line.kind === 'same') run.push(line);
+    else {
+      flush(false);
+      rows.push(line);
+    }
+  }
+  flush(true);
+  return (
+    <div className="diff" role="table" aria-label="Changes">
+      {rows.map((row, index) =>
+        row.kind === 'gap' ? (
+          <div key={index} className="diff-gap">
+            {row.count} unchanged line{row.count === 1 ? '' : 's'}
+          </div>
+        ) : (
+          <div key={index} className={`diff-line diff-${row.kind}`}>
+            <span className="diff-sign" aria-hidden="true">
+              {row.kind === 'added' ? '+' : row.kind === 'removed' ? '−' : ' '}
+            </span>
+            <span className="visually-hidden">
+              {row.kind === 'added' ? 'Added: ' : row.kind === 'removed' ? 'Removed: ' : ''}
+            </span>
+            {row.text || ' '}
+          </div>
+        ),
+      )}
+    </div>
   );
 }
 

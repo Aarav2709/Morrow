@@ -2,12 +2,12 @@
 import { dailyTitle, parseDateKey } from '../daily';
 import { isRecord } from '../doc';
 import { normalizeDatabase } from '../migrations';
-import { COLORS, displayTitle, MAX_ICON_LENGTH, MAX_TITLE_LENGTH } from '../model';
+import { COLORS, displayTitle, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, validCover } from '../model';
 import type { DatabaseDef, PageKind, PageMeta, PropDef, PropValue, SelectOption } from '../model';
 import { joinFrontmatter, readTags, splitFrontmatter } from './frontmatter';
 
 // frontmatter keys morrow reads and writes, every other key is kept exactly as it was
-export const MANAGED_KEYS = new Set(['title', 'icon', 'kind', 'tags', 'tag', 'database']);
+export const MANAGED_KEYS = new Set(['title', 'icon', 'kind', 'tags', 'tag', 'database', 'cover']);
 const FILE_KINDS = new Set<PageKind>(['journal', 'templates', 'database']);
 // a database property can not use a name morrow already gives a meaning to
 export function reservedPropertyName(name: string): boolean {
@@ -31,6 +31,7 @@ export interface PageSource {
 export interface ReadPage {
   title: string | null;
   icon: string | null;
+  cover: string | null;
   kind: PageKind | null;
   tags: string[];
   database: DatabaseDef | null;
@@ -61,6 +62,7 @@ export function readPageText(text: string): ReadPage {
   return {
     title,
     icon,
+    cover: validCover(data.cover),
     kind,
     tags: readTags(data.tags ?? data.tag),
     database: kind === 'database' ? normalizeDatabase(data.database) : null,
@@ -93,6 +95,7 @@ export function managedFrontmatter(
   const title = displayTitle(page);
   if (title !== impliedTitle(fileBase, page.dailyDate)) out.set('title', title);
   if (page.icon && page.kind !== 'canvas') out.set('icon', page.icon);
+  if (page.cover && page.kind !== 'canvas') out.set('cover', page.cover);
   if (FILE_KINDS.has(page.kind)) out.set('kind', page.kind);
   if (page.tags.length > 0) out.set('tags', [...page.tags]);
   for (const prop of parentDatabase?.properties ?? []) {

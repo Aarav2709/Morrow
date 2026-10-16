@@ -48,6 +48,20 @@ export interface WorkspaceRepository {
   attachState?(getState: () => WorkspaceState): void;
   // where a page's file lives, relative to the storage location
   pathOf?(id: PageId): string | null;
+  // small files of morrow's own beside the pages, such as flashcard progress
+  readMeta?(name: string): Promise<string | null>;
+  writeMeta?(name: string, text: string): Promise<void>;
+  // how many saves happened on each day, keyed yyyy-mm-dd
+  activity?(): Record<string, number>;
+  // password protected pages, only storage that writes files supports them
+  unlockPage?(
+    id: PageId,
+    password: string,
+    state: WorkspaceState,
+  ): Promise<Result<{ page: PageMeta; doc: DocNode }>>;
+  lockPage?(id: PageId): void;
+  protectPage?(id: PageId, password: string): Promise<void>;
+  unprotectPage?(id: PageId): void;
   getFile(id: FileId): Promise<StoredFile | null>;
   listFiles(): Promise<FileMeta[]>;
   deleteFiles(ids: FileId[]): Promise<void>;

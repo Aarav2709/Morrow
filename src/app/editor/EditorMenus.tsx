@@ -23,6 +23,7 @@ import {
   List,
   ListChecks,
   ListOrdered,
+  Palette,
   Pencil,
   Pilcrow,
   Quote,
@@ -33,6 +34,8 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pageIdFromHref } from '../../core/links';
+import { COLORS } from '../../core/model';
+import type { ColorName } from '../../core/model';
 import { formatShortcut } from '../actions';
 import { Menu } from '../components/Menu';
 import type { MenuEntry } from '../components/Menu';
@@ -167,8 +170,77 @@ function useMarks(editor: Editor) {
   });
 }
 
+const COLOR_LABELS: Record<ColorName, string> = {
+  gray: 'Grey',
+  brown: 'Brown',
+  orange: 'Orange',
+  yellow: 'Yellow',
+  green: 'Green',
+  blue: 'Blue',
+  purple: 'Purple',
+  pink: 'Pink',
+  red: 'Red',
+};
+
+// the nine colours for text and for highlighting, the same set notion, affine and select options use
+function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) {
+  const current = useEditorState({
+    editor,
+    selector: ({ editor: e }) => ({
+      text: (e.getAttributes('textColor').color as ColorName | undefined) ?? null,
+      bg: e.isActive('highlight')
+        ? ((e.getAttributes('highlight').color as ColorName | undefined) ?? 'yellow')
+        : null,
+    }),
+  });
+  const row = (kind: 'text' | 'bg') => (
+    <div className="color-row" role="group" aria-label={kind === 'text' ? 'Text colour' : 'Highlight'}>
+      <button
+        type="button"
+        className={`color-dot default${(kind === 'text' ? current.text : current.bg) === null ? ' is-active' : ''}`}
+        title={kind === 'text' ? 'Default text' : 'No highlight'}
+        aria-label={kind === 'text' ? 'Default text colour' : 'No highlight'}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() =>
+          kind === 'text'
+            ? editor.chain().focus().setTextColor(null).run()
+            : editor.chain().focus().setHighlightColor(null).run()
+        }
+      >
+        {kind === 'text' ? 'A' : ''}
+      </button>
+      {COLORS.map((color) => (
+        <button
+          key={color}
+          type="button"
+          className={`color-dot ${kind}-${color}${(kind === 'text' ? current.text : current.bg) === color ? ' is-active' : ''}`}
+          title={`${COLOR_LABELS[color]}${kind === 'bg' ? ' highlight' : ''}`}
+          aria-label={`${COLOR_LABELS[color]}${kind === 'bg' ? ' highlight' : ' text'}`}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() =>
+            kind === 'text'
+              ? editor.chain().focus().setTextColor(color).run()
+              : editor.chain().focus().setHighlightColor(color).run()
+          }
+        >
+          {kind === 'text' ? 'A' : ''}
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="color-panel" onKeyDown={(event) => event.key === 'Escape' && onDone()}>
+      <span className="color-panel-label">Text</span>
+      {row('text')}
+      <span className="color-panel-label">Highlight</span>
+      {row('bg')}
+    </div>
+  );
+}
+
 export function FormattingMenu({ editor }: { editor: Editor }) {
   const [editingLink, setEditingLink] = useState(false);
+  const [coloring, setColoring] = useState(false);
   const marks = useMarks(editor);
   const [options] = useState(
     () =>
@@ -177,7 +249,10 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
         offset: 8,
         flip: true,
         shift: { padding: 8 },
-        onHide: () => setEditingLink(false),
+        onHide: () => {
+          setEditingLink(false);
+          setColoring(false);
+        },
       }) as const,
   );
 
@@ -194,6 +269,8 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
       <div className="toolbar popover" role="toolbar" aria-label="Formatting">
         {editingLink ? (
           <LinkInput editor={editor} onDone={() => setEditingLink(false)} />
+        ) : coloring ? (
+          <ColorPanel editor={editor} onDone={() => setColoring(false)} />
         ) : (
           <>
             <ToolButton
@@ -238,6 +315,7 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
               active={marks.highlight}
               onClick={() => editor.chain().focus().toggleHighlight().run()}
             />
+            <ToolButton label="Colour" icon={Palette} onClick={() => setColoring(true)} />
             <span className="toolbar-divider" />
             <ToolButton
               label="Link"

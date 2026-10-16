@@ -18,11 +18,62 @@ export interface DesktopVaultApi {
   list(path: string): Promise<Array<{ path: string; size: number; mtime: number }>>;
   reveal(path?: string): Promise<void>;
   onChanges(listener: (changes: unknown) => void): () => void;
+  manifest(): Promise<Record<string, string>>;
+  identity(): Promise<{ id: string; name: string }>;
+  readSynced(path: string): Promise<string | null>;
+  writeSynced(
+    path: string,
+    data: string,
+    expect: string | null,
+  ): Promise<{ ok: boolean; code?: string; message?: string }>;
+  prepareCopy(dir: string, vaultId: string): Promise<{ ok: boolean; error?: string }>;
+  syncBase(peerId: string): Promise<Record<string, string>>;
+  saveSyncBase(peerId: string, files: Record<string, string>): Promise<void>;
+}
+
+export interface SyncPeer {
+  id: string;
+  name: string;
+  online: boolean;
+  reachable: boolean;
+  lastSync: number | null;
+}
+
+export interface SyncStatus {
+  enabled: boolean;
+  name: string;
+  deviceId: string;
+  pairingCode: string | null;
+  peers: SyncPeer[];
+  // computers nearby waiting to be paired
+  waiting: Array<{ id: string; name: string; address: string; port: number }>;
+}
+
+export type SyncEvent =
+  | { type: 'pull-requested'; peerId: string }
+  | { type: 'paired'; peerId: string; name: string }
+  | { type: 'changed' };
+
+export interface DesktopSyncApi {
+  status(): Promise<SyncStatus>;
+  enable(enabled: boolean): Promise<void>;
+  setName(name: string): Promise<void>;
+  startPairing(): Promise<string>;
+  stopPairing(): Promise<void>;
+  pair(
+    target: { id?: string; address: string; port?: number },
+    code: string,
+  ): Promise<{ ok: boolean; error?: string; name?: string }>;
+  forget(id: string): Promise<void>;
+  request(peerId: string, payload: Record<string, unknown>): Promise<unknown>;
+  mark(peerId: string): Promise<void>;
+  onEvent(listener: (event: SyncEvent) => void): () => void;
 }
 
 // bridge exposed by the electron preload script, absent when running in a browser
 export interface DesktopBridge {
   vault?: DesktopVaultApi;
+  sync?: DesktopSyncApi;
   platform: string;
   version: string;
   dataPath: string;

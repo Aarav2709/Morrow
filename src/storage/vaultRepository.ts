@@ -1,5 +1,7 @@
-// stores the workspace as a folder of markdown files, see docs/data-format.md
+// stores the workspace as a folder of markdown files, one file per page with metadata in frontmatter
 import { canvasDoc, canvasFromDoc, readCanvas, writeCanvas } from '../core/canvas';
+import { decryptPage, encryptPage, isEncryptedText, newPageKey } from '../core/crypto';
+import type { PageKey } from '../core/crypto';
 import { isDocEmpty, validateDoc, walk } from '../core/doc';
 import { snapshotsToPrune } from '../core/history';
 import { parseWikiLink } from '../core/markdown/parse';
@@ -56,6 +58,12 @@ export const REGISTRY_PATH = `${MORROW_DIR}/workspace.json`;
 export const RECENT_PATH = `${MORROW_DIR}/recent.json`;
 const HISTORY_DIR = `${MORROW_DIR}/history`;
 const MAX_RECENT = 300;
+const MAX_ACTIVITY_DAYS = 400;
+
+function localDay(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 const DATE_NAME = /^\d{4}-\d{2}-\d{2}$/;
 const WIKI_LINK = /(!?)\[\[([^[\]\n]{0,400}?)\]\]/g;
 
@@ -71,6 +79,14 @@ export class VaultRepository implements WorkspaceRepository {
   private others = new Set<string>();
   private registryText: string | null = null;
   private recentText: string | null = null;
+  // keys of unlocked encrypted pages, kept in memory only
+  private readonly keys = new Map<PageId, PageKey>();
+  // the plain text last encrypted for each page, to tell whether anything changed
+  private readonly plainTexts = new Map<PageId, string>();
+  private readonly pendingPlain = new Map<PageId, string>();
+  private readonly historyCleared = new Set<PageId>();
+  // saves per day, for the activity chart on the home page
+  private readonly days = new Map<string, number>();
   private registryDirty = false;
   private readonly history = new Map<PageId, Snapshot[]>();
   private readonly listeners = new Set<(patch: ExternalPatch) => PageId[]>();
@@ -105,6 +121,13 @@ export class VaultRepository implements WorkspaceRepository {
       this.others = new Set(scan.others);
       this.registryText = scan.registry === null ? null : JSON.stringify(scan.registry);
       this.recentText = scan.recent === null ? null : JSON.stringify(scan.recent);
+      const activity = (scan.recent as { activity?: unknown } | null)?.activity;
+      if (activity && typeof activity === 'object') {
+        for (const [day, count] of Object.entries(activity as Record<string, unknown>)) {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(day) && typeof count === 'number' && count > 0)
+            this.days.set(day, count);
+        }
+      }
       this.registryDirty = loaded.registryChanged;
       this.lastState = {
         pages: Object.fromEntries(loaded.pages.map((page) => [page.id, page])),
@@ -205,14 +228,36 @@ export class VaultRepository implements WorkspaceRepository {
         resolveOld,
         retargeted,
       );
-      if (text === null || text === this.texts.get(id)) continue;
+      if (text === null) continue;
+      let written = text;
+      if (state.pages[id]!.encrypted) {
+        // encrypted pages are compared before encryption, a fresh nonce makes every encrypted copy differ
+        const pageKey = this.keys.get(id);
+        if (!pageKey) continue;
+        if (text === this.plainTexts.get(id) && this.texts.has(id) && isEncryptedText(this.texts.get(id)!))
+          continue;
+        written = await encryptPage(text, pageKey);
+        this.pendingPlain.set(id, text);
+      } else if (text === this.texts.get(id)) continue;
       ops.push({
         op: 'write',
         path: placement.file,
-        text,
+        text: written,
         expect: this.texts.has(id) ? this.texts.get(id)! : null,
         id,
       });
+    }
+    // turning encryption on removes the plain versions kept in page history
+    for (const id of metaChanged) {
+      if (
+        state.pages[id]?.encrypted &&
+        this.layout.has(id) &&
+        !this.history.get(id)?.length &&
+        !this.historyCleared.has(id)
+      ) {
+        ops.push({ op: 'delete', path: this.historyPath(id) });
+        this.historyCleared.add(id);
+      }
     }
 
     // folders emptied by removals and moves are tidied away, folders with other files stay
@@ -229,6 +274,11 @@ export class VaultRepository implements WorkspaceRepository {
 
     for (const snapshot of batch.snapshots ?? []) ops.push(await this.historyOp(snapshot));
 
+    const edited = batch.docs.length;
+    if (edited > 0) {
+      const day = localDay(new Date());
+      this.days.set(day, (this.days.get(day) ?? 0) + edited);
+    }
     const registry = this.registryFor(state, next);
     if (registry.workspace !== this.registryText)
       ops.push({ op: 'write', path: REGISTRY_PATH, text: registry.workspace });
@@ -358,6 +408,11 @@ export class VaultRepository implements WorkspaceRepository {
       case 'write':
         if (op.id) {
           this.texts.set(op.id, op.text);
+          const plain = this.pendingPlain.get(op.id);
+          if (plain !== undefined) {
+            this.plainTexts.set(op.id, plain);
+            this.pendingPlain.delete(op.id);
+          }
           const target = next.get(op.id);
           if (target) layout.set(op.id, { ...target });
         }
@@ -402,10 +457,28 @@ export class VaultRepository implements WorkspaceRepository {
       if (page.lastOpenedAt !== null) opened.push([id, page.lastOpenedAt]);
     }
     opened.sort((a, b) => b[1] - a[1]);
+    const activity = Object.fromEntries(
+      [...this.days].sort(([a], [b]) => b.localeCompare(a)).slice(0, MAX_ACTIVITY_DAYS),
+    );
     return {
       workspace: `${JSON.stringify({ version: 1, pages }, null, 1)}\n`,
-      recent: `${JSON.stringify({ version: 1, opened: Object.fromEntries(opened.slice(0, MAX_RECENT)) })}\n`,
+      recent: `${JSON.stringify({ version: 1, opened: Object.fromEntries(opened.slice(0, MAX_RECENT)), activity })}\n`,
     };
+  }
+
+  async readMeta(name: string): Promise<string | null> {
+    if (!/^[\w-]+\.json$/.test(name)) return null;
+    return this.bridge.readText(`${MORROW_DIR}/${name}`);
+  }
+
+  async writeMeta(name: string, text: string): Promise<void> {
+    if (!/^[\w-]+\.json$/.test(name)) return;
+    const [result] = await this.bridge.apply([{ op: 'write', path: `${MORROW_DIR}/${name}`, text }]);
+    if (result && !result.ok) throw new Error(result.message);
+  }
+
+  activity(): Record<string, number> {
+    return Object.fromEntries(this.days);
   }
 
   // ---- page history, one json file per page in .morrow/history
@@ -447,6 +520,46 @@ export class VaultRepository implements WorkspaceRepository {
     return list;
   }
 
+  // the page is locked again, its key and plain text leave memory
+  lockPage(id: PageId): void {
+    this.keys.delete(id);
+    this.plainTexts.delete(id);
+    this.locked.add(id);
+  }
+
+  // a new password for a page, its next save is encrypted
+  async protectPage(id: PageId, password: string): Promise<void> {
+    this.keys.set(id, await newPageKey(password));
+    this.history.set(id, []);
+    this.historyCleared.delete(id);
+  }
+
+  unprotectPage(id: PageId): void {
+    this.keys.delete(id);
+    this.plainTexts.delete(id);
+  }
+
+  // decrypts a locked page and reads it as if it had just been loaded
+  async unlockPage(
+    id: PageId,
+    password: string,
+    state: WorkspaceState,
+  ): Promise<Result<{ page: PageMeta; doc: DocNode }>> {
+    const text = this.texts.get(id);
+    const placement = this.layout.get(id);
+    const base = state.pages[id];
+    if (!text || !placement?.file || !base) return fail('This page is not on disk.');
+    const opened = await decryptPage(text, password);
+    if (!opened) return fail('That password is not right.');
+    const read = this.readFile(placement.file, opened.plain, base, state, this.layout);
+    if (!read.ok) return fail('The page was decrypted but could not be read.');
+    this.keys.set(id, opened.pageKey);
+    this.plainTexts.set(id, opened.plain);
+    if (read.source) this.sources.set(id, read.source);
+    this.locked.delete(id);
+    return ok({ page: { ...read.page, encrypted: true }, doc: read.doc });
+  }
+
   private async historyOp(snapshot: Snapshot): Promise<VaultOp> {
     const list = [...(await this.historyOf(snapshot.pageId)), snapshot];
     const prune = new Set(snapshotsToPrune(list));
@@ -457,6 +570,8 @@ export class VaultRepository implements WorkspaceRepository {
   }
 
   private async keepDiskVersion(pageId: PageId, text: string): Promise<void> {
+    // a version of an encrypted page is never kept as plain text
+    if (isEncryptedText(text) || this.lastState?.pages[pageId]?.encrypted) return;
     const page = this.lastState?.pages[pageId];
     const doc = page?.kind === 'canvas' ? safeCanvas(text) : markdownToDoc(readPageText(text).body);
     if (!doc) return;
@@ -697,7 +812,7 @@ export class VaultRepository implements WorkspaceRepository {
         sources.set(id, read.source);
         if (this.locked.has(id)) readable.add(id);
       } else {
-        pages.set(id, page);
+        pages.set(id, { ...page, encrypted: isEncryptedText(text) || page.encrypted });
         unreadable.add(id);
       }
     }
@@ -755,7 +870,7 @@ export class VaultRepository implements WorkspaceRepository {
     state: WorkspaceState,
     layout: Map<PageId, Placement>,
   ): { ok: true; page: PageMeta; doc: DocNode; source: PageSource | null } | { ok: false } {
-    if (text.length > MAX_PAGE_BYTES) return { ok: false };
+    if (text.length > MAX_PAGE_BYTES || isEncryptedText(text)) return { ok: false };
     const folder = stripExtension(path);
     const name = basename(folder);
     const parent = base.parentId ? state.pages[base.parentId] : undefined;
@@ -784,6 +899,7 @@ export class VaultRepository implements WorkspaceRepository {
       ...base,
       title: read.title ?? impliedTitle(name, dailyDate),
       icon: read.icon,
+      cover: read.cover,
       kind: read.kind ?? 'page',
       tags: read.tags,
       database: read.database,

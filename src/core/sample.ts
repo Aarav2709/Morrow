@@ -214,6 +214,12 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         ),
         h(2, 'Think'),
         p('Formulas are LaTeX: ', math('e^{i\\pi} + 1 = 0'), '. Click one to edit it.'),
+        p(
+          'Any line written as a question, two colons and an answer becomes a flashcard for ',
+          t('Review', 'bold'),
+          ':',
+        ),
+        p('What does Morrow never send anywhere? :: Your notes'),
         code('ts', "const greeting: string = 'Code blocks are highlighted';"),
         h(2, 'Keep'),
         p(

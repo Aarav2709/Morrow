@@ -110,6 +110,9 @@ export class MemoryVault implements VaultBridge {
       case 'remove':
         if (this.files.delete(op.path)) this.trashed.push(op.path);
         return { ok: true };
+      case 'delete':
+        this.files.delete(op.path);
+        return { ok: true };
       case 'rmdir': {
         const busy = [...this.files.keys(), ...this.dirs].some((path) => path.startsWith(`${op.path}/`));
         if (!busy) this.dirs.delete(op.path);

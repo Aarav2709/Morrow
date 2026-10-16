@@ -1,5 +1,6 @@
 // turns a scanned vault folder into pages, every file is read on its own so one bad file never blocks the rest
 import { canvasDoc, readCanvas } from '../canvas';
+import { isEncryptedText } from '../crypto';
 import { validateDoc, isRecord } from '../doc';
 import { markdownToDoc } from '../markdown/parse';
 import type { ParseOptions } from '../markdown/parse';
@@ -245,6 +246,13 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
       pages.set(id, page);
       continue;
     }
+    // an encrypted page stays locked until someone gives its password
+    if (isEncryptedText(candidate.file.text)) {
+      page.encrypted = true;
+      unreadable.push(id);
+      pages.set(id, page);
+      continue;
+    }
     const read = readPageText(candidate.file.text);
     if (read.error) {
       unreadable.push(id);
@@ -254,6 +262,7 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
     }
     if (read.title) page.title = read.title;
     if (read.icon) page.icon = read.icon;
+    page.cover = read.cover;
     if (read.kind) page.kind = read.kind;
     page.tags = read.tags;
     page.database = read.database;

@@ -109,6 +109,21 @@ export interface PageMeta {
   // values for the properties of the database this page is a row of, keyed by property id
   properties: Record<string, PropValue>;
   database: DatabaseDef | null;
+  // a gradient such as gradient-3, or the path of an image in the vault
+  cover: string | null;
+  // the page file is encrypted with a password, its content is only in memory while it is unlocked
+  encrypted: boolean;
+}
+
+export const COVER_GRADIENTS = 12;
+
+export function validCover(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const cover = value.trim();
+  if (/^gradient-([1-9]|1[0-2])$/.test(cover)) return cover;
+  // images are vault paths, never web addresses, so a cover never loads anything from elsewhere
+  if (cover.length <= 500 && !/^[a-z][a-z0-9+.-]*:/i.test(cover) && !cover.includes('..')) return cover;
+  return null;
 }
 
 export interface DocMark {
@@ -169,7 +184,55 @@ export const KNOWN_MARK_TYPES = new Set([
   'code',
   'link',
   'highlight',
+  'textColor',
 ]);
+
+// the colours text and highlights are written with in files, readable by any markdown app that shows html
+export const TEXT_HEX: Record<ColorName, string> = {
+  gray: '#787774',
+  brown: '#9f6b53',
+  orange: '#d9730d',
+  yellow: '#cb912f',
+  green: '#448361',
+  blue: '#337ea9',
+  purple: '#9065b0',
+  pink: '#c14c8a',
+  red: '#d44c47',
+};
+export const BACKGROUND_HEX: Record<ColorName, string> = {
+  gray: '#f1f1ef',
+  brown: '#f4eeee',
+  orange: '#fbecdd',
+  yellow: '#fbf3db',
+  green: '#edf3ec',
+  blue: '#e7f3f8',
+  purple: '#f6f3f9',
+  pink: '#faf1f5',
+  red: '#fdebec',
+};
+
+// the palette colour closest to any css colour written as #rgb or #rrggbb
+export function nearestColor(hex: string, palette: Record<ColorName, string>): ColorName | null {
+  const parse = (value: string) => {
+    const match = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(value.trim());
+    if (!match) return null;
+    const digits = match[1]!.length === 3 ? [...match[1]!].map((d) => d + d).join('') : match[1]!;
+    return [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16));
+  };
+  const wanted = parse(hex);
+  if (!wanted) return null;
+  let best: ColorName | null = null;
+  let distance = Infinity;
+  for (const [name, value] of Object.entries(palette) as Array<[ColorName, string]>) {
+    const rgb = parse(value)!;
+    const d = rgb.reduce((sum, channel, i) => sum + (channel - wanted[i]!) ** 2, 0);
+    if (d < distance) {
+      distance = d;
+      best = name;
+    }
+  }
+  return best;
+}
 
 export type FileId = string;
 
@@ -251,6 +314,8 @@ export function newPageMeta(fields: Pick<PageMeta, 'id' | 'parentId'> & Partial<
     tags: [],
     properties: {},
     database: null,
+    cover: null,
+    encrypted: false,
     ...fields,
   };
 }

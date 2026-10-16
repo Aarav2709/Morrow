@@ -1,6 +1,6 @@
 import MarkdownIt from 'markdown-it';
 import type { StateBlock, StateInline, Token } from 'markdown-it';
-import { calloutTone, emptyDoc } from '../model';
+import { BACKGROUND_HEX, calloutTone, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
 
@@ -403,7 +403,18 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
       }
       case 'html_inline': {
         const tag = token.content.trim().toLowerCase();
-        if (tag === '<u>') marks.push({ type: 'underline' });
+        const styled =
+          /^<(span|mark)\s+style\s*=\s*["']\s*(color|background(?:-color)?)\s*:\s*(#[0-9a-f]{3,6})\s*;?\s*["']\s*>$/.exec(
+            tag,
+          );
+        const color = styled
+          ? nearestColor(styled[3]!, styled[2] === 'color' ? TEXT_HEX : BACKGROUND_HEX)
+          : null;
+        if (styled && color && styled[1] === 'span' && styled[2] === 'color')
+          marks.push({ type: 'textColor', attrs: { color } });
+        else if (styled && color && styled[1] === 'mark') marks.push({ type: 'highlight', attrs: { color } });
+        else if (tag === '</span>' && marks.some((mark) => mark.type === 'textColor')) remove('textColor');
+        else if (tag === '<u>') marks.push({ type: 'underline' });
         else if (tag === '</u>') remove('underline');
         else if (tag === '<mark>') marks.push({ type: 'highlight' });
         else if (tag === '</mark>') remove('highlight');
@@ -472,6 +483,7 @@ function sameMarks(a: DocMark[] = [], b: DocMark[] = []): boolean {
       (mark, i) =>
         mark.type === b[i]!.type &&
         mark.attrs?.href === b[i]!.attrs?.href &&
+        mark.attrs?.color === b[i]!.attrs?.color &&
         mark.attrs?.fileRef === b[i]!.attrs?.fileRef,
     )
   );

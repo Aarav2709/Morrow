@@ -17,6 +17,8 @@ export interface PageLinkOptions {
   resolveTarget: (target: string) => PageId | null;
   // makes the page a link points at, used when following a link to a page that does not exist yet
   createFromTarget: (target: string) => PageId | null;
+  // an embedded page shows the other page's content as html, read only
+  renderEmbed: (id: PageId) => string | null;
 }
 
 const CREATE_PREFIX = 'create:';
@@ -38,6 +40,7 @@ export const PageLink = Node.create<PageLinkOptions>({
       createPage: () => null,
       resolveTarget: () => null,
       createFromTarget: () => null,
+      renderEmbed: () => null,
     };
   },
 
@@ -89,6 +92,17 @@ export const PageLink = Node.create<PageLinkOptions>({
       const dom = document.createElement('a');
       dom.className = 'page-link';
       dom.contentEditable = 'false';
+      // ![[embeds]] show the other page below the link, kept up to date as it changes
+      const embedded = node.attrs.embed === true;
+      const wrapper = embedded ? document.createElement('span') : null;
+      const body = embedded ? document.createElement('span') : null;
+      let lastHtml: string | null = null;
+      if (wrapper && body) {
+        wrapper.className = 'page-embed';
+        wrapper.contentEditable = 'false';
+        body.className = 'page-embed-body';
+        wrapper.append(dom, body);
+      }
       const target = () => (typeof current.attrs.target === 'string' ? current.attrs.target : '');
       const resolved = (): PageId | null => {
         const id = typeof current.attrs.id === 'string' ? current.attrs.id : null;
@@ -113,6 +127,14 @@ export const PageLink = Node.create<PageLinkOptions>({
           : title === null
             ? 'This page was deleted or moved to the trash'
             : `Open ${title}`;
+        if (body) {
+          const html = id ? this.options.renderEmbed(id) : null;
+          if (html !== lastHtml) {
+            lastHtml = html;
+            body.innerHTML = html ?? '';
+            body.hidden = !html;
+          }
+        }
       };
       dom.addEventListener('click', (event) => {
         event.preventDefault();
@@ -137,9 +159,10 @@ export const PageLink = Node.create<PageLinkOptions>({
       refresh();
       const unsubscribe = this.options.subscribe(refresh);
       return {
-        dom,
+        dom: wrapper ?? dom,
         update(updated) {
-          if (updated.type !== current.type) return false;
+          // switching between a link and an embed needs a different view
+          if (updated.type !== current.type || (updated.attrs.embed === true) !== embedded) return false;
           current = updated;
           refresh();
           return true;
@@ -181,11 +204,15 @@ export const PageLink = Node.create<PageLinkOptions>({
             if (!created) return;
             id = created;
           }
+          // typing ![[ embeds the page instead of linking it
+          const before = range.from > 1 ? editor.state.doc.textBetween(range.from - 1, range.from) : '';
+          const embed = before === '!';
+          const from = embed ? range.from - 1 : range.from;
           editor
             .chain()
             .focus()
-            .insertContentAt(range, [
-              { type: 'pageLink', attrs: { id, label } },
+            .insertContentAt({ from, to: range.to }, [
+              { type: 'pageLink', attrs: embed ? { id, label, embed: true } : { id, label } },
               { type: 'text', text: ' ' },
             ])
             .run();

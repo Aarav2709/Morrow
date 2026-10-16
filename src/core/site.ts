@@ -38,7 +38,8 @@ export function buildSite(state: WorkspaceState, options: SiteOptions): Site {
     ? [root, ...descendantsOf(state.pages, root.id).filter((page) => page.trashedAt === null)]
     : livePages(state.pages);
   const live = new Set(livePages(state.pages).map((page) => page.id));
-  const included = pages.filter((page) => live.has(page.id));
+  // encrypted pages are never published
+  const included = pages.filter((page) => live.has(page.id) && !page.encrypted);
   const ids = new Set(included.map((page) => page.id));
 
   // short readable file names, the published root is the home page
@@ -172,7 +173,7 @@ ${sub}${back ? `<section class="backlinks"><h2>Linked from</h2><ul>${back}</ul><
   return { files, assets };
 }
 
-interface RenderContext {
+export interface RenderContext {
   href: (id: PageId) => string | null;
   assetPath: (fileId: FileId) => string;
   titleOf: (id: PageId) => string | null;

@@ -2,6 +2,8 @@ import {
   ArrowRightLeft,
   Copy,
   FolderOpen,
+  Lock,
+  LockOpen,
   Globe,
   LayoutTemplate,
   Network,
@@ -57,6 +59,26 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       : []),
     ...(desktop?.vault && getSession().pathOf(pageId) !== null
       ? [{ label: 'Show in folder', icon: FolderOpen, onSelect: () => revealPage(pageId) }]
+      : []),
+    ...(page.kind === 'page' && getSession().supportsEncryption
+      ? page.encrypted
+        ? getSession().unreadable.has(pageId)
+          ? []
+          : [
+              { label: 'Lock now', icon: Lock, onSelect: () => void getSession().lockPage(pageId) },
+              {
+                label: 'Remove encryption',
+                icon: LockOpen,
+                onSelect: () => void getSession().unprotectPage(pageId),
+              },
+            ]
+        : [
+            {
+              label: 'Encrypt with a password…',
+              icon: Lock,
+              onSelect: () => openDialog({ kind: 'encrypt', pageId }),
+            },
+          ]
       : []),
     { separator: true },
     { label: 'Export as Markdown', icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },

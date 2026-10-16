@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  globalShortcut,
   ipcMain,
   Menu,
   nativeTheme,
@@ -26,14 +27,34 @@ import {
   listDir,
   openVault,
   pathExists,
+  prepareCopy,
   readBytes,
+  readSyncBase,
   readText,
   revealInFolder,
   scanVault,
   selectVault,
+  syncedFileBase64,
   vaultFilePath,
+  vaultIdentity,
+  vaultManifest,
   vaultState,
+  writeSyncBase,
+  writeSyncedFile,
 } from './vault.cjs';
+import {
+  closeSync,
+  forgetPeer,
+  initSync,
+  markSynced,
+  pairWith,
+  requestPeer,
+  setDeviceName,
+  setSyncEnabled,
+  startPairing,
+  stopPairing,
+  syncStatus,
+} from './sync.cjs';
 
 const SCHEME = 'morrow';
 // images and files inside the open vault load through this scheme, nothing outside the vault is served
@@ -56,6 +77,8 @@ const THEMES = {
 
 // development and test runs can use a throwaway profile, installed copies never can
 if (!app.isPackaged && process.env.MORROW_USER_DATA) app.setPath('userData', process.env.MORROW_USER_DATA);
+// automated test runs can keep their window out of sight
+const HIDDEN = !app.isPackaged && process.env.MORROW_HIDDEN === '1';
 
 protocol.registerSchemesAsPrivileged([
   { scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
@@ -88,12 +111,26 @@ if (!app.requestSingleInstanceLock()) {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
     });
     registerIpc();
+    void initSync((event) => mainWindow?.webContents.send('sync:event', event));
     // macos needs its system menu for copy, paste and quit, other platforms get no menu bar
     Menu.setApplicationMenu(IS_MAC ? buildMacMenu() : null);
     await createWindow();
+    // quick capture from any app: the window comes forward with a small box for a note
+    globalShortcut.register('CommandOrControl+Alt+M', () => {
+      if (!mainWindow) return;
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      if (!HIDDEN) mainWindow.show();
+      mainWindow.focus();
+      mainWindow.webContents.send('morrow:command', 'capture');
+    });
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) void createWindow();
     });
+  });
+
+  app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
+    closeSync();
   });
 
   app.on('window-all-closed', () => {
@@ -187,12 +224,15 @@ async function createWindow(): Promise<void> {
       nodeIntegration: false,
       webSecurity: true,
       spellcheck: true,
+      backgroundThrottling: !HIDDEN,
+      // hidden test windows still paint, so they can be screenshotted
+      offscreen: HIDDEN,
     },
   });
   mainWindow = window;
   readyToClose = false;
   if (state.maximized) window.maximize();
-  window.once('ready-to-show', () => window.show());
+  if (!HIDDEN) window.once('ready-to-show', () => window.show());
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
@@ -355,6 +395,26 @@ function registerVaultIpc(): void {
   handle('vault:list', (relative) => listDir(relative));
   handle('vault:reveal', (relative) => revealInFolder(relative ?? ''));
   handle('vault:current', () => currentVault());
+  handle('vault:manifest', () => vaultManifest());
+  handle('vault:identity', () => vaultIdentity());
+  handle('vault:read-synced', (relative) => syncedFileBase64(relative));
+  handle('vault:write-synced', (relative, data, expect) => writeSyncedFile(relative, data, expect));
+  handle('vault:prepare-copy', (dir, vaultId) => prepareCopy(String(dir), String(vaultId)));
+  handle('vault:sync-base', (peerId) => readSyncBase(String(peerId)));
+  handle('vault:save-sync-base', (peerId, files) => writeSyncBase(String(peerId), files));
+  handle('sync:status', () => syncStatus());
+  handle('sync:enable', (enabled) => setSyncEnabled(enabled === true));
+  handle('sync:name', (name) => setDeviceName(String(name)));
+  handle('sync:start-pairing', () => startPairing());
+  handle('sync:stop-pairing', () => stopPairing());
+  handle('sync:pair', (target, code) =>
+    pairWith(target as { id?: string; address: string; port?: number }, String(code)),
+  );
+  handle('sync:forget', (id) => forgetPeer(String(id)));
+  handle('sync:request', (peerId, payload) =>
+    requestPeer(String(peerId), payload as Record<string, unknown>),
+  );
+  handle('sync:mark', (peerId) => markSynced(String(peerId)));
 }
 
 // writes to a temporary file first so a crash never leaves a half written backup

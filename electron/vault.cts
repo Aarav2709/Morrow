@@ -3,15 +3,27 @@ import { app, dialog, shell } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
-import { lstat, mkdir, readdir, readFile, realpath, rename, rmdir, stat, writeFile } from 'node:fs/promises';
+import {
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  rename,
+  rm,
+  rmdir,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import path from 'node:path';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 export type VaultOp =
   | { op: 'write'; path: string; text: string; expect?: string | null }
   | { op: 'rename'; from: string; to: string; optional?: boolean }
   | { op: 'remove'; path: string }
-  | { op: 'rmdir'; path: string };
+  | { op: 'rmdir'; path: string }
+  | { op: 'delete'; path: string };
 
 export type VaultOpResult =
   | { ok: true }
@@ -314,6 +326,14 @@ async function applyOne(op: VaultOp): Promise<VaultOpResult> {
       }
       return { ok: true };
     }
+    case 'delete': {
+      // only morrow's own bookkeeping is ever deleted outright, pages always go to the trash
+      if (!op.path.startsWith('.morrow/'))
+        return { ok: false, code: 'error', message: 'Only Morrow files can be deleted.' };
+      const absolute = resolveInVault(op.path);
+      await rm(absolute, { force: true });
+      return { ok: true };
+    }
     case 'rmdir': {
       const absolute = resolveInVault(op.path);
       try {
@@ -390,6 +410,130 @@ export async function listDir(
   };
   await walk(dir, 0);
   return result;
+}
+
+// ---- for sync between computers
+
+// files every computer shares: pages, attachments, the trash and the shared part of morrow's bookkeeping
+export function isSyncedPath(relative: string): boolean {
+  if (!relative || relative.includes(TEMP_MARK) || relative.includes('.morrow-move-')) return false;
+  if (relative === '.morrow/workspace.json' || relative === '.morrow/review.json') return true;
+  return !relative
+    .split('/')
+    .some((part, index) => part.startsWith('.') && !(index === 0 && part === '.trash'));
+}
+
+const hashCache = new Map<string, { size: number; mtime: number; hash: string }>();
+
+async function hashFile(absolute: string, size: number, mtime: number): Promise<string | null> {
+  const cached = hashCache.get(absolute);
+  if (cached && cached.size === size && cached.mtime === mtime) return cached.hash;
+  const data = await readFile(absolute).catch(() => null);
+  if (!data) return null;
+  const hash = createHash('sha256').update(data).digest('hex');
+  hashCache.set(absolute, { size, mtime, hash });
+  return hash;
+}
+
+// every synced file in the open vault with a hash of its bytes
+export async function vaultManifest(): Promise<Record<string, string>> {
+  if (!root) throw new Error('No vault is open.');
+  const manifest: Record<string, string> = {};
+  let count = 0;
+  const walk = async (dir: string, depth: number): Promise<void> => {
+    if (depth > MAX_DEPTH || count > MAX_FILES) return;
+    const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (++count > MAX_FILES) return;
+      const absolute = path.join(dir, entry.name);
+      const relative = toRelative(absolute);
+      if (entry.isSymbolicLink()) continue;
+      if (entry.isDirectory()) {
+        if (isSyncedPath(relative) || relative === '.morrow') await walk(absolute, depth + 1);
+      } else if (entry.isFile() && isSyncedPath(relative)) {
+        const info = await stat(absolute).catch(() => null);
+        if (!info || info.size > MAX_FILE_BYTES) continue;
+        const hash = await hashFile(absolute, info.size, info.mtimeMs);
+        if (hash) manifest[relative] = hash;
+      }
+    }
+  };
+  await walk(root, 0);
+  return manifest;
+}
+
+export async function syncedFileBase64(relative: unknown): Promise<string | null> {
+  if (typeof relative !== 'string' || !isSyncedPath(relative)) return null;
+  const bytes = await readBytes(relative);
+  return bytes ? Buffer.from(bytes).toString('base64') : null;
+}
+
+// writes a file that came from another computer, only when this computer's copy is still the one the plan saw
+export async function writeSyncedFile(
+  relative: unknown,
+  base64: unknown,
+  expectHash: unknown,
+): Promise<VaultOpResult> {
+  if (typeof relative !== 'string' || !isSyncedPath(relative) || typeof base64 !== 'string')
+    return { ok: false, code: 'error', message: 'Invalid file.' };
+  const absolute = resolveInVault(relative);
+  const current = await readFile(absolute).catch(() => null);
+  const currentHash = current ? createHash('sha256').update(current).digest('hex') : null;
+  if (currentHash !== (typeof expectHash === 'string' ? expectHash : null))
+    return { ok: false, code: 'conflict', message: `${relative} changed meanwhile.`, current: null };
+  await writeAtomic(absolute, Buffer.from(base64, 'base64'));
+  return { ok: true };
+}
+
+// each vault has an id, so two computers only sync folders that are copies of the same vault
+export async function vaultIdentity(): Promise<{ id: string; name: string }> {
+  if (!root) throw new Error('No vault is open.');
+  const file = path.join(root, '.morrow', 'vault.json');
+  try {
+    const raw = JSON.parse(await readFile(file, 'utf8')) as { id?: unknown };
+    if (typeof raw.id === 'string' && /^[\w-]{8,64}$/.test(raw.id))
+      return { id: raw.id, name: path.basename(root) };
+  } catch {
+    // made below
+  }
+  const id = randomUUID();
+  await writeAtomic(file, `${JSON.stringify({ version: 1, id }, null, 1)}\n`);
+  return { id, name: path.basename(root) };
+}
+
+// prepares an empty folder to become a copy of a vault on another computer
+export async function prepareCopy(dir: string, vaultId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!path.isAbsolute(dir) || !/^[\w-]{8,64}$/.test(vaultId)) return { ok: false, error: 'Invalid folder.' };
+  const entries = await readdir(dir).catch(() => null);
+  if (entries === null) return { ok: false, error: 'That folder does not exist.' };
+  if (entries.some((name) => !name.startsWith('.')))
+    return { ok: false, error: 'Choose an empty folder for the copy.' };
+  await mkdir(path.join(dir, '.morrow'), { recursive: true });
+  await writeFile(
+    path.join(dir, '.morrow', 'vault.json'),
+    `${JSON.stringify({ version: 1, id: vaultId }, null, 1)}\n`,
+  );
+  return { ok: true };
+}
+
+export async function readSyncBase(peerId: string): Promise<Record<string, string>> {
+  if (!root || !/^[\w-]{8,64}$/.test(peerId)) return {};
+  try {
+    const raw = JSON.parse(await readFile(path.join(root, '.morrow', 'sync', `${peerId}.json`), 'utf8')) as {
+      files?: unknown;
+    };
+    return raw.files && typeof raw.files === 'object' ? (raw.files as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function writeSyncBase(peerId: string, files: unknown): Promise<void> {
+  if (!root || !/^[\w-]{8,64}$/.test(peerId) || !files || typeof files !== 'object') return;
+  await writeAtomic(
+    path.join(root, '.morrow', 'sync', `${peerId}.json`),
+    JSON.stringify({ version: 1, files }),
+  );
 }
 
 export function revealInFolder(relative: unknown): void {

@@ -15,21 +15,43 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorView } from '@tiptap/pm/view';
 import { common, createLowlight } from 'lowlight';
-import { CALLOUT_TONES, calloutTone } from '../../core/model';
-import type { CalloutTone } from '../../core/model';
+import { CALLOUT_TONES, calloutTone, COLORS } from '../../core/model';
+import type { CalloutTone, ColorName } from '../../core/model';
+import { tagColor } from '../../core/tags';
 import { openDialog } from '../ui';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     highlight: {
       toggleHighlight: () => ReturnType;
+      setHighlightColor: (color: ColorName | null) => ReturnType;
+    };
+    textColor: {
+      setTextColor: (color: ColorName | null) => ReturnType;
     };
   }
 }
 
-// ==text== in markdown, <mark> on the page
+const colorAttribute = (prefix: 'text' | 'bg') => ({
+  color: {
+    default: null,
+    parseHTML: (element: HTMLElement) => {
+      const value = element.getAttribute('data-color');
+      return COLORS.includes(value as ColorName) ? value : null;
+    },
+    renderHTML: (attributes: Record<string, unknown>) =>
+      attributes.color
+        ? { 'data-color': attributes.color, class: `${prefix}-${String(attributes.color)}` }
+        : {},
+  },
+});
+
+// ==text== in markdown, <mark> on the page, optionally in one of the nine colours
 export const Highlight = Mark.create({
   name: 'highlight',
+  addAttributes() {
+    return colorAttribute('bg');
+  },
   parseHTML() {
     return [{ tag: 'mark' }];
   },
@@ -42,6 +64,10 @@ export const Highlight = Mark.create({
         () =>
         ({ commands }) =>
           commands.toggleMark(this.name),
+      setHighlightColor:
+        (color) =>
+        ({ commands }) =>
+          color === null ? commands.unsetMark(this.name) : commands.setMark(this.name, { color }),
     };
   },
   addKeyboardShortcuts() {
@@ -52,6 +78,28 @@ export const Highlight = Mark.create({
   },
   addPasteRules() {
     return [markPasteRule({ find: /(?:^|\s)(==(?!\s+==)((?:[^=]+))==(?!\s+==))/g, type: this.type })];
+  },
+});
+
+// coloured text, written as a span with a colour so other markdown apps show it too
+export const TextColor = Mark.create({
+  name: 'textColor',
+  addAttributes() {
+    return colorAttribute('text');
+  },
+  parseHTML() {
+    return [{ tag: 'span[data-color]' }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ['span', mergeAttributes(HTMLAttributes), 0];
+  },
+  addCommands() {
+    return {
+      setTextColor:
+        (color) =>
+        ({ commands }) =>
+          color === null ? commands.unsetMark(this.name) : commands.setMark(this.name, { color }),
+    };
   },
 });
 
@@ -280,6 +328,37 @@ const TONE_LABELS: Record<CalloutTone, string> = {
   danger: 'Danger',
 };
 
+// the emoji each obsidian callout type is shown with
+const KIND_EMOJI: Record<string, string> = {
+  note: '📝',
+  info: 'ℹ️',
+  abstract: '📄',
+  summary: '📄',
+  tldr: '📄',
+  todo: '☑️',
+  tip: '💡',
+  hint: '💡',
+  important: '❗',
+  success: '✅',
+  check: '✅',
+  done: '✅',
+  question: '❓',
+  help: '❓',
+  faq: '❓',
+  warning: '⚠️',
+  caution: '⚠️',
+  attention: '⚠️',
+  failure: '❌',
+  fail: '❌',
+  missing: '❌',
+  danger: '🔥',
+  error: '🛑',
+  bug: '🐞',
+  example: '🧪',
+  quote: '💬',
+  cite: '💬',
+};
+
 // callouts keep their obsidian type, an optional title and whether they start folded
 export function calloutNodeView(): NodeViewRenderer {
   return ({ node, getPos, editor }) => {
@@ -309,7 +388,7 @@ export function calloutNodeView(): NodeViewRenderer {
         : 'note';
       dom.dataset.tone = value;
       const kind = String(current.attrs.kind ?? value);
-      tone.textContent = kind.charAt(0).toUpperCase() + kind.slice(1);
+      tone.textContent = `${KIND_EMOJI[kind.toLowerCase()] ?? '📝'} ${kind.charAt(0).toUpperCase() + kind.slice(1)}`;
       tone.title = `${TONE_LABELS[value]}, click to change`;
       if (document.activeElement !== title) title.value = String(current.attrs.title ?? '');
       title.readOnly = !editor.isEditable;
@@ -371,7 +450,9 @@ function tagDecorations(doc: PmNode): DecorationSet {
     for (const match of node.text.matchAll(TAG_PATTERN)) {
       const from = pos + match.index + match[1]!.length;
       const to = from + match[2]!.length + 1;
-      decorations.push(Decoration.inline(from, to, { class: 'tag-chip', 'data-tag': match[2]! }));
+      decorations.push(
+        Decoration.inline(from, to, { class: `tag-chip tag-${tagColor(match[2]!)}`, 'data-tag': match[2]! }),
+      );
     }
     return true;
   });

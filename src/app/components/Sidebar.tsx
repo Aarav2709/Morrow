@@ -8,10 +8,12 @@ import {
   FileUp,
   FolderOpen,
   FolderPlus,
+  GraduationCap,
   Hash,
   Home,
   LayoutDashboard,
   LayoutTemplate,
+  Lock,
   MoreHorizontal,
   Network,
   PanelLeftClose,
@@ -36,7 +38,9 @@ import {
   livePages,
   trashedPages,
 } from '../../core/tree';
+import { collectCards, dueCards } from '../../core/flashcards';
 import { collectTags } from '../../core/tags';
+import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { desktop } from '../platform/desktop';
 import { vaultName } from '../platform/vault';
@@ -64,8 +68,11 @@ export function pageIcon(page: PageMeta): LucideIcon {
 }
 
 export function PageIcon({ page }: { page: PageMeta }) {
+  if (page.encrypted) return <Lock size={15} strokeWidth={1.75} className="icon-kind-locked" />;
   if (page.icon) return <>{page.icon}</>;
-  const props = { size: 15, strokeWidth: 1.75 };
+  // each kind of page has its own colour when colourful pages are on
+  const kind = page.dailyDate ? 'daily' : page.kind;
+  const props = { size: 15, strokeWidth: 1.75, className: `icon-kind-${kind}` };
   if (page.kind === 'journal') return <BookOpen {...props} />;
   if (page.kind === 'database') return <Table2 {...props} />;
   if (page.kind === 'canvas') return <LayoutDashboard {...props} />;
@@ -131,6 +138,9 @@ export function Sidebar() {
   const trashCount = useMemo(() => trashedPages(state.pages).length, [state.pages]);
   const openTasks = useMemo(() => collectTasks(state).filter((task) => !task.checked).length, [state]);
   const tagCount = useMemo(() => collectTags(state).length, [state]);
+  const reviewLog = useReviewLog();
+  const cards = useMemo(() => collectCards(state), [state]);
+  const dueCount = useMemo(() => dueCards(cards, reviewLog, new Date()).length, [cards, reviewLog]);
   const [newMenu, setNewMenu] = useState<HTMLElement | null>(null);
   const [vaultMenu, setVaultMenu] = useState<{
     anchor: HTMLElement;
@@ -234,6 +244,13 @@ export function Sidebar() {
           active={route.name === 'tags' || route.name === 'tag'}
           count={tagCount}
           onClick={go(() => navigate({ name: 'tags' }))}
+        />
+        <NavItem
+          icon={GraduationCap}
+          label="Review"
+          active={route.name === 'review'}
+          count={dueCount}
+          onClick={go(() => navigate({ name: 'review' }))}
         />
         <NavItem
           icon={Network}

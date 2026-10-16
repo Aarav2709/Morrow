@@ -46,8 +46,9 @@ export function createBackup(state: WorkspaceState, now: Date, files: BackupFile
     format: BACKUP_FORMAT,
     schemaVersion: SCHEMA_VERSION,
     exportedAt: now.toISOString(),
-    pages: Object.values(state.pages),
-    docs: { ...state.docs },
+    // encrypted pages are left out, their encrypted files in the vault are their backup
+    pages: Object.values(state.pages).filter((page) => !page.encrypted),
+    docs: Object.fromEntries(Object.entries(state.docs).filter(([id]) => !state.pages[id]?.encrypted)),
     files,
   };
 }
@@ -234,7 +235,7 @@ export function workspaceMarkdownFiles(
   state: WorkspaceState,
   fileMetas: Record<FileId, FileMeta> = {},
 ): { files: ExportFile[]; attachments: Map<FileId, string> } {
-  const live = livePages(state.pages);
+  const live = livePages(state.pages).filter((page) => !page.encrypted);
   const referenced = live.flatMap((page) => (state.docs[page.id] ? fileIdsInDoc(state.docs[page.id]!) : []));
   const attachments = new Map(
     [...attachmentNames(referenced, fileMetas)].map(([id, name]) => [id, `attachments/${name}`]),
@@ -245,6 +246,7 @@ export function workspaceMarkdownFiles(
     const used = new Set<string>(['attachments']);
     const up = '../'.repeat(depth);
     for (const page of childrenOf(state.pages, parentId)) {
+      if (page.encrypted) continue;
       const name = uniqueName(safeFileName(displayTitle(page)), used);
       const filePath = (id: FileId) => {
         const target = attachments.get(id);

@@ -1,6 +1,7 @@
 // tags come from a page's tags property and from #tags written in its text
 import { walk } from './doc';
-import type { DocNode, PageId, PageMeta, WorkspaceState } from './model';
+import { COLORS } from './model';
+import type { ColorName, DocNode, PageId, PageMeta, WorkspaceState } from './model';
 import { livePages } from './tree';
 import { normalizeTag } from './vault/frontmatter';
 
@@ -62,4 +63,13 @@ export function pagesWithTag(state: WorkspaceState, wanted: string): PageMeta[] 
   return livePages(state.pages)
     .filter((page) => tagsOf(page, state.docs[page.id]).some((tag) => tagMatches(tag, wanted)))
     .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+// every tag keeps the same colour everywhere, picked from its name
+export function tagColor(tag: string): ColorName {
+  let hash = 0;
+  for (const char of tag.toLowerCase().split('/')[0]!) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  // gray is left out so every tag gets a real colour
+  const palette = COLORS.filter((color) => color !== 'gray');
+  return palette[hash % palette.length]!;
 }

@@ -299,3 +299,44 @@ describe('databases and journals in files', () => {
     await session.close();
   });
 });
+
+describe('encrypted pages in files', () => {
+  it('keeps only ciphertext on disk and opens with the right password', async () => {
+    const vault = new MemoryVault({ 'Diary.md': '---\ntags: [private]\n---\nDear diary.\n' });
+    const session = await open(vault);
+    const diary = idOf(session, 'Diary');
+    await run(session, { type: 'page.setDoc', id: diary, doc: doc('Dear diary, version two.'), now: 5 });
+    expect(vault.paths().some((path) => path.includes('history'))).toBe(false);
+    expect([...vault.files.keys()].some((path) => path.startsWith('.morrow/history/'))).toBe(true);
+
+    const protectedPage = await session.protectPage(diary, 'hunter2 but longer');
+    expect(protectedPage.ok).toBe(true);
+    const onDisk = vault.text('Diary.md')!;
+    expect(onDisk).not.toContain('diary');
+    expect(onDisk).not.toContain('private');
+    expect([...vault.files.keys()].some((path) => path.startsWith('.morrow/history/'))).toBe(false);
+
+    // editing an unlocked encrypted page keeps it encrypted
+    await run(session, { type: 'page.setDoc', id: diary, doc: doc('Third secret.'), now: 6 });
+    expect(vault.text('Diary.md')).not.toContain('Third');
+    expect([...vault.files.keys()].some((path) => path.startsWith('.morrow/history/'))).toBe(false);
+
+    const reopened = await open(vault);
+    expect(reopened.getState().pages[diary]!.encrypted).toBe(true);
+    expect(reopened.getState().docs[diary]).toBeUndefined();
+    expect((await reopened.unlockPage(diary, 'wrong')).ok).toBe(false);
+    expect((await reopened.unlockPage(diary, 'hunter2 but longer')).ok).toBe(true);
+    expect(reopened.getState().docs[diary]).toEqual(doc('Third secret.'));
+    expect(reopened.getState().pages[diary]!.tags).toEqual(['private']);
+
+    await reopened.lockPage(diary);
+    expect(reopened.getState().docs[diary]).toBeUndefined();
+    expect(vault.text('Diary.md')).not.toContain('Third');
+
+    expect((await reopened.unlockPage(diary, 'hunter2 but longer')).ok).toBe(true);
+    await reopened.unprotectPage(diary);
+    expect(vault.text('Diary.md')).toBe('---\ntags: [private]\n---\nThird secret.\n');
+    await session.close();
+    await reopened.close();
+  });
+});

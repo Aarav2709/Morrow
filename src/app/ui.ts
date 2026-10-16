@@ -18,6 +18,9 @@ export type Dialog =
     }
   // pick a template for a new page
   | { kind: 'template'; parentId: PageId | null }
+  | { kind: 'encrypt'; pageId: PageId }
+  | { kind: 'pair' }
+  | { kind: 'capture' }
   | {
       kind: 'confirm';
       title: string;

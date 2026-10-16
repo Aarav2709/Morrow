@@ -3,6 +3,19 @@ import { useSyncExternalStore } from 'react';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
 export type PageWidth = 'comfortable' | 'wide';
+// accent colours, each tuned for light and dark in features.css
+export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
+export type Accent = (typeof ACCENTS)[number];
+export const ACCENT_LABELS: Record<Accent, string> = {
+  ember: 'Ember',
+  ocean: 'Ocean',
+  aqua: 'Aqua',
+  violet: 'Violet',
+  forest: 'Forest',
+  rose: 'Rose',
+  amber: 'Amber',
+  graphite: 'Graphite',
+};
 
 export interface Preferences {
   theme: ThemePreference;
@@ -11,6 +24,9 @@ export interface Preferences {
   sidebarOpen: boolean;
   sidebarWidth: number;
   expanded: string[];
+  accent: Accent;
+  // colourful headings, lists, icons and tags, off for a quieter page
+  colorful: boolean;
 }
 
 const KEY = 'morrow.preferences';
@@ -21,6 +37,8 @@ const defaults: Preferences = {
   sidebarOpen: true,
   sidebarWidth: 264,
   expanded: [],
+  accent: 'ember',
+  colorful: true,
 };
 
 // view preferences only, losing them never loses work
@@ -37,6 +55,8 @@ function read(): Preferences {
       font: ['serif', 'sans', 'mono'].includes(parsed.font as string) ? parsed.font! : defaults.font,
       width: parsed.width === 'wide' ? 'wide' : 'comfortable',
       sidebarOpen: parsed.sidebarOpen !== false,
+      accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
+      colorful: parsed.colorful !== false,
       sidebarWidth:
         typeof parsed.sidebarWidth === 'number'
           ? Math.min(420, Math.max(208, parsed.sidebarWidth))

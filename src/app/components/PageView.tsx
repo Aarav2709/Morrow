@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
-import { ArrowUpRight, FileWarning, RotateCcw, Smile, Trash2 } from 'lucide-react';
+import { ArrowUpRight, FileWarning, Image as ImageIcon, RotateCcw, Smile, Trash2 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { docToPlainText, findUnknownTypes, inlineText } from '../../core/doc';
 import { backlinksTo, unlinkedMentions } from '../../core/links';
@@ -9,6 +9,8 @@ import type { DocNode, PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
 import { findDatabaseOf } from '../../core/database';
 import { PageEditor } from '../editor/PageEditor';
+import { CoverBanner, CoverPicker } from './Cover';
+import { LockedPage } from './EncryptDialog';
 import { RowProperties } from './database/RowProperties';
 import { PageTags } from './TagsView';
 import { deleteForever, restorePage } from '../operations';
@@ -42,6 +44,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
   const state = useWorkspace();
   const page = state.pages[id];
   const [editing, setEditing] = useState(false);
+  const [coverPicker, setCoverPicker] = useState<HTMLElement | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<Editor | null>(null);
   // enter in the title can arrive before the editor exists, focus it once it does
@@ -138,7 +141,8 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
           </div>
         )}
         {page.kind !== 'database' && !unreadable && <Outline doc={doc} />}
-        <article className={`page font-${prefs.font} width-${prefs.width}`}>
+        <CoverBanner page={page} editable={!trashed} />
+        <article className={`page font-${prefs.font} width-${prefs.width}${page.cover ? ' has-cover' : ''}`}>
           <div className="page-icon-row">
             {page.icon ? (
               <button
@@ -161,6 +165,18 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
                 </button>
               )
             )}
+            {!page.cover && !trashed && (
+              <button
+                type="button"
+                className="add-icon"
+                onClick={(event) => setCoverPicker(event.currentTarget)}
+              >
+                <ImageIcon size={14} /> Add cover
+              </button>
+            )}
+            {coverPicker && (
+              <CoverPicker page={page} anchor={coverPicker} onClose={() => setCoverPicker(null)} />
+            )}
           </div>
           <h1 className="page-title-heading">
             <TitleField
@@ -181,6 +197,8 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
             <Suspense fallback={<div className="database" aria-busy="true" />}>
               <DatabaseView page={page} editable={!trashed && !unreadable} />
             </Suspense>
+          ) : unreadable && page.encrypted ? (
+            <LockedPage page={page} />
           ) : unreadable ? (
             <div className="banner is-error" role="alert">
               The content of this page could not be read. It has been left untouched in storage and is

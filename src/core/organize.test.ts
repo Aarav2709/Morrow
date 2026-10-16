@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { canvasDoc, readCanvas, writeCanvas } from './canvas';
 import { applyCommand } from './commands';
+import { decryptPage, deriveKey, encryptPage, isEncryptedText } from './crypto';
+import { diffLines } from './diff';
 import type { Command } from './commands';
 import {
   convertValue,
@@ -10,12 +12,15 @@ import {
   inferType,
   visibleRows,
 } from './database';
+import { collectCards, dueCards, readReviewLog, schedule, writeReviewLog } from './flashcards';
 import { buildGraph, DEFAULT_GRAPH_OPTIONS } from './graph';
+import { activityWeeks, onThisDay, streak } from './insights';
 import { emptyWorkspace, newPageMeta } from './model';
 import type { DocNode, PageMeta, ViewDef, WorkspaceState } from './model';
 import { unlinkedMentions } from './links';
 import { searchWorkspace } from './search';
 import { buildSite } from './site';
+import { planPull } from './sync';
 import { collectTags, pagesWithTag } from './tags';
 import { applyTemplate, fillTemplate, formatDate } from './templates';
 import { linkTargets, placePages } from './vault/layout';
@@ -299,5 +304,163 @@ describe('publishing and mentions', () => {
   it('finds pages that name a page without linking to it', () => {
     expect(unlinkedMentions(state, 'beds').map((mention) => mention.source.id)).toEqual(['other']);
     expect(unlinkedMentions(state, 'beds')[0]!.context).toBe('The raised beds need wood.');
+  });
+});
+
+describe('home insights', () => {
+  it('counts a writing streak and lays out weeks of activity', () => {
+    const today = new Date(2026, 9, 15);
+    expect(streak({ '2026-10-15': 3, '2026-10-14': 1, '2026-10-13': 2, '2026-10-11': 5 }, today)).toBe(3);
+    expect(streak({ '2026-10-14': 1, '2026-10-13': 2 }, today)).toBe(2);
+    expect(streak({}, today)).toBe(0);
+    const weeks = activityWeeks({ '2026-10-15': 4 }, today, 4);
+    expect(weeks).toHaveLength(4);
+    expect(weeks[3]!.find((day) => day.key === '2026-10-15')!.count).toBe(4);
+    expect(weeks[3]!.at(-1)!.future).toBe(true);
+    expect(weeks[0]![0]!.key).toBe('2026-09-21');
+  });
+
+  it('finds notes from this day in earlier years', () => {
+    const state = run(
+      emptyWorkspace(),
+      { type: 'page.create', id: 'j', parentId: null, now: 1, kind: 'journal', title: 'Journal' },
+      { type: 'page.create', id: 'old', parentId: 'j', now: 1, dailyDate: '2025-10-15', title: 'Last year' },
+      { type: 'page.create', id: 'now', parentId: 'j', now: 1, dailyDate: '2026-10-15', title: 'Today' },
+    );
+    expect(onThisDay(state, new Date(2026, 9, 15)).map((page) => page.id)).toEqual(['old']);
+  });
+});
+
+describe('encrypted pages', () => {
+  it('encrypts a page so only the right password opens it', async () => {
+    const plain = '---\ntags: [secret]\n---\nMy diary.\n';
+    const pageKey = await deriveKey('correct horse', new Uint8Array(16).fill(7), 100_000);
+    const file = await encryptPage(plain, pageKey);
+    expect(file).not.toContain('diary');
+    expect(file).not.toContain('secret');
+    expect(isEncryptedText(file)).toBe(true);
+    expect(isEncryptedText(plain)).toBe(false);
+    expect((await decryptPage(file, 'correct horse'))?.plain).toBe(plain);
+    expect(await decryptPage(file, 'wrong')).toBeNull();
+    // every save uses a new nonce, so the same text never looks the same twice
+    expect(await encryptPage(plain, pageKey)).not.toBe(file);
+  });
+});
+
+describe('sync between computers', () => {
+  const day = new Date(2026, 9, 16);
+  // runs one pull, applying the plan to the local files the way the desktop app does
+  const pull = (
+    local: Record<string, string>,
+    remote: Record<string, string>,
+    base: Record<string, string>,
+    device: string,
+  ) => {
+    const plan = planPull(local, remote, base, device, day);
+    const files = { ...local };
+    for (const action of plan.actions) {
+      if (action.kind === 'delete') delete files[action.path];
+      else if (action.kind === 'download') files[action.path] = remote[action.path]!;
+      else {
+        files[action.copy] = files[action.path]!;
+        files[action.path] = remote[action.path]!;
+      }
+    }
+    return { files, base: plan.base };
+  };
+  // file contents stand in for their hashes
+  const both = (a: Record<string, string>, b: Record<string, string>, base: Record<string, string>) => {
+    let ab = { ...base };
+    let ba = { ...base };
+    let left = a;
+    let right = b;
+    for (let round = 0; round < 3; round++) {
+      const x = pull(left, right, ab, 'Laptop');
+      left = x.files;
+      ab = x.base;
+      const y = pull(right, left, ba, 'Desktop');
+      right = y.files;
+      ba = y.base;
+    }
+    return { left, right };
+  };
+
+  it('copies new and changed files and passes on deletions', () => {
+    const base = { 'a.md': '1', 'b.md': '1', 'c.md': '1' };
+    const { left, right } = both(
+      { 'a.md': '2', 'b.md': '1', 'c.md': '1', 'new.md': 'n' },
+      { 'a.md': '1', 'b.md': '1' },
+      base,
+    );
+    expect(left).toEqual({ 'a.md': '2', 'b.md': '1', 'new.md': 'n' });
+    expect(right).toEqual(left);
+  });
+
+  it('keeps both versions when both computers edited a file, and settles on one name', () => {
+    const { left, right } = both({ 'a.md': 'laptop' }, { 'a.md': 'desktop' }, { 'a.md': 'old' });
+    expect(right).toEqual(left);
+    expect(Object.values(left).sort()).toEqual(['desktop', 'laptop']);
+    expect(Object.keys(left).filter((path) => path.includes('conflict'))).toHaveLength(1);
+  });
+
+  it('prefers an edit over a deletion and ignores tool folders', () => {
+    const { left, right } = both(
+      { 'a.md': 'edited', '.obsidian/x.json': 'mine' },
+      { '.obsidian/x.json': 'theirs' },
+      { 'a.md': 'old' },
+    );
+    expect(left['a.md']).toBe('edited');
+    expect(right['a.md']).toBe('edited');
+    expect(right['.obsidian/x.json']).toBe('theirs');
+  });
+});
+
+describe('flashcards', () => {
+  const today = new Date(2026, 9, 16);
+  const state = run(emptyWorkspace(), {
+    type: 'page.create',
+    id: 'fr',
+    parentId: null,
+    now: 1,
+    title: 'French',
+    doc: doc(p('cat :: le chat'), p('just a line'), {
+      type: 'bulletList',
+      content: [{ type: 'listItem', content: [p('dog :: le chien')] }],
+    }),
+  });
+
+  it('finds question :: answer lines anywhere in a page', () => {
+    expect(collectCards(state).map((card) => [card.front, card.back])).toEqual([
+      ['cat', 'le chat'],
+      ['dog', 'le chien'],
+    ]);
+  });
+
+  it('spaces reviews out and starts over when a card is forgotten', () => {
+    const first = schedule(undefined, 'good', today);
+    expect(first).toMatchObject({ interval: 1, due: '2026-10-17', reps: 1 });
+    const second = schedule(first, 'good', new Date(2026, 9, 17));
+    expect(second.interval).toBe(6);
+    const third = schedule(second, 'good', new Date(2026, 9, 23));
+    expect(third.interval).toBeGreaterThan(12);
+    const forgot = schedule(third, 'again', new Date(2026, 10, 10));
+    expect(forgot).toMatchObject({ interval: 1, reps: 0, lapses: 1 });
+    const cards = collectCards(state);
+    const log = { [cards[0]!.id]: first };
+    expect(dueCards(cards, log, today).map((card) => card.front)).toEqual(['dog']);
+    expect(readReviewLog(JSON.parse(writeReviewLog(log)))).toEqual(log);
+  });
+});
+
+describe('version differences', () => {
+  it('marks added and removed lines', () => {
+    expect(diffLines('a\nb\nc\nd', 'a\nB\nc\nd\ne')).toEqual([
+      { kind: 'same', text: 'a' },
+      { kind: 'removed', text: 'b' },
+      { kind: 'added', text: 'B' },
+      { kind: 'same', text: 'c' },
+      { kind: 'same', text: 'd' },
+      { kind: 'added', text: 'e' },
+    ]);
   });
 });

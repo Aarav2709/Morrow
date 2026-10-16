@@ -37,8 +37,13 @@ export class WorkspaceSession {
         return ids
           .filter((id) => {
             const doc = state.docs[id];
-            // an empty page has nothing worth going back to
-            return doc && !isDocEmpty(doc) && snapshotDue(this.lastSnapshot.get(id), now);
+            // an empty page has nothing worth going back to, an encrypted one never keeps a plain copy
+            return (
+              doc &&
+              !isDocEmpty(doc) &&
+              !state.pages[id]?.encrypted &&
+              snapshotDue(this.lastSnapshot.get(id), now)
+            );
           })
           .map((id) => this.snapshotOf(id, state, now));
       },
@@ -51,6 +56,63 @@ export class WorkspaceSession {
 
   get location(): string | null {
     return this.repository.location ?? null;
+  }
+
+  get supportsEncryption(): boolean {
+    return this.repository.unlockPage !== undefined;
+  }
+
+  async unlockPage(id: PageId, password: string): Promise<Result<WorkspaceState>> {
+    if (!this.repository.unlockPage) return fail('Encrypted pages need a vault folder.');
+    const opened = await this.repository.unlockPage(id, password, this.state);
+    if (!opened.ok) return opened;
+    this.unreadable.delete(id);
+    this.state = {
+      pages: { ...this.state.pages, [id]: opened.value.page },
+      docs: { ...this.state.docs, [id]: opened.value.doc },
+    };
+    for (const listener of this.listeners) listener();
+    return ok(this.state);
+  }
+
+  // saves the page, then forgets its key and its content until it is unlocked again
+  async lockPage(id: PageId): Promise<void> {
+    await this.queue.flush();
+    this.repository.lockPage?.(id);
+    this.unreadable.add(id);
+    const docs = { ...this.state.docs };
+    delete docs[id];
+    this.state = { pages: this.state.pages, docs };
+    for (const listener of this.listeners) listener();
+  }
+
+  async protectPage(id: PageId, password: string): Promise<Result<WorkspaceState>> {
+    if (!this.repository.protectPage) return fail('Encrypted pages need a vault folder.');
+    await this.queue.flush();
+    await this.repository.protectPage(id, password);
+    const result = this.execute({ type: 'page.setEncrypted', id, encrypted: true, now: Date.now() });
+    if (result.ok) await this.queue.flush();
+    return result;
+  }
+
+  async unprotectPage(id: PageId): Promise<Result<WorkspaceState>> {
+    const result = this.execute({ type: 'page.setEncrypted', id, encrypted: false, now: Date.now() });
+    if (!result.ok) return result;
+    await this.queue.flush();
+    this.repository.unprotectPage?.(id);
+    return result;
+  }
+
+  readMeta(name: string): Promise<string | null> {
+    return this.repository.readMeta?.(name) ?? Promise.resolve(null);
+  }
+
+  async writeMeta(name: string, text: string): Promise<void> {
+    await this.repository.writeMeta?.(name, text);
+  }
+
+  activity(): Record<string, number> {
+    return this.repository.activity?.() ?? {};
   }
 
   pathOf(id: PageId): string | null {

@@ -22,6 +22,8 @@ think, on your own computer.
 - **Compatible.** Wiki links, callouts, tags, properties, maths and canvases use
   the same formats as Obsidian, so an existing vault opens as it is. Notion
   exports, databases included, import in one step.
+- **Everything built in.** Databases, canvases, graph, sync, encryption and
+  flashcards come with Morrow, with nothing to install or configure.
 - **AI free, by design.** Morrow does not have AI features and will not add them.
 
 ## Features
@@ -44,12 +46,26 @@ think, on your own computer.
 - **Daily notes**, and a Tasks view that gathers every checklist item
 - **Search** across every page, with `#tag` filters, and a command palette
 - **Vaults**: open any folder, switch between folders, keep work and home apart
-- Find and replace, Markdown shortcuts, Markdown paste, page history
+- **Sync between your computers** on the same network: pair once with a code,
+  no server, no account, every transfer encrypted, both versions kept when a
+  page changed on both
+- **Encrypted pages**: lock any page with a password, AES-256 on disk, never a
+  plain copy in history or backups
+- **Flashcards**: write `question :: answer` anywhere and review with spaced
+  repetition
+- **Embedded pages** with `![[Page]]`, kept live as the other page changes
+- **Quick capture** from any app with Ctrl/Cmd + Alt + M, straight into today's
+  note
+- **Colour**: eight accent themes, coloured text and highlights, page covers,
+  coloured tags and icons, and a home page with your writing streak, "On this
+  day" and a page to rediscover
+- **Publish** a page or the whole vault as a static website, free
+- Page history with a view of what changed since each version
+- Find and replace, Markdown shortcuts, Markdown paste, an outline of each page, focus mode
 - Import from Notion (pages and databases) or any folder of Markdown files,
   export to Markdown, full backups
 - Light and dark themes, a choice of serif, sans or mono writing fonts
 - Keyboard first: press Ctrl/Cmd + / to see every shortcut
-- An installable web version that works offline
 
 ## Status
 
@@ -88,7 +104,6 @@ npm run dev        # opens the desktop app with live reload
 | Command           | What it does                                           |
 | ----------------- | ------------------------------------------------------ |
 | `npm run dev`     | Desktop app with live reload                           |
-| `npm run dev:web` | The interface in your browser at http://localhost:5173 |
 | `npm run build`   | Builds the interface and the desktop shell             |
 | `npm start`       | Runs the built desktop app                             |
 | `npm run dist`    | Builds installers for your platform into `release/`    |
@@ -106,13 +121,14 @@ time Morrow is opened.
 
 ## Where your data lives
 
-In the folder you chose, as Markdown files. The format, including frontmatter,
-databases, canvases and the small `.morrow` folder Morrow keeps beside your
-pages, is documented in [docs/data-format.md](docs/data-format.md), and every
-1.x release will keep reading it. Morrow's own settings and automatic backups of
-your pages live in `%APPDATA%\Morrow` on Windows, `~/Library/Application
-Support/Morrow` on macOS and `~/.config/Morrow` on Linux. The browser version
-keeps pages in the browser's storage instead.
+In the folder you chose, as Markdown files: one file per page, subpages in a
+folder named after their page, canvases as `.canvas` files, images and files in
+`attachments/`, trashed pages in `.trash/`. Metadata lives in frontmatter, and
+database rows keep their values as readable properties. Morrow's own small
+`.morrow` folder in the vault remembers page order, favourites and page history;
+deleting it never touches a page. Morrow's settings and automatic backups live
+in `%APPDATA%\Morrow` on Windows, `~/Library/Application Support/Morrow` on
+macOS and `~/.config/Morrow` on Linux.
 
 ## Licence
 

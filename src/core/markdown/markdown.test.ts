@@ -224,3 +224,30 @@ describe('obsidian flavoured markdown', () => {
     expect(markdownToDoc(docToMarkdown(doc))).toEqual(doc);
   });
 });
+
+describe('colours', () => {
+  it('round trips text colours and coloured highlights as html other apps show', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        p(
+          { type: 'text', text: 'red words', marks: [{ type: 'textColor', attrs: { color: 'red' } }] },
+          text(' and '),
+          { type: 'text', text: 'blue marker', marks: [{ type: 'highlight', attrs: { color: 'blue' } }] },
+          text(' and '),
+          { type: 'text', text: 'plain marker', marks: [{ type: 'highlight' }] },
+        ),
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe(
+      '<span style="color: #d44c47">red words</span> and <mark style="background: #e7f3f8">blue marker</mark> and ==plain marker==\n',
+    );
+    expect(markdownToDoc(out)).toEqual(doc);
+  });
+
+  it('snaps other colours to the nearest one in the palette', () => {
+    const doc = markdownToDoc('<span style="color: #ff0000">alarm</span>');
+    expect(doc.content![0]!.content![0]!.marks).toEqual([{ type: 'textColor', attrs: { color: 'red' } }]);
+  });
+});

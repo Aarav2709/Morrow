@@ -72,15 +72,12 @@ export function createPage(
   return id;
 }
 
-export function openToday(date = new Date()): void {
+// today's daily note, made from the daily template when it does not exist yet
+export function ensureToday(date = new Date()): PageId | null {
   const state = getState();
   const key = dateKey(date);
   const existing = findDailyNote(state, key);
-  if (existing) {
-    openPage(existing.id);
-    setUi({ mobileSidebar: false });
-    return;
-  }
+  if (existing) return existing.id;
   let journal = findJournal(state);
   const now = Date.now();
   if (!journal) {
@@ -93,7 +90,7 @@ export function openToday(date = new Date()): void {
       title: JOURNAL_TITLE,
       kind: 'journal',
     });
-    if (!created.ok) return;
+    if (!created.ok) return null;
     journal = created.value.pages[journalId]!;
   }
   const id = newId();
@@ -112,10 +109,63 @@ export function openToday(date = new Date()): void {
     ...(template ? { tags: template.tags, icon: template.icon } : {}),
     ...(templateDoc ? { doc: applyTemplate(templateDoc, { title, date }) } : {}),
   });
-  if (!result.ok) return;
+  if (!result.ok) return null;
   expandPage(journal.id);
+  return id;
+}
+
+export function openToday(date = new Date()): void {
+  const id = ensureToday(date);
+  if (!id) return;
   setUi({ mobileSidebar: false });
   openPage(id);
+}
+
+// a quick note from anywhere, added to the end of today's note with the time, a line starting [ ] becomes a task
+export function captureToToday(text: string): boolean {
+  const clean = text.trim();
+  if (!clean) return false;
+  commitEditors();
+  const id = ensureToday();
+  if (!id) return false;
+  const doc = getState().docs[id] ?? { type: 'doc', content: [] };
+  const time = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const blocks = clean.split(/\n{2,}/).map((part, index) => {
+    const task = /^\[( |x)\]\s*/i.exec(part);
+    const body = task ? part.slice(task[0].length) : part;
+    const lines = body
+      .split('\n')
+      .flatMap((line, i) => [
+        ...(i > 0 ? [{ type: 'hardBreak' }] : []),
+        ...(line ? [{ type: 'text', text: line }] : []),
+      ]);
+    const content =
+      index === 0 && !task
+        ? [{ type: 'text', text: `${time} `, marks: [{ type: 'bold' }] }, ...lines]
+        : lines;
+    return task
+      ? {
+          type: 'taskList',
+          content: [
+            {
+              type: 'taskItem',
+              attrs: { checked: task[1] !== ' ' },
+              content: [{ type: 'paragraph', content }],
+            },
+          ],
+        }
+      : { type: 'paragraph', content };
+  });
+  const existing = (doc.content ?? []).filter(
+    (node, _index, all) => !(all.length === 1 && node.type === 'paragraph' && !node.content?.length),
+  );
+  const result = run({
+    type: 'page.setDoc',
+    id,
+    now: Date.now(),
+    doc: { ...doc, content: [...existing, ...blocks] },
+  });
+  return result.ok;
 }
 
 export function createTemplatesPage(): PageId | null {
@@ -302,6 +352,12 @@ export async function exportPageMarkdown(id: PageId): Promise<void> {
   const page = state.pages[id];
   const doc = state.docs[id];
   if (!page || !doc) return;
+  if (page.encrypted) {
+    toast('Encrypted pages are not exported as plain text. Remove the encryption first if you mean to.', {
+      tone: 'error',
+    });
+    return;
+  }
   const name = safeFileName(displayTitle(page));
   const ids = fileIdsInDoc(doc);
   if (ids.length === 0) {

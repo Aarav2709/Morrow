@@ -6,6 +6,7 @@ import {
   PAGE_KINDS,
   PROP_TYPES,
   SCHEMA_VERSION,
+  validCover,
   VIEW_TYPES,
 } from './model';
 import type {
@@ -97,6 +98,8 @@ export function normalizePage(raw: unknown): PageMeta | null {
       : [],
     properties: normalizeProperties(raw.properties),
     database: normalizeDatabase(raw.database),
+    cover: validCover(raw.cover),
+    encrypted: raw.encrypted === true,
   };
 }
 

@@ -240,6 +240,15 @@ export const BLOCK_ITEMS: BlockItem[] = [
     run: (e, r, options) => linkChild(e, r, options, 'canvas'),
   },
   {
+    id: 'embed',
+    title: 'Embed a page',
+    description: 'Show another page inside this one',
+    icon: Link2,
+    hint: '![[',
+    keywords: 'transclude include synced block mirror',
+    run: (e, r) => chain(e, r).insertContent('![[').run(),
+  },
+  {
     id: 'link',
     title: 'Link to page',
     description: 'Mention another page',

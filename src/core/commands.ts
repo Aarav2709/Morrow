@@ -2,7 +2,7 @@
 import { validateDoc } from './doc';
 import { normalizeTag } from './vault/frontmatter';
 import { normalizeDatabase } from './migrations';
-import { emptyDoc, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, newPageMeta, PAGE_KINDS } from './model';
+import { emptyDoc, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, newPageMeta, PAGE_KINDS, validCover } from './model';
 import type { DatabaseDef, DocNode, PageId, PageKind, PageMeta, PropValue, WorkspaceState } from './model';
 import { errorMessage, fail, ok } from './result';
 import type { Result } from './result';
@@ -38,6 +38,8 @@ export type Command =
   | { type: 'trash.empty' }
   | { type: 'task.setChecked'; pageId: PageId; index: number; checked: boolean; now: number }
   | { type: 'page.setTags'; id: PageId; tags: string[]; now: number }
+  | { type: 'page.setCover'; id: PageId; cover: string | null; now: number }
+  | { type: 'page.setEncrypted'; id: PageId; encrypted: boolean; now: number }
   | { type: 'page.setKind'; id: PageId; kind: PageKind; now: number }
   // merges values into a database row, null clears a value
   | { type: 'page.setProperties'; id: PageId; values: Record<string, PropValue>; now: number }
@@ -160,6 +162,25 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
       const tags = normalizeTags(command.tags);
       if (tags.join('\n') === page.value.tags.join('\n')) return unchanged(state);
       return updatePage(state, { ...page.value, tags, updatedAt: command.now });
+    }
+    case 'page.setCover': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      const cover = command.cover === null ? null : validCover(command.cover);
+      if (command.cover !== null && cover === null) return fail('Invalid cover.');
+      if (cover === page.value.cover) return unchanged(state);
+      return updatePage(state, { ...page.value, cover, updatedAt: command.now });
+    }
+    case 'page.setEncrypted': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      if (page.value.kind !== 'page') return fail('Only ordinary pages can be encrypted.');
+      if (page.value.encrypted === command.encrypted) return unchanged(state);
+      return updatePage(state, {
+        ...page.value,
+        encrypted: command.encrypted === true,
+        updatedAt: command.now,
+      });
     }
     case 'page.setKind': {
       const page = requirePage(state, command.id);

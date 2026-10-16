@@ -8,7 +8,8 @@ export type Route =
   | { name: 'trash' }
   | { name: 'tags' }
   | { name: 'tag'; tag: string }
-  | { name: 'graph'; focus: PageId | null };
+  | { name: 'graph'; focus: PageId | null }
+  | { name: 'review' };
 
 export function parseRoute(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#/, '').split('?');
@@ -22,6 +23,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'tags' && parts[1])
     return { name: 'tag', tag: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'tags') return { name: 'tags' };
+  if (parts[0] === 'review') return { name: 'review' };
   if (parts[0] === 'graph') return { name: 'graph', focus: parts[1] ? decodeURIComponent(parts[1]) : null };
   return { name: 'home' };
 }
@@ -38,6 +40,8 @@ export function routeHash(route: Route): string {
       return '#/tags';
     case 'tag':
       return `#/tags/${route.tag.split('/').map(encodeURIComponent).join('/')}`;
+    case 'review':
+      return '#/review';
     case 'graph':
       return route.focus ? `#/graph/${encodeURIComponent(route.focus)}` : '#/graph';
     default:

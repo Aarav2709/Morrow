@@ -2,18 +2,21 @@ import { lazy, Suspense, useEffect } from 'react';
 import { ACTIONS, matchesShortcut, runAction } from './actions';
 import { CommandPalette } from './components/CommandPalette';
 import { Dialogs } from './components/Dialogs';
+import { ReviewView } from './components/ReviewView';
 import { TagsView, TagView } from './components/TagsView';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { PageView } from './components/PageView';
 import { Toasts } from './components/primitives';
 import { Sidebar } from './components/Sidebar';
-import { HomeView, TasksView, TrashView } from './components/Views';
+import { HomeView } from './components/Home';
+import { TasksView, TrashView } from './components/Views';
 import { commitEditors, undoRedo } from './editor/commits';
 import { writeAutoBackup } from './operations';
+import { startAutoSync, syncWith } from './sync';
 import { desktop } from './platform/desktop';
 import { resolvedTheme, usePreferences } from './platform/preferences';
 import { useRoute } from './router';
-import { getUi, setUi, useUi } from './ui';
+import { getUi, setUi, toast, useUi } from './ui';
 import { getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
@@ -99,12 +102,30 @@ function useLifecycle() {
       runAction(id);
     });
 
+    const stopSync = startAutoSync();
+    // a vault just copied from another computer fills up straight away
+    const copyFrom = sessionStorage.getItem('morrow.syncAfterOpen');
+    if (copyFrom) {
+      sessionStorage.removeItem('morrow.syncAfterOpen');
+      void syncWith(copyFrom).then((result) =>
+        toast(
+          result.ok
+            ? `Copied ${result.received} files from your other computer.`
+            : `Copying failed: ${result.error}`,
+          {
+            tone: result.ok ? 'info' : 'error',
+            durationMs: 10_000,
+          },
+        ),
+      );
+    }
     const first = desktop ? setTimeout(() => void writeAutoBackup(), 30_000) : null;
     const timer = desktop ? setInterval(() => void writeAutoBackup(), AUTO_BACKUP_MS) : null;
     return () => {
       window.removeEventListener('beforeunload', onBeforeUnload);
       document.removeEventListener('visibilitychange', onVisibility);
       unsubscribe?.();
+      stopSync();
       if (first) clearTimeout(first);
       if (timer) clearInterval(timer);
     };
@@ -116,6 +137,10 @@ export function App() {
   const ui = useUi();
   const prefs = usePreferences();
   useTheme(prefs.theme);
+  useEffect(() => {
+    document.documentElement.dataset.accent = prefs.accent;
+    document.documentElement.dataset.colorful = prefs.colorful ? 'true' : 'false';
+  }, [prefs.accent, prefs.colorful]);
   useGlobalShortcuts();
   useLifecycle();
 
@@ -139,6 +164,9 @@ export function App() {
       break;
     case 'tag':
       view = <TagView tag={route.tag} />;
+      break;
+    case 'review':
+      view = <ReviewView />;
       break;
     case 'graph':
       view = <GraphView key={route.focus ?? 'all'} focus={route.focus} />;

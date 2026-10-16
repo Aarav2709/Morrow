@@ -6,7 +6,7 @@ import { Placeholder } from '@tiptap/extensions';
 import StarterKit from '@tiptap/starter-kit';
 import { BlockHandle } from './BlockHandle';
 import { Callout, FindReplace } from './Blocks';
-import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags } from './Extras';
+import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
 import { FileAttachment, FileDrop, Image } from './Media';
 import type { BlockMenuRequest } from './BlockHandle';
 import { MarkdownPaste } from './MarkdownPaste';
@@ -38,6 +38,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     }),
     CodeBlock,
     Highlight,
+    TextColor,
     RawBlock,
     ...mathExtensions(),
     MathViewTracker,
@@ -66,6 +67,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       createPage: options.createPage,
       resolveTarget: options.resolveTarget,
       createFromTarget: options.createFromTarget,
+      renderEmbed: options.renderEmbed,
     }),
     SlashCommand.configure({ createChild: options.createChild }),
     Image,

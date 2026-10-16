@@ -4,7 +4,7 @@ import { linksInDoc } from './links';
 import { displayTitle } from './model';
 import type { PageId, WorkspaceState } from './model';
 import { tagsOf } from './tags';
-import { livePages } from './tree';
+import { ancestorsOf, livePages } from './tree';
 
 export interface GraphNode {
   id: string;
@@ -12,6 +12,8 @@ export interface GraphNode {
   kind: 'page' | 'tag';
   pageId: PageId | null;
   degree: number;
+  // the top level page this node sits under, the graph colours each section differently
+  group: string;
 }
 
 export interface GraphLink {
@@ -53,8 +55,19 @@ export function buildGraph(
     seen.add(key);
     links.push({ source, target, kind });
   };
+  const rootOf = (id: PageId) => {
+    const chain = ancestorsOf(state.pages, id);
+    return chain.length ? chain[chain.length - 1]!.id : id;
+  };
   for (const page of pages) {
-    nodes.set(page.id, { id: page.id, label: displayTitle(page), kind: 'page', pageId: page.id, degree: 0 });
+    nodes.set(page.id, {
+      id: page.id,
+      label: displayTitle(page),
+      kind: 'page',
+      pageId: page.id,
+      degree: 0,
+      group: rootOf(page.id),
+    });
   }
   for (const page of pages) {
     const doc = state.docs[page.id];
@@ -68,7 +81,8 @@ export function buildGraph(
     if (options.tags) {
       for (const tag of tagsOf(page, doc)) {
         const id = `#${tag.toLowerCase()}`;
-        if (!nodes.has(id)) nodes.set(id, { id, label: `#${tag}`, kind: 'tag', pageId: null, degree: 0 });
+        if (!nodes.has(id))
+          nodes.set(id, { id, label: `#${tag}`, kind: 'tag', pageId: null, degree: 0, group: id });
         addLink(page.id, id, 'tag');
       }
     }

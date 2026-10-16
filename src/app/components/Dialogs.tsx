@@ -17,13 +17,17 @@ import {
 import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
+import { ACCENT_LABELS, ACCENTS } from '../platform/preferences';
 import type { PageWidth, ThemePreference, WritingFont } from '../platform/preferences';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
 import { closeDialog, toast, useUi } from '../ui';
 import { chooseVaultFolder } from '../vaults';
 import { getSession, run, useWorkspace } from '../workspace';
 import { HistoryDialog, IconDialog } from './HistoryDialog';
+import { CaptureDialog } from './CaptureDialog';
+import { EncryptDialog } from './EncryptDialog';
 import { SourceDialog } from './SourceDialog';
+import { PairDialog, SyncSection } from './SyncSettings';
 import { TemplateDialog } from './TemplateDialog';
 import { Dialog } from './primitives';
 
@@ -58,6 +62,12 @@ export function Dialogs() {
       );
     case 'template':
       return <TemplateDialog parentId={dialog.parentId} />;
+    case 'encrypt':
+      return <EncryptDialog pageId={dialog.pageId} />;
+    case 'pair':
+      return <PairDialog />;
+    case 'capture':
+      return <CaptureDialog />;
     case 'confirm':
       return (
         <Dialog
@@ -125,8 +135,6 @@ function Choice<T extends string>({
 
 function SettingsDialog() {
   const prefs = usePreferences();
-  const [persisted, setPersisted] = useState<boolean | null>(null);
-  const [usage, setUsage] = useState<string | null>(null);
   const [legacy, setLegacy] = useState(0);
   const vault = getSession().location;
 
@@ -136,17 +144,6 @@ function SettingsDialog() {
         .then(setLegacy)
         .catch(() => setLegacy(0));
   }, [vault]);
-
-  useEffect(() => {
-    void navigator.storage
-      ?.persisted?.()
-      .then(setPersisted)
-      .catch(() => setPersisted(null));
-    void navigator.storage
-      ?.estimate?.()
-      .then(({ usage: used }) => used !== undefined && setUsage(`${(used / 1024 / 1024).toFixed(1)} MB`))
-      .catch(() => undefined);
-  }, []);
 
   return (
     <Dialog title="Settings" size="large" onClose={closeDialog}>
@@ -181,37 +178,53 @@ function SettingsDialog() {
           ]}
           onChange={(width) => setPreferences({ width })}
         />
+        <div className="setting-row">
+          <span className="setting-label" id="setting-accent">
+            Accent colour
+          </span>
+          <div className="accent-swatches" role="radiogroup" aria-labelledby="setting-accent">
+            {ACCENTS.map((accent) => (
+              <button
+                key={accent}
+                type="button"
+                role="radio"
+                aria-checked={prefs.accent === accent}
+                aria-label={ACCENT_LABELS[accent]}
+                title={ACCENT_LABELS[accent]}
+                className={`accent-swatch accent-${accent}`}
+                onClick={() => setPreferences({ accent })}
+              />
+            ))}
+          </div>
+        </div>
+        <label className="setting-row checkbox-row">
+          <span className="setting-label">
+            Colourful pages
+            <span className="muted small"> Coloured headings, lists, icons and tags</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={prefs.colorful}
+            onChange={(event) => setPreferences({ colorful: event.target.checked })}
+          />
+        </label>
       </section>
 
       <section className="settings-section">
         <h3>Your data</h3>
         <p className="muted">
-          {vault
-            ? 'Every page is a Markdown file in this folder. Open it in any app, sync it with any tool, or keep it under version control. Morrow never sends anything anywhere.'
-            : desktop
-              ? 'Everything is stored on this computer, in the Morrow folder below. Nothing is sent anywhere.'
-              : 'Everything is stored in this browser on this device. Nothing is sent anywhere.'}
+          Every page is a Markdown file in this folder. Open it in any app, sync it with any tool, or keep it
+          under version control. Morrow never sends anything anywhere.
         </p>
-        {vault ? (
-          <div className="data-path">
-            <HardDrive size={14} /> <code>{vault}</code>
-            <button type="button" className="button small" onClick={() => void desktop?.vault?.reveal('')}>
-              <FolderOpen size={14} /> Show
-            </button>
-            <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
-              Open another
-            </button>
-          </div>
-        ) : (
-          desktop && (
-            <div className="data-path">
-              <HardDrive size={14} /> <code>{desktop.dataPath}</code>
-              <button type="button" className="button small" onClick={() => void desktop?.showDataFolder()}>
-                <FolderOpen size={14} /> Show
-              </button>
-            </div>
-          )
-        )}
+        <div className="data-path">
+          <HardDrive size={14} /> <code>{vault}</code>
+          <button type="button" className="button small" onClick={() => void desktop?.vault?.reveal('')}>
+            <FolderOpen size={14} /> Show
+          </button>
+          <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
+            Open another
+          </button>
+        </div>
         {legacy > 0 && (
           <p className="muted small">
             {legacy} page{legacy === 1 ? '' : 's'} from an earlier version of Morrow are still in the app's
@@ -266,27 +279,9 @@ function SettingsDialog() {
             </span>
           </button>
         </div>
-        {!desktop && (
-          <p className="muted small">
-            {persisted === true && 'This browser has agreed to keep your data even when storage runs low. '}
-            {persisted === false && (
-              <>
-                Browsers may clear site data when storage runs low.{' '}
-                <button
-                  type="button"
-                  className="link-button"
-                  onClick={() => void navigator.storage.persist().then(setPersisted)}
-                >
-                  Ask the browser to keep it
-                </button>
-                . Saving regular backups is still a good idea.{' '}
-              </>
-            )}
-            {usage && `Using about ${usage}.`}
-          </p>
-        )}
       </section>
 
+      <SyncSection />
       <AttachmentsSection />
 
       <section className="settings-section">

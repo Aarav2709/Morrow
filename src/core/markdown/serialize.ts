@@ -1,4 +1,5 @@
-import type { DocMark, DocNode, PageId } from '../model';
+import { BACKGROUND_HEX, TEXT_HEX } from '../model';
+import type { ColorName, DocMark, DocNode, PageId } from '../model';
 
 export interface SerializeOptions {
   // current title for a linked page, null keeps the stored label
@@ -9,14 +10,20 @@ export interface SerializeOptions {
   filePath?: (fileId: string) => string | null;
 }
 
-const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'underline', 'highlight'];
+const MARK_ORDER = ['link', 'bold', 'italic', 'strike', 'underline', 'highlight', 'textColor'];
+const hexOf = (palette: Record<ColorName, string>, mark: DocMark) =>
+  typeof mark.attrs?.color === 'string' ? (palette[mark.attrs.color as ColorName] ?? null) : null;
 const MARK_OPEN: Record<string, (mark: DocMark) => string> = {
   link: () => '[',
   bold: () => '**',
   italic: () => '*',
   strike: () => '~~',
   underline: () => '<u>',
-  highlight: () => '==',
+  highlight: (mark) => {
+    const hex = hexOf(BACKGROUND_HEX, mark);
+    return hex ? `<mark style="background: ${hex}">` : '==';
+  },
+  textColor: (mark) => `<span style="color: ${hexOf(TEXT_HEX, mark) ?? TEXT_HEX.gray}">`,
 };
 const MARK_CLOSE: Record<string, (mark: DocMark) => string> = {
   link: (mark) => `](${formatHref(String(mark.attrs?.href ?? ''))})`,
@@ -24,7 +31,8 @@ const MARK_CLOSE: Record<string, (mark: DocMark) => string> = {
   italic: () => '*',
   strike: () => '~~',
   underline: () => '</u>',
-  highlight: () => '==',
+  highlight: (mark) => (hexOf(BACKGROUND_HEX, mark) ? '</mark>' : '=='),
+  textColor: () => '</span>',
 };
 
 export function docToMarkdown(doc: DocNode, options: SerializeOptions = {}): string {
@@ -248,7 +256,11 @@ function sortMarks(marks: DocMark[]): DocMark[] {
 }
 
 function sameMark(a: DocMark, b: DocMark): boolean {
-  return a.type === b.type && (a.type !== 'link' || a.attrs?.href === b.attrs?.href);
+  return (
+    a.type === b.type &&
+    a.attrs?.href === b.attrs?.href &&
+    (a.attrs?.color ?? null) === (b.attrs?.color ?? null)
+  );
 }
 
 function codeSpan(text: string): string {

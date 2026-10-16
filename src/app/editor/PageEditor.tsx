@@ -1,7 +1,9 @@
 import { Editor, Extension } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
 import { EditorContent } from '@tiptap/react';
+import katex from 'katex';
 import { useEffect, useRef, useState } from 'react';
+import { docToHtml } from '../../core/site';
 import { displayTitle } from '../../core/model';
 import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle, pageIdByTitle, resolveLinkTarget } from '../../core/search';
@@ -26,6 +28,26 @@ interface Props {
 }
 
 const COMMIT_DELAY_MS = 250;
+
+// the html of a page shown inside another, never the page itself so embeds cannot loop
+const embedCache = new WeakMap<object, string>();
+function embedHtml(id: PageId, hostId: PageId): string | null {
+  const state = getState();
+  const page = state.pages[id];
+  const doc = state.docs[id];
+  if (!page || !doc || id === hostId || page.encrypted || isEffectivelyTrashed(state.pages, id)) return null;
+  const cached = embedCache.get(doc);
+  if (cached !== undefined) return cached;
+  const html = docToHtml(doc, {
+    href: (target) => (state.pages[target] ? `#/page/${target}` : null),
+    assetPath: (fileId) => getSession().fileUrl(fileId) ?? '',
+    titleOf: (target) => (state.pages[target] ? displayTitle(state.pages[target]) : null),
+    renderMath: (latex, display) =>
+      katex.renderToString(latex, { throwOnError: false, displayMode: display }),
+  });
+  embedCache.set(doc, html);
+  return html;
+}
 
 // keeps one editor instance per page and writes changes back through commands
 export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, onReady }: Props) {
@@ -108,6 +130,7 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
           // obsidian makes a missing linked page at the top of the vault, so does morrow
           createFromTarget: (target) => createPage({ title: target.split('/').pop() || target, open: false }),
           openTag: (tag) => navigate({ name: 'tag', tag }),
+          renderEmbed: (id) => embedHtml(id, pageId),
           createChild: (kind) => createPage({ parentId: pageId, kind, open: false }),
           onBlockMenu: setBlockMenu,
           resolvePage: (title) => pageIdByTitle(getState(), title),

@@ -50,6 +50,10 @@ function themeColors(element: HTMLElement) {
     text: read('--text-muted'),
     strong: read('--text'),
     bg: read('--bg'),
+    groups: ['blue', 'orange', 'green', 'purple', 'pink', 'yellow', 'red', 'brown'].map((name) =>
+      read(`--c-${name}-text`),
+    ),
+    colorful: document.documentElement.dataset.colorful !== 'false',
   };
 }
 
@@ -100,6 +104,12 @@ export function GraphView({ focus }: { focus: PageId | null }) {
     let panning: { x: number; y: number; vx: number; vy: number } | null = null;
     let moved = false;
     let frame = 0;
+    // each top level section gets its own colour, the same one every time
+    const groupColor = (group: string) => {
+      let hash = 0;
+      for (const char of group) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+      return colors.groups[hash % colors.groups.length] ?? colors.node;
+    };
     const radius = (node: SimNode) =>
       (node.kind === 'tag' ? 3 : 3 + Math.sqrt(node.degree) * 1.6) + (node.id === focus ? 2 : 0);
 
@@ -134,7 +144,9 @@ export function GraphView({ focus }: { focus: PageId | null }) {
             ? colors.accent
             : node.kind === 'tag'
               ? colors.tag
-              : colors.node;
+              : colors.colorful
+                ? groupColor(node.group)
+                : colors.node;
         context.beginPath();
         context.arc(node.x ?? 0, node.y ?? 0, radius(node), 0, Math.PI * 2);
         context.fill();
@@ -282,7 +294,10 @@ export function GraphView({ focus }: { focus: PageId | null }) {
       Object.assign(colors, themeColors(wrap));
       schedule();
     });
-    theme.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    theme.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme', 'data-accent', 'data-colorful'],
+    });
     return () => {
       simulation.stop();
       observer.disconnect();

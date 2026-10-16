@@ -11,7 +11,9 @@ export type VaultOp =
   // moves the file to the system trash rather than deleting it
   | { op: 'remove'; path: string }
   // removes a folder only when it is empty
-  | { op: 'rmdir'; path: string };
+  | { op: 'rmdir'; path: string }
+  // deletes one of morrow's own files for good, used for history that must not outlive encryption
+  | { op: 'delete'; path: string };
 
 export type VaultOpResult =
   | { ok: true }

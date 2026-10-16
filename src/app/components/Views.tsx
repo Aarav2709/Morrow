@@ -1,26 +1,16 @@
-import { CalendarDays, CheckSquare, FileUp, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { CheckSquare, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageId, WorkspaceState } from '../../core/model';
 import { collectTasks } from '../../core/tasks';
 import type { TaskRef } from '../../core/tasks';
-import { ancestorsOf, livePages, trashedPages } from '../../core/tree';
-import { formatShortcut } from '../actions';
-import { createPage, deleteForever, emptyTrash, importMarkdown, openToday, restorePage } from '../operations';
+import { ancestorsOf, trashedPages } from '../../core/tree';
+import { deleteForever, emptyTrash, restorePage } from '../operations';
 import { openPage } from '../router';
-import { setUi } from '../ui';
 import { run, useWorkspace } from '../workspace';
-import { Kbd, relativeTime } from './primitives';
+import { relativeTime } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
-
-function greeting(date: Date): string {
-  const hour = date.getHours();
-  if (hour < 5) return 'Good night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
 
 function pathOf(state: WorkspaceState, id: PageId): string {
   return ancestorsOf(state.pages, id)
@@ -29,108 +19,7 @@ function pathOf(state: WorkspaceState, id: PageId): string {
     .join(' / ');
 }
 
-export function HomeView() {
-  const state = useWorkspace();
-  const now = new Date();
-  const live = useMemo(() => livePages(state.pages), [state.pages]);
-  const recent = useMemo(
-    () =>
-      [...live]
-        .filter((page) => page.kind !== 'journal')
-        .sort(
-          (a, b) => Math.max(b.lastOpenedAt ?? 0, b.updatedAt) - Math.max(a.lastOpenedAt ?? 0, a.updatedAt),
-        )
-        .slice(0, 8),
-    [live],
-  );
-  const openTasks = collectTasks(state).filter((task) => !task.checked);
-
-  return (
-    <div className="view">
-      <TopBar />
-      <div className="page-scroll">
-        <div className="home">
-          <header className="home-header">
-            <p className="home-date">
-              {now.toLocaleDateString(undefined, {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-            </p>
-            <h1 className="home-greeting">{greeting(now)}.</h1>
-          </header>
-
-          <div className="quick-actions">
-            <button type="button" className="quick-action" onClick={() => createPage()}>
-              <Plus size={16} strokeWidth={1.75} /> New page <Kbd>{formatShortcut('Alt+N')}</Kbd>
-            </button>
-            <button type="button" className="quick-action" onClick={() => openToday()}>
-              <CalendarDays size={16} strokeWidth={1.75} /> Today's note <Kbd>{formatShortcut('Alt+D')}</Kbd>
-            </button>
-            <button type="button" className="quick-action" onClick={() => setUi({ palette: true })}>
-              <Search size={16} strokeWidth={1.75} /> Search <Kbd>{formatShortcut('Mod+K')}</Kbd>
-            </button>
-          </div>
-
-          {live.length === 0 ? (
-            <section className="home-empty">
-              <h2>Your workspace is empty</h2>
-              <p>Start with a blank page, or bring in notes you already have as Markdown files.</p>
-              <div className="button-row">
-                <button type="button" className="button primary" onClick={() => createPage()}>
-                  <Plus size={15} /> Create a page
-                </button>
-                <button type="button" className="button" onClick={() => void importMarkdown()}>
-                  <FileUp size={15} /> Import Markdown
-                </button>
-              </div>
-            </section>
-          ) : (
-            <section className="home-section" aria-labelledby="recent-heading">
-              <h2 id="recent-heading" className="section-label">
-                Jump back in
-              </h2>
-              <ul className="link-list">
-                {recent.map((page) => {
-                  const path = pathOf(state, page.id);
-                  return (
-                    <li key={page.id}>
-                      <button type="button" className="link-row" onClick={() => openPage(page.id)}>
-                        <span className="tree-icon">
-                          <PageIcon page={page} />
-                        </span>
-                        <span className="link-row-title">
-                          {displayTitle(page)}
-                          {path && <span className="link-row-path">{path}</span>}
-                        </span>
-                        <span className="link-row-meta">
-                          {relativeTime(Math.max(page.updatedAt, page.lastOpenedAt ?? 0))}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
-          {openTasks.length > 0 && (
-            <section className="home-section" aria-labelledby="tasks-heading">
-              <h2 id="tasks-heading" className="section-label">
-                Open tasks <span className="section-count">{openTasks.length}</span>
-              </h2>
-              <TaskList tasks={openTasks.slice(0, 6)} state={state} />
-            </section>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TaskList({
+export function TaskList({
   tasks,
   state,
   grouped = false,

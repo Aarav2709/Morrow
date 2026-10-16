@@ -20,7 +20,6 @@
   },
   "scripts": {
     "dev": "vite --mode desktop",
-    "dev:web": "vite",
     "build": "tsc -p tsconfig.json && vite build && tsc -p tsconfig.electron.json",
     "start": "electron .",
     "dist": "npm run build && electron-builder --publish never",
