@@ -27,6 +27,8 @@ export interface Preferences {
   accent: Accent;
   // colourful headings, lists, icons and tags, off for a quieter page
   colorful: boolean;
+  // what the home page calls you, empty for no name
+  name: string;
 }
 
 const KEY = 'morrow.preferences';
@@ -39,6 +41,7 @@ const defaults: Preferences = {
   expanded: [],
   accent: 'ocean',
   colorful: true,
+  name: '',
 };
 
 // view preferences only, losing them never loses work
@@ -57,6 +60,7 @@ function read(): Preferences {
       sidebarOpen: parsed.sidebarOpen !== false,
       accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
       colorful: parsed.colorful !== false,
+      name: typeof parsed.name === 'string' ? parsed.name.trim().slice(0, 60) : '',
       sidebarWidth:
         typeof parsed.sidebarWidth === 'number'
           ? Math.min(420, Math.max(208, parsed.sidebarWidth))

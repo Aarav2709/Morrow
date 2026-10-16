@@ -150,6 +150,25 @@ function SettingsDialog() {
   return (
     <Dialog title="Settings" size="large" onClose={closeDialog}>
       <section className="settings-section">
+        <h3>You</h3>
+        <label className="setting-row">
+          <span className="setting-label">
+            Your name
+            <span className="muted small"> The home page greets you with it</span>
+          </span>
+          <input
+            className="text-input small name-input"
+            placeholder="Optional"
+            aria-label="Your name"
+            maxLength={60}
+            defaultValue={prefs.name}
+            onBlur={(event) => setPreferences({ name: event.target.value.trim() })}
+            onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
+          />
+        </label>
+      </section>
+
+      <section className="settings-section">
         <h3>Appearance</h3>
         <Choice<ThemePreference>
           label="Theme"

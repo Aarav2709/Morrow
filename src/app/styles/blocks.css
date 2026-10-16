@@ -632,3 +632,7 @@
 .prose .inline-database .db-table td > * {
   margin: 0;
 }
+
+.name-input {
+  width: 200px;
+}

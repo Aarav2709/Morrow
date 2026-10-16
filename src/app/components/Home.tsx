@@ -1,14 +1,4 @@
-import {
-  CalendarDays,
-  Flame,
-  FileUp,
-  LayoutDashboard,
-  Network,
-  Plus,
-  Search,
-  Shuffle,
-  Table2,
-} from 'lucide-react';
+import { CircleCheckBig, FileText, FileUp, Flame, PenLine, Plus, Shuffle } from 'lucide-react';
 import { useMemo } from 'react';
 import { collectTasks } from '../../core/tasks';
 import { activityWeeks, dayLabel, onThisDay, rediscover, streak, totalWords } from '../../core/insights';
@@ -16,13 +6,12 @@ import { docToPlainText } from '../../core/doc';
 import { COVER_GRADIENTS, displayTitle } from '../../core/model';
 import type { PageMeta, WorkspaceState } from '../../core/model';
 import { ancestorsOf, livePages } from '../../core/tree';
-import { formatShortcut } from '../actions';
-import { createPage, importMarkdown, openToday } from '../operations';
+import { createPage, importMarkdown } from '../operations';
+import { usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
-import { setUi } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { useCover } from './Cover';
-import { Kbd, relativeTime } from './primitives';
+import { relativeTime } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 import { TaskList } from './Views';
@@ -87,23 +76,57 @@ function PageCard({ page }: { page: PageMeta }) {
   );
 }
 
+const WEEKS = 53;
+
+// a year of writing, one square a day, filling the width like github's chart
 function Heatmap({ activity }: { activity: Record<string, number> }) {
-  const weeks = activityWeeks(activity, new Date(), 26);
-  const max = Math.max(1, ...weeks.flat().map((day) => day.count));
+  const weeks = activityWeeks(activity, new Date(), WEEKS);
+  const days = weeks.flat().filter((day) => !day.future);
+  const max = Math.max(1, ...days.map((day) => day.count));
   const level = (count: number) => (count === 0 ? 0 : Math.min(4, Math.ceil((count / max) * 4)));
+  const active = days.filter((day) => day.count > 0).length;
+  // a month name over the first week that starts in that month
+  const months = weeks.map((week, index) => {
+    const first = week[0]!.key;
+    const previous = index > 0 ? weeks[index - 1]![0]!.key : null;
+    return !previous || previous.slice(5, 7) !== first.slice(5, 7)
+      ? new Date(`${first}T00:00`).toLocaleDateString(undefined, { month: 'short' })
+      : '';
+  });
   return (
-    <div className="heatmap" role="img" aria-label="Writing activity over the last six months">
-      {weeks.map((week, index) => (
-        <div key={index} className="heatmap-week">
-          {week.map((day) => (
-            <span
-              key={day.key}
-              className={`heatmap-day level-${day.future ? 'future' : level(day.count)}`}
-              title={day.future ? '' : `${dayLabel(day.key)}: ${day.count} save${day.count === 1 ? '' : 's'}`}
-            />
+    <div className="heatmap-card">
+      <div className="heatmap-months" aria-hidden="true">
+        {months.map((month, index) => (
+          <span key={index}>{index > 0 && index < WEEKS - 2 ? month : ''}</span>
+        ))}
+      </div>
+      <div className="heatmap" role="img" aria-label={`Writing on ${active} days in the last year`}>
+        {weeks.map((week, index) => (
+          <div key={index} className="heatmap-week">
+            {week.map((day) => (
+              <span
+                key={day.key}
+                className={`heatmap-day level-${day.future ? 'future' : level(day.count)}`}
+                title={
+                  day.future ? '' : `${dayLabel(day.key)}: ${day.count} save${day.count === 1 ? '' : 's'}`
+                }
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+      <div className="heatmap-foot">
+        <span>
+          Wrote on {active.toLocaleString()} {active === 1 ? 'day' : 'days'} in the last year
+        </span>
+        <span className="heatmap-legend" aria-hidden="true">
+          Less
+          {[0, 1, 2, 3, 4].map((value) => (
+            <span key={value} className={`heatmap-day level-${value}`} />
           ))}
-        </div>
-      ))}
+          More
+        </span>
+      </div>
     </div>
   );
 }
@@ -126,6 +149,7 @@ export function HomeView() {
   // read on every render, the workspace changing rerenders this view so the chart follows writing as it happens
   const activity = getSession().activity();
   const days = streak(activity, now);
+  const prefs = usePreferences();
 
   return (
     <div className="view">
@@ -141,7 +165,10 @@ export function HomeView() {
                 year: 'numeric',
               })}
             </p>
-            <h1 className="home-greeting">{greeting(now)}.</h1>
+            <h1 className="home-greeting">
+              {greeting(now)}
+              {prefs.name ? `, ${prefs.name}` : ''}.
+            </h1>
           </header>
 
           <div className="home-stats">
@@ -151,53 +178,23 @@ export function HomeView() {
               <span>day streak</span>
             </div>
             <div className="home-stat tint-blue">
+              <FileText size={18} />
               <strong>{live.length.toLocaleString()}</strong>
-              <span>pages</span>
+              <span>{live.length === 1 ? 'page' : 'pages'}</span>
             </div>
             <div className="home-stat tint-green">
+              <PenLine size={18} />
               <strong>{words.toLocaleString()}</strong>
-              <span>words</span>
+              <span>{words === 1 ? 'word' : 'words'}</span>
             </div>
             <button
               type="button"
               className="home-stat tint-purple"
               onClick={() => navigate({ name: 'tasks' })}
             >
+              <CircleCheckBig size={18} />
               <strong>{openTasks.length}</strong>
-              <span>open tasks</span>
-            </button>
-          </div>
-
-          <div className="quick-actions">
-            <button type="button" className="quick-action tint-blue" onClick={() => createPage()}>
-              <Plus size={16} strokeWidth={1.75} /> New page <Kbd>{formatShortcut('Alt+N')}</Kbd>
-            </button>
-            <button type="button" className="quick-action tint-orange" onClick={() => openToday()}>
-              <CalendarDays size={16} strokeWidth={1.75} /> Today <Kbd>{formatShortcut('Alt+D')}</Kbd>
-            </button>
-            <button
-              type="button"
-              className="quick-action tint-green"
-              onClick={() => createPage({ kind: 'database' })}
-            >
-              <Table2 size={16} strokeWidth={1.75} /> Database
-            </button>
-            <button
-              type="button"
-              className="quick-action tint-purple"
-              onClick={() => createPage({ kind: 'canvas' })}
-            >
-              <LayoutDashboard size={16} strokeWidth={1.75} /> Canvas
-            </button>
-            <button
-              type="button"
-              className="quick-action tint-pink"
-              onClick={() => navigate({ name: 'graph', focus: null })}
-            >
-              <Network size={16} strokeWidth={1.75} /> Graph
-            </button>
-            <button type="button" className="quick-action" onClick={() => setUi({ palette: true })}>
-              <Search size={16} strokeWidth={1.75} /> Search <Kbd>{formatShortcut('Mod+K')}</Kbd>
+              <span>open {openTasks.length === 1 ? 'task' : 'tasks'}</span>
             </button>
           </div>
 

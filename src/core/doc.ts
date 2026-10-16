@@ -52,11 +52,19 @@ export function walk(doc: DocNode, visit: (node: DocNode, parent: DocNode | null
   }
 }
 
+// a date mention as people read it, like Oct 17, 2026
+function readableDate(key: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if (!match) return key;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export function inlineText(node: DocNode): string {
   if (node.type === 'text') return node.text ?? '';
   if (node.type === 'hardBreak') return '\n';
   if (node.type === 'pageLink') return String(node.attrs?.alias ?? node.attrs?.label ?? '');
-  if (node.type === 'dateMention') return String(node.attrs?.date ?? '');
+  if (node.type === 'dateMention') return readableDate(String(node.attrs?.date ?? ''));
   if (node.type === 'inlineMath') return String(node.attrs?.latex ?? '');
   return (node.content ?? []).map(inlineText).join('');
 }
