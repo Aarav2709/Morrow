@@ -105,7 +105,6 @@
       }
     ],
     "asar": true,
-    "electronDist": "node_modules/electron/dist",
     "win": {
       "target": [
         "nsis",
