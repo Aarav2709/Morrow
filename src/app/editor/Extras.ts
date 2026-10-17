@@ -444,7 +444,9 @@ export const CodeBlock = CodeBlockLowlight.extend({
           return true;
         },
         stopEvent: (event) => ours(event.target),
-        ignoreMutation: (mutation) => ours(mutation.target),
+        // the toggle switches classes on the block itself, otherwise the editor redraws it and the code folds away again
+        ignoreMutation: (mutation) =>
+          ours(mutation.target) || (mutation.type === 'attributes' && mutation.target === dom),
         destroy: () => {
           if (timer) clearTimeout(timer);
           stopWatching();

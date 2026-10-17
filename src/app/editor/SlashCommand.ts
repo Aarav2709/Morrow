@@ -265,6 +265,14 @@ export const BLOCK_ITEMS: BlockItem[] = [
     run: (e, r, options) => linkChild(e, r, options, 'database', true),
   },
   {
+    id: 'inlineCanvas',
+    title: 'Inline canvas',
+    description: 'A whiteboard shown right on this page',
+    icon: LayoutDashboard,
+    keywords: 'inline whiteboard drawing sketch embedded board',
+    run: (e, r, options) => linkChild(e, r, options, 'canvas', true),
+  },
+  {
     id: 'columns2',
     title: '2 columns',
     description: 'Put blocks side by side',

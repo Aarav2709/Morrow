@@ -716,12 +716,13 @@ export class VaultRepository implements WorkspaceRepository {
     const moves = new Map<string, PageId>();
     for (const change of deleted) {
       const lower = change.path.toLowerCase();
+      const inside = (path: string) => {
+        const candidate = path.toLowerCase();
+        return candidate === lower || candidate.startsWith(`${lower}/`);
+      };
+      // a page's note sits beside its subpage folder, so the folder going away only removes what was in it
       const ids = change.dir
-        ? [...this.layout]
-            .filter(
-              ([, p]) => p.folder.toLowerCase() === lower || p.folder.toLowerCase().startsWith(`${lower}/`),
-            )
-            .map(([id]) => id)
+        ? [...this.layout].filter(([, p]) => (p.file ? inside(p.file) : inside(p.folder))).map(([id]) => id)
         : [byFile.get(lower)].filter((id): id is PageId => id !== undefined);
       for (const id of ids) {
         const text = this.texts.get(id);

@@ -207,6 +207,27 @@ describe('edits made outside morrow', () => {
     await session.close();
   });
 
+  it('keeps a page when the folder of its subpages goes away', async () => {
+    const vault = new MemoryVault({ 'Parent.md': 'p\n', 'Parent/A.md': 'a\n', 'Parent/B.md': 'b\n' });
+    const session = await open(vault);
+    const parent = idOf(session, 'Parent');
+    await run(session, { type: 'page.trash', id: idOf(session, 'A'), now: 5 });
+    await run(session, { type: 'page.trash', id: idOf(session, 'B'), now: 6 });
+    expect(vault.dirs.has('Parent')).toBe(false);
+    // the watcher then reports the emptied folder morrow tidied away
+    vault.folderGone('Parent');
+    expect(session.getState().pages[parent]).toMatchObject({ title: 'Parent', trashedAt: null });
+    expect(vault.text('Parent.md')).toBe('p\n');
+    // a folder page is its folder, so it still goes with it
+    vault.dirs.add('Someday');
+    vault.external({ 'Someday/Idea.md': 'x\n' });
+    const someday = idOf(session, 'Someday');
+    vault.external({ 'Someday/Idea.md': null });
+    vault.folderGone('Someday');
+    expect(session.getState().pages[someday]).toBeUndefined();
+    await session.close();
+  });
+
   it('treats a file that moved as the same page', async () => {
     const vault = new MemoryVault(OBSIDIAN);
     const session = await open(vault);

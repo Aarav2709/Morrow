@@ -1,5 +1,5 @@
 import { mergeAttributes, Node } from '@tiptap/core';
-import { PluginKey } from '@tiptap/pm/state';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import { FilePlus2, FileText } from 'lucide-react';
 import type { PageId } from '../../core/model';
@@ -27,6 +27,9 @@ export interface PageLinkOptions {
 }
 
 const CREATE_PREFIX = 'create:';
+
+// pages dragged out of the sidebar carry their id under this type
+export const PAGE_DRAG_TYPE = 'application/x-morrow-page';
 
 export const PageLink = Node.create<PageLinkOptions>({
   name: 'pageLink',
@@ -207,7 +210,34 @@ export const PageLink = Node.create<PageLinkOptions>({
 
   addProseMirrorPlugins() {
     const options = this.options;
+    const editor = this.editor;
     return [
+      // a page dropped from the sidebar becomes a link to it, not a copy of its title
+      new Plugin({
+        key: new PluginKey('pageLinkDrop'),
+        props: {
+          handleDrop(view, event) {
+            const id = event.dataTransfer?.getData(PAGE_DRAG_TYPE);
+            if (!id || !view.editable) return false;
+            const label = options.getTitle(id);
+            const position = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos;
+            if (label === null || position === undefined) return false;
+            event.preventDefault();
+            // dropped right after a word, the link gets a space so the two do not run together
+            const before = position > 0 ? view.state.doc.textBetween(position - 1, position, '\n', '\n') : '';
+            editor
+              .chain()
+              .focus()
+              .insertContentAt(position, [
+                ...(before && !/\s/.test(before) ? [{ type: 'text', text: ' ' }] : []),
+                { type: 'pageLink', attrs: { id, label } },
+                { type: 'text', text: ' ' },
+              ])
+              .run();
+            return true;
+          },
+        },
+      }),
       Suggestion<MenuItem, MenuItem>({
         editor: this.editor,
         pluginKey: new PluginKey('pageLinkSuggestion'),

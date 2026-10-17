@@ -221,6 +221,45 @@
   background: var(--hover);
 }
 
+/* canvases inside pages */
+
+.inline-canvas {
+  white-space: normal;
+  line-height: normal;
+}
+.inline-canvas-frame {
+  position: relative;
+  display: flex;
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.inline-canvas-frame > .canvas-view {
+  height: 100%;
+}
+.inline-canvas-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  z-index: 3;
+  cursor: nwse-resize;
+  touch-action: none;
+  background: linear-gradient(
+    135deg,
+    transparent 45%,
+    var(--border-strong) 45%,
+    var(--border-strong) 52%,
+    transparent 52%,
+    transparent 68%,
+    var(--border-strong) 68%,
+    var(--border-strong) 75%,
+    transparent 75%
+  );
+}
+
 /* pdf export prints the page alone */
 
 @media print {

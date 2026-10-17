@@ -284,6 +284,16 @@
 
 /* block handle */
 
+/* the margin the handle sits in still counts as the editor, so the handle stays while the pointer travels to it */
+.editor-surface::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -40px;
+  width: 40px;
+}
+
 .block-handle {
   position: absolute;
   left: -34px;

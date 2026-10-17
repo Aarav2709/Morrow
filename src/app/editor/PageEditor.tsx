@@ -34,19 +34,30 @@ const EmbeddedDatabase = lazy(() =>
   import('../components/database/EmbeddedDatabase').then((module) => ({ default: module.EmbeddedDatabase })),
 );
 
-// databases embed as the real thing, with their views, filters and editing
+const EmbeddedCanvas = lazy(() =>
+  import('../components/EmbeddedCanvas').then((module) => ({ default: module.EmbeddedCanvas })),
+);
+
+// databases and canvases embed as the real thing, a database with its views, a canvas you can draw on
 function mountEmbed(
   id: PageId,
   hostId: PageId,
   element: HTMLElement,
   editable: boolean,
 ): (() => void) | null {
-  const page = getState().pages[id];
-  if (!page?.database || id === hostId) return null;
+  const state = getState();
+  const page = state.pages[id];
+  if (!page || id === hostId) return null;
+  const canvas = page.kind === 'canvas' && !page.encrypted && !isEffectivelyTrashed(state.pages, id);
+  if (!page.database && !canvas) return null;
   const root = createRoot(element);
   root.render(
     <Suspense fallback={null}>
-      <EmbeddedDatabase pageId={id} editable={editable} />
+      {page.database ? (
+        <EmbeddedDatabase pageId={id} editable={editable} />
+      ) : (
+        <EmbeddedCanvas pageId={id} editable={editable} />
+      )}
     </Suspense>,
   );
   // react cannot unmount a root in the middle of rendering another one

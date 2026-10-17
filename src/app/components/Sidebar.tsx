@@ -55,8 +55,8 @@ import { Menu } from './Menu';
 import { pageMenuEntries } from './pageMenu';
 import { Emoji } from './Emoji';
 import { Logo } from './primitives';
+import { PAGE_DRAG_TYPE } from '../editor/PageLink';
 
-const DRAG_TYPE = 'application/x-morrow-page';
 type DropZone = 'before' | 'inside' | 'after';
 
 export function pageIcon(page: PageMeta): LucideIcon {
@@ -583,13 +583,13 @@ const TreeRow = memo(function TreeRow(props: RowProps) {
         props.onMenu(event.currentTarget as HTMLElement);
       }}
       onDragStart={(event) => {
-        event.dataTransfer.setData(DRAG_TYPE, page.id);
+        event.dataTransfer.setData(PAGE_DRAG_TYPE, page.id);
         event.dataTransfer.setData('text/plain', displayTitle(page));
         event.dataTransfer.effectAllowed = 'move';
         props.onDragStart();
       }}
       onDragOver={(event) => {
-        if (!event.dataTransfer.types.includes(DRAG_TYPE)) return;
+        if (!event.dataTransfer.types.includes(PAGE_DRAG_TYPE)) return;
         if (props.onDragOverZone(zoneFor(event))) {
           event.preventDefault();
           event.dataTransfer.dropEffect = 'move';

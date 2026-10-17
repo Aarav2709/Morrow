@@ -154,15 +154,29 @@ export function GraphView({ focus }: { focus: PageId | null }) {
       // labels appear when zoomed in, or for the node under the pointer and its neighbours
       context.textAlign = 'center';
       context.textBaseline = 'top';
-      context.font = `${12 / Math.max(view.k, 0.6)}px ${getComputedStyle(wrap).fontFamily}`;
+      const fontSize = 12 / Math.max(view.k, 0.6);
+      context.font = `${fontSize}px ${getComputedStyle(wrap).fontFamily}`;
+      const labelOf = (node: SimNode) =>
+        node.label.length > 40 ? `${node.label.slice(0, 39)}…` : node.label;
       for (const node of nodes) {
+        if (node === hover) continue;
         const show =
           view.k > 1.1 || (lit && lit.has(node.id)) || node.id === focus || (folded && matches(node));
         if (!show) continue;
         context.globalAlpha = lit && !lit.has(node.id) ? 0.2 : 1;
-        context.fillStyle = node === hover ? colors.strong : colors.text;
-        const label = node.label.length > 40 ? `${node.label.slice(0, 39)}…` : node.label;
-        context.fillText(label, node.x ?? 0, (node.y ?? 0) + radius(node) + 3 / view.k);
+        context.fillStyle = colors.text;
+        context.fillText(labelOf(node), node.x ?? 0, (node.y ?? 0) + radius(node) + 3 / view.k);
+      }
+      // the pointer covers whatever is under the node, so its own label goes above it, on top of the rest
+      if (hover) {
+        context.globalAlpha = 1;
+        context.fillStyle = colors.strong;
+        const gap = 6 / view.k;
+        const above = (hover.y ?? 0) - radius(hover) - gap;
+        const fits = height / 2 + view.y + (above - fontSize) * view.k > 0;
+        context.textBaseline = fits ? 'bottom' : 'top';
+        const y = fits ? above : (hover.y ?? 0) + radius(hover) + 22 / view.k;
+        context.fillText(labelOf(hover), hover.x ?? 0, y);
       }
       context.globalAlpha = 1;
     };

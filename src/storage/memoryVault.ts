@@ -170,4 +170,13 @@ export class MemoryVault implements VaultBridge {
     }
     for (const listener of this.listeners) listener(reported);
   }
+
+  // a folder that is no longer there, reported the way the file watcher reports it
+  folderGone(path: string): void {
+    this.clock += 1000;
+    const reported: VaultChange[] = [
+      { path, text: null, mtime: this.clock, birthtime: 0, dir: true, other: true },
+    ];
+    for (const listener of this.listeners) listener(reported);
+  }
 }

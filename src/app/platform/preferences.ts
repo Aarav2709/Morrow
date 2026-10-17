@@ -17,6 +17,12 @@ export const ACCENT_LABELS: Record<Accent, string> = {
   graphite: 'Graphite',
 };
 
+// a canvas shown inside a page, width null fills the page
+export interface CanvasSize {
+  width: number | null;
+  height: number;
+}
+
 export interface Preferences {
   theme: ThemePreference;
   font: WritingFont;
@@ -29,6 +35,8 @@ export interface Preferences {
   colorful: boolean;
   // what the home page calls you, empty for no name
   name: string;
+  // the size each inline canvas was dragged to
+  canvasSizes: Record<string, CanvasSize>;
 }
 
 const KEY = 'morrow.preferences';
@@ -42,11 +50,22 @@ const defaults: Preferences = {
   accent: 'ocean',
   colorful: true,
   name: '',
+  canvasSizes: {},
 };
 
 // view preferences only, losing them never loses work
 let current: Preferences = read();
 const listeners = new Set<() => void>();
+
+function readCanvasSizes(raw: unknown): Record<string, CanvasSize> {
+  if (!raw || typeof raw !== 'object') return {};
+  const sizes: Record<string, CanvasSize> = {};
+  for (const [id, value] of Object.entries(raw as Record<string, Partial<CanvasSize>>).slice(0, 500)) {
+    if (typeof value?.height !== 'number') continue;
+    sizes[id] = { width: typeof value.width === 'number' ? value.width : null, height: value.height };
+  }
+  return sizes;
+}
 
 function read(): Preferences {
   try {
@@ -68,6 +87,7 @@ function read(): Preferences {
       expanded: Array.isArray(parsed.expanded)
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],
+      canvasSizes: readCanvasSizes(parsed.canvasSizes),
     };
   } catch {
     return defaults;
