@@ -1,11 +1,26 @@
 name: Release
 
+# publish a release on github with your own notes, and this builds Morrow for every system and adds the
+# files to that same release. to add them to a release that already exists, run it from the actions tab
+# with the release's tag
 on:
-  push:
-    tags: ['v*']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag of the release to add the files to, like v1.1.0
+        required: true
 
 permissions:
   contents: read
+
+env:
+  TAG: ${{ github.event.release.tag_name || inputs.tag }}
+
+# a second run for the same release waits for the first instead of racing it
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
 
 jobs:
   build:
@@ -16,6 +31,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      # the files are named after package.json, so a tag that does not match would upload the wrong version
+      - name: Check the version matches the tag
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::package.json says $version but the release is $TAG. Change one so they match."
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -48,8 +74,7 @@ jobs:
       # bash on every system, powershell would split the option above at its dots.
       # windows builds each architecture on its own so nobody downloads an installer twice the size,
       # macos builds intel and apple silicon side by side from the apple silicon runner.
-      # nothing is uploaded here: jobs creating the release at the same time raced each other and made
-      # duplicate releases, so the release job below uploads everything once
+      # nothing is uploaded from here, the upload job below adds every file to the release in one go
       - name: Build
         shell: bash
         run: |
@@ -76,7 +101,7 @@ jobs:
             release/Morrow-*.AppImage
             release/morrow_*.deb
 
-  release:
+  upload:
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -86,16 +111,15 @@ jobs:
         with:
           path: files
           merge-multiple: true
-      # a draft, so the notes can be written before anyone sees it. a release made by hand beforehand is
-      # used as it is, and files already on it are replaced
-      - name: Upload to the release
+      # files already on the release with the same name are replaced, so running it again is safe
+      - name: Add the files to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
         run: |
           ls -l files
           if ! gh release view "$TAG" > /dev/null 2>&1; then
-            gh release create "$TAG" --draft --verify-tag --title "Morrow ${TAG#v}" --notes ""
+            echo "::error::There is no release for $TAG. Create it on GitHub first."
+            exit 1
           fi
           gh release upload "$TAG" files/* --clobber
