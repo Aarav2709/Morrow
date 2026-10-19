@@ -47,7 +47,7 @@ import { desktop } from '../platform/desktop';
 import { vaultName } from '../platform/vault';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
-import { createPage, expandPage, importMarkdown, openToday, trashPage } from '../operations';
+import { createPage, expandPage, importMarkdown, movePage, openToday, trashPage } from '../operations';
 import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
 import { navigate, openPage, useActiveRoute } from '../router';
 import { openDialog, setUi, useUi } from '../ui';
@@ -407,13 +407,13 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
     setDrop(null);
     if (!id || id === target.id) return;
     if (zone === 'inside') {
-      if (run({ type: 'page.move', id, parentId: target.id }).ok) expandPage(target.id);
+      if (movePage(id, target.id)) expandPage(target.id);
       return;
     }
     const parentId = effectiveParent(state.pages, target);
     const siblings = childrenOf(state.pages, parentId).filter((page) => page.id !== id);
     const index = siblings.findIndex((page) => page.id === target.id) + (zone === 'after' ? 1 : 0);
-    run({ type: 'page.move', id, parentId, index });
+    movePage(id, parentId, index);
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {

@@ -184,21 +184,6 @@ export function writeCanvas(data: CanvasData, pathOf: (id: PageId) => string | n
   return `${JSON.stringify({ nodes, edges: data.edges }, null, '\t')}\n`;
 }
 
-export function canvasText(data: CanvasData): string {
-  return data.nodes
-    .map((node) =>
-      node.type === 'text'
-        ? node.text
-        : node.type === 'group'
-          ? (node.label ?? '')
-          : node.type === 'link'
-            ? node.url
-            : '',
-    )
-    .filter(Boolean)
-    .join('\n');
-}
-
 export function pagesInCanvas(data: CanvasData): PageId[] {
   return [...new Set(data.nodes.flatMap((node) => (node.type === 'page' ? [node.pageId] : [])))];
 }

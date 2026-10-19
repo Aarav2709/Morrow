@@ -1,24 +1,35 @@
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
-import { ArrowUpRight, FileWarning, Image as ImageIcon, RotateCcw, Smile, Trash2 } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Columns2,
+  FileWarning,
+  Image as ImageIcon,
+  ListPlus,
+  RotateCcw,
+  Smile,
+  Trash2,
+} from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { docToPlainText, findUnknownTypes, inlineText } from '../../core/doc';
+import { docToPlainText, findUnknownTypes, inlineText, isDocEmpty } from '../../core/doc';
 import { backlinksTo, unlinkedMentions } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
 import type { DocNode, PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
 import { findDatabaseOf } from '../../core/database';
+import { basename, conflictOriginal, stripExtension } from '../../core/vault/paths';
 import { PageEditor } from '../editor/PageEditor';
 import { SourceEditor } from './SourceEditor';
 import { CoverBanner, CoverPicker } from './Cover';
 import { DailyNav, MadeThisDay } from './DailyNav';
 import { Emoji } from './Emoji';
 import { LockedPage } from './EncryptDialog';
-import { RowProperties } from './database/RowProperties';
+import { PageProperties } from './PageProperties';
 import { PageTags } from './TagsView';
-import { deleteForever, restorePage } from '../operations';
+import { deleteForever, restorePage, trashPage } from '../operations';
 import { usePreferences } from '../platform/preferences';
-import { navigate, openPage } from '../router';
+import { navigate, openPage, routeHash } from '../router';
+import { openSide } from '../tabs';
 import { getUi, openDialog, setUi, useUi } from '../ui';
 import { getSession, run, useWorkspace } from '../workspace';
 import type { MenuEntry } from './Menu';
@@ -48,6 +59,10 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
   const page = state.pages[id];
   const [editing, setEditing] = useState(false);
   const [coverPicker, setCoverPicker] = useState<HTMLElement | null>(null);
+  // the page whose header asked for a first property, so the request does not follow to another page
+  const [addingFor, setAddingFor] = useState<PageId | null>(null);
+  // a database with text of its own keeps showing it above its views, even once that text is cleared
+  const [databaseTextFor, setDatabaseTextFor] = useState<PageId | null>(null);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const editorRef = useRef<Editor | null>(null);
   // enter in the title can arrive before the editor exists, focus it once it does
@@ -90,7 +105,18 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
     return [info, ...pageMenuEntries(id, () => titleRef.current?.focus())];
   };
 
+  const hasText = page.kind === 'database' && !isDocEmpty(doc);
+  if (hasText && databaseTextFor !== id) setDatabaseTextFor(id);
+  const showText = page.kind !== 'database' || hasText || databaseTextFor === id;
+
   const database = findDatabaseOf(state, page);
+  // rows and pages that already show properties add more from that list instead
+  const canAddProperty =
+    page.kind === 'page' &&
+    !database &&
+    !unreadable &&
+    Object.keys(page.extra).length === 0 &&
+    addingFor !== id;
 
   if (page.kind === 'canvas') {
     return (
@@ -147,6 +173,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
         {page.kind !== 'database' && !unreadable && <Outline doc={doc} />}
         <CoverBanner page={page} editable={!trashed} />
         <article className={`page font-${prefs.font} width-${prefs.width}${page.cover ? ' has-cover' : ''}`}>
+          {!trashed && <ConflictBanner id={id} />}
           {page.icon && (
             <div className="page-icon-row">
               <button
@@ -160,7 +187,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
               </button>
             </div>
           )}
-          {!trashed && (!page.icon || !page.cover) && (
+          {!trashed && (!page.icon || !page.cover || canAddProperty) && (
             <div className="page-header-actions">
               {!page.icon && (
                 <button
@@ -178,6 +205,11 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
                   onClick={(event) => setCoverPicker(event.currentTarget)}
                 >
                   <ImageIcon size={14} /> Add cover
+                </button>
+              )}
+              {canAddProperty && (
+                <button type="button" className="add-icon" onClick={() => setAddingFor(id)}>
+                  <ListPlus size={14} /> Add property
                 </button>
               )}
             </div>
@@ -198,14 +230,16 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
             />
           </h1>
           {page.kind !== 'database' && <PageTags page={page} editable={!trashed && !unreadable} />}
-          {database?.database && (
-            <RowProperties row={page} database={database.database} dbId={database.id} editable={!trashed} />
+          {!unreadable && (
+            <PageProperties
+              page={page}
+              database={database?.database ? { id: database.id, database: database.database } : null}
+              editable={!trashed}
+              adding={addingFor === id}
+              onAdded={() => setAddingFor(null)}
+            />
           )}
-          {page.kind === 'database' ? (
-            <Suspense fallback={<div className="database" aria-busy="true" />}>
-              <DatabaseView page={page} editable={!trashed && !unreadable} />
-            </Suspense>
-          ) : unreadable && page.encrypted ? (
+          {unreadable && page.encrypted ? (
             <LockedPage page={page} />
           ) : unreadable ? (
             <div className="banner is-error" role="alert">
@@ -223,31 +257,72 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
               <SourceEditor pageId={id} doc={doc} editable={!trashed} />
             </>
           ) : (
-            <PageBody
-              id={id}
-              doc={doc}
-              editable={!trashed}
-              find={find}
-              onDirty={setEditing}
-              onExitTop={() => {
-                const title = titleRef.current;
-                if (!title) return;
-                title.focus();
-                title.setSelectionRange(title.value.length, title.value.length);
-              }}
-              onReady={(editor) => {
-                editorRef.current = editor;
-                if (!focusWhenReady.current) return;
-                focusWhenReady.current = false;
-                requestAnimationFrame(() => focusStart(editor));
-              }}
-            />
+            showText && (
+              <PageBody
+                id={id}
+                doc={doc}
+                editable={!trashed}
+                find={find}
+                onDirty={setEditing}
+                onExitTop={() => {
+                  const title = titleRef.current;
+                  if (!title) return;
+                  title.focus();
+                  title.setSelectionRange(title.value.length, title.value.length);
+                }}
+                onReady={(editor) => {
+                  editorRef.current = editor;
+                  if (!focusWhenReady.current) return;
+                  focusWhenReady.current = false;
+                  requestAnimationFrame(() => focusStart(editor));
+                }}
+              />
+            )
+          )}
+          {page.kind === 'database' && (
+            <Suspense fallback={<div className="database" aria-busy="true" />}>
+              <DatabaseView page={page} editable={!trashed && !unreadable} />
+            </Suspense>
           )}
           {page.kind !== 'database' && <Subpages parentId={id} />}
           {page.dailyDate && <MadeThisDay dailyDate={page.dailyDate} />}
           <Backlinks id={id} />
         </article>
       </div>
+    </div>
+  );
+}
+
+// a copy a sync app kept because this page changed on two computers at once, next to the page it copies
+function ConflictBanner({ id }: { id: PageId }) {
+  const state = useWorkspace();
+  const session = getSession();
+  const path = session.pathOf(id);
+  const conflict = path ? conflictOriginal(path) : null;
+  if (!conflict) return null;
+  const wanted = conflict.original.toLowerCase();
+  const original = Object.keys(state.pages).find(
+    (other) => other !== id && session.pathOf(other)?.toLowerCase() === wanted,
+  );
+  const title = original ? displayTitle(state.pages[original]) : basename(stripExtension(conflict.original));
+  return (
+    <div className="banner conflict-banner" role="note">
+      <span>
+        This is a copy {conflict.app} kept because “{title}” changed on two computers at the same time.
+        Compare them, keep what you need in “{title}”, then move this copy to the trash.
+      </span>
+      {original && (
+        <button
+          type="button"
+          className="button small"
+          onClick={() => openSide(routeHash({ name: 'page', id: original, find: null }))}
+        >
+          <Columns2 size={14} /> Compare side by side
+        </button>
+      )}
+      <button type="button" className="button small" onClick={() => trashPage(id)}>
+        <Trash2 size={14} /> Move copy to trash
+      </button>
     </div>
   );
 }

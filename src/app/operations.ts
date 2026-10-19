@@ -12,9 +12,11 @@ import { fileIdsInDoc, remapFileIds } from '../core/doc';
 import { planArchiveImport } from '../core/importer';
 import type { ArchiveEntry } from '../core/importer';
 import { canvasDoc, emptyCanvas } from '../core/canvas';
+import type { Command } from '../core/commands';
 import { defaultDatabase } from '../core/database';
 import { displayTitle } from '../core/model';
 import type { FileId, FileMeta, PageId, PageKind, Snapshot } from '../core/model';
+import { databaseFromSubpages, fieldsForMove, releaseRow } from '../core/properties';
 import { buildSite } from '../core/site';
 import { applyTemplate, dailyTemplate, findTemplatesPage, TEMPLATES_TITLE } from '../core/templates';
 import {
@@ -41,7 +43,7 @@ import type { Route } from './router';
 import { getTabs } from './tabs';
 import type { PaneId } from './tabs';
 import { confirmAction, setUi, toast } from './ui';
-import { getSession, getState, run } from './workspace';
+import { getSession, getState, run, runAll } from './workspace';
 
 export function expandPage(id: PageId | null): void {
   if (!id) return;
@@ -73,6 +75,72 @@ export function createPage(
     openPage(id);
   }
   return id;
+}
+
+// moves a page under a new parent, carrying its values into or out of a database as frontmatter
+export function movePage(id: PageId, parentId: PageId | null, index?: number): boolean {
+  const now = Date.now();
+  const plan = fieldsForMove(getState().pages, id, parentId, newId);
+  const commands: Command[] = [];
+  if (plan?.database)
+    commands.push({ type: 'database.set', id: plan.database.id, database: plan.database.database, now });
+  if (plan)
+    commands.push({
+      type: 'page.setFields',
+      id,
+      properties: plan.fields.properties,
+      extra: plan.fields.extra,
+      now,
+    });
+  commands.push({ type: 'page.move', id, parentId, ...(index !== undefined ? { index } : {}) });
+  return runAll(commands).ok;
+}
+
+// a page and its subpages become a database and its rows, their frontmatter turning into columns
+export function turnIntoDatabase(id: PageId): void {
+  const state = getState();
+  const page = state.pages[id];
+  if (!page || page.kind !== 'page' || page.encrypted || page.dailyDate) return;
+  const now = Date.now();
+  const adopted = databaseFromSubpages(state.pages, id, newId, () => defaultDatabase(newId));
+  const result = runAll([
+    { type: 'page.setKind', id, kind: 'database', now },
+    { type: 'database.set', id, database: adopted.database, now },
+    ...adopted.rows.map((row): Command => ({
+      type: 'page.setFields',
+      id: row.id,
+      properties: row.properties,
+      extra: row.extra,
+      now,
+    })),
+  ]);
+  if (!result.ok) return;
+  const rows = childrenOf(result.value.pages, id).length;
+  const columns = adopted.database.properties.length;
+  toast(
+    rows
+      ? `Turned into a database with ${plural(rows, 'row')} and ${columns} propert${columns === 1 ? 'y' : 'ies'}.`
+      : 'Turned into a database. Add a row to get started.',
+  );
+}
+
+// a database becomes an ordinary page again, every row keeping its values as frontmatter
+export function turnIntoPage(id: PageId): void {
+  const state = getState();
+  const page = state.pages[id];
+  if (!page || page.kind !== 'database' || !page.database) return;
+  const now = Date.now();
+  const database = page.database;
+  runAll([
+    ...childrenOf(state.pages, id).map((row): Command => ({
+      type: 'page.setFields',
+      id: row.id,
+      properties: {},
+      extra: releaseRow(row, database),
+      now,
+    })),
+    { type: 'page.setKind', id, kind: 'page', now },
+  ]);
 }
 
 // today's daily note, made from the daily template when it does not exist yet

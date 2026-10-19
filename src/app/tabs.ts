@@ -215,15 +215,6 @@ export function closeSide(): void {
   updateActive((item) => ({ ...item, side: null }), { pane: 'main' });
 }
 
-// the side becomes the whole tab, keeping its history
-export function keepSideOnly(): void {
-  const tab = activeTab();
-  if (!tab.side) return;
-  const side = tab.side;
-  updateActive((item) => ({ ...item, back: side.back, forward: side.forward, side: null }), { pane: 'main' });
-  go(side.hash);
-}
-
 export function swapSides(): void {
   const tab = activeTab();
   if (!tab.side) return;

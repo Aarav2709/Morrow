@@ -1,7 +1,9 @@
 import { databaseFromTable, parseCellValue } from './database';
 import { inlineText } from './doc';
-import { markdownToPage } from './markdown/parse';
+import { markdownToDoc } from './markdown/parse';
+import type { ParseOptions } from './markdown/parse';
 import { emptyDoc, newPageMeta } from './model';
+import { readPageText, takeProperties } from './vault/pageFile';
 import type { DocNode, FileMeta, PageId, PageMeta, PropValue, WorkspaceState } from './model';
 import { pageIdByTitle } from './search';
 import { childrenOf } from './tree';
@@ -41,6 +43,42 @@ const MIME: Record<string, string> = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
+
+export interface ImportedFile {
+  title: string;
+  doc: DocNode;
+  fields: Partial<PageMeta>;
+}
+
+// an imported note's frontmatter becomes its title, icon, tags and properties rather than text on the page
+export function readImportedFile(text: string, fallbackTitle: string, options: ParseOptions): ImportedFile {
+  const read = readPageText(text);
+  // frontmatter that is not valid yaml stays on the page as text, so nothing is lost
+  const doc = markdownToDoc(read.error ? text : read.body, options);
+  const first = doc.content?.[0];
+  const heading =
+    first?.type === 'heading' && first.attrs?.level === 1 ? inlineText(first).trim() || null : null;
+  const title = (read.error ? null : read.title) ?? heading ?? fallbackTitle;
+  // the first heading is the title when it says the same, otherwise it stays in the text
+  if (heading !== null && heading === title)
+    doc.content = doc.content!.length > 1 ? doc.content!.slice(1) : emptyDoc().content!;
+  if (read.error) return { title, doc, fields: {} };
+  const fields: Partial<PageMeta> = { tags: read.tags, extra: read.extra };
+  if (read.icon) fields.icon = read.icon;
+  if (read.kind === 'database' && read.database)
+    Object.assign(fields, { kind: 'database', database: read.database });
+  return { title, doc, fields };
+}
+
+// rows of an imported database take their values out of their frontmatter, once every page is known
+export function claimRowValues(pages: PageMeta[], newId: () => string): void {
+  const byId = new Map(pages.map((page) => [page.id, page]));
+  for (const page of pages) {
+    const parent = page.parentId ? byId.get(page.parentId) : undefined;
+    if (parent?.kind === 'database' && parent.database)
+      takeProperties(parent.database, page.extra, page.properties, newId);
+  }
+}
 
 export function mimeType(name: string): string {
   return MIME[name.split('.').pop()?.toLowerCase() ?? ''] ?? 'application/octet-stream';
@@ -90,6 +128,8 @@ export function planArchiveImport(
   const pageAt = (key: string) => keys.get(key) ?? folders.get(key);
 
   const referenced = new Map<string, FileMeta>();
+  const extras = new Map<PageId, Partial<PageMeta>>();
+  const merge = (id: PageId, fields: Partial<PageMeta>) => extras.set(id, { ...extras.get(id), ...fields });
   const problems: string[] = [];
   const docs: Record<PageId, DocNode> = {};
   const titles = new Map<PageId, string>();
@@ -98,7 +138,7 @@ export function planArchiveImport(
     const key = stripExtension(entry.path);
     const page = keys.get(key)!;
     const base = dirname(entry.path);
-    const parsed = markdownToPage(decoder.decode(entry.data), page.title, {
+    const parsed = readImportedFile(decoder.decode(entry.data), page.title, {
       resolvePage: (title) => findByTitle(keys, title) ?? pageIdByTitle(state, title),
       resolveLink: (href) => {
         const target = resolveHref(base, href);
@@ -119,10 +159,10 @@ export function planArchiveImport(
     });
     docs[page.id] = parsed.doc;
     titles.set(page.id, parsed.title.replace(NOTION_ID, '') || page.title);
+    extras.set(page.id, parsed.fields);
   }
 
   // notion databases arrive as a csv of rows plus a folder with a page per row, they become real databases
-  const extras = new Map<PageId, Partial<PageMeta>>();
   const newRows: PageMeta[] = [];
   for (const entry of tables) {
     const key = stripExtension(entry.path).replace(/_all$/, '');
@@ -133,7 +173,7 @@ export function planArchiveImport(
       problems.push(`Only the first ${MAX_TABLE_ROWS} rows of ${page.title} were imported.`);
     const [header, ...body] = rows.slice(0, MAX_TABLE_ROWS + 1);
     const database = databaseFromTable(header!, body, newId);
-    extras.set(page.id, { kind: 'database', database });
+    merge(page.id, { kind: 'database', database });
     docs[page.id] ??= emptyDoc();
     const rowPages = [...keys.entries()].filter(([rowKey]) => dirname(rowKey) === key);
     const claimed = new Set<PageId>();
@@ -149,7 +189,7 @@ export function planArchiveImport(
       );
       if (match) {
         claimed.add(match[1].id);
-        extras.set(match[1].id, { properties: values });
+        merge(match[1].id, { properties: values });
         const doc = docs[match[1].id];
         if (doc) docs[match[1].id] = withoutPropertyLines(doc, header!.slice(1));
       } else {
@@ -180,6 +220,7 @@ export function planArchiveImport(
     });
   });
   for (const row of newRows) row.order += counters.get(row.parentId) ?? 0;
+  claimRowValues(pages, newId);
 
   return {
     pages: [...pages, ...newRows],

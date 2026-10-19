@@ -11,7 +11,6 @@ import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { newId } from '../../platform/files';
 import { toast } from '../../ui';
 import type {
-  ColorName,
   DatabaseDef,
   PageId,
   PageMeta,
@@ -26,10 +25,6 @@ import { ensureOption, setValue, updateDatabase } from './data';
 
 export function Chip({ option }: { option: Pick<SelectOption, 'name' | 'color'> }) {
   return <span className={`chip color-${option.color}`}>{option.name}</span>;
-}
-
-export function colorClass(color: ColorName): string {
-  return `color-${color}`;
 }
 
 // a value shown on a card or in a list, never editable
@@ -65,7 +60,7 @@ export function PropertyDisplay({ prop, value }: { prop: PropDef; value: PropVal
 }
 
 // related pages as small links, a name that no longer matches a page is shown faded
-function RelationChips({ targets }: { targets: string[] }) {
+export function RelationChips({ targets }: { targets: string[] }) {
   const state = useWorkspace();
   return (
     <>
@@ -258,6 +253,8 @@ export function DraftInput({
   onCommit,
   placeholder,
   className,
+  autoFocus,
+  onDone,
 }: {
   type: 'text' | 'number' | 'url';
   label: string;
@@ -266,15 +263,20 @@ export function DraftInput({
   onCommit: (text: string) => void;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
+  // called when the input loses focus, changed or not
+  onDone?: () => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = () => {
     if (draft !== null && draft !== value) onCommit(draft);
     setDraft(null);
+    onDone?.();
   };
   return (
     <input
       type={type}
+      autoFocus={autoFocus}
       className={className ?? 'prop-input'}
       aria-label={label}
       placeholder={placeholder ?? (editable ? 'Empty' : '')}

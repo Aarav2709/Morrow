@@ -57,7 +57,9 @@ contextBridge.exposeInMainWorld('morrow', {
   },
   vault: {
     state: () => ipcRenderer.invoke('vault:state'),
-    choose: () => ipcRenderer.invoke('vault:choose'),
+    choose: (start?: string) => ipcRenderer.invoke('vault:choose', start),
+    cloud: () => ipcRenderer.invoke('vault:cloud'),
+    copyInto: (dir: string) => ipcRenderer.invoke('vault:copy-into', dir),
     createDefault: () => ipcRenderer.invoke('vault:create-default'),
     select: (dir: string) => ipcRenderer.invoke('vault:select', dir),
     forget: (dir: string) => ipcRenderer.invoke('vault:forget', dir),

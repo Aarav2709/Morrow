@@ -55,6 +55,8 @@ export function Dialog({
     );
     (focusable ?? element)?.focus();
     const onKey = (event: KeyboardEvent) => {
+      // a menu or dropdown open over the dialog closes first
+      if ((event.target as HTMLElement | null)?.closest?.('.floating-layer')) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
@@ -110,6 +112,32 @@ export function Dialog({
   );
 }
 
+export function Switch({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className="switch"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+    >
+      <span />
+    </button>
+  );
+}
+
 export function Toasts() {
   const { toasts } = useUi();
   return (
@@ -145,10 +173,6 @@ export function Toasts() {
       ))}
     </div>
   );
-}
-
-export function Kbd({ children }: { children: ReactNode }) {
-  return <kbd className="kbd">{children}</kbd>;
 }
 
 const rtf = typeof Intl !== 'undefined' ? new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }) : null;

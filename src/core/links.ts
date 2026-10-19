@@ -5,10 +5,6 @@ import { livePages } from './tree';
 
 const PAGE_HREF = /^#\/page\/([A-Za-z0-9_-]+)/;
 
-export function pageHref(id: PageId): string {
-  return `#/page/${id}`;
-}
-
 export function pageIdFromHref(href: unknown): PageId | null {
   if (typeof href !== 'string') return null;
   return PAGE_HREF.exec(href)?.[1] ?? null;

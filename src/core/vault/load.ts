@@ -9,7 +9,7 @@ import type { DocNode, PageId, PageMeta, WorkspaceState } from '../model';
 import { foldText } from '../search';
 import { compareSiblings } from '../tree';
 import type { Layout, Placement } from './layout';
-import { readPageText, readProperty } from './pageFile';
+import { readPageText, takeProperties } from './pageFile';
 import type { PageSource } from './pageFile';
 import { impliedTitle } from './pageFile';
 import {
@@ -197,7 +197,6 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
   const texts = new Map<PageId, string>();
   const bodies = new Map<PageId, { body: string; file: string }>();
   const canvases = new Map<PageId, unknown>();
-  const frontmatter = new Map<PageId, Record<string, unknown>>();
 
   for (const candidate of candidates) {
     const id = idOf.get(candidate.key)!;
@@ -266,8 +265,8 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
     if (read.kind) page.kind = read.kind;
     page.tags = read.tags;
     page.database = read.database;
+    page.extra = read.extra;
     sources.set(id, read.source);
-    frontmatter.set(id, read.data);
     bodies.set(id, { body: read.body, file: candidate.file.path });
     pages.set(id, page);
   }
@@ -285,17 +284,8 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
   // database rows read their property values from frontmatter keys named after each property
   for (const page of pages.values()) {
     const parent = page.parentId ? pages.get(page.parentId) : undefined;
-    const database = parent?.kind === 'database' ? parent.database : null;
-    const data = frontmatter.get(page.id);
-    const source = sources.get(page.id);
-    if (!database || !data || !source) continue;
-    for (const prop of database.properties) {
-      if (!Object.hasOwn(data, prop.name)) continue;
-      const read = readProperty(prop, data[prop.name], newId);
-      if (read.value !== null) page.properties[prop.id] = read.value;
-      if (read.added.length) prop.options.push(...read.added);
-      delete source.extra[prop.name];
-    }
+    if (parent?.kind === 'database' && parent.database)
+      takeProperties(parent.database, page.extra, page.properties, newId);
   }
 
   // siblings keep the order the registry remembers, the rest follow by name, newest first in the journal

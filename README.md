@@ -43,7 +43,12 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   text, number, select, multi-select, date, checkbox, link, relation and
   formula properties, filters, sorts and grouping, checklist progress on cards,
   and inline databases shown inside any page. Row values are readable
-  frontmatter, relations are `[[links]]`.
+  frontmatter, relations are `[[links]]`. Turn a folder of notes into a
+  database in one step, with their frontmatter as columns
+- **Properties**: a page's frontmatter, like the properties of an Obsidian note,
+  shown and edited at the top of the page. Moving a page into a database turns
+  its properties into columns, matched whatever their case, and moving it out
+  turns them back
 - **Canvases**: an infinite whiteboard of cards, pages, images and groups joined
   by arrows, with a pen, highlighter and eraser for freehand drawing, saved as
   open JSON Canvas files. Show one inside any page with `![[Canvas]]` or
@@ -61,6 +66,10 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 - **Sync between your computers** on the same network: pair once with a code,
   no server, no account, every transfer encrypted, both versions kept when a
   page changed on both
+- **Or sync through a cloud folder**: Settings finds your Dropbox, iCloud Drive,
+  Google Drive, OneDrive, Syncthing or Nextcloud folder and moves the vault
+  into it. Their own apps do the syncing, and the conflicted copies they make
+  are marked so you can compare them side by side
 - **Encrypted pages**: lock any page with a password, AES-256 on disk, never a
   plain copy in history or backups
 - **Flashcards**: write `question :: answer` anywhere and review with spaced
@@ -107,6 +116,12 @@ Choose **Open a folder** and pick your vault. Morrow reads it as it is: folders,
 wiki links, embeds, callouts, tags, properties, aliases, maths and canvases.
 Nothing in `.obsidian` is touched, and files you do not edit in Morrow are never
 rewritten.
+
+Your properties show at the top of each page and can be edited there. To get
+Notion style databases from a folder of notes, open the folder's menu and choose
+**Turn subpages into a database**: each note becomes a row and its properties
+become columns, with types worked out from their values. A property such as
+`date` fills a database's `Date` column, and keeps its own spelling in the file.
 
 ## Coming from Notion
 

@@ -1,6 +1,6 @@
 // every workspace change goes through here, pure and never throwing
 import { validateDoc } from './doc';
-import { normalizeTag } from './vault/frontmatter';
+import { normalizeExtra, normalizeTag } from './vault/frontmatter';
 import { normalizeDatabase } from './migrations';
 import { emptyDoc, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, newPageMeta, PAGE_KINDS, validCover } from './model';
 import type { DatabaseDef, DocNode, PageId, PageKind, PageMeta, PropValue, WorkspaceState } from './model';
@@ -43,10 +43,16 @@ export type Command =
   | { type: 'page.setKind'; id: PageId; kind: PageKind; now: number }
   // merges values into a database row, null clears a value
   | { type: 'page.setProperties'; id: PageId; values: Record<string, PropValue>; now: number }
+  // replaces a page's database values, its other frontmatter, or both
+  | {
+      type: 'page.setFields';
+      id: PageId;
+      properties?: Record<string, PropValue>;
+      extra?: Record<string, unknown>;
+      now: number;
+    }
   | { type: 'database.set'; id: PageId; database: DatabaseDef; now: number }
   | { type: 'pages.insert'; pages: PageMeta[]; docs: Record<PageId, DocNode> };
-
-export type CommandType = Command['type'];
 
 // records touched by a command, storage writes exactly these
 export interface Changes {
@@ -203,6 +209,23 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
         else return fail('Invalid property value.');
       }
       return updatePage(state, { ...page.value, properties, updatedAt: command.now });
+    }
+    case 'page.setFields': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      const next = { ...page.value, updatedAt: command.now };
+      if (command.properties !== undefined) {
+        const properties: Record<string, PropValue> = {};
+        for (const [key, value] of Object.entries(command.properties ?? {})) {
+          if (!ID_PATTERN.test(key)) return fail('Invalid property.');
+          if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) continue;
+          if (!validValue(value)) return fail('Invalid property value.');
+          properties[key] = value;
+        }
+        next.properties = properties;
+      }
+      if (command.extra !== undefined) next.extra = normalizeExtra(command.extra);
+      return updatePage(state, next);
     }
     case 'database.set': {
       const page = requirePage(state, command.id);

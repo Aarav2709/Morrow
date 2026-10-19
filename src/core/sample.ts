@@ -711,6 +711,17 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           ],
           ['Or click ', k('+'), ' next to Pages in the sidebar and choose Database.'],
           ['Import a CSV file from ', b('Import'), ' to turn a spreadsheet into a database.'],
+          [
+            'Already have a folder of notes? Open its menu and choose ',
+            b('Turn subpages into a database'),
+            '. Each note becomes a row, and the properties at the top of the notes become columns.',
+          ],
+        ),
+        h(1, 'Properties on any page'),
+        p(
+          'Pages outside a database can have properties too. Hover under a page’s title and choose ',
+          b('Add property'),
+          '. They are saved at the top of the file the way other Markdown apps write them, so notes from Obsidian show theirs straight away. Move a page into a database and its properties become columns, move it out and they stay with the page.',
         ),
       ),
     ),
@@ -944,7 +955,9 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           ' and turn on sync on two computers on the same network. Pair them once with the code one of them shows, and from then on they keep each other up to date directly, with no cloud in between. When both change the same page, both versions are kept so nothing is lost.',
         ),
         p(
-          'You can also put the vault folder in any sync service you already trust, such as a synced cloud drive.',
+          'To sync anywhere, even away from home, keep the vault in a cloud folder you already use. ',
+          b('Settings'),
+          ' finds your Dropbox, iCloud Drive, Google Drive, OneDrive, Syncthing or Nextcloud folder and moves the vault into it, and that app does the syncing. If a page changes on two computers at once, the copy it keeps is marked so you can compare the two side by side.',
         ),
         h(1, 'Bring your notes in'),
         bullets(

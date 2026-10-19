@@ -1,17 +1,40 @@
-import { newOption } from '../../../core/database';
+import type { Command } from '../../../core/commands';
+import { newOption, rowsOf } from '../../../core/database';
 import type { DatabaseDef, PageId, PropDef, PropValue, SelectOption, ViewDef } from '../../../core/model';
+import { adoptRows } from '../../../core/properties';
 import { newId } from '../../platform/files';
-import { getState, run } from '../../workspace';
+import { getState, run, runAll } from '../../workspace';
 
 export function databaseOf(id: PageId): DatabaseDef | null {
   return getState().pages[id]?.database ?? null;
 }
 
-// every change to a database's properties and views goes through here as one command
-export function updateDatabase(id: PageId, change: (database: DatabaseDef) => DatabaseDef): boolean {
+// every change to a database's properties and views goes through here as one step. rows whose frontmatter
+// has a key named like a property, such as one just added, get that value in it
+export function updateDatabase(
+  id: PageId,
+  change: (database: DatabaseDef) => DatabaseDef,
+  addKeys: string[] = [],
+): boolean {
   const current = databaseOf(id);
   if (!current) return false;
-  return run({ type: 'database.set', id, database: change(current), now: Date.now() }).ok;
+  const adopted = adoptRows(change(current), rowsOf(getState(), id), newId, addKeys);
+  const now = Date.now();
+  return runAll([
+    { type: 'database.set', id, database: adopted.database, now },
+    ...adopted.rows.map((row): Command => ({
+      type: 'page.setFields',
+      id: row.id,
+      properties: row.properties,
+      extra: row.extra,
+      now,
+    })),
+  ]).ok;
+}
+
+// turns frontmatter keys the rows already have into columns, with a type that fits their values
+export function addColumnsFromPages(id: PageId, keys: string[]): boolean {
+  return updateDatabase(id, (database) => database, keys);
 }
 
 export function updateProp(dbId: PageId, propId: string, change: (prop: PropDef) => PropDef): void {

@@ -241,8 +241,6 @@ const FUNCTIONS: Record<string, (args: FormulaValue[], now: Date) => FormulaValu
   day: ([date = null]) => toDate(date)?.getDate() ?? null,
 };
 
-export const FORMULA_FUNCTIONS = ['prop', ...Object.keys(FUNCTIONS)];
-
 export function evaluateFormula(
   expr: Expr,
   prop: (name: string) => FormulaValue,

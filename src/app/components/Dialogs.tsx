@@ -1,45 +1,28 @@
-import { Download, FileUp, FolderArchive, FolderOpen, HardDrive, Paperclip, Upload } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageId } from '../../core/model';
 import { foldText } from '../../core/search';
 import { ancestorsOf, childrenOf, flattenTree, isDescendantOf } from '../../core/tree';
 import { ACTIONS, formatShortcut } from '../actions';
-import { AssistantSettingsSection } from '../assistant/AssistantSettings';
-import {
-  deleteUnusedFiles,
-  exportAllMarkdown,
-  exportBackup,
-  expandPage,
-  importMarkdown,
-  restoreBackup,
-  unusedFiles,
-} from '../operations';
-import { formatBytes } from '../platform/attachments';
-import { desktop } from '../platform/desktop';
-import { setPreferences, usePreferences } from '../platform/preferences';
-import { ACCENT_LABELS, ACCENTS } from '../platform/preferences';
-import type { PageWidth, StartPage, ThemePreference, WritingFont } from '../platform/preferences';
-import { copyLegacyInto, legacyPageCount } from '../legacy';
-import { closeDialog, toast, useUi } from '../ui';
-import { previewCustomCss, saveCustomCss, useCustomCss } from '../customCss';
-import { chooseVaultFolder } from '../vaults';
-import { getSession, run, useWorkspace } from '../workspace';
-import { EmojiPicker } from './EmojiPicker';
-import { HistoryDialog } from './HistoryDialog';
+import { expandPage, movePage } from '../operations';
+import { closeDialog, useUi } from '../ui';
+import { run, useWorkspace } from '../workspace';
 import { CaptureDialog } from './CaptureDialog';
+import { EmojiPicker } from './EmojiPicker';
 import { EncryptDialog } from './EncryptDialog';
-import { SourceDialog } from './SourceDialog';
-import { PairDialog, SyncSection } from './SyncSettings';
-import { TemplateDialog } from './TemplateDialog';
+import { HistoryDialog } from './HistoryDialog';
 import { Dialog } from './primitives';
+import { SettingsDialog } from './Settings';
+import { SourceDialog } from './SourceDialog';
+import { PairDialog } from './SyncSettings';
+import { TemplateDialog } from './TemplateDialog';
 
 export function Dialogs() {
   const { dialog } = useUi();
   if (!dialog) return null;
   switch (dialog.kind) {
     case 'settings':
-      return <SettingsDialog />;
+      return <SettingsDialog section={dialog.section} />;
     case 'shortcuts':
       return <ShortcutsDialog />;
     case 'move':
@@ -100,280 +83,6 @@ export function Dialogs() {
         </Dialog>
       );
   }
-}
-
-function Choice<T extends string>({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: T;
-  options: Array<[T, string]>;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="setting-row">
-      <span className="setting-label" id={`setting-${label}`}>
-        {label}
-      </span>
-      <div className="segmented" role="radiogroup" aria-labelledby={`setting-${label}`}>
-        {options.map(([option, text]) => (
-          <button
-            key={option}
-            type="button"
-            role="radio"
-            aria-checked={value === option}
-            className={value === option ? 'is-active' : ''}
-            onClick={() => onChange(option)}
-          >
-            {text}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SettingsDialog() {
-  const prefs = usePreferences();
-  const [legacy, setLegacy] = useState(0);
-  const vault = getSession().location;
-
-  useEffect(() => {
-    if (vault)
-      void legacyPageCount()
-        .then(setLegacy)
-        .catch(() => setLegacy(0));
-  }, [vault]);
-
-  return (
-    <Dialog title="Settings" size="large" onClose={closeDialog}>
-      <section className="settings-section">
-        <h3>You</h3>
-        <label className="setting-row">
-          <span className="setting-label">
-            Your name
-            <span className="muted small"> The home page greets you with it</span>
-          </span>
-          <input
-            className="text-input small name-input"
-            placeholder="Optional"
-            aria-label="Your name"
-            maxLength={60}
-            defaultValue={prefs.name}
-            onBlur={(event) => setPreferences({ name: event.target.value.trim() })}
-            onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
-          />
-        </label>
-      </section>
-
-      <section className="settings-section">
-        <h3>Daily notes</h3>
-        <Choice<StartPage>
-          label="When Morrow opens"
-          value={prefs.startPage}
-          options={[
-            ['today', "Today's note"],
-            ['home', 'Home'],
-            ['last', 'Where I left off'],
-          ]}
-          onChange={(startPage) => setPreferences({ startPage })}
-        />
-        <p className="muted small">
-          Press {formatShortcut('Alt+D')} for today's note from anywhere in Morrow, or{' '}
-          {formatShortcut('Mod+Alt+M')} to jot something into it from any app.
-        </p>
-      </section>
-
-      <section className="settings-section">
-        <h3>Appearance</h3>
-        <Choice<ThemePreference>
-          label="Theme"
-          value={prefs.theme}
-          options={[
-            ['system', 'System'],
-            ['light', 'Light'],
-            ['dark', 'Dark'],
-          ]}
-          onChange={(theme) => setPreferences({ theme })}
-        />
-        <Choice<WritingFont>
-          label="Writing font"
-          value={prefs.font}
-          options={[
-            ['serif', 'Serif'],
-            ['sans', 'Sans'],
-            ['mono', 'Mono'],
-          ]}
-          onChange={(font) => setPreferences({ font })}
-        />
-        <Choice<PageWidth>
-          label="Page width"
-          value={prefs.width}
-          options={[
-            ['comfortable', 'Comfortable'],
-            ['wide', 'Wide'],
-          ]}
-          onChange={(width) => setPreferences({ width })}
-        />
-        <div className="setting-row">
-          <span className="setting-label" id="setting-accent">
-            Accent colour
-          </span>
-          <div className="accent-swatches" role="radiogroup" aria-labelledby="setting-accent">
-            {ACCENTS.map((accent) => (
-              <button
-                key={accent}
-                type="button"
-                role="radio"
-                aria-checked={prefs.accent === accent}
-                aria-label={ACCENT_LABELS[accent]}
-                title={ACCENT_LABELS[accent]}
-                className={`accent-swatch accent-${accent}`}
-                onClick={() => setPreferences({ accent })}
-              />
-            ))}
-          </div>
-        </div>
-        <label className="setting-row checkbox-row">
-          <span className="setting-label">
-            Colourful pages
-            <span className="muted small"> Coloured headings, lists, icons and tags</span>
-          </span>
-          <input
-            type="checkbox"
-            checked={prefs.colorful}
-            onChange={(event) => setPreferences({ colorful: event.target.checked })}
-          />
-        </label>
-        <CustomCssSetting />
-      </section>
-
-      <AssistantSettingsSection />
-
-      <section className="settings-section">
-        <h3>Your data</h3>
-        <p className="muted">
-          Every page is a Markdown file in this folder. Open it in any app, sync it with any tool, or keep it
-          under version control. Morrow never sends anything anywhere, unless you turn on the assistant below.
-        </p>
-        <div className="data-path">
-          <HardDrive size={14} /> <code>{vault}</code>
-          <button type="button" className="button small" onClick={() => void desktop?.vault?.reveal('')}>
-            <FolderOpen size={14} /> Show
-          </button>
-          <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
-            Open another
-          </button>
-        </div>
-        {legacy > 0 && (
-          <p className="muted small">
-            {legacy} page{legacy === 1 ? '' : 's'} from an earlier version of Morrow are still in the app's
-            own storage.{' '}
-            <button
-              type="button"
-              className="link-button"
-              onClick={() =>
-                void copyLegacyInto(getSession()).then((result) => {
-                  if (result.ok) {
-                    toast(`Copied ${result.value} page${result.value === 1 ? '' : 's'} into this vault.`);
-                    setLegacy(0);
-                  } else toast(result.error, { tone: 'error' });
-                })
-              }
-            >
-              Copy them into this vault
-            </button>
-          </p>
-        )}
-        <div className="data-grid">
-          <button type="button" className="data-action" onClick={() => void exportBackup()}>
-            <Download size={18} strokeWidth={1.5} />
-            <span>
-              <strong>Save a backup</strong>
-              <span className="muted">
-                One file with every page, including the trash. Morrow can restore it.
-              </span>
-            </span>
-          </button>
-          <button type="button" className="data-action" onClick={() => void restoreBackup()}>
-            <Upload size={18} strokeWidth={1.5} />
-            <span>
-              <strong>Restore a backup</strong>
-              <span className="muted">
-                Adds the pages from a backup. Existing pages are never overwritten.
-              </span>
-            </span>
-          </button>
-          <button type="button" className="data-action" onClick={() => void exportAllMarkdown()}>
-            <FolderArchive size={18} strokeWidth={1.5} />
-            <span>
-              <strong>Export as Markdown</strong>
-              <span className="muted">A zip of plain text files, readable by almost any app.</span>
-            </span>
-          </button>
-          <button type="button" className="data-action" onClick={() => void importMarkdown()}>
-            <FileUp size={18} strokeWidth={1.5} />
-            <span>
-              <strong>Import Markdown</strong>
-              <span className="muted">Turn .md files into pages. Links like [[Page]] are connected.</span>
-            </span>
-          </button>
-        </div>
-      </section>
-
-      <SyncSection />
-      <AttachmentsSection />
-
-      <section className="settings-section">
-        <h3>About</h3>
-        <p className="muted">
-          Morrow {desktop?.version ?? __APP_VERSION__} is free and open source under the Apache License 2.0.
-          It has no accounts, no tracking, no ads and no AI features, by design.
-        </p>
-      </section>
-    </Dialog>
-  );
-}
-
-function AttachmentsSection() {
-  const [summary, setSummary] = useState<{ count: number; bytes: number; unused: number } | null>(null);
-  const refresh = () => {
-    void Promise.all([getSession().listFiles(), unusedFiles()]).then(([files, unused]) =>
-      setSummary({
-        count: files.length,
-        bytes: files.reduce((sum, file) => sum + file.size, 0),
-        unused: unused.length,
-      }),
-    );
-  };
-  useEffect(refresh, []);
-  return (
-    <section className="settings-section">
-      <h3>Images and files</h3>
-      <div className="setting-row">
-        <span className="setting-label">
-          <Paperclip size={14} />{' '}
-          {summary
-            ? `${summary.count} file${summary.count === 1 ? '' : 's'}, ${formatBytes(summary.bytes)}`
-            : 'Counting…'}
-        </span>
-        <button
-          type="button"
-          className="button small"
-          disabled={!summary?.unused}
-          onClick={() => void deleteUnusedFiles().then(refresh)}
-        >
-          {summary?.unused ? `Remove ${summary.unused} unused` : 'No unused files'}
-        </button>
-      </div>
-      <p className="muted small">
-        Files stay while any page, trashed page or page version uses them. Backups include them.
-      </p>
-    </section>
-  );
 }
 
 function ShortcutsDialog() {
@@ -445,13 +154,7 @@ function MoveDialog({ pageId }: { pageId: PageId }) {
 
   if (!page) return null;
   const move = (parentId: PageId | null) => {
-    const result = run({
-      type: 'page.move',
-      id: pageId,
-      parentId,
-      index: childrenOf(state.pages, parentId).length,
-    });
-    if (result.ok) {
+    if (movePage(pageId, parentId, childrenOf(state.pages, parentId).length)) {
       expandPage(parentId);
       closeDialog();
     }
@@ -501,72 +204,5 @@ function MoveDialog({ pageId }: { pageId: PageId }) {
         {targets.length === 0 && query && <li className="muted move-empty">No matching pages.</li>}
       </ul>
     </Dialog>
-  );
-}
-
-// styles of your own, saved in the vault and shown as you type
-function CustomCssSetting() {
-  const saved = useCustomCss();
-  const [draft, setDraft] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const text = draft ?? saved;
-  return (
-    <div className="setting-block">
-      <button
-        type="button"
-        className="setting-row link-row"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
-      >
-        <span className="setting-label">
-          Custom CSS
-          <span className="muted small"> Restyle anything, saved in your vault as .morrow/style.css</span>
-        </span>
-        <span className="muted small">{saved.trim() ? 'On' : 'None'}</span>
-      </button>
-      {open && (
-        <>
-          <textarea
-            className="text-input css-input"
-            spellCheck={false}
-            aria-label="Custom CSS"
-            placeholder={'.page-title { letter-spacing: -0.03em; }\n:root { --accent: #e5484d; }'}
-            value={text}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              previewCustomCss(event.target.value);
-            }}
-          />
-          <div className="setting-actions">
-            <button
-              type="button"
-              className="button primary small"
-              disabled={draft === null || draft === saved}
-              onClick={() =>
-                void saveCustomCss(text)
-                  .then(() => {
-                    setDraft(null);
-                    toast('Custom CSS saved.');
-                  })
-                  .catch(() => toast('Could not save the CSS.', { tone: 'error' }))
-              }
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              className="button small"
-              disabled={draft === null}
-              onClick={() => {
-                setDraft(null);
-                previewCustomCss(saved);
-              }}
-            >
-              Discard changes
-            </button>
-          </div>
-        </>
-      )}
-    </div>
   );
 }

@@ -1,10 +1,14 @@
-import { Laptop, Link2, RefreshCw, Trash2, Wifi, WifiOff } from 'lucide-react';
+import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import { commitEditors } from '../editor/commits';
 import { desktop } from '../platform/desktop';
-import type { SyncStatus } from '../platform/desktop';
+import type { CloudFolder, SyncStatus } from '../platform/desktop';
 import { copyVaultFrom, syncWith } from '../sync';
-import { closeDialog, openDialog, toast } from '../ui';
-import { Dialog, relativeTime } from './primitives';
+import { switchVault } from '../vaults';
+import { getSession } from '../workspace';
+import { closeDialog, confirmAction, openDialog, toast } from '../ui';
+import { Dialog, relativeTime, Switch } from './primitives';
+import { SettingRow, SettingsGroup } from './SettingsRows';
 
 function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -26,7 +30,8 @@ function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
   return [status, refresh];
 }
 
-export function SyncSection() {
+// keeps this vault the same on your own computers on the same network, with no server in between
+export function NetworkSettings() {
   const [status, refresh] = useSyncStatus();
   const [busy, setBusy] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
@@ -54,24 +59,23 @@ export function SyncSection() {
   };
 
   return (
-    <section className="settings-section">
-      <h3>Sync between your computers</h3>
-      <p className="muted">
-        Keeps this vault the same on your own computers while they are on the same network. Nothing goes
-        through a server and every transfer is encrypted. When a page changed on both, both versions are kept.
-      </p>
-      <label className="setting-row checkbox-row">
-        <span className="setting-label">Sync on this network</span>
-        <input
-          type="checkbox"
+    <SettingsGroup
+      title="Your computers"
+      help="Encrypted and direct, with no server. When a page changed on both, both versions are kept."
+    >
+      <SettingRow
+        label="Sync on this network"
+        help="Pair once, then sync whenever both are on the same network."
+      >
+        <Switch
+          label="Sync on this network"
           checked={status.enabled}
-          onChange={(event) => void desktop?.sync?.enable(event.target.checked).then(refresh)}
+          onChange={(enabled) => void desktop?.sync?.enable(enabled).then(refresh)}
         />
-      </label>
-      <div className="setting-row">
-        <span className="setting-label">This computer is called</span>
+      </SettingRow>
+      <SettingRow label="This computer's name">
         <input
-          className="text-input small sync-name"
+          className="text-input small settings-input"
           aria-label="Name of this computer"
           value={name ?? status.name}
           onChange={(event) => setName(event.target.value)}
@@ -79,54 +83,149 @@ export function SyncSection() {
             if (name !== null && name.trim()) void desktop?.sync?.setName(name).then(refresh);
             setName(null);
           }}
+          onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
         />
-      </div>
-      {status.peers.length > 0 && (
-        <ul className="sync-peers">
-          {status.peers.map((peer) => (
-            <li key={peer.id} className="sync-peer">
-              <Laptop size={16} />
-              <span className="sync-peer-name">
-                {peer.name}
-                <span className="muted small">
-                  {peer.online ? <Wifi size={11} /> : <WifiOff size={11} />}{' '}
-                  {peer.online ? 'On this network' : 'Not seen lately'}
-                  {peer.lastSync ? ` · synced ${relativeTime(peer.lastSync)}` : ' · never synced'}
-                </span>
+      </SettingRow>
+      {status.peers.map((peer) => (
+        <SettingRow
+          key={peer.id}
+          label={
+            <span className="settings-peer">
+              <Laptop size={14} /> {peer.name}
+            </span>
+          }
+          help={`${peer.online ? 'On this network' : 'Not seen lately'}, ${
+            peer.lastSync ? `synced ${relativeTime(peer.lastSync)}` : 'never synced'
+          }`}
+        >
+          <button
+            type="button"
+            className="button small"
+            disabled={!peer.reachable || !status.enabled || busy !== null}
+            onClick={() => void syncNow(peer.id, peer.name)}
+          >
+            <RefreshCw size={13} className={busy === peer.id ? 'spin' : ''} /> Sync now
+          </button>
+          <button
+            type="button"
+            className="button small"
+            disabled={!peer.reachable || !status.enabled}
+            title="Copy the vault open on that computer into a new folder here"
+            onClick={() => void copyHere(peer.id)}
+          >
+            Copy its vault
+          </button>
+          <button
+            type="button"
+            className="icon-button small"
+            aria-label={`Forget ${peer.name}`}
+            title="Forget this computer"
+            onClick={() => void desktop?.sync?.forget(peer.id).then(refresh)}
+          >
+            <Trash2 size={14} />
+          </button>
+        </SettingRow>
+      ))}
+      <SettingRow label="Add a computer" help="Each shows a code the other one types in.">
+        <button type="button" className="button small" onClick={() => openDialog({ kind: 'pair' })}>
+          <Link2 size={13} /> Pair
+        </button>
+      </SettingRow>
+    </SettingsGroup>
+  );
+}
+
+// a vault is a plain folder, so dropbox, icloud, google drive, onedrive or syncthing can carry it between
+// computers. morrow only finds their folders and copies the vault in, their own apps do the syncing
+export function CloudSettings() {
+  const [cloud, setCloud] = useState<{ folders: CloudFolder[]; inside: CloudFolder | null } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    void desktop?.vault
+      ?.cloud()
+      .then(setCloud)
+      .catch(() => undefined);
+  }, []);
+  if (!desktop?.vault || !cloud) return null;
+
+  const copyInto = (dir: string | null | undefined, where = 'that folder') => {
+    if (!dir) return;
+    confirmAction({
+      title: `Move this vault to ${where}?`,
+      body: `Morrow copies the vault, history included, into ${dir} and opens it from there. The current folder stays as it is, so you can delete it once you have checked the copy.`,
+      confirmLabel: 'Copy and open',
+      onConfirm: () => void copyAndOpen(dir),
+    });
+  };
+  const copyAndOpen = async (dir: string) => {
+    setBusy(true);
+    try {
+      commitEditors();
+      await getSession().flush();
+      const result = await desktop!.vault!.copyInto(dir);
+      if (result.ok && result.path) await switchVault(result.path);
+      else toast(result.error ?? 'The vault could not be copied.', { tone: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SettingsGroup
+      title="Cloud folder"
+      help="Their app does the syncing, Morrow never connects to it. Conflicted copies get a banner to compare them."
+    >
+      {cloud.inside ? (
+        <SettingRow
+          label={
+            <span className="settings-peer">
+              <Check size={14} className="settings-ok" /> Syncing through {cloud.inside.provider}
+            </span>
+          }
+          help="Open this same folder on your other computers."
+        />
+      ) : (
+        cloud.folders.map((folder) => (
+          <SettingRow
+            key={folder.path}
+            label={
+              <span className="settings-peer">
+                <Cloud size={14} /> {folder.provider}
               </span>
-              <button
-                type="button"
-                className="button small"
-                disabled={!peer.reachable || !status.enabled || busy !== null}
-                onClick={() => void syncNow(peer.id, peer.name)}
-              >
-                <RefreshCw size={13} className={busy === peer.id ? 'spin' : ''} /> Sync now
-              </button>
-              <button
-                type="button"
-                className="button small"
-                disabled={!peer.reachable || !status.enabled}
-                title="Copy the vault open on that computer into a new folder here"
-                onClick={() => void copyHere(peer.id)}
-              >
-                Copy its vault here
-              </button>
-              <button
-                type="button"
-                className="icon-button small"
-                aria-label={`Forget ${peer.name}`}
-                onClick={() => void desktop?.sync?.forget(peer.id).then(refresh)}
-              >
-                <Trash2 size={14} />
-              </button>
-            </li>
-          ))}
-        </ul>
+            }
+            help={<span className="settings-path">{folder.path}</span>}
+          >
+            <button
+              type="button"
+              className="button small"
+              disabled={busy}
+              onClick={() => copyInto(folder.path, folder.provider)}
+            >
+              Move vault here
+            </button>
+          </SettingRow>
+        ))
       )}
-      <button type="button" className="button small" onClick={() => openDialog({ kind: 'pair' })}>
-        <Link2 size={14} /> Pair a computer
-      </button>
-    </section>
+      {!cloud.inside && (
+        <SettingRow
+          label={cloud.folders.length ? 'Another folder' : 'A synced folder'}
+          help={
+            cloud.folders.length
+              ? 'Any folder a sync app keeps up to date.'
+              : 'No cloud app was found. Pick any folder one syncs.'
+          }
+        >
+          <button
+            type="button"
+            className="button small"
+            disabled={busy}
+            onClick={() => void desktop?.vault?.choose().then((dir) => copyInto(dir))}
+          >
+            Choose…
+          </button>
+        </SettingRow>
+      )}
+    </SettingsGroup>
   );
 }
 

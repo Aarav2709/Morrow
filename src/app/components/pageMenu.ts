@@ -1,6 +1,7 @@
 import {
   ArrowRightLeft,
   Copy,
+  Database,
   FolderOpen,
   Lock,
   LockOpen,
@@ -31,10 +32,13 @@ import {
   saveAsTemplate,
   toggleFavorite,
   trashPage,
+  turnIntoDatabase,
+  turnIntoPage,
 } from '../operations';
 import { desktop } from '../platform/desktop';
 import { navigate } from '../router';
 import { getUi, openDialog, setUi } from '../ui';
+import { childrenOf } from '../../core/tree';
 import { getSession, getState } from '../workspace';
 import type { MenuEntry } from './Menu';
 
@@ -59,6 +63,21 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     { label: 'Open local graph', icon: Network, onSelect: () => navigate({ name: 'graph', focus: pageId }) },
     ...(page.kind === 'page'
       ? [{ label: 'Save as template', icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }]
+      : []),
+    // a folder of notes becomes a database of them, like a notion database sitting on the folder
+    ...(page.kind === 'page' && !page.dailyDate && !page.encrypted && !getSession().unreadable.has(pageId)
+      ? [
+          {
+            label: childrenOf(getState().pages, pageId).length
+              ? 'Turn subpages into a database'
+              : 'Turn into database',
+            icon: Database,
+            onSelect: () => turnIntoDatabase(pageId),
+          },
+        ]
+      : []),
+    ...(page.kind === 'database'
+      ? [{ label: 'Turn into page', icon: FileText, onSelect: () => turnIntoPage(pageId) }]
       : []),
     ...(desktop?.vault && getSession().pathOf(pageId) !== null
       ? [{ label: 'Show in folder', icon: FolderOpen, onSelect: () => revealPage(pageId) }]

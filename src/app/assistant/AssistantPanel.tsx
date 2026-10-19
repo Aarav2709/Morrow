@@ -212,7 +212,7 @@ export function AssistantPanel() {
             className="icon-button"
             aria-label="Assistant settings"
             title="Assistant settings"
-            onClick={() => openDialog({ kind: 'settings' })}
+            onClick={() => openDialog({ kind: 'settings', section: 'assistant' })}
           >
             <Settings size={15} />
           </button>
@@ -231,7 +231,11 @@ export function AssistantPanel() {
         {!ready && settings && (
           <div className="assistant-empty">
             <p>Add an API key and pick a model to start.</p>
-            <button type="button" className="button small" onClick={() => openDialog({ kind: 'settings' })}>
+            <button
+              type="button"
+              className="button small"
+              onClick={() => openDialog({ kind: 'settings', section: 'assistant' })}
+            >
               Open settings
             </button>
           </div>

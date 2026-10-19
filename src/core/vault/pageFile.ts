@@ -4,10 +4,16 @@ import { isRecord } from '../doc';
 import { normalizeDatabase } from '../migrations';
 import { COLORS, displayTitle, MAX_ICON_LENGTH, MAX_TITLE_LENGTH, validCover } from '../model';
 import type { DatabaseDef, PageKind, PageMeta, PropDef, PropValue, SelectOption } from '../model';
-import { joinFrontmatter, readTags, splitFrontmatter } from './frontmatter';
+import {
+  findKey,
+  joinFrontmatter,
+  MANAGED_KEYS,
+  readTags,
+  splitFrontmatter,
+  updateFrontmatter,
+} from './frontmatter';
 
-// frontmatter keys morrow reads and writes, every other key is kept exactly as it was
-export const MANAGED_KEYS = new Set(['title', 'icon', 'kind', 'tags', 'tag', 'database', 'cover']);
+export { MANAGED_KEYS };
 const FILE_KINDS = new Set<PageKind>(['journal', 'templates', 'database']);
 // a database property can not use a name morrow already gives a meaning to
 export function reservedPropertyName(name: string): boolean {
@@ -17,11 +23,10 @@ export function reservedPropertyName(name: string): boolean {
 export interface PageSource {
   // frontmatter keys in the order the file had them
   keyOrder: string[];
-  // frontmatter values morrow does not manage
-  extra: Record<string, unknown>;
   // the frontmatter as it was read, and its exact text, reused when nothing in it changed
   rawData: Record<string, unknown> | null;
   rawHead: string;
+  rawYaml: string;
   // the body as read from disk, kept while the page has not been edited in morrow
   body: string | null;
   // other names the page answers to in [[links]], from obsidian's aliases property
@@ -37,6 +42,8 @@ export interface ReadPage {
   database: DatabaseDef | null;
   // every frontmatter value, property values are mapped once the parent database is known
   data: Record<string, unknown>;
+  // the values morrow does not manage, database rows take theirs out of here
+  extra: Record<string, unknown>;
   source: PageSource;
   body: string;
   error: string | null;
@@ -67,11 +74,12 @@ export function readPageText(text: string): ReadPage {
     tags: readTags(data.tags ?? data.tag),
     database: kind === 'database' ? normalizeDatabase(data.database) : null,
     data,
+    extra,
     source: {
       keyOrder: Object.keys(data),
-      extra,
       rawData: split.data,
       rawHead: split.head,
+      rawYaml: split.yaml,
       body: split.body,
       aliases,
     },
@@ -109,14 +117,25 @@ export function managedFrontmatter(
 // keeps the order and unknown keys of the existing frontmatter, adds new keys at the end
 export function composeFrontmatter(
   managed: Map<string, unknown>,
+  extra: Record<string, unknown>,
   source: PageSource | null,
 ): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const key of source?.keyOrder ?? []) {
-    if (managed.has(key)) out[key] = managed.get(key);
-    else if (source && Object.hasOwn(source.extra, key)) out[key] = source.extra[key];
+  const keyOrder = source?.keyOrder ?? [];
+  // morrow's own values win over other keys of the same name
+  const values = new Map<string, unknown>(managed);
+  for (const [key, value] of Object.entries(extra)) if (!values.has(key)) values.set(key, value);
+  // a key keeps the spelling its file already uses, so date stays date rather than turning into Date
+  const spellings = new Map<string, string>();
+  for (const key of keyOrder) if (!spellings.has(key.toLowerCase())) spellings.set(key.toLowerCase(), key);
+  const named = new Map<string, unknown>();
+  for (const [key, value] of values) {
+    const existing = keyOrder.includes(key) ? key : spellings.get(key.toLowerCase());
+    const spelling = existing && (existing === key || !values.has(existing)) ? existing : key;
+    named.set(named.has(spelling) ? key : spelling, value);
   }
-  for (const [key, value] of managed) if (!Object.hasOwn(out, key)) out[key] = value;
+  const out: Record<string, unknown> = {};
+  for (const key of keyOrder) if (named.has(key)) out[key] = named.get(key);
+  for (const [key, value] of named) if (!Object.hasOwn(out, key)) out[key] = value;
   return out;
 }
 
@@ -127,6 +146,10 @@ export function renderPageText(
 ): string {
   if (source?.rawData && source.rawHead && sameValue(frontmatter, source.rawData))
     return source.rawHead + body;
+  if (source?.rawData && source.rawHead) {
+    const updated = updateFrontmatter(source.rawYaml, source.rawData, frontmatter, body);
+    if (updated !== null) return updated;
+  }
   return joinFrontmatter(frontmatter, body);
 }
 
@@ -226,6 +249,27 @@ export function readProperty(
       const text = scalarText(raw);
       return { value: text || null, added };
     }
+  }
+}
+
+// moves a row's values for the database's properties out of its other frontmatter, matching names the way
+// obsidian does, without caring about case. adds the select options it meets to the properties it is given
+export function takeProperties(
+  database: DatabaseDef,
+  extra: Record<string, unknown>,
+  properties: Record<string, PropValue>,
+  newOptionId: () => string,
+): void {
+  for (const prop of database.properties) {
+    if (prop.type === 'formula') continue;
+    const key = findKey(extra, prop.name);
+    if (key === undefined) continue;
+    const raw = extra[key];
+    const read = readProperty(prop, raw, newOptionId);
+    if (read.added.length) prop.options.push(...read.added);
+    if (read.value !== null) properties[prop.id] = read.value;
+    // a value the property can not hold, like a date written in words, stays so saving never drops it
+    if (read.value !== null || raw === null || raw === '') delete extra[key];
   }
 }
 

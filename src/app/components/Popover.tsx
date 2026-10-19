@@ -30,6 +30,8 @@ export function Popover({
     const element = ref.current;
     if (!element) return;
     const reference = anchor instanceof HTMLElement ? anchor : { getBoundingClientRect: () => anchor };
+    // focus waits until the panel is placed and shown, a hidden element can not take it
+    let focused = false;
     const place = () =>
       void computePosition(reference, element, {
         placement,
@@ -39,12 +41,13 @@ export function Popover({
         element.style.left = `${x}px`;
         element.style.top = `${y}px`;
         element.style.visibility = 'visible';
+        if (focused) return;
+        focused = true;
+        element.querySelector<HTMLElement>('[data-autofocus], input, select, button')?.focus();
       });
     place();
     const observer = new ResizeObserver(place);
     observer.observe(element);
-    const focusable = element.querySelector<HTMLElement>('[data-autofocus], input, select, button');
-    focusable?.focus();
     return () => observer.disconnect();
   }, [anchor, placement]);
 

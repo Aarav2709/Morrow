@@ -264,6 +264,7 @@ function readPage(state: WorkspaceState, found: PageMeta): string {
         lines.push(`${prop.name}: ${JSON.stringify(value)}`);
     }
   }
+  for (const [key, value] of Object.entries(found.extra)) lines.push(`${key}: ${JSON.stringify(value)}`);
   if (found.kind === 'canvas') {
     lines.push('', 'This is a canvas of cards and drawings. Its cards are not readable as text here.');
     return lines.join('\n');

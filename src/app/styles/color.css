@@ -807,36 +807,6 @@ button.home-stat:hover {
 
 /* sync */
 
-.sync-name {
-  width: 220px;
-}
-.sync-peers {
-  list-style: none;
-  margin: 8px 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.sync-peer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-.sync-peer-name {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.sync-peer-name .small {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
 .pair-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1309,3 +1279,5 @@ button.home-stat:hover {
 .canvas-node .emoji-img {
   margin-right: 6px;
 }
+
+/* sync through a cloud app's folder */

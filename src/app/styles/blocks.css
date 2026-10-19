@@ -89,6 +89,24 @@
 
 .code-block.is-mermaid {
   position: relative;
+  container-type: inline-size;
+}
+/* editing a diagram puts its code beside the drawing when there is room, so changes show as you type */
+@container (min-width: 620px) {
+  .code-block.is-mermaid:not(.hide-code) .code-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: stretch;
+  }
+  .code-block.is-mermaid:not(.hide-code) .code-split > pre {
+    margin: 0;
+  }
+  .code-block.is-mermaid:not(.hide-code) .mermaid-diagram {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
 }
 .code-block.hide-code pre {
   display: none;
@@ -461,11 +479,6 @@ html.is-printing .split-resizer {
 
 /* custom css setting */
 
-.setting-row.link-row {
-  width: 100%;
-  text-align: left;
-  border-radius: var(--radius-sm);
-}
 .css-input {
   width: 100%;
   min-height: 160px;
@@ -474,11 +487,6 @@ html.is-printing .split-resizer {
   font-size: 12.5px;
   line-height: 1.6;
   resize: vertical;
-}
-.setting-actions {
-  display: flex;
-  gap: 6px;
-  margin: 8px 0 4px;
 }
 
 /* board columns tinted by their group, like notion */
@@ -696,8 +704,4 @@ html.is-printing .split-resizer {
 .prose .inline-database .db-table th > *,
 .prose .inline-database .db-table td > * {
   margin: 0;
-}
-
-.name-input {
-  width: 200px;
 }

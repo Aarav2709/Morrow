@@ -42,7 +42,9 @@ import {
   vaultState,
   writeSyncBase,
   writeSyncedFile,
+  copyVaultInto,
 } from './vault.cjs';
+import { cloudStatus } from './cloud.cjs';
 import { aiTurn, cancelAiTurn, getAiSettings, listAiModels, setAiSettings } from './ai.cjs';
 import type { TurnRequest } from './ai.cjs';
 import {
@@ -420,7 +422,9 @@ function registerVaultIpc(): void {
   handle('ai:turn', (request) => aiTurn(request as TurnRequest));
   handle('ai:cancel', (id) => cancelAiTurn(id));
   handle('vault:state', () => vaultState());
-  handle('vault:choose', () => chooseFolder(mainWindow));
+  handle('vault:choose', (start) => chooseFolder(mainWindow, start));
+  handle('vault:cloud', () => cloudStatus(currentVault()));
+  handle('vault:copy-into', (dir) => copyVaultInto(dir));
   handle('vault:create-default', () => createDefaultVault());
   handle('vault:select', (dir) => selectVault(String(dir)));
   handle('vault:forget', (dir) => forgetVault(String(dir)));

@@ -4,6 +4,7 @@ import type { BrowserWindow } from 'electron';
 import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
 import {
+  cp,
   lstat,
   mkdir,
   readdir,
@@ -17,6 +18,7 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { isInside } from './cloud.cjs';
 
 export type VaultOp =
   | { op: 'write'; path: string; text: string; expect?: string | null }
@@ -132,15 +134,42 @@ export async function forgetVault(dir: string): Promise<void> {
   await writeVaultList(list);
 }
 
-export async function chooseFolder(window: BrowserWindow | null): Promise<string | null> {
+export async function chooseFolder(window: BrowserWindow | null, start?: unknown): Promise<string | null> {
   const options = {
     title: 'Choose a folder for your notes',
     buttonLabel: 'Use this folder',
     properties: ['openDirectory', 'createDirectory'] as Array<'openDirectory' | 'createDirectory'>,
-    defaultPath: app.getPath('documents'),
+    defaultPath:
+      typeof start === 'string' && path.isAbsolute(start) && (await isDirectory(start))
+        ? start
+        : app.getPath('documents'),
   };
   const result = window ? await dialog.showOpenDialog(window, options) : await dialog.showOpenDialog(options);
   return result.canceled ? null : (result.filePaths[0] ?? null);
+}
+
+// copies the open vault, history and all, into another folder such as a cloud app's, and returns the copy
+export async function copyVaultInto(
+  parent: unknown,
+): Promise<{ ok: boolean; path?: string; error?: string }> {
+  if (!root) return { ok: false, error: 'No vault is open.' };
+  if (typeof parent !== 'string' || !path.isAbsolute(parent) || !(await isDirectory(parent)))
+    return { ok: false, error: 'That folder does not exist.' };
+  const from = path.resolve(root);
+  const into = path.resolve(parent);
+  if (isInside(into, from)) return { ok: false, error: 'Choose a folder outside this vault.' };
+  let target = path.join(into, path.basename(from));
+  for (let n = 2; await exists(target); n++) target = path.join(into, `${path.basename(from)} ${n}`);
+  try {
+    await cp(from, target, { recursive: true, errorOnExist: true, force: false, verbatimSymlinks: true });
+  } catch (error) {
+    await rm(target, { recursive: true, force: true }).catch(() => undefined);
+    return {
+      ok: false,
+      error: `The vault could not be copied: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+  return { ok: true, path: target };
 }
 
 // a fresh folder in documents, Morrow, Morrow 2 and so on

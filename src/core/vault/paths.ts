@@ -3,7 +3,6 @@
 export const TRASH_DIR = '.trash';
 export const MORROW_DIR = '.morrow';
 export const ATTACHMENTS_DIR = 'attachments';
-export const PAGE_EXTENSIONS = ['.md', '.canvas'] as const;
 
 export const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif', 'bmp', 'ico']);
 
@@ -94,4 +93,25 @@ export function uniqueName(name: string, used: Set<string>, separator = ' '): st
 
 export function encodePathForUrl(path: string): string {
   return path.split('/').map(encodeURIComponent).join('/');
+}
+
+// the copies sync apps keep when a file changed on two computers at once, and who made them
+const CONFLICT_COPIES: Array<{ pattern: RegExp; app: string }> = [
+  // dropbox and nextcloud: Name (Aarav's conflicted copy 2026-10-19)
+  { pattern: /^(.+?) \([^()]*conflicted copy[^()]*\)$/i, app: 'your sync app' },
+  // syncthing: Name.sync-conflict-20261019-101500-ABCDEFG
+  { pattern: /^(.+?)\.sync-conflict-\d{8}-\d{6}-[A-Z0-9]{7}$/, app: 'Syncthing' },
+  // morrow's own sync between computers
+  { pattern: /^(.+?) \(conflict from [^()]+\)$/, app: 'Morrow sync' },
+];
+
+// the file a conflict copy was made from, or null when the path is not one
+export function conflictOriginal(path: string): { original: string; app: string } | null {
+  const ext = extension(path);
+  const stem = basename(stripExtension(path));
+  for (const { pattern, app } of CONFLICT_COPIES) {
+    const match = pattern.exec(stem);
+    if (match) return { original: joinPath(dirname(path), `${match[1]}${ext ? `.${ext}` : ''}`), app };
+  }
+  return null;
 }

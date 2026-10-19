@@ -1,7 +1,7 @@
 import { cloneDoc, fileIdsInDoc, isRecord } from './doc';
 import { findDailyNote, findJournal } from './daily';
+import { readImportedFile } from './importer';
 import { refreshLinkLabels } from './links';
-import { markdownToPage } from './markdown/parse';
 import { pageToMarkdown } from './markdown/serialize';
 import { displayTitle, newPageMeta, SCHEMA_VERSION } from './model';
 import type { DocNode, FileId, FileMeta, PageId, PageMeta, WorkspaceState } from './model';
@@ -10,6 +10,7 @@ import { errorMessage, fail, ok } from './result';
 import type { Result } from './result';
 import { pageIdByTitle } from './search';
 import { childrenOf, livePages } from './tree';
+import { readPageText } from './vault/pageFile';
 
 export const BACKUP_FORMAT = 'morrow-backup';
 
@@ -170,8 +171,11 @@ export function planMarkdownImport(
   const base = childrenOf(state.pages, parentId).length;
   const drafts = files.map((file) => {
     const fallback = file.name.replace(/\.(md|markdown|mdown|txt)$/i, '').trim() || 'Untitled';
-    const firstLine = /^#\s+(.+)$/m.exec(file.text.split('\n').find((line) => line.trim()) ?? '');
-    return { id: newId(), file, fallback, title: firstLine?.[1]?.trim() ?? fallback };
+    const read = readPageText(file.text);
+    const body = read.error ? file.text : read.body;
+    const firstLine = /^#\s+(.+)$/m.exec(body.split('\n').find((line) => line.trim()) ?? '');
+    const title = (read.error ? null : read.title) ?? firstLine?.[1]?.trim() ?? fallback;
+    return { id: newId(), file, fallback, title };
   });
   const resolvePage = (title: string): PageId | null => {
     const imported = drafts.find((draft) => draft.title.toLowerCase() === title.toLowerCase());
@@ -180,9 +184,16 @@ export function planMarkdownImport(
   const pages: PageMeta[] = [];
   const docs: Record<PageId, DocNode> = {};
   drafts.forEach((draft, index) => {
-    const parsed = markdownToPage(draft.file.text, draft.fallback, { resolvePage });
+    const parsed = readImportedFile(draft.file.text, draft.fallback, { resolvePage });
     pages.push(
-      newPageMeta({ id: draft.id, parentId, title: parsed.title, order: base + index, createdAt: now }),
+      newPageMeta({
+        id: draft.id,
+        parentId,
+        title: parsed.title,
+        order: base + index,
+        createdAt: now,
+        ...parsed.fields,
+      }),
     );
     docs[draft.id] = parsed.doc;
   });

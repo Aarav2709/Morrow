@@ -28,10 +28,11 @@ import {
   impliedTitle,
   managedFrontmatter,
   readPageText,
-  readProperty,
+  takeProperties,
   renderPageText,
 } from '../core/vault/pageFile';
 import type { PageSource } from '../core/vault/pageFile';
+import { splitFrontmatter } from '../core/vault/frontmatter';
 import {
   ATTACHMENTS_DIR,
   basename,
@@ -310,7 +311,7 @@ export class VaultRepository implements WorkspaceRepository {
       placement ? basename(placement.folder) : '',
       parent?.kind === 'database' ? parent.database : null,
     );
-    return managed.size > 0;
+    return managed.size > 0 || Object.keys(page.extra).length > 0;
   }
 
   private render(
@@ -325,10 +326,10 @@ export class VaultRepository implements WorkspaceRepository {
   ): string | null {
     const page = state.pages[id]!;
     const placement = layout.get(id)!;
-    const doc = state.docs[id];
     if (page.kind === 'canvas')
-      return writeCanvas(canvasFromDoc(doc), (pageId) => layout.get(pageId)?.file ?? null);
-    if (!doc) return null;
+      return writeCanvas(canvasFromDoc(state.docs[id]), (pageId) => layout.get(pageId)?.file ?? null);
+    // a folder that just got a note of its own, for its tags, properties or kind, has no text yet
+    const doc = state.docs[id] ?? emptyDoc();
     const dir = dirname(placement.file!);
     let source = this.sources.get(id) ?? null;
     const movedDir = before !== undefined && dirname(before.folder) !== dirname(placement.folder);
@@ -362,7 +363,19 @@ export class VaultRepository implements WorkspaceRepository {
       basename(placement.folder),
       parent?.kind === 'database' ? parent.database : null,
     );
-    return renderPageText(composeFrontmatter(managed, source), source, body);
+    const text = renderPageText(composeFrontmatter(managed, page.extra, source), source, body);
+    // the next save starts from what this one wrote, so keys added in morrow keep their spelling and order
+    if (source) {
+      const written = splitFrontmatter(text);
+      this.sources.set(id, {
+        ...source,
+        keyOrder: Object.keys(written.data ?? {}),
+        rawData: written.data,
+        rawHead: written.head,
+        rawYaml: written.yaml,
+      });
+    }
+    return text;
   }
 
   // carries out the operations and keeps track of what reached the disk, even when something fails halfway
@@ -809,6 +822,7 @@ export class VaultRepository implements WorkspaceRepository {
       const read = this.readFile(change.path, text, page, state, layout);
       if (read.ok) {
         pages.set(id, read.page);
+        if (read.database && !pages.has(read.database.id)) pages.set(read.database.id, read.database);
         docs[id] = read.doc;
         sources.set(id, read.source);
         if (this.locked.has(id)) readable.add(id);
@@ -870,7 +884,9 @@ export class VaultRepository implements WorkspaceRepository {
     base: PageMeta,
     state: WorkspaceState,
     layout: Map<PageId, Placement>,
-  ): { ok: true; page: PageMeta; doc: DocNode; source: PageSource | null } | { ok: false } {
+  ):
+    | { ok: true; page: PageMeta; doc: DocNode; source: PageSource | null; database?: PageMeta }
+    | { ok: false } {
     if (text.length > MAX_PAGE_BYTES || isEncryptedText(text)) return { ok: false };
     const folder = stripExtension(path);
     const name = basename(folder);
@@ -906,13 +922,17 @@ export class VaultRepository implements WorkspaceRepository {
       database: read.database,
       dailyDate,
       properties: {},
+      extra: read.extra,
     };
-    const database = parent?.kind === 'database' ? parent.database : null;
-    for (const prop of database?.properties ?? []) {
-      if (!Object.hasOwn(read.data, prop.name)) continue;
-      const value = readProperty(prop, read.data[prop.name], this.newId);
-      if (value.value !== null) page.properties[prop.id] = value.value;
-      delete read.source.extra[prop.name];
+    // select values the database has not seen become options of a copy, the state itself is never changed here
+    let database: PageMeta | undefined;
+    if (parent?.kind === 'database' && parent.database) {
+      const copy = structuredClone(parent.database);
+      takeProperties(copy, page.extra, page.properties, this.newId);
+      const added = copy.properties.some(
+        (prop, i) => prop.options.length !== parent.database!.properties[i]!.options.length,
+      );
+      if (added) database = { ...parent, database: copy };
     }
     const index = new Map([...this.others].map((other) => [other.toLowerCase(), other]));
     const names = new Map<string, string[]>();
@@ -925,7 +945,7 @@ export class VaultRepository implements WorkspaceRepository {
     );
     const valid = validateDoc(doc);
     if (!valid.ok) return { ok: false };
-    return { ok: true, page, doc: valid.value, source: read.source };
+    return { ok: true, page, doc: valid.value, source: read.source, ...(database ? { database } : {}) };
   }
 }
 

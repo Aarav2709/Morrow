@@ -1,11 +1,59 @@
-import { parse, stringify } from 'yaml';
+import { parse, parseDocument, stringify } from 'yaml';
 import { isRecord } from '../doc';
+
+// frontmatter keys morrow reads and writes, every other key is kept exactly as it was
+export const MANAGED_KEYS = new Set(['title', 'icon', 'kind', 'tags', 'tag', 'database', 'cover']);
+const MAX_KEY_LENGTH = 200;
+const MAX_EXTRA_KEYS = 200;
+
+// the frontmatter key matching a property name, its exact spelling first, then ignoring case like obsidian
+export function findKey(data: Record<string, unknown>, name: string): string | undefined {
+  if (Object.hasOwn(data, name)) return name;
+  const lower = name.toLowerCase();
+  return Object.keys(data).find((key) => key.toLowerCase() === lower);
+}
+
+// keeps only plain values under usable keys, so a hostile backup or command can not put anything odd in a file
+export function normalizeExtra(raw: unknown): Record<string, unknown> {
+  if (!isRecord(raw)) return {};
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (Object.keys(out).length >= MAX_EXTRA_KEYS) break;
+    const clean = key.trim();
+    if (!clean || clean !== key || key.length > MAX_KEY_LENGTH || MANAGED_KEYS.has(key)) continue;
+    const plain = plainValue(value, 0);
+    if (plain !== undefined) out[key] = plain;
+  }
+  return out;
+}
+
+function plainValue(value: unknown, depth: number): unknown {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (depth >= 8) return undefined;
+  if (Array.isArray(value))
+    return value.slice(0, 1000).flatMap((item) => {
+      const plain = plainValue(item, depth + 1);
+      return plain === undefined ? [] : [plain];
+    });
+  if (isRecord(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      const plain = plainValue(item, depth + 1);
+      if (plain !== undefined) out[key] = plain;
+    }
+    return out;
+  }
+  return undefined;
+}
 
 export interface SplitFile {
   // null when the file has no frontmatter
   data: Record<string, unknown> | null;
   // the frontmatter block exactly as written, reused when its values did not change
   head: string;
+  // the yaml inside it
+  yaml: string;
   body: string;
   // set when frontmatter exists but is not valid yaml, the file is then left alone
   error: string | null;
@@ -17,30 +65,32 @@ const CLOSE = /\r?\n(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/;
 export function splitFrontmatter(text: string): SplitFile {
   const source = text.startsWith('﻿') ? text.slice(1) : text;
   const open = OPEN.exec(source);
-  if (!open) return { data: null, head: '', body: source, error: null };
+  if (!open) return { data: null, head: '', yaml: '', body: source, error: null };
   // the leading newline lets an empty block close on the very next line
   const rest = `\n${source.slice(open[0].length)}`;
   const match = CLOSE.exec(rest);
-  if (!match) return { data: null, head: '', body: source, error: null };
+  if (!match) return { data: null, head: '', yaml: '', body: source, error: null };
   const yaml = rest.slice(1, Math.max(1, match.index));
   const body = rest.slice(match.index + match[0].length);
   const head = source.slice(0, source.length - body.length);
-  if (!yaml.trim()) return { data: {}, head, body, error: null };
+  if (!yaml.trim()) return { data: {}, head, yaml, body, error: null };
   try {
     const data: unknown = parse(yaml, { maxAliasCount: 100, uniqueKeys: false });
-    if (data === null || data === undefined) return { data: {}, head, body, error: null };
+    if (data === null || data === undefined) return { data: {}, head, yaml, body, error: null };
     if (!isRecord(data))
       return {
         data: null,
         head,
+        yaml,
         body,
         error: 'The properties at the top of the file are not a list of keys.',
       };
-    return { data, head, body, error: null };
+    return { data, head, yaml, body, error: null };
   } catch (error) {
     return {
       data: null,
       head,
+      yaml,
       body,
       error: `The properties at the top of the file could not be read: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`,
     };
@@ -52,6 +102,45 @@ export function joinFrontmatter(data: Record<string, unknown> | null, body: stri
   if (!data || Object.keys(data).length === 0) return body;
   const yaml = stringify(data, { lineWidth: 0, defaultStringType: 'PLAIN', defaultKeyType: 'PLAIN' });
   return `---\n${yaml}---\n${body}`;
+}
+
+// changes only the keys whose values changed, so every other line keeps its exact formatting and comments.
+// null when the yaml can not be edited that way, then the whole block is written again
+export function updateFrontmatter(
+  yaml: string,
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+  body: string,
+): string | null {
+  if (Object.keys(after).length === 0) return body;
+  const order = Object.keys(after);
+  const kept = Object.keys(before).filter((key) => Object.hasOwn(after, key));
+  // a key that moved, such as one renamed into another's place, is easier to get right by writing it all
+  if (kept.some((key, index) => order[index] !== key)) return null;
+  try {
+    const document = parseDocument(yaml, { uniqueKeys: false });
+    if (document.errors.length > 0 || !document.contents) return null;
+    for (const key of Object.keys(before)) if (!Object.hasOwn(after, key)) document.delete(key);
+    for (const [key, value] of Object.entries(after)) {
+      if (Object.hasOwn(before, key) && same(before[key], value)) continue;
+      // a changed value keeps its quoting, except an empty one, whose quotes only meant empty
+      const blank = before[key] === '' || before[key] === null;
+      document.set(key, blank ? document.createNode(value) : value);
+    }
+    const text = document.toString({
+      lineWidth: 0,
+      defaultStringType: 'PLAIN',
+      defaultKeyType: 'PLAIN',
+      flowCollectionPadding: false,
+    });
+    return `---\n${text}${text.endsWith('\n') ? '' : '\n'}---\n${body}`;
+  } catch {
+    return null;
+  }
+}
+
+function same(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 // tags may be a list, a single string or a comma separated string, with or without the leading #

@@ -1,3 +1,4 @@
+import { conflictOriginal } from './vault/paths';
 import { describe, expect, it } from 'vitest';
 import { applyCommand } from './commands';
 import type { Command } from './commands';
@@ -360,5 +361,18 @@ describe('relation and formula properties', () => {
     expect(valueOf(row, 'f', database)).toBe(10);
     expect(valueOf(row, 'g', database)).toBe('Tea: 10');
     expect(writeProperty(database.properties[2]!, 10)).toBeUndefined();
+  });
+});
+
+describe('conflict copies made by sync apps', () => {
+  it('finds the page each copy was made from', () => {
+    expect(conflictOriginal("Notes/Plan (Aarav's conflicted copy 2026-10-19).md")).toEqual({
+      original: 'Notes/Plan.md',
+      app: 'your sync app',
+    });
+    expect(conflictOriginal('Plan.sync-conflict-20261019-101500-ABCDEFG.md')?.original).toBe('Plan.md');
+    expect(conflictOriginal('Plan (conflict from Laptop 2026-10-19).md')?.app).toBe('Morrow sync');
+    expect(conflictOriginal('Plan (draft).md')).toBeNull();
+    expect(conflictOriginal('Plan.md')).toBeNull();
   });
 });

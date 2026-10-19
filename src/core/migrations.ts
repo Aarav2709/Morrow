@@ -1,4 +1,5 @@
 import { isRecord, validateDoc } from './doc';
+import { normalizeExtra } from './vault/frontmatter';
 import {
   COLORS,
   MAX_ICON_LENGTH,
@@ -97,6 +98,7 @@ export function normalizePage(raw: unknown): PageMeta | null {
       ? [...new Set(raw.tags.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0))]
       : [],
     properties: normalizeProperties(raw.properties),
+    extra: normalizeExtra(raw.extra),
     database: normalizeDatabase(raw.database),
     cover: validCover(raw.cover),
     encrypted: raw.encrypted === true,

@@ -421,7 +421,11 @@ export const CodeBlock = CodeBlockLowlight.extend({
         showCode = true;
         layout();
       });
-      dom.append(select, toggle, pre, diagram);
+      // code and diagram share a row while editing a wide enough block, see blocks.css
+      const split = document.createElement('div');
+      split.className = 'code-split';
+      split.append(pre, diagram);
+      dom.append(select, toggle, split);
       layout();
       draw();
       const stopWatching = onThemeChange(() => {

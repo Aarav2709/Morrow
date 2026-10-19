@@ -113,6 +113,8 @@ export interface PageMeta {
   tags: string[];
   // values for the properties of the database this page is a row of, keyed by property id
   properties: Record<string, PropValue>;
+  // frontmatter keys morrow gives no meaning to, such as obsidian properties, shown and edited as they are
+  extra: Record<string, unknown>;
   database: DatabaseDef | null;
   // a gradient such as gradient-3, or the path of an image in the vault
   cover: string | null;
@@ -322,6 +324,7 @@ export function newPageMeta(fields: Pick<PageMeta, 'id' | 'parentId'> & Partial<
     lastOpenedAt: null,
     tags: [],
     properties: {},
+    extra: {},
     database: null,
     cover: null,
     encrypted: false,

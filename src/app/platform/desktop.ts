@@ -1,9 +1,17 @@
+export interface CloudFolder {
+  provider: string;
+  path: string;
+}
+
 export interface DesktopVaultApi {
   state(): Promise<{
     current: string | null;
     recent: Array<{ path: string; name: string; exists: boolean }>;
   }>;
-  choose(): Promise<string | null>;
+  choose(start?: string): Promise<string | null>;
+  // the folders cloud apps sync on this computer, and the one the open vault is in
+  cloud(): Promise<{ folders: CloudFolder[]; inside: CloudFolder | null }>;
+  copyInto(dir: string): Promise<{ ok: boolean; path?: string; error?: string }>;
   createDefault(): Promise<string>;
   select(dir: string): Promise<{ ok: boolean; error?: string }>;
   forget(dir: string): Promise<void>;

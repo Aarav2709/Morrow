@@ -37,6 +37,7 @@ import {
   valueOf,
 } from '../../../core/database';
 import { displayTitle, PROP_TYPES, VIEW_TYPES } from '../../../core/model';
+import { unclaimedKeys } from '../../../core/properties';
 import type { Command } from '../../../core/commands';
 import type {
   DocNode,
@@ -60,7 +61,7 @@ import { Menu } from '../Menu';
 import { Popover } from '../Popover';
 import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
-import { createRow, setValue, updateDatabase, updateProp, updateView } from './data';
+import { addColumnsFromPages, createRow, setValue, updateDatabase, updateProp, updateView } from './data';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
 
 const VIEW_ICONS: Record<ViewType, LucideIcon> = {
@@ -150,8 +151,9 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
             </button>
           )}
         </div>
-        <Toolbar dbId={page.id} database={database} view={view} editable={editable} />
+        <Toolbar dbId={page.id} database={database} view={view} rows={allRows} editable={editable} />
       </div>
+      {editable && <ColumnSuggestion dbId={page.id} database={database} rows={allRows} />}
 
       {view.type === 'table' && (
         <TableView
@@ -314,17 +316,72 @@ function ViewSettings({
 
 type ToolPanel = 'filter' | 'sort' | 'properties' | 'layout';
 
+// the frontmatter keys rows already have but no column shows yet, such as the properties of notes that
+// came from obsidian, offered once until they are added or dismissed
+function ColumnSuggestion({
+  dbId,
+  database,
+  rows,
+}: {
+  dbId: PageId;
+  database: DatabaseDef;
+  rows: PageMeta[];
+}) {
+  const keys = useMemo(() => unclaimedKeys(database, rows), [database, rows]);
+  const storageKey = `morrow.columns-dismissed.${dbId}`;
+  const [dismissed, setDismissed] = useState<string>(() => {
+    try {
+      return localStorage.getItem(storageKey) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const signature = keys.join('\n');
+  if (keys.length === 0 || dismissed === signature) return null;
+  const shown = keys.slice(0, 4).join(', ') + (keys.length > 4 ? ` and ${keys.length - 4} more` : '');
+  return (
+    <div className="db-suggest" role="note">
+      <Columns3 size={14} />
+      <span>
+        Your pages have {keys.length === 1 ? 'a property' : `${keys.length} properties`} that{' '}
+        {keys.length === 1 ? 'is not a column' : 'are not columns'} yet: {shown}.
+      </span>
+      <button type="button" className="button small" onClick={() => addColumnsFromPages(dbId, keys)}>
+        Add as columns
+      </button>
+      <button
+        type="button"
+        className="icon-button tiny"
+        aria-label="Dismiss"
+        onClick={() => {
+          setDismissed(signature);
+          try {
+            localStorage.setItem(storageKey, signature);
+          } catch {
+            // only a convenience
+          }
+        }}
+      >
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
+
 function Toolbar({
   dbId,
   database,
   view,
+  rows,
   editable,
 }: {
   dbId: PageId;
   database: DatabaseDef;
   view: ViewDef;
+  rows: PageMeta[];
   editable: boolean;
 }) {
+  const unclaimed = useMemo(() => unclaimedKeys(database, rows), [database, rows]);
   const [panel, setPanel] = useState<{ kind: ToolPanel; anchor: HTMLElement } | null>(null);
   const open = (kind: ToolPanel) => (event: React.MouseEvent<HTMLElement>) =>
     setPanel({ kind, anchor: event.currentTarget });
@@ -596,6 +653,36 @@ function Toolbar({
             })}
           </ul>
           {editable && <NewProperty dbId={dbId} database={database} />}
+          {editable && unclaimed.length > 0 && (
+            <>
+              <p className="db-panel-heading">In your pages</p>
+              <ul className="db-prop-list">
+                {unclaimed.map((key) => (
+                  <li key={key}>
+                    <span className="db-prop-name">{key}</span>
+                    <button
+                      type="button"
+                      className="icon-button tiny"
+                      aria-label={`Add ${key} as a column`}
+                      title="Add as a column"
+                      onClick={() => addColumnsFromPages(dbId, [key])}
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {unclaimed.length > 1 && (
+                <button
+                  type="button"
+                  className="button small"
+                  onClick={() => addColumnsFromPages(dbId, unclaimed)}
+                >
+                  Add all as columns
+                </button>
+              )}
+            </>
+          )}
         </Popover>
       )}
     </div>
