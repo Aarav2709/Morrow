@@ -106,9 +106,7 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 Version **1.1.0**. Pages are files in a folder you choose. Earlier builds kept
 them inside the app; the first time this version opens it offers to copy those
 pages into the folder and leaves the original copy untouched. Releases are built
-for Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64). The
-macOS and ARM64 builds are produced by the release workflow but have not yet been
-tried on real machines, and builds are not code signed yet.
+for Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64).
 
 ## Coming from Obsidian
 
@@ -130,35 +128,6 @@ subpages. In Morrow, choose **Import** in the sidebar and pick the zip file.
 Pages keep their nesting, links between pages and images, databases become
 Morrow databases with their properties, and Notion's callouts become Morrow
 callouts.
-
-## Build and run
-
-You need [Node.js](https://nodejs.org) 20.19 or newer.
-
-```sh
-git clone https://github.com/Aarav2709/Morrow.git
-cd Morrow
-npm install
-npm run dev        # opens the desktop app with live reload
-```
-
-| Command         | What it does                                        |
-| --------------- | --------------------------------------------------- |
-| `npm run dev`   | Desktop app with live reload                        |
-| `npm run build` | Builds the interface and the desktop shell          |
-| `npm start`     | Runs the built desktop app                          |
-| `npm run dist`  | Builds installers for your platform into `release/` |
-| `npm test`      | Runs the unit and storage tests                     |
-| `npm run check` | Type check, lint, tests and build together          |
-
-On Windows `npm run dist` produces `Morrow-Setup-<version>-x64.exe` and a portable
-`.exe`; add `-- --arm64` for ARM64. On macOS it builds for both Apple silicon and
-Intel. Morrow never checks for updates on
-its own; new versions are downloaded from the releases page. Builds are signed automatically once the
-signing secrets (`CSC_LINK` and `CSC_KEY_PASSWORD`, plus `APPLE_ID`,
-`APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for macOS) are added to the
-repository. Until then Windows SmartScreen and macOS Gatekeeper warn the first
-time Morrow is opened.
 
 ## Where your data lives
 
