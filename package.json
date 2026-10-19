@@ -2,8 +2,8 @@
   "name": "morrow",
   "productName": "Morrow",
   "private": true,
-  "version": "1.0.0",
-  "description": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, no AI.",
+  "version": "1.1.0",
+  "description": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, and no AI unless you bring your own.",
   "desktopName": "morrow.desktop",
   "license": "Apache-2.0",
   "author": {
@@ -116,20 +116,33 @@
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
     },
     "portable": {
-      "artifactName": "${productName}-${version}-portable.${ext}"
+      "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
     },
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "category": "public.app-category.productivity",
       "icon": "build/icon.png",
       "hardenedRuntime": true,
-      "notarize": false
+      "notarize": false,
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "linux": {
       "target": [
@@ -149,5 +162,8 @@
         "repo": "Morrow"
       }
     ]
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0"
   }
 }

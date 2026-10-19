@@ -43,6 +43,8 @@ import {
   writeSyncBase,
   writeSyncedFile,
 } from './vault.cjs';
+import { aiTurn, cancelAiTurn, getAiSettings, listAiModels, setAiSettings } from './ai.cjs';
+import type { TurnRequest } from './ai.cjs';
 import {
   closeSync,
   forgetPeer,
@@ -112,7 +114,7 @@ if (!app.requestSingleInstanceLock()) {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
     });
     registerIpc();
-    void initSync((event) => mainWindow?.webContents.send('sync:event', event));
+    void initSync((event) => toWindow('sync:event', event));
     // macos needs its system menu for copy, paste and quit, other platforms get no menu bar
     Menu.setApplicationMenu(IS_MAC ? buildMacMenu() : null);
     await createWindow();
@@ -323,6 +325,12 @@ function openExternal(url: string): void {
   if (/^(https?:|mailto:)/i.test(url)) void shell.openExternal(url);
 }
 
+// a file watcher or sync can still report something while the window closes, that is dropped
+function toWindow(channel: string, payload: unknown): void {
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed())
+    mainWindow.webContents.send(channel, payload);
+}
+
 function fromApp(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
   const url = event.senderFrame?.url ?? '';
   return isAppUrl(url);
@@ -406,6 +414,11 @@ function registerVaultIpc(): void {
       if (!fromApp(event)) throw new Error('Not allowed.');
       return fn(...args);
     });
+  handle('ai:settings', () => getAiSettings());
+  handle('ai:configure', (patch) => setAiSettings((patch ?? {}) as Record<string, unknown>));
+  handle('ai:models', () => listAiModels());
+  handle('ai:turn', (request) => aiTurn(request as TurnRequest));
+  handle('ai:cancel', (id) => cancelAiTurn(id));
   handle('vault:state', () => vaultState());
   handle('vault:choose', () => chooseFolder(mainWindow));
   handle('vault:create-default', () => createDefaultVault());
@@ -414,7 +427,7 @@ function registerVaultIpc(): void {
   handle('vault:open', async () => {
     const state = await vaultState();
     if (!state.current) return { ok: false, root: null };
-    await openVault(state.current, (changes) => mainWindow?.webContents.send('vault:changes', changes));
+    await openVault(state.current, (changes) => toWindow('vault:changes', changes));
     return { ok: true, root: state.current };
   });
   handle('vault:close', () => closeVault());
@@ -465,7 +478,7 @@ async function writeBackup(json: string): Promise<string> {
 }
 
 function buildMacMenu(): Menu {
-  const send = (id: string) => () => mainWindow?.webContents.send('morrow:command', id);
+  const send = (id: string) => () => toWindow('morrow:command', id);
   return Menu.buildFromTemplate([
     {
       label: app.name,

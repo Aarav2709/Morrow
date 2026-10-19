@@ -11,6 +11,7 @@ import { findDatabaseOf } from '../../core/database';
 import { PageEditor } from '../editor/PageEditor';
 import { SourceEditor } from './SourceEditor';
 import { CoverBanner, CoverPicker } from './Cover';
+import { DailyNav, MadeThisDay } from './DailyNav';
 import { Emoji } from './Emoji';
 import { LockedPage } from './EncryptDialog';
 import { RowProperties } from './database/RowProperties';
@@ -184,6 +185,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
           {coverPicker && (
             <CoverPicker page={page} anchor={coverPicker} onClose={() => setCoverPicker(null)} />
           )}
+          {page.dailyDate && <DailyNav page={page} />}
           <h1 className="page-title-heading">
             <TitleField
               page={page}
@@ -242,6 +244,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
             />
           )}
           {page.kind !== 'database' && <Subpages parentId={id} />}
+          {page.dailyDate && <MadeThisDay dailyDate={page.dailyDate} />}
           <Backlinks id={id} />
         </article>
       </div>
@@ -311,6 +314,21 @@ function TitleField({
     element.style.height = '0px';
     element.style.height = `${element.scrollHeight}px`;
   });
+
+  // a narrower side of a split wraps the title onto more lines, so it is measured again
+  useEffect(() => {
+    const element = inputRef.current;
+    if (!element) return;
+    let width = element.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (element.clientWidth === width) return;
+      width = element.clientWidth;
+      element.style.height = '0px';
+      element.style.height = `${element.scrollHeight}px`;
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [inputRef]);
 
   useEffect(() => {
     if (ui.focusTitle !== page.id) return;
@@ -449,18 +467,36 @@ function headingsOf(doc: DocNode): Heading[] {
     .filter((heading) => heading.text);
 }
 
+// the room a view needs before the outline fits beside the page
+const OUTLINE_ROOM = 1090;
+
 // a list of the page's headings beside long pages, click one to jump to it
 function Outline({ doc }: { doc: DocNode }) {
   const headings = useMemo(() => headingsOf(doc), [doc]);
-  if (headings.length < 3) return null;
-  const jump = (index: number) => {
-    const elements = document.querySelectorAll<HTMLElement>(
-      '.editor-surface .prose > h1, .editor-surface .prose > h2, .editor-surface .prose > h3',
+  const ref = useRef<HTMLElement>(null);
+  const [roomy, setRoomy] = useState(false);
+  const enough = headings.length >= 3;
+  // measured on the view it sits in, so a narrow side of a split hides it
+  useEffect(() => {
+    const view = ref.current?.closest('.view');
+    if (!view) return;
+    const observer = new ResizeObserver(([entry]) =>
+      setRoomy((entry?.contentRect.width ?? 0) >= OUTLINE_ROOM),
     );
-    elements[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    observer.observe(view);
+    return () => observer.disconnect();
+  }, [enough]);
+  if (!enough) return null;
+  const jump = (index: number) => {
+    const elements = ref.current
+      ?.closest('.view')
+      ?.querySelectorAll<HTMLElement>(
+        '.editor-surface .prose > h1, .editor-surface .prose > h2, .editor-surface .prose > h3',
+      );
+    elements?.[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   return (
-    <nav className="page-outline" aria-label="Outline">
+    <nav ref={ref} className={`page-outline${roomy ? ' is-roomy' : ''}`} aria-label="Outline">
       <p className="page-outline-title">On this page</p>
       <ul>
         {headings.map((heading, index) => (

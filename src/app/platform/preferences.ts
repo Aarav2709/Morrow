@@ -3,6 +3,8 @@ import { useSyncExternalStore } from 'react';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
 export type PageWidth = 'comfortable' | 'wide';
+// what morrow shows when it opens: today's note, the home page, or where you left off
+export type StartPage = 'today' | 'home' | 'last';
 // accent colours, each tuned for light and dark in features.css
 export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
 export type Accent = (typeof ACCENTS)[number];
@@ -37,6 +39,14 @@ export interface Preferences {
   name: string;
   // the size each inline canvas was dragged to
   canvasSizes: Record<string, CanvasSize>;
+  // how much of a split tab the first side takes
+  splitShare: number;
+  startPage: StartPage;
+  // the optional assistant, off until turned on in settings
+  assistant: boolean;
+  assistantOpen: boolean;
+  // changes the assistant proposes wait for approval
+  assistantAsk: boolean;
 }
 
 const KEY = 'morrow.preferences';
@@ -51,6 +61,11 @@ const defaults: Preferences = {
   colorful: true,
   name: '',
   canvasSizes: {},
+  splitShare: 0.5,
+  startPage: 'today',
+  assistant: false,
+  assistantOpen: false,
+  assistantAsk: true,
 };
 
 // view preferences only, losing them never loses work
@@ -88,6 +103,14 @@ function read(): Preferences {
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],
       canvasSizes: readCanvasSizes(parsed.canvasSizes),
+      splitShare:
+        typeof parsed.splitShare === 'number' ? Math.min(0.8, Math.max(0.2, parsed.splitShare)) : 0.5,
+      startPage: ['today', 'home', 'last'].includes(parsed.startPage as string)
+        ? parsed.startPage!
+        : defaults.startPage,
+      assistant: parsed.assistant === true,
+      assistantOpen: parsed.assistantOpen === true,
+      assistantAsk: parsed.assistantAsk !== false,
     };
   } catch {
     return defaults;

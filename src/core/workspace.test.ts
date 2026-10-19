@@ -91,6 +91,38 @@ describe('search', () => {
   it('reports the page path', () => {
     expect(searchWorkspace(state, 'cedar')[0]!.path).toEqual(['Garden plans']);
   });
+
+  it('matches quoted phrases as one and leaves out excluded words', () => {
+    expect(searchWorkspace(state, '"cedar boards"').map((r) => r.page.id)).toEqual(['beds']);
+    expect(searchWorkspace(state, '"boards cedar"')).toEqual([]);
+    expect(searchWorkspace(state, 'garden -compost').map((r) => r.page.id)).toEqual(['journal']);
+    expect(searchWorkspace(state, 'garden -"buy compost"').map((r) => r.page.id)).toEqual(['journal']);
+  });
+
+  it('gives several snippets from different parts of a page when asked', () => {
+    const many = run(state, {
+      type: 'page.create',
+      id: 'long',
+      parentId: null,
+      now: 9,
+      title: 'Long',
+      doc: doc(
+        'Water early.',
+        'x '.repeat(80),
+        'Water again at night.',
+        'y '.repeat(80),
+        'No water on Sunday.',
+      ),
+    });
+    const [result] = searchWorkspace(many, 'water', 10, 3).filter((r) => r.page.id === 'long');
+    expect(result!.snippets.map((snippet) => snippet.match.toLowerCase())).toEqual([
+      'water',
+      'water',
+      'water',
+    ]);
+    expect(result!.snippets[1]!.after).toContain('again at night');
+    expect(searchWorkspace(many, 'water', 10)[0]!.snippets).toHaveLength(1);
+  });
 });
 
 describe('links and tasks', () => {

@@ -71,7 +71,66 @@ export interface DesktopSyncApi {
 }
 
 // bridge exposed by the electron preload script, absent when running in a browser
+export type AssistantProviderId = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'custom';
+
+export interface AssistantSettings {
+  provider: AssistantProviderId;
+  model: string;
+  baseUrl: string;
+  hasKey: boolean;
+  keyStorage: 'system' | 'session';
+  providers: Array<{
+    id: AssistantProviderId;
+    label: string;
+    baseUrl: string;
+    needsKey: boolean;
+    defaultModel: string;
+    keyUrl: string;
+  }>;
+}
+
+export interface AssistantToolSpec {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export type AssistantTurnResult =
+  | {
+      ok: true;
+      // the conversation as the provider keeps it, sent back unchanged with the next turn
+      history: unknown[];
+      text: string;
+      toolCalls: Array<{ id: string; name: string; input: Record<string, unknown> }>;
+      stop: 'done' | 'tools' | 'refusal' | 'length';
+      model: string;
+    }
+  | { ok: false; error: string };
+
+// the optional assistant, its key never leaves the main process
+export interface DesktopAssistantApi {
+  settings(): Promise<AssistantSettings>;
+  configure(patch: {
+    provider?: AssistantProviderId;
+    model?: string;
+    baseUrl?: string;
+    key?: string | null;
+  }): Promise<AssistantSettings>;
+  models(): Promise<{ ok: boolean; models: string[]; error?: string }>;
+  turn(request: {
+    id: string;
+    history: unknown[];
+    add:
+      | { kind: 'user'; text: string }
+      | { kind: 'tools'; results: Array<{ id: string; content: string; isError: boolean }>; text?: string };
+    system: string;
+    tools: AssistantToolSpec[];
+  }): Promise<AssistantTurnResult>;
+  cancel(id: string): Promise<void>;
+}
+
 export interface DesktopBridge {
+  assistant?: DesktopAssistantApi;
   vault?: DesktopVaultApi;
   sync?: DesktopSyncApi;
   platform: string;

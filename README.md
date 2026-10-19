@@ -2,8 +2,8 @@
 
 Morrow is a free, open source, local first workspace for your notes, databases
 and ideas. Every page is a plain Markdown file in a folder you choose. No
-account, no subscription, no cloud and no AI. Just a calm place to write and
-think, on your own computer.
+account, no subscription and no cloud, and no AI unless you bring your own. Just
+a calm place to write and think, on your own computer.
 
 https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 
@@ -24,7 +24,9 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   exports, databases included, import in one step.
 - **Everything built in.** Databases, canvases, graph, sync, encryption and
   flashcards come with Morrow, with nothing to install or configure.
-- **AI free, by design.** Morrow does not have AI features and will not add them.
+- **AI free unless you want it.** Morrow has no AI of its own and sends nothing
+  anywhere. An optional assistant can be turned on in Settings with your own API
+  key; it is off until you do.
 
 ## Features
 
@@ -44,13 +46,17 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   frontmatter, relations are `[[links]]`.
 - **Canvases**: an infinite whiteboard of cards, pages, images and groups joined
   by arrows, with a pen, highlighter and eraser for freehand drawing, saved as
-  open JSON Canvas files
+  open JSON Canvas files. Show one inside any page with `![[Canvas]]` or
+  `/Inline canvas`, and drag its corner to size it
 - **Graph**: every page and link as a network, or the neighbourhood of one page
 - **Tags** from properties or `#tags` in text, with nested tags and a tag index
 - **Templates** with `{{date}}`, `{{time}}` and `{{title}}`, and a daily note
   template
-- **Daily notes**, and a Tasks view that gathers every checklist item
-- **Search** across every page, with `#tag` filters, and a command palette
+- **Daily notes** first: Morrow opens on today's note (or home, or where you
+  left off), with the notes either side, a calendar of every day, and the pages
+  you made that day listed under it. A Tasks view gathers every checklist item
+- **Search** across every page from the command palette, or in a full view with
+  every match: `"exact phrases"`, `-word` to leave pages out and `#tag` filters
 - **Vaults**: open any folder, switch between folders, keep work and home apart
 - **Sync between your computers** on the same network: pair once with a code,
   no server, no account, every transfer encrypted, both versions kept when a
@@ -67,8 +73,15 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   day" and a page to rediscover
 - **Publish** a page or the whole vault as a static website, free
 - Page history with a view of what changed since each version
-- **Tabs**: Ctrl/Cmd + T, Ctrl/Cmd + W, Ctrl + Tab, and Ctrl/Cmd + click to open
-  any page in a new tab
+- **Tabs and split panes**: back and forward in every tab (Alt + ← and →, or
+  Cmd + [ and ] on a Mac, or the mouse's side buttons), Ctrl/Cmd + click to open
+  a page in a new tab, Alt + click to open it beside the page you are on,
+  Ctrl/Cmd + Shift + T to reopen a closed tab and Ctrl/Cmd + 1 to 9 to jump
+- **Drag a page** from the sidebar into another page to link it
+- **An optional assistant** that searches, reads and edits your pages in Morrow's
+  own Markdown, with Claude, ChatGPT, Gemini, OpenRouter or a local model through
+  Ollama or LM Studio. You bring the key, every change is shown for approval,
+  kept in page history and can be undone, and locked pages are never sent
 - **Export as PDF**, and **edit as Markdown** to work on a page's source directly
 - **Custom CSS** kept in the vault as `.morrow/style.css`
 - A full emoji picker for page icons, drawn the same on every system
@@ -81,11 +94,12 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 
 ## Status
 
-Version **1.0.0**. Pages are files in a folder you choose. Earlier builds kept
+Version **1.1.0**. Pages are files in a folder you choose. Earlier builds kept
 them inside the app; the first time this version opens it offers to copy those
-pages into the folder and leaves the original copy untouched. The macOS and Linux builds
-are produced by the release workflow but have not yet been tried on real
-machines, and builds are not code signed yet.
+pages into the folder and leaves the original copy untouched. Releases are built
+for Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64). The
+macOS and ARM64 builds are produced by the release workflow but have not yet been
+tried on real machines, and builds are not code signed yet.
 
 ## Coming from Obsidian
 
@@ -122,8 +136,9 @@ npm run dev        # opens the desktop app with live reload
 | `npm test`      | Runs the unit and storage tests                     |
 | `npm run check` | Type check, lint, tests and build together          |
 
-On Windows `npm run dist` produces `Morrow-Setup-<version>.exe` and a portable
-`.exe`. Morrow never checks for updates on
+On Windows `npm run dist` produces `Morrow-Setup-<version>-x64.exe` and a portable
+`.exe`; add `-- --arm64` for ARM64. On macOS it builds for both Apple silicon and
+Intel. Morrow never checks for updates on
 its own; new versions are downloaded from the releases page. Builds are signed automatically once the
 signing secrets (`CSC_LINK` and `CSC_KEY_PASSWORD`, plus `APPLE_ID`,
 `APPLE_APP_SPECIFIC_PASSWORD` and `APPLE_TEAM_ID` for macOS) are added to the
@@ -139,7 +154,9 @@ database rows keep their values as readable properties. Morrow's own small
 `.morrow` folder in the vault remembers page order, favourites and page history;
 deleting it never touches a page. Morrow's settings and automatic backups live
 in `%APPDATA%\Morrow` on Windows, `~/Library/Application Support/Morrow` on
-macOS and `~/.config/Morrow` on Linux.
+macOS and `~/.config/Morrow` on Linux. If you turn on the assistant, its API key
+is kept there too, encrypted by your system's keychain (or only until Morrow
+closes when the system has none).
 
 ## How Morrow was made
 
@@ -148,8 +165,8 @@ did most of the frontend, while AI helped research features, wrote most of the
 backend and the code connecting it to the interface, built larger features such
 as databases, canvas drawing and the welcome guide, and handled most debugging
 and optimisation. I decide what goes into Morrow and test every change myself.
-"Morrow does not have AI features" refers to the app itself: nothing in it uses
-AI or sends your notes anywhere.
+Morrow itself has no AI and sends nothing anywhere. The optional assistant only
+runs when you turn it on and add your own key.
 
 ## Licence
 

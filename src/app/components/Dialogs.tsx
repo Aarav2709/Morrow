@@ -5,6 +5,7 @@ import type { PageId } from '../../core/model';
 import { foldText } from '../../core/search';
 import { ancestorsOf, childrenOf, flattenTree, isDescendantOf } from '../../core/tree';
 import { ACTIONS, formatShortcut } from '../actions';
+import { AssistantSettingsSection } from '../assistant/AssistantSettings';
 import {
   deleteUnusedFiles,
   exportAllMarkdown,
@@ -18,7 +19,7 @@ import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import { ACCENT_LABELS, ACCENTS } from '../platform/preferences';
-import type { PageWidth, ThemePreference, WritingFont } from '../platform/preferences';
+import type { PageWidth, StartPage, ThemePreference, WritingFont } from '../platform/preferences';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
 import { closeDialog, toast, useUi } from '../ui';
 import { previewCustomCss, saveCustomCss, useCustomCss } from '../customCss';
@@ -169,6 +170,24 @@ function SettingsDialog() {
       </section>
 
       <section className="settings-section">
+        <h3>Daily notes</h3>
+        <Choice<StartPage>
+          label="When Morrow opens"
+          value={prefs.startPage}
+          options={[
+            ['today', "Today's note"],
+            ['home', 'Home'],
+            ['last', 'Where I left off'],
+          ]}
+          onChange={(startPage) => setPreferences({ startPage })}
+        />
+        <p className="muted small">
+          Press {formatShortcut('Alt+D')} for today's note from anywhere in Morrow, or{' '}
+          {formatShortcut('Mod+Alt+M')} to jot something into it from any app.
+        </p>
+      </section>
+
+      <section className="settings-section">
         <h3>Appearance</h3>
         <Choice<ThemePreference>
           label="Theme"
@@ -232,11 +251,13 @@ function SettingsDialog() {
         <CustomCssSetting />
       </section>
 
+      <AssistantSettingsSection />
+
       <section className="settings-section">
         <h3>Your data</h3>
         <p className="muted">
           Every page is a Markdown file in this folder. Open it in any app, sync it with any tool, or keep it
-          under version control. Morrow never sends anything anywhere.
+          under version control. Morrow never sends anything anywhere, unless you turn on the assistant below.
         </p>
         <div className="data-path">
           <HardDrive size={14} /> <code>{vault}</code>

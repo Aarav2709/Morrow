@@ -45,9 +45,23 @@ jobs:
           if [ -z "$CSC_LINK" ] && [ "$RUNNER_OS" = macOS ]; then
             echo "BUILDER_ARGS=--config.mac.identity=-" >> "$GITHUB_ENV"
           fi
-      # bash on every system, powershell would split the option above at its dots
+      # bash on every system, powershell would split the option above at its dots.
+      # windows builds each architecture on its own so nobody downloads an installer twice the size,
+      # macos builds intel and apple silicon side by side from the apple silicon runner
       - name: Build and publish
         shell: bash
-        run: npx electron-builder --publish always $BUILDER_ARGS
+        run: |
+          case "$RUNNER_OS" in
+            Windows)
+              npx electron-builder --win --x64 --publish always $BUILDER_ARGS
+              npx electron-builder --win --arm64 --publish always $BUILDER_ARGS
+              ;;
+            macOS)
+              npx electron-builder --mac --publish always $BUILDER_ARGS
+              ;;
+            *)
+              npx electron-builder --linux --publish always $BUILDER_ARGS
+              ;;
+          esac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

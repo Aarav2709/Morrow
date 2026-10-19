@@ -11,6 +11,7 @@ import { findPagesByTitle, pageIdByTitle, resolveLinkTarget } from '../../core/s
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
 import { createPage, openToday } from '../operations';
 import { navigate, openPage } from '../router';
+import { targetPane, usePane } from '../tabs';
 import { getSession, getState, run } from '../workspace';
 import type { BlockMenuRequest } from './BlockHandle';
 import { registerCommit, setFocusedEditor } from './commits';
@@ -89,6 +90,7 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
   const [finding, setFinding] = useState(false);
+  const pane = usePane();
   const committed = useRef<DocNode>(doc);
   const callbacks = useRef({ onExitTop, onDirty, onReady });
   useEffect(() => {
@@ -190,7 +192,9 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
           return false;
         },
       },
-      onUpdate: () => {
+      // only real edits count, tiptap also reports an update when nothing in the page changed
+      onUpdate: ({ transaction, appendedTransactions }) => {
+        if (!transaction.docChanged && !appendedTransactions.some((tr) => tr.docChanged)) return;
         if (!dirty) callbacks.current.onDirty(true);
         dirty = true;
         if (timer) clearTimeout(timer);
@@ -224,7 +228,7 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
   }, [doc, editor]);
 
   useEffect(() => {
-    if (editor && !editor.isDestroyed) editor.setEditable(editable);
+    if (editor && !editor.isDestroyed) editor.setEditable(editable, false);
   }, [editor, editable]);
 
   // opens with the search match selected and in view
@@ -244,15 +248,17 @@ export function PageEditor({ pageId, doc, editable, find, onExitTop, onDirty, on
     if (match) {
       editor.chain().focus().setTextSelection(match).scrollIntoView().run();
     }
-    navigate({ name: 'page', id: pageId, find: null }, { replace: true });
-  }, [editor, find, pageId]);
+    navigate({ name: 'page', id: pageId, find: null }, { replace: true, pane });
+  }, [editor, find, pageId, pane]);
 
-  // ctrl or cmd f from anywhere on the page opens the find bar
+  // ctrl or cmd f from anywhere on the page opens the find bar, in the side of a split being used
   useEffect(() => {
-    const open = () => setFinding(true);
+    const open = () => {
+      if (pane === targetPane()) setFinding(true);
+    };
     window.addEventListener('morrow:find', open);
     return () => window.removeEventListener('morrow:find', open);
-  }, []);
+  }, [pane]);
 
   if (!editor) return <div className="editor-loading" aria-hidden="true" />;
 

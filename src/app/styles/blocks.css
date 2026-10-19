@@ -285,6 +285,8 @@
   .toasts,
   .page-header-actions,
   .block-handle,
+  .inline-canvas-resize,
+  .inline-canvas .canvas-toolbar,
   .add-tag,
   .tag-remove,
   .page-section,
@@ -317,11 +319,12 @@
 /* tabs */
 
 .tab-bar {
+  flex: none;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 2px;
-  padding: 6px 8px 0;
-  min-height: 38px;
+  padding: 0 8px;
+  height: 46px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-sidebar);
   overflow-x: auto;
@@ -392,8 +395,31 @@
   background: var(--active);
   color: var(--text);
 }
+/* sits on the same line as the middle of the tabs */
 .tab-new {
   flex: none;
+  align-self: flex-end;
+  margin: 0 0 2px 2px;
+}
+.tab-split {
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: var(--accent);
+}
+@media (max-width: 800px) {
+  .tab-bar.is-single {
+    display: none;
+  }
+}
+.app.focus-mode .tab-bar {
+  display: none;
+}
+/* a pdf of a split tab shows only the side with the page */
+html[data-print-pane='main'] .pane[data-pane='side'],
+html[data-print-pane='side'] .pane[data-pane='main'],
+html.is-printing .split-resizer {
+  display: none !important;
 }
 @media print {
   .tab-bar {

@@ -33,7 +33,8 @@ export function EmbeddedCanvas({ pageId, editable }: { pageId: PageId; editable:
     event.currentTarget.setPointerCapture(event.pointerId);
     const start = { x: event.clientX, y: event.clientY };
     const rect = element.getBoundingClientRect();
-    const room = element.parentElement?.getBoundingClientRect().width ?? rect.width;
+    // the room the page gives the canvas, not the canvas's own box which may have been made narrower
+    const room = element.parentElement?.parentElement?.getBoundingClientRect().width ?? rect.width;
     const grip = event.currentTarget;
     let latest: CanvasSize = { width: rect.width, height: rect.height };
     const move = (moved: PointerEvent) => {
@@ -57,7 +58,7 @@ export function EmbeddedCanvas({ pageId, editable }: { pageId: PageId; editable:
   };
 
   return (
-    <div className="inline-canvas">
+    <div className="inline-canvas" style={size?.width ? { width: `min(100%, ${size.width}px)` } : undefined}>
       <div className="inline-database-head">
         <button type="button" className="inline-database-title" onClick={() => openPage(page.id)}>
           <PageIcon page={page} />
@@ -73,15 +74,9 @@ export function EmbeddedCanvas({ pageId, editable }: { pageId: PageId; editable:
           <Maximize2 size={14} />
         </button>
       </div>
-      <div
-        ref={frame}
-        className="inline-canvas-frame"
-        style={{
-          height: size?.height ?? DEFAULT_HEIGHT,
-          width: size?.width ? `min(100%, ${size.width}px)` : '100%',
-        }}
-      >
+      <div ref={frame} className="inline-canvas-frame" style={{ height: size?.height ?? DEFAULT_HEIGHT }}>
         <CanvasView
+          embedded
           pageId={pageId}
           doc={state.docs[pageId]}
           editable={editable && !isEffectivelyTrashed(state.pages, pageId)}

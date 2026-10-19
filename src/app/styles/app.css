@@ -159,10 +159,68 @@ kbd,
 }
 
 .view {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
+}
+
+/* the content of a tab, two sides when it is split */
+
+.panes {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.pane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pane > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.split-resizer {
+  flex: none;
+  position: relative;
+  width: 1px;
+  background: var(--border);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.split-resizer::before {
+  content: '';
+  position: absolute;
+  inset: 0 -4px;
+}
+
+.split-resizer:hover,
+.split-resizer:active {
+  background: var(--accent);
+}
+
+/* the side that takes navigation is marked under its top bar */
+.panes.is-split .pane.is-active .topbar {
+  box-shadow: inset 0 -2px 0 var(--accent-line);
+}
+
+.history-buttons {
+  display: inline-flex;
+  gap: 0;
+  margin-right: 2px;
+}
+
+.history-buttons .icon-button:disabled {
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 .page-scroll {
@@ -627,39 +685,51 @@ kbd,
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
-/* top bar */
+/* top bar: back and forward, where you are, and what you can do here. the middle gives way first */
 
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 46px;
-  padding: 0 12px 0 14px;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 10px;
   flex: none;
+  font-size: var(--text-sm);
 }
 
-.topbar-left,
-.topbar-right {
+.topbar-nav,
+.topbar-actions {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
+  gap: 2px;
 }
 
-.topbar-right {
-  flex: none;
+.topbar-center {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
 }
 
 .topbar-title {
-  font-weight: 500;
-  padding: 0 6px;
+  font-weight: 550;
+  color: var(--text);
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-meta {
   color: var(--text-faint);
-  font-size: var(--text-sm);
-  margin: 0 6px;
+  margin: 0 6px 0 2px;
+  white-space: nowrap;
+}
+
+.breadcrumbs {
+  min-width: 0;
 }
 
 .breadcrumbs ol {
@@ -671,17 +741,25 @@ kbd,
   min-width: 0;
 }
 
+/* the pages above give up their room before the page you are on does */
 .breadcrumbs li {
   display: flex;
   align-items: center;
   min-width: 0;
+  flex: 0 4 auto;
+}
+
+.breadcrumbs li:last-child {
+  flex: 0 1 auto;
 }
 
 .crumb {
+  display: block;
+  min-width: 0;
   padding: 3px 6px;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
-  max-width: 220px;
+  max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -694,11 +772,50 @@ button.crumb:hover {
 
 .crumb.is-current {
   color: var(--text);
-  font-weight: 500;
+  font-weight: 550;
+  max-width: none;
 }
 
 .crumb-sep {
+  flex: none;
   color: var(--text-faint);
+  padding: 0 1px;
+}
+
+/* a side with less room keeps what matters: the page, back, forward and the menu */
+.pane[data-size='medium'] .topbar-meta,
+.pane[data-size='narrow'] .topbar-meta,
+.pane[data-size='narrow'] .save-label,
+.pane[data-size='narrow'] .breadcrumbs li:not(:last-child) {
+  display: none;
+}
+
+.pane[data-size='narrow'] .page {
+  padding: 24px 28px 35vh;
+}
+
+.pane[data-size='narrow'] .page-title {
+  font-size: 30px;
+  margin-top: 16px;
+}
+
+.pane[data-size='narrow'] .page-icon-row {
+  margin-top: 8px;
+}
+
+.pane[data-size='narrow'] .page-icon {
+  font-size: 48px;
+  width: 60px;
+  height: 60px;
+}
+
+.pane[data-size='narrow'] .prose .columns {
+  grid-template-columns: 1fr;
+}
+
+.pane[data-size='narrow'] .collection,
+.pane[data-size='narrow'] .home {
+  padding: 4vh 24px 20vh;
 }
 
 .save-status {
@@ -1618,16 +1735,34 @@ input[type='checkbox']:checked::after {
   -webkit-app-region: no-drag;
 }
 
-[data-desktop] .topbar {
+/* the tab bar is the title bar row, the window's own buttons sit at its end */
+[data-desktop] .tab-bar {
+  padding-right: calc(8px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+}
+
+[data-desktop='darwin'] .sidebar-header,
+[data-desktop='darwin'] .sidebar-collapsed .tab-bar {
+  padding-left: 84px;
+}
+
+/* focus mode hides the tabs, the top bars are the title bar row again */
+[data-desktop] .app.focus-mode .pane:last-child .topbar {
   padding-right: calc(12px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
 }
 
-[data-desktop='darwin'] .sidebar-header {
+[data-desktop='darwin'] .app.focus-mode .pane[data-pane='main'] .topbar {
   padding-left: 84px;
 }
 
-[data-desktop='darwin'] .sidebar-collapsed .topbar {
-  padding-left: 84px;
+/* a narrow window hides a lone tab, the top bar is the title bar row again */
+@media (max-width: 800px) {
+  [data-desktop] .main:has(> .tab-bar.is-single) .pane[data-pane='main'] .topbar {
+    padding-right: calc(12px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  }
+
+  [data-desktop='darwin'] .main:has(> .tab-bar.is-single) .pane[data-pane='main'] .topbar {
+    padding-left: 84px;
+  }
 }
 
 /* small screens */

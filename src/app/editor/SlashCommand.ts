@@ -340,10 +340,39 @@ export const BLOCK_ITEMS: BlockItem[] = [
   },
 ];
 
+// the groups the menu shows before you type, in this order
+const SECTIONS: Array<[string, string[]]> = [
+  [
+    'Basic blocks',
+    ['text', 'h1', 'h2', 'h3', 'bullet', 'ordered', 'task', 'toggle', 'quote', 'callout', 'divider', 'code'],
+  ],
+  ['Media', ['image', 'file']],
+  ['Layout', ['columns2', 'columns3', 'table', 'toc']],
+  ['Pages and data', ['link', 'embed', 'date', 'database', 'inlineDatabase', 'canvas', 'inlineCanvas']],
+  ['Maths and diagrams', ['math', 'inlineMath', 'diagram', 'highlight']],
+];
+
+function grouped(): BlockItem[] {
+  const placed = new Set<string>();
+  const out: BlockItem[] = [];
+  for (const [section, ids] of SECTIONS) {
+    for (const id of ids) {
+      const item = BLOCK_ITEMS.find((candidate) => candidate.id === id);
+      if (item) {
+        out.push({ ...item, section });
+        placed.add(id);
+      }
+    }
+  }
+  // anything not given a group still shows, at the end
+  for (const item of BLOCK_ITEMS) if (!placed.has(item.id)) out.push({ ...item, section: 'More' });
+  return out;
+}
+
 // blocks whose name matches come before blocks that only match a keyword, so /diagram finds the diagram
 export function filterBlocks(query: string): BlockItem[] {
   const folded = foldText(query.trim());
-  if (!folded) return BLOCK_ITEMS;
+  if (!folded) return grouped();
   const words = folded.split(/\s+/);
   const rank = (item: BlockItem): number => {
     const title = foldText(item.title);
@@ -383,7 +412,7 @@ export const SlashCommand = Extension.create<SlashOptions>({
           const item = BLOCK_ITEMS.find((candidate) => candidate.id === props.id);
           item?.run(editor, range, options);
         },
-        render: renderSuggestion('Insert block', 'No matching blocks'),
+        render: renderSuggestion('Insert block', 'No matching blocks', 'insert'),
       }),
     ];
   },

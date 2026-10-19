@@ -1,6 +1,11 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  ArrowLeft,
+  ArrowRight,
   ArrowRightLeft,
+  Columns2,
+  PanelRightClose,
+  RotateCcw,
   CalendarDays,
   CheckSquare,
   Copy,
@@ -28,6 +33,7 @@ import {
   Search,
   Settings,
   Star,
+  Sparkles,
   Sun,
   Trash2,
   Upload,
@@ -51,10 +57,22 @@ import {
   trashPage,
 } from './operations';
 import { desktop, isMac } from './platform/desktop';
-import { closeTab, openTab } from './tabs';
+import {
+  activeHash,
+  closeOtherTabs,
+  closeSide,
+  closeTab,
+  getTabs,
+  goBack,
+  goForward,
+  openSide,
+  openTab,
+  reopenClosedTab,
+  swapSides,
+} from './tabs';
 import { chooseVaultFolder } from './vaults';
 import { getPreferences, resolvedTheme, setPreferences } from './platform/preferences';
-import { navigate, parseRoute } from './router';
+import { activeRoute, navigate } from './router';
 import { getUi, openDialog, setUi } from './ui';
 import { getState } from './workspace';
 
@@ -72,6 +90,17 @@ export interface Action {
   enabled?: (context: ActionContext) => boolean;
   run: (context: ActionContext) => void;
 }
+
+// shortcuts shown on buttons as well as run from the keyboard
+export const ACTION_SHORTCUTS = {
+  back: isMac ? 'Mod+[' : 'Alt+ArrowLeft',
+  forward: isMac ? 'Mod+]' : 'Alt+ArrowRight',
+};
+
+const hasSplit = () => {
+  const { tabs, active } = getTabs();
+  return Boolean(tabs.find((tab) => tab.id === active)?.side);
+};
 
 const onLivePage = ({ pageId }: ActionContext) =>
   pageId !== null && !isEffectivelyTrashed(getState().pages, pageId);
@@ -101,7 +130,69 @@ export const ACTIONS: Action[] = [
     group: 'View',
     icon: Plus,
     keywords: 'tabs split',
-    run: () => openTab(window.location.hash || '#/'),
+    run: () => openTab(activeHash()),
+  },
+  {
+    id: 'tab.reopen',
+    label: 'Reopen closed tab',
+    group: 'View',
+    icon: RotateCcw,
+    shortcut: 'Mod+Shift+T',
+    keywords: 'tabs undo restore',
+    run: () => reopenClosedTab(),
+  },
+  {
+    id: 'tab.closeOthers',
+    label: 'Close other tabs',
+    group: 'View',
+    icon: X,
+    keywords: 'tabs',
+    run: () => closeOtherTabs(),
+  },
+  {
+    id: 'go.back',
+    label: 'Go back',
+    group: 'View',
+    icon: ArrowLeft,
+    shortcut: ACTION_SHORTCUTS.back,
+    keywords: 'previous history navigate',
+    run: () => goBack(),
+  },
+  {
+    id: 'go.forward',
+    label: 'Go forward',
+    group: 'View',
+    icon: ArrowRight,
+    shortcut: ACTION_SHORTCUTS.forward,
+    keywords: 'next history navigate',
+    run: () => goForward(),
+  },
+  {
+    id: 'view.split',
+    label: 'Open beside, in a split',
+    group: 'View',
+    icon: Columns2,
+    shortcut: 'Mod+Shift+\\',
+    keywords: 'split pane side by side two pages columns',
+    run: () => openSide(),
+  },
+  {
+    id: 'view.swapSplit',
+    label: 'Swap the two sides of the split',
+    group: 'View',
+    icon: ArrowRightLeft,
+    keywords: 'split pane swap',
+    enabled: () => hasSplit(),
+    run: () => swapSides(),
+  },
+  {
+    id: 'view.closeSplit',
+    label: 'Close the split',
+    group: 'View',
+    icon: PanelRightClose,
+    keywords: 'split pane close side',
+    enabled: () => hasSplit(),
+    run: () => closeSide(),
   },
   {
     id: 'page.new',
@@ -233,6 +324,25 @@ export const ACTIONS: Action[] = [
     shortcut: 'Mod+K',
     keywords: 'find palette',
     run: () => setUi({ palette: !getUi().palette }),
+  },
+  {
+    id: 'search.all',
+    label: 'Search every page',
+    group: 'General',
+    icon: Search,
+    shortcut: 'Mod+Shift+K',
+    keywords: 'find full text results everywhere',
+    run: () => navigate({ name: 'search', query: '' }),
+  },
+  {
+    id: 'assistant.toggle',
+    label: 'Show or hide the assistant',
+    group: 'View',
+    icon: Sparkles,
+    shortcut: 'Mod+J',
+    keywords: 'ai chat ask claude gpt gemini',
+    enabled: () => getPreferences().assistant && desktop?.assistant !== undefined,
+    run: () => setPreferences({ assistantOpen: !getPreferences().assistantOpen }),
   },
   {
     id: 'go.home',
@@ -430,7 +540,7 @@ export const ACTIONS: Action[] = [
 ];
 
 export function currentContext(): ActionContext {
-  const route = parseRoute(window.location.hash);
+  const route = activeRoute();
   return { pageId: route.name === 'page' && getState().pages[route.id] ? route.id : null };
 }
 
@@ -449,6 +559,8 @@ export function formatShortcut(shortcut: string): string {
       if (key === 'Mod') return isMac ? '⌘' : 'Ctrl';
       if (key === 'Alt') return isMac ? '⌥' : 'Alt';
       if (key === 'Shift') return isMac ? '⇧' : 'Shift';
+      if (key === 'ArrowLeft') return '←';
+      if (key === 'ArrowRight') return '→';
       return key;
     })
     .join(isMac ? '' : '+');

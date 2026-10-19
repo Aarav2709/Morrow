@@ -280,7 +280,7 @@ export const PageLink = Node.create<PageLinkOptions>({
             ])
             .run();
         },
-        render: renderSuggestion('Link to page', 'No pages found'),
+        render: renderSuggestion('Link to page', 'No pages found', 'link'),
       }),
     ];
   },

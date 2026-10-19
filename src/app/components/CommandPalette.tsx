@@ -6,7 +6,7 @@ import { foldText, searchWorkspace } from '../../core/search';
 import type { SearchSnippet } from '../../core/search';
 import { ancestorsOf, livePages } from '../../core/tree';
 import { ACTIONS, currentContext, formatShortcut } from '../actions';
-import { openPage } from '../router';
+import { navigate, openPage } from '../router';
 import { setUi } from '../ui';
 import { useWorkspace } from '../workspace';
 import { pageIcon } from './Sidebar';
@@ -87,7 +87,15 @@ export function CommandPalette() {
       snippet: result.titleMatch ? null : result.snippet,
       run: () => openPage(result.page.id, result.titleMatch ? null : result.firstMatch),
     }));
-    return [...pages, ...actions.slice(0, 5)];
+    const everywhere: Entry = {
+      key: 'search:all',
+      group: 'Pages',
+      title: `Search every page for “${query.trim()}”`,
+      icon: Search,
+      shortcut: formatShortcut('Mod+Enter'),
+      run: () => navigate({ name: 'search', query: query.trim() }),
+    };
+    return [...pages, everywhere, ...actions.slice(0, 5)];
   }, [query, state]);
 
   const [lastQuery, setLastQuery] = useState(query);
@@ -113,6 +121,11 @@ export function CommandPalette() {
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActive((index) => Math.max(0, index - 1));
+    } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && query.trim()) {
+      // every result, with every place it matched, in a view of its own
+      event.preventDefault();
+      close();
+      navigate({ name: 'search', query: query.trim() });
     } else if (event.key === 'Enter') {
       event.preventDefault();
       choose(entries[active]);
@@ -194,6 +207,9 @@ export function CommandPalette() {
           </span>
           <span>
             <kbd className="kbd">Enter</kbd> to open
+          </span>
+          <span>
+            <kbd className="kbd">{formatShortcut('Mod+Enter')}</kbd> for every result
           </span>
           <span>
             <kbd className="kbd">Esc</kbd> to close

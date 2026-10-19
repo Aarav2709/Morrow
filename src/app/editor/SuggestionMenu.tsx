@@ -1,4 +1,4 @@
-import { computePosition, flip, offset, shift } from '@floating-ui/dom';
+import { computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { ReactRenderer } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
@@ -18,6 +18,8 @@ interface Props {
   items: MenuItem[];
   emptyText: string;
   label: string;
+  // what enter does, shown in the hint along the bottom
+  action: string;
   onSelect: (item: MenuItem) => void;
 }
 
@@ -26,7 +28,7 @@ export interface SuggestionMenuHandle {
 }
 
 export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function SuggestionMenu(
-  { items, emptyText, label, onSelect },
+  { items, emptyText, label, action, onSelect },
   ref,
 ) {
   const [active, setActive] = useState(0);
@@ -64,47 +66,63 @@ export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function S
   }));
 
   return (
-    <div className="suggestion-menu popover" role="listbox" aria-label={label} ref={listRef}>
-      {items.length === 0 ? (
-        <div className="suggestion-empty">{emptyText}</div>
-      ) : (
-        items.map((item, index) => {
-          const Icon = item.icon;
-          const showSection = item.section && item.section !== items[index - 1]?.section;
-          return (
-            <div key={item.id}>
-              {showSection && <div className="menu-section">{item.section}</div>}
-              <button
-                type="button"
-                role="option"
-                aria-selected={index === active}
-                data-index={index}
-                className="suggestion-item"
-                onMouseEnter={() => setActive(index)}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => onSelect(item)}
-              >
-                {Icon && (
-                  <span className="suggestion-icon">
-                    <Icon size={16} strokeWidth={1.75} />
+    <div className="suggestion-menu popover" role="listbox" aria-label={label}>
+      <div className="suggestion-list" ref={listRef}>
+        {items.length === 0 ? (
+          <div className="suggestion-empty">{emptyText}</div>
+        ) : (
+          items.map((item, index) => {
+            const Icon = item.icon;
+            const showSection = item.section && item.section !== items[index - 1]?.section;
+            return (
+              <div key={item.id}>
+                {showSection && <div className="suggestion-section">{item.section}</div>}
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={index === active}
+                  data-index={index}
+                  className="suggestion-item"
+                  onMouseMove={() => index !== active && setActive(index)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onSelect(item)}
+                >
+                  {Icon && (
+                    <span className="suggestion-icon">
+                      <Icon size={16} strokeWidth={1.75} />
+                    </span>
+                  )}
+                  <span className="suggestion-text">
+                    <span className="suggestion-title">{item.title}</span>
+                    {item.description && <span className="suggestion-description">{item.description}</span>}
                   </span>
-                )}
-                <span className="suggestion-text">
-                  <span className="suggestion-title">{item.title}</span>
-                  {item.description && <span className="suggestion-description">{item.description}</span>}
-                </span>
-                {item.hint && <kbd className="suggestion-hint">{item.hint}</kbd>}
-              </button>
-            </div>
-          );
-        })
+                  {item.hint && <kbd className="suggestion-hint">{item.hint}</kbd>}
+                </button>
+              </div>
+            );
+          })
+        )}
+      </div>
+      {items.length > 0 && (
+        <div className="suggestion-footer" aria-hidden="true">
+          <span>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd> to choose
+          </span>
+          <span>
+            <kbd>↵</kbd> to {action}
+          </span>
+          <span>
+            <kbd>esc</kbd> to close
+          </span>
+        </div>
       )}
     </div>
   );
 });
 
 // lifecycle glue between tiptap suggestion and the floating react list
-export function renderSuggestion(label: string, emptyText: string) {
+export function renderSuggestion(label: string, emptyText: string, action = 'choose') {
   return () => {
     let renderer: ReactRenderer<SuggestionMenuHandle, Props> | null = null;
     let latest: SuggestionProps<MenuItem, MenuItem> | null = null;
@@ -116,7 +134,18 @@ export function renderSuggestion(label: string, emptyText: string) {
       void computePosition({ getBoundingClientRect: () => rect }, element, {
         placement: 'bottom-start',
         strategy: 'fixed',
-        middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
+        middleware: [
+          offset(6),
+          // opens above the line when there is more room there, and never runs off the window
+          flip({ padding: 8, fallbackPlacements: ['top-start'] }),
+          shift({ padding: 8 }),
+          size({
+            padding: 8,
+            apply({ availableHeight, elements }) {
+              elements.floating.style.maxHeight = `${Math.max(140, Math.min(420, availableHeight))}px`;
+            },
+          }),
+        ],
       }).then(({ x, y }) => {
         element.style.left = `${x}px`;
         element.style.top = `${y}px`;
@@ -127,6 +156,7 @@ export function renderSuggestion(label: string, emptyText: string) {
       items: suggestion.items,
       emptyText,
       label,
+      action,
       onSelect: (item) => suggestion.command(item),
     });
 
@@ -148,11 +178,13 @@ export function renderSuggestion(label: string, emptyText: string) {
         element.style.position = 'fixed';
         document.body.appendChild(element);
         place();
+        // placed again once the list is drawn, its real height decides above or below
+        requestAnimationFrame(place);
       },
       onUpdate(suggestion: SuggestionProps<MenuItem, MenuItem>) {
         latest = suggestion;
         renderer?.updateProps(props(suggestion));
-        place();
+        requestAnimationFrame(place);
       },
       onKeyDown({ event }: SuggestionKeyDownProps) {
         if (event.key === 'Escape') {

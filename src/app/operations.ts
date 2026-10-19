@@ -37,6 +37,9 @@ import { desktop } from './platform/desktop';
 import { newId, pickFiles, saveFile, stamp } from './platform/files';
 import { getPreferences, setPreferences } from './platform/preferences';
 import { navigate, openPage, parseRoute } from './router';
+import type { Route } from './router';
+import { getTabs } from './tabs';
+import type { PaneId } from './tabs';
 import { confirmAction, setUi, toast } from './ui';
 import { getSession, getState, run } from './workspace';
 
@@ -247,26 +250,38 @@ export function revealPage(id: PageId): void {
   if (path !== null) void desktop?.vault?.reveal(path);
 }
 
+// the sides of the open tab that show something, a split tab has two
+function panesShowing(match: (route: Route) => boolean): PaneId[] {
+  const { tabs, active } = getTabs();
+  const side = tabs.find((tab) => tab.id === active)?.side;
+  const panes: PaneId[] = [];
+  if (match(parseRoute(window.location.hash))) panes.push('main');
+  if (side && match(parseRoute(side.hash))) panes.push('side');
+  return panes;
+}
+
 export function trashPage(id: PageId): void {
   const state = getState();
   const page = state.pages[id];
   if (!page) return;
-  const route = parseRoute(window.location.hash);
-  const viewingAffected =
-    route.name === 'page' &&
-    (route.id === id || descendantsOf(state.pages, id).some((child) => child.id === route.id));
+  const affected = panesShowing(
+    (route) =>
+      route.name === 'page' &&
+      (route.id === id || descendantsOf(state.pages, id).some((child) => child.id === route.id)),
+  );
   const result = run({ type: 'page.trash', id, now: Date.now() });
   if (!result.ok) return;
-  if (viewingAffected) {
-    if (page.parentId && !isEffectivelyTrashed(result.value.pages, page.parentId)) openPage(page.parentId);
-    else navigate({ name: 'home' });
+  for (const pane of affected) {
+    if (page.parentId && !isEffectivelyTrashed(result.value.pages, page.parentId))
+      navigate({ name: 'page', id: page.parentId, find: null }, { pane });
+    else navigate({ name: 'home' }, { pane });
   }
   toast(`Moved “${displayTitle(page)}” to the trash`, {
     action: {
       label: 'Undo',
       run: () => {
         const restored = run({ type: 'page.restore', id });
-        if (restored.ok && viewingAffected) openPage(id);
+        if (restored.ok) for (const pane of affected) navigate({ name: 'page', id, find: null }, { pane });
       },
     },
   });
@@ -295,10 +310,9 @@ export function deleteForever(id: PageId): void {
     danger: true,
     onConfirm: () => {
       const result = run({ type: 'page.deleteForever', id });
-      if (result.ok) {
-        const route = parseRoute(window.location.hash);
-        if (route.name === 'page' && !result.value.pages[route.id]) navigate({ name: 'trash' });
-      }
+      if (result.ok)
+        for (const pane of panesShowing((route) => route.name === 'page' && !result.value.pages[route.id]))
+          navigate({ name: 'trash' }, { pane });
     },
   });
 }
@@ -378,10 +392,13 @@ export async function exportPagePdf(id: PageId): Promise<void> {
   commitEditors();
   const page = getState().pages[id];
   if (!page || !desktop) return;
-  const route = parseRoute(location.hash);
-  if (route.name !== 'page' || route.id !== id) openPage(id);
+  const showing = panesShowing((route) => route.name === 'page' && route.id === id);
+  if (showing.length === 0) openPage(id);
   // pictures and diagrams get a moment to finish drawing
   await new Promise((resolve) => setTimeout(resolve, 400));
+  // a split tab prints only the side with the page on it
+  const pane = showing[0] ?? (getTabs().pane === 'side' ? 'side' : 'main');
+  document.documentElement.dataset.printPane = pane;
   document.documentElement.classList.add('is-printing');
   try {
     const result = await desktop.exportPdf(displayTitle(page));
@@ -389,6 +406,7 @@ export async function exportPagePdf(id: PageId): Promise<void> {
     else if (result.error) toast(`Could not export the PDF: ${result.error}`, { tone: 'error' });
   } finally {
     document.documentElement.classList.remove('is-printing');
+    delete document.documentElement.dataset.printPane;
   }
 }
 

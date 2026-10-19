@@ -285,6 +285,16 @@ export class WorkspaceSession {
     return this.execute({ type: 'page.setDoc', id: snapshot.pageId, doc: snapshot.doc, now: Date.now() });
   }
 
+  // the page as it is now is kept in its history, before the assistant changes it for you
+  async keepVersion(pageId: PageId): Promise<void> {
+    const doc = this.state.docs[pageId];
+    if (!doc || isDocEmpty(doc) || this.state.pages[pageId]?.encrypted) return;
+    await this.queue.flush();
+    const current = this.snapshotOf(pageId, this.state, Date.now());
+    await this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] });
+    this.lastSnapshot.set(pageId, current.createdAt);
+  }
+
   private snapshotOf(pageId: PageId, state: WorkspaceState, now: number): Snapshot {
     return {
       id: crypto.randomUUID(),

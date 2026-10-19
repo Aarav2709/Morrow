@@ -20,6 +20,7 @@ import {
   Plus,
   Search,
   Settings,
+  Sparkles,
   Star,
   Table2,
   Trash2,
@@ -48,7 +49,7 @@ import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
 import { createPage, expandPage, importMarkdown, openToday, trashPage } from '../operations';
 import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
-import { navigate, openPage, useRoute } from '../router';
+import { navigate, openPage, useActiveRoute } from '../router';
 import { openDialog, setUi, useUi } from '../ui';
 import { run, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
@@ -128,7 +129,7 @@ function NavItem({
 
 export function Sidebar() {
   const state = useWorkspace();
-  const route = useRoute();
+  const route = useActiveRoute();
   const prefs = usePreferences();
   const activeId = route.name === 'page' ? route.id : null;
   const live = useMemo(() => livePages(state.pages), [state.pages]);
@@ -225,13 +226,13 @@ export function Sidebar() {
           hint={formatShortcut('Mod+K')}
           onClick={() => setUi({ palette: true, mobileSidebar: false })}
         />
+        <NavItem icon={CalendarDays} label="Today" active={isToday} onClick={go(() => openToday())} />
         <NavItem
           icon={Home}
           label="Home"
           active={route.name === 'home'}
           onClick={go(() => navigate({ name: 'home' }))}
         />
-        <NavItem icon={CalendarDays} label="Today" active={isToday} onClick={go(() => openToday())} />
         <NavItem
           icon={CheckSquare}
           label="Tasks"
@@ -259,6 +260,14 @@ export function Sidebar() {
           active={route.name === 'graph'}
           onClick={go(() => navigate({ name: 'graph', focus: null }))}
         />
+        {prefs.assistant && desktop?.assistant && (
+          <NavItem
+            icon={Sparkles}
+            label="Assistant"
+            active={prefs.assistantOpen}
+            onClick={() => setPreferences({ assistantOpen: !prefs.assistantOpen })}
+          />
+        )}
       </nav>
 
       <div className="sidebar-scroll">

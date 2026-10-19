@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { canvasDoc, readCanvas, writeCanvas } from './canvas';
 import { applyCommand } from './commands';
 import { decryptPage, deriveKey, encryptPage, isEncryptedText } from './crypto';
+import { daysWithNotes, neighbourNotes, pagesMadeOn } from './daily';
 import { diffLines } from './diff';
 import type { Command } from './commands';
 import {
@@ -328,6 +329,29 @@ describe('home insights', () => {
       { type: 'page.create', id: 'now', parentId: 'j', now: 1, dailyDate: '2026-10-15', title: 'Today' },
     );
     expect(onThisDay(state, new Date(2026, 9, 15)).map((page) => page.id)).toEqual(['old']);
+  });
+
+  it('steps between daily notes and lists the pages made on a day', () => {
+    const made = new Date(2026, 9, 15, 14, 30).getTime();
+    const state = run(
+      emptyWorkspace(),
+      { type: 'page.create', id: 'j', parentId: null, now: 1, kind: 'journal', title: 'Journal' },
+      { type: 'page.create', id: 'a', parentId: 'j', now: made, dailyDate: '2026-10-01', title: 'A' },
+      { type: 'page.create', id: 'b', parentId: 'j', now: made, dailyDate: '2026-10-15', title: 'B' },
+      { type: 'page.create', id: 'c', parentId: 'j', now: made, dailyDate: '2026-10-20', title: 'C' },
+      { type: 'page.create', id: 'meeting', parentId: null, now: made, title: 'Dentist' },
+      { type: 'page.create', id: 'later', parentId: null, now: made + 86_400_000, title: 'Tomorrow' },
+      { type: 'page.create', id: 'gone', parentId: null, now: made, title: 'Gone' },
+      { type: 'page.trash', id: 'gone', now: made },
+    );
+    const around = neighbourNotes(state, '2026-10-15');
+    expect([around.previous?.id, around.next?.id]).toEqual(['a', 'c']);
+    // a day without a note of its own still finds the notes either side
+    const gap = neighbourNotes(state, '2026-10-10');
+    expect([gap.previous?.id, gap.next?.id]).toEqual(['a', 'b']);
+    expect(neighbourNotes(state, '2026-10-01').previous).toBeNull();
+    expect(pagesMadeOn(state, '2026-10-15').map((page) => page.id)).toEqual(['meeting']);
+    expect([...daysWithNotes(state)].sort()).toEqual(['2026-10-01', '2026-10-15', '2026-10-20']);
   });
 });
 

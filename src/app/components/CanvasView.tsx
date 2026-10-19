@@ -13,7 +13,7 @@ import {
   Trash2,
   Undo2,
 } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { canvasDoc, canvasFromDoc, CANVAS_COLORS } from '../../core/canvas';
 import type { CanvasData, CanvasEdge, CanvasNode, CanvasSide, CanvasStroke } from '../../core/canvas';
 import { docToPlainText } from '../../core/doc';
@@ -138,11 +138,16 @@ export function CanvasView({
   pageId,
   doc,
   editable,
+  embedded = false,
 }: {
   pageId: PageId;
   doc: DocNode | undefined;
   editable: boolean;
+  // shown inside a page, where the wheel scrolls the page until the canvas has focus
+  embedded?: boolean;
 }) {
+  // every canvas on screen needs its own arrow head, a shared id breaks once the first one goes away
+  const arrowId = `canvas-arrow-${useId().replace(/[^\w-]/g, '')}`;
   const [data, setData] = useState<CanvasData>(() => canvasFromDoc(doc));
   const [view, setView] = useState<Viewport>({ x: 80, y: 80, zoom: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -308,6 +313,8 @@ export function CanvasView({
     const element = rootRef.current;
     if (!element) return;
     const onWheel = (event: WheelEvent) => {
+      const zooming = event.ctrlKey || event.metaKey;
+      if (embedded && !zooming && !element.contains(document.activeElement)) return;
       event.preventDefault();
       if (event.ctrlKey || event.metaKey) zoomAt(Math.exp(-event.deltaY / 300), event.clientX, event.clientY);
       else setView((current) => ({ ...current, x: current.x - event.deltaX, y: current.y - event.deltaY }));
@@ -808,7 +815,7 @@ export function CanvasView({
           )}
           <defs>
             <marker
-              id="canvas-arrow"
+              id={arrowId}
               viewBox="0 0 10 10"
               refX="9"
               refY="5"
@@ -865,8 +872,8 @@ export function CanvasView({
                 <path
                   d={path}
                   className="canvas-edge-line"
-                  markerEnd={edge.toEnd === 'none' ? undefined : 'url(#canvas-arrow)'}
-                  markerStart={edge.fromEnd === 'arrow' ? 'url(#canvas-arrow)' : undefined}
+                  markerEnd={edge.toEnd === 'none' ? undefined : `url(#${arrowId})`}
+                  markerStart={edge.fromEnd === 'arrow' ? `url(#${arrowId})` : undefined}
                 />
                 {edge.label && (
                   <text

@@ -15,6 +15,8 @@ export interface SearchResult {
   score: number;
   titleMatch: boolean;
   snippet: SearchSnippet | null;
+  // every place in the page that matched, up to the number asked for, in reading order
+  snippets: SearchSnippet[];
   // text to highlight when the page opens
   firstMatch: string | null;
   path: string[];
@@ -47,11 +49,40 @@ export function tokenize(query: string): string[] {
     .slice(0, 12);
 }
 
-// #tag in a query keeps only pages with that tag, the other words are searched as usual
-export function searchWorkspace(state: WorkspaceState, query: string, limit = 50): SearchResult[] {
-  const all = tokenize(query);
-  const wantedTags = all.filter((term) => /^#[^#\s]+$/.test(term)).map((term) => term.slice(1));
-  const terms = all.filter((term) => !/^#[^#\s]+$/.test(term));
+export interface ParsedQuery {
+  // words and "quoted phrases" a page must all contain
+  terms: string[];
+  // -words and -"phrases" a page must not contain
+  excluded: string[];
+  // #tags a page must have
+  tags: string[];
+}
+
+export function parseQuery(query: string): ParsedQuery {
+  const parsed: ParsedQuery = { terms: [], excluded: [], tags: [] };
+  for (const match of foldText(query).matchAll(/(-?)"([^"]*)"?|(\S+)/g)) {
+    if (match[2] !== undefined) {
+      const phrase = match[2].trim().replace(/\s+/g, ' ');
+      if (phrase) (match[1] ? parsed.excluded : parsed.terms).push(phrase);
+      continue;
+    }
+    const word = match[3]!;
+    if (/^#[^#\s]+$/.test(word)) parsed.tags.push(word.slice(1));
+    else if (word.length > 1 && word.startsWith('-')) parsed.excluded.push(word.slice(1));
+    else parsed.terms.push(word);
+  }
+  parsed.terms = parsed.terms.slice(0, 12);
+  return parsed;
+}
+
+// #tag keeps only pages with that tag, "a phrase" matches those words together, -word leaves pages out
+export function searchWorkspace(
+  state: WorkspaceState,
+  query: string,
+  limit = 50,
+  snippetCount = 1,
+): SearchResult[] {
+  const { terms, excluded, tags: wantedTags } = parseQuery(query);
   if (terms.length === 0 && wantedTags.length === 0) return [];
   const phrase = terms.join(' ');
   const results: SearchResult[] = [];
@@ -63,6 +94,7 @@ export function searchWorkspace(state: WorkspaceState, query: string, limit = 50
     }
     const title = foldText(displayTitle(page));
     const body = textOf(state.docs[page.id]);
+    if (excluded.some((term) => title.includes(term) || body.folded.includes(term))) continue;
     let score = 0;
     let matchedAll = true;
     for (const term of terms) {
@@ -82,14 +114,18 @@ export function searchWorkspace(state: WorkspaceState, query: string, limit = 50
     if (phrase && body.folded.includes(phrase)) score += 6;
     // small recency bonus so fresh notes win ties
     score += Math.max(0, 2 - (Date.now() - page.updatedAt) / (1000 * 60 * 60 * 24 * 30));
-    const bodyTerm =
-      phrase && body.folded.includes(phrase) ? phrase : terms.find((term) => body.folded.includes(term));
-    const snippet = bodyTerm ? makeSnippet(body, bodyTerm) : null;
+    const bodyTerms = [
+      ...(phrase && terms.length > 1 && body.folded.includes(phrase) ? [phrase] : []),
+      ...terms.filter((term) => body.folded.includes(term)),
+    ];
+    const snippets = makeSnippets(body, bodyTerms, Math.max(1, snippetCount));
+    const snippet = snippets[0] ?? null;
     results.push({
       page,
       score,
       titleMatch,
       snippet,
+      snippets: snippetCount > 1 ? snippets : snippets.slice(0, 1),
       firstMatch: snippet?.match ?? null,
       path: ancestorsOf(state.pages, page.id)
         .reverse()
@@ -110,10 +146,35 @@ function countOccurrences(haystack: string, needle: string): number {
   return count;
 }
 
-function makeSnippet(body: { raw: string; folded: string }, term: string, radius = 60): SearchSnippet {
+// the first matches of the terms, earlier terms first, each from a different part of the page
+function makeSnippets(
+  body: { raw: string; folded: string },
+  terms: string[],
+  count: number,
+): SearchSnippet[] {
+  const found: Array<{ index: number; snippet: SearchSnippet; end: number }> = [];
+  for (const term of terms) {
+    let index = body.folded.indexOf(term);
+    while (index !== -1 && found.length < count) {
+      const taken = found.some((item) => index >= item.index - 60 && index <= item.end);
+      if (!taken)
+        found.push({ index, end: index + term.length + 60, snippet: makeSnippet(body, term, index) });
+      index = body.folded.indexOf(term, index + term.length);
+    }
+    if (found.length >= count) break;
+  }
+  return found.sort((a, b) => a.index - b.index).map((item) => item.snippet);
+}
+
+function makeSnippet(
+  body: { raw: string; folded: string },
+  term: string,
+  at = body.folded.indexOf(term),
+  radius = 60,
+): SearchSnippet {
   const aligned = body.raw.length === body.folded.length;
   const source = aligned ? body.raw : body.folded;
-  const index = body.folded.indexOf(term);
+  const index = at;
   const lineStart = source.lastIndexOf('\n', index) + 1;
   const lineEndRaw = source.indexOf('\n', index + term.length);
   const lineEnd = lineEndRaw === -1 ? source.length : lineEndRaw;

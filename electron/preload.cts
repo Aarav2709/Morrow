@@ -48,6 +48,13 @@ contextBridge.exposeInMainWorld('morrow', {
       return () => ipcRenderer.removeListener('sync:event', handler);
     },
   },
+  assistant: {
+    settings: () => ipcRenderer.invoke('ai:settings'),
+    configure: (patch: unknown) => ipcRenderer.invoke('ai:configure', patch),
+    models: () => ipcRenderer.invoke('ai:models'),
+    turn: (request: unknown) => ipcRenderer.invoke('ai:turn', request),
+    cancel: (id: string) => ipcRenderer.invoke('ai:cancel', id),
+  },
   vault: {
     state: () => ipcRenderer.invoke('vault:state'),
     choose: () => ipcRenderer.invoke('vault:choose'),

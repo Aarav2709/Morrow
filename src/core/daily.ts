@@ -33,3 +33,39 @@ export function dailyInsertIndex(siblings: PageMeta[], key: string): number {
   const index = siblings.findIndex((page) => page.dailyDate !== null && page.dailyDate < key);
   return index === -1 ? siblings.length : index;
 }
+
+// the daily notes written before and after a day, skipping days without one
+export function neighbourNotes(
+  state: WorkspaceState,
+  key: string,
+): { previous: PageMeta | null; next: PageMeta | null } {
+  let previous: PageMeta | null = null;
+  let next: PageMeta | null = null;
+  for (const page of livePages(state.pages)) {
+    const day = page.dailyDate;
+    if (!day || day === key) continue;
+    if (day < key && (!previous || day > previous.dailyDate!)) previous = page;
+    if (day > key && (!next || day < next.dailyDate!)) next = page;
+  }
+  return { previous, next };
+}
+
+// pages first made on a day, so a daily note shows what came out of it without touching those files
+export function pagesMadeOn(state: WorkspaceState, key: string): PageMeta[] {
+  return livePages(state.pages)
+    .filter(
+      (page) =>
+        page.dailyDate === null &&
+        page.kind !== 'journal' &&
+        page.kind !== 'templates' &&
+        dateKey(new Date(page.createdAt)) === key,
+    )
+    .sort((a, b) => a.createdAt - b.createdAt);
+}
+
+// every day that has a note, for marking a calendar
+export function daysWithNotes(state: WorkspaceState): Set<string> {
+  const days = new Set<string>();
+  for (const page of livePages(state.pages)) if (page.dailyDate) days.add(page.dailyDate);
+  return days;
+}

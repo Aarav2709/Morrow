@@ -1,4 +1,4 @@
-import { CircleCheckBig, FileText, FileUp, Flame, PenLine, Plus, Shuffle } from 'lucide-react';
+import { CalendarDays, CircleCheckBig, FileText, FileUp, Flame, PenLine, Plus, Shuffle } from 'lucide-react';
 import { useMemo } from 'react';
 import { collectTasks } from '../../core/tasks';
 import { activityWeeks, dayLabel, onThisDay, rediscover, streak, totalWords } from '../../core/insights';
@@ -6,7 +6,7 @@ import { docToPlainText } from '../../core/doc';
 import { COVER_GRADIENTS, displayTitle } from '../../core/model';
 import type { PageMeta, WorkspaceState } from '../../core/model';
 import { ancestorsOf, livePages } from '../../core/tree';
-import { createPage, importMarkdown } from '../operations';
+import { createPage, importMarkdown, openToday } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
 import { getSession, useWorkspace } from '../workspace';
@@ -153,7 +153,9 @@ export function HomeView() {
 
   return (
     <div className="view">
-      <TopBar />
+      <TopBar>
+        <span className="topbar-title">Home</span>
+      </TopBar>
       <div className="page-scroll">
         <div className="home">
           <header className="home-header">
@@ -169,6 +171,9 @@ export function HomeView() {
               {greeting(now)}
               {prefs.name ? `, ${prefs.name}` : ''}.
             </h1>
+            <button type="button" className="button primary home-today" onClick={() => openToday()}>
+              <CalendarDays size={15} /> Today's note
+            </button>
           </header>
 
           <div className="home-stats">

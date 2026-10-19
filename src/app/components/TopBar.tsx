@@ -1,21 +1,27 @@
 import {
   AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  ArrowRightLeft,
   Check,
+  Columns2,
   Loader2,
   Menu as MenuIcon,
   MoreHorizontal,
   PanelLeftOpen,
   Star,
+  X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageMeta } from '../../core/model';
 import { ancestorsOf } from '../../core/tree';
-import { formatShortcut, runAction } from '../actions';
+import { ACTION_SHORTCUTS, formatShortcut, runAction } from '../actions';
 import { toggleFavorite } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { openPage } from '../router';
+import { canGo, closeSide, goBack, goForward, openSide, swapSides, usePane, useTabs } from '../tabs';
 import { setUi } from '../ui';
 import { getSession, useSaveStatus, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
@@ -49,6 +55,81 @@ export function SidebarToggle() {
   );
 }
 
+// back and forward for the side of the window this bar belongs to
+function HistoryButtons() {
+  const pane = usePane();
+  const { tabs, active } = useTabs();
+  const tab = tabs.find((item) => item.id === active);
+  const back = tab ? canGo(tab, pane, 'back') : false;
+  const forward = tab ? canGo(tab, pane, 'forward') : false;
+  return (
+    <span className="history-buttons">
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Go back"
+        title={`Back (${formatShortcut(ACTION_SHORTCUTS.back)})`}
+        disabled={!back}
+        onClick={() => goBack(pane)}
+      >
+        <ArrowLeft size={16} strokeWidth={1.75} />
+      </button>
+      <button
+        type="button"
+        className="icon-button"
+        aria-label="Go forward"
+        title={`Forward (${formatShortcut(ACTION_SHORTCUTS.forward)})`}
+        disabled={!forward}
+        onClick={() => goForward(pane)}
+      >
+        <ArrowRight size={16} strokeWidth={1.75} />
+      </button>
+    </span>
+  );
+}
+
+// opening a split from the first side, closing or swapping it from the second
+function SplitButtons() {
+  const pane = usePane();
+  const { tabs, active } = useTabs();
+  const split = Boolean(tabs.find((item) => item.id === active)?.side);
+  if (pane === 'side')
+    return (
+      <>
+        <button
+          type="button"
+          className="icon-button desktop-only"
+          aria-label="Swap sides"
+          title="Swap the two sides"
+          onClick={swapSides}
+        >
+          <ArrowRightLeft size={15} strokeWidth={1.75} />
+        </button>
+        <button
+          type="button"
+          className="icon-button desktop-only"
+          aria-label="Close this side"
+          title="Close this side"
+          onClick={closeSide}
+        >
+          <X size={16} strokeWidth={1.75} />
+        </button>
+      </>
+    );
+  if (split) return null;
+  return (
+    <button
+      type="button"
+      className="icon-button desktop-only"
+      aria-label="Open beside"
+      title={`Open beside, in a split (${formatShortcut('Mod+Shift+\\')})`}
+      onClick={() => openSide()}
+    >
+      <Columns2 size={16} strokeWidth={1.75} />
+    </button>
+  );
+}
+
 export function SaveIndicator({ editing }: { editing: boolean }) {
   const status = useSaveStatus();
   const [, tick] = useState(0);
@@ -66,14 +147,14 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
         title={`${status.error ?? 'Unknown error'}. Your changes are kept in memory and will be retried. Click to retry now.`}
         onClick={() => void getSession().flush()}
       >
-        <AlertTriangle size={14} /> Not saved, retrying
+        <AlertTriangle size={14} /> <span className="save-label">Not saved, retrying</span>
       </button>
     );
   }
   if (editing || status.state === 'pending' || status.state === 'saving') {
     return (
       <span className="save-status is-saving">
-        <Loader2 size={13} className="spin" /> Saving
+        <Loader2 size={13} className="spin" /> <span className="save-label">Saving</span>
       </span>
     );
   }
@@ -86,7 +167,7 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
           : 'All changes are saved on this device'
       }
     >
-      <Check size={14} /> Saved
+      <Check size={14} /> <span className="save-label">Saved</span>
     </span>
   );
 }
@@ -103,19 +184,28 @@ export function TopBar({
   children?: ReactNode;
 }) {
   const state = useWorkspace();
+  const pane = usePane();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
   const trail = page ? ancestorsOf(state.pages, page.id).reverse() : [];
 
   return (
     <header className="topbar">
-      <div className="topbar-left">
-        <SidebarToggle />
+      <div className="topbar-nav">
+        {pane === 'main' && <SidebarToggle />}
+        <HistoryButtons />
+      </div>
+      <div className="topbar-center">
         {page ? (
           <nav className="breadcrumbs" aria-label="Breadcrumb">
             <ol>
               {trail.map((ancestor) => (
                 <li key={ancestor.id}>
-                  <button type="button" className="crumb" onClick={() => openPage(ancestor.id)}>
+                  <button
+                    type="button"
+                    className="crumb"
+                    title={displayTitle(ancestor)}
+                    onClick={() => openPage(ancestor.id)}
+                  >
                     {displayTitle(ancestor)}
                   </button>
                   <span className="crumb-sep" aria-hidden="true">
@@ -124,7 +214,7 @@ export function TopBar({
                 </li>
               ))}
               <li>
-                <span className="crumb is-current" aria-current="page">
+                <span className="crumb is-current" aria-current="page" title={displayTitle(page)}>
                   {displayTitle(page)}
                 </span>
               </li>
@@ -134,15 +224,17 @@ export function TopBar({
           children
         )}
       </div>
-      <div className="topbar-right">
-        <SaveIndicator editing={editing ?? false} />
+      <div className="topbar-actions">
+        {/* saving is the same for both sides of a split, so it shows once */}
+        {pane === 'main' && <SaveIndicator editing={editing ?? false} />}
         {page && (
           <>
-            <span className="topbar-meta desktop-only">Edited {relativeTime(page.updatedAt)}</span>
+            <span className="topbar-meta">Edited {relativeTime(page.updatedAt)}</span>
             <button
               type="button"
               className={`icon-button${page.favorite ? ' is-favorite' : ''}`}
               aria-label={page.favorite ? 'Remove from favourites' : 'Add to favourites'}
+              title={page.favorite ? 'Remove from favourites' : 'Add to favourites'}
               aria-pressed={page.favorite}
               onClick={() => toggleFavorite(page.id)}
             >
@@ -155,12 +247,14 @@ export function TopBar({
             type="button"
             className="icon-button"
             aria-label="Page options"
+            title="Page options"
             aria-haspopup="menu"
             onClick={(event) => setAnchor(event.currentTarget)}
           >
             <MoreHorizontal size={18} strokeWidth={1.75} />
           </button>
         )}
+        <SplitButtons />
       </div>
       {anchor && menu && (
         <Menu
