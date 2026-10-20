@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/core';
 import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import type { LucideIcon } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { t } from '../i18n';
 
 export interface MenuItem {
   id: string;
@@ -44,6 +45,15 @@ export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function S
   useEffect(() => {
     listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [active]);
+
+  const actionLabel =
+    action === 'insert'
+      ? t('editor.suggestion.actionInsert')
+      : action === 'link'
+        ? t('editor.suggestion.actionLink')
+        : action === 'choose'
+          ? t('editor.suggestion.actionChoose')
+          : action;
 
   useImperativeHandle(ref, () => ({
     onKeyDown(event) {
@@ -107,13 +117,13 @@ export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function S
         <div className="suggestion-footer" aria-hidden="true">
           <span>
             <kbd>↑</kbd>
-            <kbd>↓</kbd> to choose
+            <kbd>↓</kbd> {t('editor.suggestion.toChoose')}
           </span>
           <span>
-            <kbd>↵</kbd> to {action}
+            <kbd>↵</kbd> {t('editor.suggestion.toAction', { action: actionLabel })}
           </span>
           <span>
-            <kbd>esc</kbd> to close
+            <kbd>esc</kbd> {t('editor.suggestion.toClose')}
           </span>
         </div>
       )}
@@ -122,7 +132,11 @@ export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function S
 });
 
 // lifecycle glue between tiptap suggestion and the floating react list
-export function renderSuggestion(label: string, emptyText: string, action = 'choose') {
+export function renderSuggestion(
+  label: string | (() => string),
+  emptyText: string | (() => string),
+  action: string | (() => string) = 'choose',
+) {
   return () => {
     let renderer: ReactRenderer<SuggestionMenuHandle, Props> | null = null;
     let latest: SuggestionProps<MenuItem, MenuItem> | null = null;
@@ -152,11 +166,13 @@ export function renderSuggestion(label: string, emptyText: string, action = 'cho
       });
     };
 
+    const resolveText = (val: string | (() => string)) => (typeof val === 'function' ? val() : val);
+
     const props = (suggestion: SuggestionProps<MenuItem, MenuItem>): Props => ({
       items: suggestion.items,
-      emptyText,
-      label,
-      action,
+      emptyText: resolveText(emptyText),
+      label: resolveText(label),
+      action: resolveText(action),
       onSelect: (item) => suggestion.command(item),
     });
 

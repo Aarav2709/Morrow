@@ -1,4 +1,6 @@
+import { desktop } from './desktop';
 import { useSyncExternalStore } from 'react';
+import type { SupportedLocale } from '../i18n/types';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
@@ -26,6 +28,7 @@ export interface CanvasSize {
 }
 
 export interface Preferences {
+  locale: SupportedLocale;
   theme: ThemePreference;
   font: WritingFont;
   width: PageWidth;
@@ -47,10 +50,23 @@ export interface Preferences {
   assistantOpen: boolean;
   // changes the assistant proposes wait for approval
   assistantAsk: boolean;
+  mcpEnabled: boolean;
+  mcpPort: number;
 }
 
 const KEY = 'morrow.preferences';
+
+function defaultLocale(): SupportedLocale {
+  if (typeof navigator !== 'undefined') {
+    const lang = navigator.language?.toLowerCase() ?? '';
+    if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('pt')) return 'pt';
+  }
+  return 'en';
+}
+
 const defaults: Preferences = {
+  locale: defaultLocale(),
   theme: 'system',
   font: 'sans',
   width: 'comfortable',
@@ -66,6 +82,8 @@ const defaults: Preferences = {
   assistant: false,
   assistantOpen: false,
   assistantAsk: true,
+  mcpEnabled: false,
+  mcpPort: 3030,
 };
 
 // view preferences only, losing them never loses work
@@ -88,6 +106,9 @@ function read(): Preferences {
     if (!raw) return defaults;
     const parsed = JSON.parse(raw) as Partial<Preferences>;
     return {
+      locale: ['en', 'es', 'pt'].includes(parsed.locale as SupportedLocale)
+        ? (parsed.locale as SupportedLocale)
+        : defaults.locale,
       theme: ['system', 'light', 'dark'].includes(parsed.theme as string) ? parsed.theme! : defaults.theme,
       font: ['serif', 'sans', 'mono'].includes(parsed.font as string) ? parsed.font! : defaults.font,
       width: parsed.width === 'wide' ? 'wide' : 'comfortable',
@@ -111,6 +132,11 @@ function read(): Preferences {
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,
+      mcpEnabled: parsed.mcpEnabled === true,
+      mcpPort:
+        typeof parsed.mcpPort === 'number' && parsed.mcpPort > 0 && parsed.mcpPort <= 65535
+          ? parsed.mcpPort
+          : defaults.mcpPort,
     };
   } catch {
     return defaults;
@@ -123,6 +149,9 @@ export function getPreferences(): Preferences {
 
 export function setPreferences(patch: Partial<Preferences>): void {
   current = { ...current, ...patch };
+  if ('mcpEnabled' in patch && desktop?.mcp?.setEnabled) {
+    void desktop.mcp.setEnabled(Boolean(patch.mcpEnabled));
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {

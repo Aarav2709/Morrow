@@ -2,6 +2,7 @@ import { Lock } from 'lucide-react';
 import { useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageId, PageMeta } from '../../core/model';
+import { useTranslation } from '../i18n';
 import { closeDialog, toast } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { Dialog } from './primitives';
@@ -9,6 +10,7 @@ import { Dialog } from './primitives';
 const MIN_LENGTH = 8;
 
 export function EncryptDialog({ pageId }: { pageId: PageId }) {
+  const { t } = useTranslation();
   const state = useWorkspace();
   const page = state.pages[pageId];
   const [password, setPassword] = useState('');
@@ -27,7 +29,7 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
       return;
     }
     closeDialog();
-    toast(`“${displayTitle(page)}” is encrypted. Its file on disk can only be read with the password.`);
+    toast(t('toasts.pageEncrypted', { title: displayTitle(page) }));
   };
   return (
     <Dialog

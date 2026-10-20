@@ -2,6 +2,7 @@
 import { useSyncExternalStore } from 'react';
 import { readReviewLog, schedule, writeReviewLog } from '../core/flashcards';
 import type { Card, Grade, ReviewLog } from '../core/flashcards';
+import { t } from './i18n';
 import { toast } from './ui';
 import { getSession } from './workspace';
 
@@ -36,7 +37,7 @@ export function gradeCard(card: Card, grade: Grade): void {
     void getSession()
       .writeMeta(FILE, writeReviewLog(log))
       .catch((error: unknown) =>
-        toast(`Review progress could not be saved: ${String(error)}`, { tone: 'error' }),
+        toast(t('toasts.reviewProgressFailed', { error: String(error) }), { tone: 'error' }),
       );
   }, 800);
 }

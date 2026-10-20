@@ -13,11 +13,13 @@ import { EncryptDialog } from './EncryptDialog';
 import { HistoryDialog } from './HistoryDialog';
 import { Dialog } from './primitives';
 import { SettingsDialog } from './Settings';
+import { useTranslation } from '../i18n';
 import { SourceDialog } from './SourceDialog';
 import { PairDialog } from './SyncSettings';
 import { TemplateDialog } from './TemplateDialog';
 
 export function Dialogs() {
+  const { t } = useTranslation();
   const { dialog } = useUi();
   if (!dialog) return null;
   switch (dialog.kind) {
@@ -62,9 +64,7 @@ export function Dialogs() {
           onClose={closeDialog}
           footer={
             <>
-              <button type="button" className="button" onClick={closeDialog}>
-                Cancel
-              </button>
+              <button type="button" className="button" onClick={closeDialog}>{t('common.cancel')}</button>
               <button
                 type="button"
                 className={`button ${dialog.danger ? 'danger-solid' : 'primary'}`}
@@ -86,6 +86,7 @@ export function Dialogs() {
 }
 
 function ShortcutsDialog() {
+  const { t, tAction } = useTranslation();
   const editing: Array<[string, string]> = [
     ['Bold, italic, underline', 'Mod+B  Mod+I  Mod+U'],
     ['Strikethrough', 'Mod+Shift+S'],
@@ -107,14 +108,14 @@ function ShortcutsDialog() {
       .map((part) => (part.includes('+') ? formatShortcut(part) : part))
       .join('  ');
   return (
-    <Dialog title="Keyboard shortcuts" onClose={closeDialog}>
+    <Dialog title={t('dialogs.shortcuts.title')} onClose={closeDialog}>
       <div className="shortcut-columns">
         <section>
-          <h3>Everywhere</h3>
+          <h3>{t('dialogs.shortcuts.everywhere')}</h3>
           <dl className="shortcut-list">
             {ACTIONS.filter((action) => action.shortcut).map((action) => (
               <div key={action.id}>
-                <dt>{action.label}</dt>
+                <dt>{tAction(action.id, action.label)}</dt>
                 <dd>
                   <kbd className="kbd">{formatShortcut(action.shortcut!)}</kbd>
                 </dd>
@@ -123,7 +124,7 @@ function ShortcutsDialog() {
           </dl>
         </section>
         <section>
-          <h3>Writing</h3>
+          <h3>{t('dialogs.shortcuts.writing')}</h3>
           <dl className="shortcut-list">
             {editing.map(([label, keys]) => (
               <div key={label}>
@@ -141,6 +142,7 @@ function ShortcutsDialog() {
 }
 
 function MoveDialog({ pageId }: { pageId: PageId }) {
+  const { t } = useTranslation();
   const state = useWorkspace();
   const [query, setQuery] = useState('');
   const page = state.pages[pageId];
@@ -161,16 +163,16 @@ function MoveDialog({ pageId }: { pageId: PageId }) {
   };
 
   return (
-    <Dialog title={`Move “${displayTitle(page)}”`} onClose={closeDialog}>
+    <Dialog title={t('dialogs.move.titleParam', { title: displayTitle(page) })} onClose={closeDialog}>
       <input
         className="text-input"
-        placeholder="Find a page"
-        aria-label="Find a destination page"
+        placeholder={t('dialogs.move.placeholder')}
+        aria-label={t('dialogs.move.ariaDestination')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         data-autofocus
       />
-      <ul className="move-list" role="listbox" aria-label="Destinations">
+      <ul className="move-list" role="listbox" aria-label={t('dialogs.move.ariaList')}>
         {!query && (
           <li>
             <button
@@ -179,7 +181,7 @@ function MoveDialog({ pageId }: { pageId: PageId }) {
               disabled={page.parentId === null}
               onClick={() => move(null)}
             >
-              Top level
+              {t('dialogs.move.topLevel')}
             </button>
           </li>
         )}
@@ -201,7 +203,7 @@ function MoveDialog({ pageId }: { pageId: PageId }) {
             </button>
           </li>
         ))}
-        {targets.length === 0 && query && <li className="muted move-empty">No matching pages.</li>}
+        {targets.length === 0 && query && <li className="muted move-empty">{t('dialogs.move.noMatches')}</li>}
       </ul>
     </Dialog>
   );

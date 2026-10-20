@@ -9,6 +9,7 @@ import { PageIcon } from '../Sidebar';
 import { PROP_TYPES } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { newId } from '../../platform/files';
+import { t } from '../../i18n';
 import { toast } from '../../ui';
 import type {
   DatabaseDef,
@@ -414,7 +415,7 @@ export function NewProperty({
       reservedPropertyName(clean) ||
       database.properties.some((prop) => prop.name.toLowerCase() === clean.toLowerCase())
     ) {
-      toast(`“${clean}” is already used, choose another name.`, { tone: 'error' });
+      toast(t('toasts.propNameDuplicate', { name: clean }), { tone: 'error' });
       return;
     }
     updateDatabase(dbId, (current) => ({

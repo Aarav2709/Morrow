@@ -38,6 +38,7 @@ import { COLORS } from '../../core/model';
 import type { ColorName } from '../../core/model';
 import { formatShortcut } from '../actions';
 import { Menu } from '../components/Menu';
+import { t } from '../i18n';
 import type { MenuEntry } from '../components/Menu';
 import { openExternal } from '../platform/desktop';
 import { openPage } from '../router';
@@ -117,8 +118,8 @@ function LinkInput({ editor, onDone }: { editor: Editor; onDone: () => void }) {
       <input
         ref={inputRef}
         className={`link-input${error ? ' is-invalid' : ''}`}
-        placeholder="Paste or type a link"
-        aria-label="Link address"
+        placeholder={t('editor.linkPlaceholder')}
+        aria-label={t('editor.linkAddressAria')}
         aria-invalid={error}
         value={value}
         onChange={(event) => {
@@ -134,7 +135,7 @@ function LinkInput({ editor, onDone }: { editor: Editor; onDone: () => void }) {
         }}
       />
       <button type="submit" className="link-apply">
-        Apply
+        {t('editor.apply')}
       </button>
     </form>
   );
@@ -198,8 +199,8 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
       <button
         type="button"
         className={`color-dot default${(kind === 'text' ? current.text : current.bg) === null ? ' is-active' : ''}`}
-        title={kind === 'text' ? 'Default text' : 'No highlight'}
-        aria-label={kind === 'text' ? 'Default text colour' : 'No highlight'}
+        title={kind === 'text' ? t('editor.defaultTextColor') : t('editor.noHighlight')}
+        aria-label={kind === 'text' ? t('editor.defaultTextColor') : t('editor.noHighlight')}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() =>
           kind === 'text'
@@ -230,9 +231,9 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
   );
   return (
     <div className="color-panel" onKeyDown={(event) => event.key === 'Escape' && onDone()}>
-      <span className="color-panel-label">Text</span>
+      <span className="color-panel-label">{t('slash.items.text.title')}</span>
       {row('text')}
-      <span className="color-panel-label">Highlight</span>
+      <span className="color-panel-label">{t('editor.highlight')}</span>
       {row('bg')}
     </div>
   );
@@ -266,7 +267,7 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
 
   return (
     <BubbleMenu editor={editor} pluginKey="formattingMenu" options={options} shouldShow={showFormatting}>
-      <div className="toolbar popover" role="toolbar" aria-label="Formatting">
+      <div className="toolbar popover" role="toolbar" aria-label={t('editor.formattingAria')}>
         {editingLink ? (
           <LinkInput editor={editor} onDone={() => setEditingLink(false)} />
         ) : coloring ? (
@@ -274,51 +275,51 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
         ) : (
           <>
             <ToolButton
-              label="Bold"
+              label={t('editor.bold')}
               icon={Bold}
               shortcut="Mod+B"
               active={marks.bold}
               onClick={() => editor.chain().focus().toggleBold().run()}
             />
             <ToolButton
-              label="Italic"
+              label={t('editor.italic')}
               icon={Italic}
               shortcut="Mod+I"
               active={marks.italic}
               onClick={() => editor.chain().focus().toggleItalic().run()}
             />
             <ToolButton
-              label="Underline"
+              label={t('editor.underline')}
               icon={Underline}
               shortcut="Mod+U"
               active={marks.underline}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
             />
             <ToolButton
-              label="Strikethrough"
+              label={t('editor.strikethrough')}
               icon={Strikethrough}
               shortcut="Mod+Shift+S"
               active={marks.strike}
               onClick={() => editor.chain().focus().toggleStrike().run()}
             />
             <ToolButton
-              label="Inline code"
+              label={t('editor.code')}
               icon={Code}
               shortcut="Mod+E"
               active={marks.code}
               onClick={() => editor.chain().focus().toggleCode().run()}
             />
             <ToolButton
-              label="Highlight"
+              label={t('editor.highlight')}
               icon={Highlighter}
               shortcut="Mod+Shift+H"
               active={marks.highlight}
               onClick={() => editor.chain().focus().toggleHighlight().run()}
             />
-            <ToolButton label="Colour" icon={Palette} onClick={() => setColoring(true)} />
+            <ToolButton label={t('editor.colour')} icon={Palette} onClick={() => setColoring(true)} />
             <span className="toolbar-divider" />
             <ToolButton
-              label="Link"
+              label={t('editor.link')}
               icon={Link2}
               shortcut="Mod+K"
               active={marks.link}
@@ -326,19 +327,19 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
             />
             <span className="toolbar-divider" />
             <ToolButton
-              label="Heading 1"
+              label={t('slash.items.h1.title')}
               icon={Heading1}
               active={marks.h1}
               onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
             />
             <ToolButton
-              label="Heading 2"
+              label={t('slash.items.h2.title')}
               icon={Heading2}
               active={marks.h2}
               onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
             />
             <ToolButton
-              label="Heading 3"
+              label={t('slash.items.h3.title')}
               icon={Heading3}
               active={marks.h3}
               onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
@@ -372,10 +373,10 @@ export function LinkMenu({ editor }: { editor: Editor }) {
             >
               {href.replace(/^https?:\/\//, '').replace(/^#\/page\/.*/, 'Morrow page')}
             </button>
-            <ToolButton label="Open link" icon={ExternalLink} onClick={() => openHref(href)} />
-            <ToolButton label="Edit link" icon={Pencil} onClick={() => setEditing(true)} />
+            <ToolButton label={t('editor.openLink')} icon={ExternalLink} onClick={() => openHref(href)} />
+            <ToolButton label={t('editor.editLink')} icon={Pencil} onClick={() => setEditing(true)} />
             <ToolButton
-              label="Remove link"
+              label={t('editor.removeLink')}
               icon={Link2Off}
               onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}
             />
@@ -475,47 +476,47 @@ export function BlockMenu({
   };
   const c = () => editor.chain().focus();
   const entries: MenuEntry[] = [
-    { heading: 'Turn into' },
-    { label: 'Text', icon: Pilcrow, onSelect: turn(() => c().clearNodes().run()) },
+    { heading: t('editor.turnInto') },
+    { label: t('slash.items.text.title'), icon: Pilcrow, onSelect: turn(() => c().clearNodes().run()) },
     {
-      label: 'Heading 1',
+      label: t('slash.items.h1.title'),
       icon: Heading1,
       onSelect: turn(() => c().clearNodes().setHeading({ level: 1 }).run()),
     },
     {
-      label: 'Heading 2',
+      label: t('slash.items.h2.title'),
       icon: Heading2,
       onSelect: turn(() => c().clearNodes().setHeading({ level: 2 }).run()),
     },
     {
-      label: 'Heading 3',
+      label: t('slash.items.h3.title'),
       icon: Heading3,
       onSelect: turn(() => c().clearNodes().setHeading({ level: 3 }).run()),
     },
-    { label: 'Bulleted list', icon: List, onSelect: turn(() => c().clearNodes().toggleBulletList().run()) },
+    { label: t('slash.items.bullet.title'), icon: List, onSelect: turn(() => c().clearNodes().toggleBulletList().run()) },
     {
-      label: 'Numbered list',
+      label: t('slash.items.ordered.title'),
       icon: ListOrdered,
       onSelect: turn(() => c().clearNodes().toggleOrderedList().run()),
     },
-    { label: 'Checklist', icon: ListChecks, onSelect: turn(() => c().clearNodes().toggleTaskList().run()) },
-    { label: 'Quote', icon: Quote, onSelect: turn(() => c().clearNodes().setBlockquote().run()) },
-    { label: 'Code block', icon: Code2, onSelect: turn(() => c().clearNodes().setCodeBlock().run()) },
+    { label: t('slash.items.task.title'), icon: ListChecks, onSelect: turn(() => c().clearNodes().toggleTaskList().run()) },
+    { label: t('slash.items.quote.title'), icon: Quote, onSelect: turn(() => c().clearNodes().setBlockquote().run()) },
+    { label: t('slash.items.code.title'), icon: Code2, onSelect: turn(() => c().clearNodes().setCodeBlock().run()) },
     { separator: true },
     {
-      label: 'Move up',
+      label: t('editor.moveUp'),
       icon: ArrowUp,
       shortcut: formatShortcut('Alt+Shift+↑'),
       onSelect: () => moveBlock(editor.state, editor.view.dispatch, -1),
     },
     {
-      label: 'Move down',
+      label: t('editor.moveDown'),
       icon: ArrowDown,
       shortcut: formatShortcut('Alt+Shift+↓'),
       onSelect: () => moveBlock(editor.state, editor.view.dispatch, 1),
     },
     {
-      label: 'Duplicate',
+      label: t('editor.duplicate'),
       icon: Copy,
       onSelect: () => {
         const node = editor.state.doc.nodeAt(request.pos);
@@ -528,7 +529,7 @@ export function BlockMenu({
       },
     },
     {
-      label: 'Delete',
+      label: t('editor.delete'),
       icon: Trash2,
       danger: true,
       onSelect: () => {
@@ -558,17 +559,17 @@ export function BlockMenu({
       },
     });
     entries.unshift(
-      { heading: 'Callout' },
-      tone('note', 'Note'),
-      tone('tip', 'Tip'),
-      tone('warning', 'Warning'),
+      { heading: t('editor.callout') },
+      tone('note', t('editor.note')),
+      tone('tip', t('editor.tip')),
+      tone('warning', t('editor.warning')),
       {
         separator: true,
       },
     );
   }
   const textual = editor.state.doc.nodeAt(request.pos)?.isTextblock ?? false;
-  const firstTurnInto = entries.findIndex((entry) => 'heading' in entry && entry.heading === 'Turn into');
+  const firstTurnInto = entries.findIndex((entry) => 'heading' in entry && entry.heading === t('editor.turnInto'));
   const afterTurnInto = entries.findIndex((entry, index) => index > firstTurnInto && 'separator' in entry);
   const shown = textual
     ? entries
@@ -579,7 +580,7 @@ export function BlockMenu({
       entries={shown}
       onClose={onClose}
       placement="left-start"
-      label="Block options"
+      label={t('editor.blockOptions')}
     />
   );
 }

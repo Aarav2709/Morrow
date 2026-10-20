@@ -3,6 +3,7 @@ import { useEditorState } from '@tiptap/react';
 import { ChevronDown, ChevronUp, Replace, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '../ui';
+import { t } from '../i18n';
 import { getFindState, replaceAll, replaceCurrent, setFindQuery, stepFind } from './Blocks';
 
 export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => void }) {
@@ -53,35 +54,35 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
         <input
           ref={inputRef}
           className="find-input"
-          placeholder="Find in page"
-          aria-label="Find in page"
+          placeholder={t('editor.findInPage')}
+          aria-label={t('editor.findInPage')}
           value={query}
           onChange={(event) => update(event.target.value)}
         />
         <span className="find-count" aria-live="polite">
-          {query ? (find.count ? `${find.current + 1} of ${find.count}` : 'No results') : ''}
+          {query ? (find.count ? `${find.current + 1} of ${find.count}` : t('editor.noResults')) : ''}
         </span>
         <button
           type="button"
           className="icon-button small"
-          aria-label="Previous match"
+          aria-label={t('editor.previousMatch')}
           onClick={() => step(-1)}
         >
           <ChevronUp size={15} />
         </button>
-        <button type="button" className="icon-button small" aria-label="Next match" onClick={() => step(1)}>
+        <button type="button" className="icon-button small" aria-label={t('editor.nextMatch')} onClick={() => step(1)}>
           <ChevronDown size={15} />
         </button>
         <button
           type="button"
           className={`icon-button small${replacing ? ' is-active' : ''}`}
-          aria-label="Replace"
+          aria-label={t('editor.replace')}
           aria-pressed={replacing}
           onClick={() => setReplacing((value) => !value)}
         >
           <Replace size={15} />
         </button>
-        <button type="button" className="icon-button small" aria-label="Close find" onClick={close}>
+        <button type="button" className="icon-button small" aria-label={t('editor.closeFind')} onClick={close}>
           <X size={15} />
         </button>
       </div>
@@ -89,8 +90,8 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
         <div className="find-row">
           <input
             className="find-input"
-            placeholder="Replace with"
-            aria-label="Replace with"
+            placeholder={t('editor.replaceWith')}
+            aria-label={t('editor.replaceWith')}
             value={replacement}
             onChange={(event) => setReplacement(event.target.value)}
             onKeyDown={(event) => {
@@ -114,9 +115,12 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
             disabled={!find.count}
             onClick={() => {
               const count = replaceAll(editor.state, editor.view.dispatch, replacement);
-              toast(`Replaced ${count} match${count === 1 ? '' : 'es'}.`, {
-                action: { label: 'Undo', run: () => editor.commands.undo() },
-              });
+              toast(
+                count === 1
+                  ? t('toasts.replacedMatchesSingle')
+                  : t('toasts.replacedMatchesPlural', { count }),
+                { action: { label: t('toasts.undo'), run: () => editor.commands.undo() } },
+              );
             }}
           >
             Replace all

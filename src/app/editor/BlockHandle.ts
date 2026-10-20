@@ -1,4 +1,5 @@
 import { Extension } from '@tiptap/core';
+import { t } from '../i18n';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { NodeSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
@@ -87,7 +88,7 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
       handle.className = 'block-handle';
       handle.draggable = true;
       handle.tabIndex = -1;
-      handle.setAttribute('aria-label', 'Drag to move, click for block options');
+      handle.setAttribute('aria-label', t('editor.dragToMoveAria'));
       handle.innerHTML = GRIP;
       const host = view.dom.parentElement;
       host?.appendChild(handle);

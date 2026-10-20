@@ -11,6 +11,8 @@ import { usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
 import { getSession, useWorkspace } from '../workspace';
 import { useCover } from './Cover';
+import { useTranslation } from '../i18n';
+import type { TranslationKey } from '../i18n';
 import { relativeTime } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -36,12 +38,12 @@ function factsOf(state: WorkspaceState) {
   return facts;
 }
 
-function greeting(date: Date): string {
+function greeting(date: Date, t: (key: TranslationKey) => string): string {
   const hour = date.getHours();
-  if (hour < 5) return 'Good night';
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 5) return t('home.greetings.night');
+  if (hour < 12) return t('home.greetings.morning');
+  if (hour < 18) return t('home.greetings.afternoon');
+  return t('home.greetings.evening');
 }
 
 // pages without a cover still get one of the gradients, the same one every time
@@ -79,7 +81,8 @@ function PageCard({ page }: { page: PageMeta }) {
 const WEEKS = 53;
 
 // a year of writing, one square a day, filling the width like github's chart
-function Heatmap({ activity }: { activity: Record<string, number> }) {
+function Heatmap({ activity, locale }: { activity: Record<string, number>; locale: string }) {
+  const { t } = useTranslation();
   const weeks = activityWeeks(activity, new Date(), WEEKS);
   const days = weeks.flat().filter((day) => !day.future);
   const max = Math.max(1, ...days.map((day) => day.count));
@@ -100,7 +103,7 @@ function Heatmap({ activity }: { activity: Record<string, number> }) {
           <span key={index}>{index > 0 && index < WEEKS - 2 ? month : ''}</span>
         ))}
       </div>
-      <div className="heatmap" role="img" aria-label={`Writing on ${active} days in the last year`}>
+      <div className="heatmap" role="img" aria-label={t('home.writingAria', { active })}>
         {weeks.map((week, index) => (
           <div key={index} className="heatmap-week">
             {week.map((day) => (
@@ -108,7 +111,7 @@ function Heatmap({ activity }: { activity: Record<string, number> }) {
                 key={day.key}
                 className={`heatmap-day level-${day.future ? 'future' : level(day.count)}`}
                 title={
-                  day.future ? '' : `${dayLabel(day.key)}: ${day.count} save${day.count === 1 ? '' : 's'}`
+                  day.future ? '' : `${dayLabel(day.key)}: ${t('home.saveCount', { count: day.count, s: day.count === 1 ? t('home.saveSingle') : t('home.savePlural') })}`
                 }
               />
             ))}
@@ -117,14 +120,14 @@ function Heatmap({ activity }: { activity: Record<string, number> }) {
       </div>
       <div className="heatmap-foot">
         <span>
-          Wrote on {active.toLocaleString()} {active === 1 ? 'day' : 'days'} in the last year
+          {t('home.wroteOnDays', { count: active.toLocaleString(locale), days: active === 1 ? t('home.wroteDaySingle') : t('home.wroteDayPlural') })}
         </span>
         <span className="heatmap-legend" aria-hidden="true">
-          Less
+          {t('home.heatmapLess')}
           {[0, 1, 2, 3, 4].map((value) => (
             <span key={value} className={`heatmap-day level-${value}`} />
           ))}
-          More
+          {t('home.heatmapMore')}
         </span>
       </div>
     </div>
@@ -132,6 +135,7 @@ function Heatmap({ activity }: { activity: Record<string, number> }) {
 }
 
 export function HomeView() {
+  const { t, locale } = useTranslation();
   const state = useWorkspace();
   const now = new Date();
   const live = useMemo(() => livePages(state.pages), [state.pages]);
@@ -154,13 +158,13 @@ export function HomeView() {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">Home</span>
+        <span className="topbar-title">{t('home.title')}</span>
       </TopBar>
       <div className="page-scroll">
         <div className="home">
           <header className="home-header">
             <p className="home-date">
-              {now.toLocaleDateString(undefined, {
+              {now.toLocaleDateString(locale, {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',
@@ -168,11 +172,11 @@ export function HomeView() {
               })}
             </p>
             <h1 className="home-greeting">
-              {greeting(now)}
+              {greeting(now, t)}
               {prefs.name ? `, ${prefs.name}` : ''}.
             </h1>
             <button type="button" className="button primary home-today" onClick={() => openToday()}>
-              <CalendarDays size={15} /> Today's note
+              <CalendarDays size={15} /> {t('home.todayNote')}
             </button>
           </header>
 
@@ -180,17 +184,17 @@ export function HomeView() {
             <div className="home-stat tint-orange">
               <Flame size={18} />
               <strong>{days}</strong>
-              <span>day streak</span>
+              <span>{t('home.writingStreak')}</span>
             </div>
             <div className="home-stat tint-blue">
               <FileText size={18} />
               <strong>{live.length.toLocaleString()}</strong>
-              <span>{live.length === 1 ? 'page' : 'pages'}</span>
+              <span>{live.length === 1 ? t('home.pageSingle') : t('home.pagePlural')}</span>
             </div>
             <div className="home-stat tint-green">
               <PenLine size={18} />
               <strong>{words.toLocaleString()}</strong>
-              <span>{words === 1 ? 'word' : 'words'}</span>
+              <span>{words === 1 ? t('home.wordSingle') : t('home.wordPlural')}</span>
             </div>
             <button
               type="button"
@@ -199,27 +203,27 @@ export function HomeView() {
             >
               <CircleCheckBig size={18} />
               <strong>{openTasks.length}</strong>
-              <span>open {openTasks.length === 1 ? 'task' : 'tasks'}</span>
+              <span>{openTasks.length === 1 ? t('home.openTaskSingle') : t('home.openTaskPlural')}</span>
             </button>
           </div>
 
           {live.length === 0 ? (
             <section className="home-empty">
-              <h2>Your vault is empty</h2>
-              <p>Start with a blank page, or bring in notes you already have.</p>
+              <h2>{t('home.emptyVaultTitle')}</h2>
+              <p>{t('home.emptyVaultBody')}</p>
               <div className="button-row">
                 <button type="button" className="button primary" onClick={() => createPage()}>
-                  <Plus size={15} /> Create a page
+                  <Plus size={15} /> {t('home.createPageButton')}
                 </button>
                 <button type="button" className="button" onClick={() => void importMarkdown()}>
-                  <FileUp size={15} /> Import
+                  <FileUp size={15} /> {t('home.importButton')}
                 </button>
               </div>
             </section>
           ) : (
             <section className="home-section" aria-labelledby="recent-heading">
               <h2 id="recent-heading" className="section-label">
-                Jump back in
+                {t('home.jumpBackIn')}
               </h2>
               <div className="home-cards">
                 {recent.map((page) => (
@@ -231,9 +235,9 @@ export function HomeView() {
 
           <section className="home-section" aria-labelledby="activity-heading">
             <h2 id="activity-heading" className="section-label">
-              Your writing
+              {t('home.yourWriting')}
             </h2>
-            <Heatmap activity={activity} />
+            <Heatmap activity={activity} locale={locale} />
           </section>
 
           {(memories.length > 0 || again) && (
@@ -241,7 +245,7 @@ export function HomeView() {
               {memories.length > 0 && (
                 <section className="home-section home-memory" aria-labelledby="memory-heading">
                   <h2 id="memory-heading" className="section-label">
-                    On this day
+                    {t('home.onThisDay')}
                   </h2>
                   <ul className="link-list">
                     {memories.map((page) => (
@@ -257,7 +261,7 @@ export function HomeView() {
               {again && (
                 <section className="home-section home-memory" aria-labelledby="again-heading">
                   <h2 id="again-heading" className="section-label">
-                    <Shuffle size={12} /> Rediscover
+                    <Shuffle size={12} /> {t('home.rediscover')}
                   </h2>
                   <button type="button" className="rediscover" onClick={() => openPage(again.id)}>
                     <strong>{displayTitle(again)}</strong>
@@ -271,7 +275,7 @@ export function HomeView() {
           {openTasks.length > 0 && (
             <section className="home-section" aria-labelledby="tasks-heading">
               <h2 id="tasks-heading" className="section-label">
-                Open tasks <span className="section-count">{openTasks.length}</span>
+                {t('home.openTasks')} <span className="section-count">{openTasks.length}</span>
               </h2>
               <TaskList tasks={openTasks.slice(0, 6)} state={state} />
             </section>

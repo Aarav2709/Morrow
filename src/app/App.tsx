@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { t } from './i18n';
 import { ACTIONS, matchesShortcut, runAction } from './actions';
 import { CommandPalette } from './components/CommandPalette';
 import { Dialogs } from './components/Dialogs';
@@ -129,8 +130,10 @@ function useLifecycle() {
       void syncWith(copyFrom).then((result) =>
         toast(
           result.ok
-            ? `Copied ${result.received} files from your other computer.`
-            : `Copying failed: ${result.error}`,
+            ? result.received === 1
+              ? t('toasts.syncCopiedFilesSingle')
+              : t('toasts.syncCopiedFilesPlural', { count: result.received })
+            : t('toasts.syncCopyFailed', { error: result.error ?? '' }),
           {
             tone: result.ok ? 'info' : 'error',
             durationMs: 10_000,
