@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, clipboard } from 'electron';
 
 type Listener = (id: string) => void | Promise<void>;
 
@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('morrow', {
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
   writeAutoBackup: (json: string) => ipcRenderer.invoke('morrow:write-backup', json),
   exportPdf: (name: string) => ipcRenderer.invoke('morrow:export-pdf', name),
+  copyText: (text: string) => clipboard.writeText(text),
   sync: {
     status: () => ipcRenderer.invoke('sync:status'),
     enable: (enabled: boolean) => ipcRenderer.invoke('sync:enable', enabled),

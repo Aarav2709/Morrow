@@ -58,11 +58,18 @@ export function AssistantSettings() {
 
   useEffect(() => {
     if (!desktop?.mcp) return;
+    let timer: ReturnType<typeof setInterval>;
     if (prefs.mcpEnabled) {
       void desktop.mcp.start(prefs.mcpPort || 3030).then(setMcpStatus);
+      timer = setInterval(() => {
+        void desktop?.mcp?.status().then(setMcpStatus);
+      }, 2000);
     } else {
       void desktop.mcp.stop().then(setMcpStatus);
     }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
   }, [prefs.mcpEnabled, prefs.mcpPort]);
 
   const provider = settings?.providers.find((item) => item.id === settings.provider);
@@ -121,7 +128,8 @@ export function AssistantSettings() {
     {
       mcpServers: {
         morrow: {
-          url: `http://localhost:${prefs.mcpPort || 3030}/sse`,
+          type: 'sse',
+          url: `http://127.0.0.1:${prefs.mcpPort || 3030}/sse`,
         },
       },
     },
@@ -148,10 +156,39 @@ export function AssistantSettings() {
 
   const activeSnippet = mcpTab === 'sse' ? sseJson : stdioJson;
 
-  const handleCopy = () => {
-    void navigator.clipboard.writeText(activeSnippet);
-    setMcpCopied(true);
-    setTimeout(() => setMcpCopied(false), 2000);
+  const handleCopy = async () => {
+    let success = false;
+    if (desktop?.copyText) {
+      desktop.copyText(activeSnippet);
+      success = true;
+    } else {
+      try {
+        if (navigator?.clipboard?.writeText) {
+          await navigator.clipboard.writeText(activeSnippet);
+          success = true;
+        }
+      } catch {
+        // Fallback
+      }
+      if (!success) {
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = activeSnippet;
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          success = document.execCommand('copy');
+          document.body.removeChild(textarea);
+        } catch {
+          // Ignored
+        }
+      }
+    }
+    if (success) {
+      setMcpCopied(true);
+      setTimeout(() => setMcpCopied(false), 2000);
+    }
   };
 
   return (

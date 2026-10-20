@@ -165,6 +165,7 @@ export interface DesktopBridge {
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   showBackupsFolder(): Promise<void>;
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
+  copyText(text: string): void;
 }
 
 declare global {

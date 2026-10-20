@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { currentVault } from './vault.cjs';
 
@@ -16,7 +17,12 @@ let currentPort = 3030;
 let lastError: string | null = null;
 
 function resolveMcpScript(): string {
-  return path.join(app.getAppPath(), 'dist-mcp', 'index.js');
+  const appPath = typeof app?.getAppPath === 'function' ? app.getAppPath() : process.cwd();
+  const direct = path.join(appPath, 'dist-mcp', 'index.js');
+  if (existsSync(direct)) return direct;
+  const fromCwd = path.join(process.cwd(), 'dist-mcp', 'index.js');
+  if (existsSync(fromCwd)) return fromCwd;
+  return direct;
 }
 
 export function getMcpStatus(): McpStatus {
@@ -52,6 +58,11 @@ export async function startMcpServer(port = 3030): Promise<McpStatus> {
   lastError = null;
 
   const scriptPath = resolveMcpScript();
+  if (!existsSync(scriptPath)) {
+    lastError = `MCP script not found at ${scriptPath}. Please run npm run build:mcp.`;
+    return getMcpStatus();
+  }
+
   const vault = currentVault() || process.cwd();
 
   const child = spawn(
@@ -84,7 +95,7 @@ export async function startMcpServer(port = 3030): Promise<McpStatus> {
 
   child.stderr?.on('data', (data) => {
     const text = data.toString('utf8');
-    if (text.includes('EADDRINUSE') || text.includes('Error:')) {
+    if (text.includes('EADDRINUSE') || text.includes('Error:') || text.includes('Fatal error:')) {
       lastError = text.trim();
     }
   });
@@ -95,13 +106,15 @@ export async function startMcpServer(port = 3030): Promise<McpStatus> {
   return getMcpStatus();
 }
 
-app.on('will-quit', () => {
-  if (mcpChild) {
-    try {
-      mcpChild.kill();
-    } catch {
-      // Ignored
+if (typeof app?.on === 'function') {
+  app.on('will-quit', () => {
+    if (mcpChild) {
+      try {
+        mcpChild.kill();
+      } catch {
+        // Ignored
+      }
+      mcpChild = null;
     }
-    mcpChild = null;
-  }
-});
+  });
+}

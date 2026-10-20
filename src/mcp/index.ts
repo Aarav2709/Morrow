@@ -111,7 +111,8 @@ async function main(): Promise<void> {
     const httpServer = http.createServer(async (req, res) => {
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, authorization');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Expose-Headers', '*');
 
       if (req.method === 'OPTIONS') {
         res.writeHead(200);
@@ -119,7 +120,7 @@ async function main(): Promise<void> {
         return;
       }
 
-      const host = req.headers.host || `localhost:${port}`;
+      const host = req.headers.host || `127.0.0.1:${port}`;
       const url = new URL(req.url || '/', `http://${host}`);
 
       if (url.pathname === '/health' || url.pathname === '/status') {
@@ -136,7 +137,7 @@ async function main(): Promise<void> {
         return;
       }
 
-      if (url.pathname === '/sse') {
+      if (url.pathname === '/sse' || url.pathname === '/mcp') {
         const server = createServerInstance(vault);
         const transport = new SSEServerTransport('/message', res);
         transports.set(transport.sessionId, transport);
@@ -155,7 +156,7 @@ async function main(): Promise<void> {
         return;
       }
 
-      if (url.pathname === '/message') {
+      if (url.pathname === '/message' || url.pathname === '/messages') {
         const sessionId = url.searchParams.get('sessionId');
         const transport = sessionId ? transports.get(sessionId) : undefined;
         if (!transport) {
@@ -187,9 +188,10 @@ async function main(): Promise<void> {
       );
     });
 
-    httpServer.listen(port, '127.0.0.1', () => {
+    // Listen on dual-stack IPv4/IPv6
+    httpServer.listen(port, () => {
       process.stderr.write(
-        `[Morrow MCP] HTTP/SSE server running at http://127.0.0.1:${port}/sse\n`,
+        `[Morrow MCP] HTTP/SSE server running on port ${port} (endpoints: /sse, /message)\n`,
       );
     });
 
