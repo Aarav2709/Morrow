@@ -44,7 +44,7 @@ import { Menu } from '../components/Menu';
 import { t } from '../i18n';
 import type { MenuEntry } from '../components/Menu';
 import { copyImageFile, downloadFile } from '../platform/attachments';
-import { desktop, openExternal } from '../platform/desktop';
+import { copyText, desktop, openExternal } from '../platform/desktop';
 import { openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
@@ -487,10 +487,9 @@ function copyBlockLink(editor: Editor, pos: number, pageTitle: string): void {
     anchor = `^${id}`;
   }
   const link = `[[${pageTitle.replace(/[[\]|#^]/g, ' ').trim()}#${anchor}]]`;
-  void navigator.clipboard
-    .writeText(link)
-    .then(() => toast('Copied a link to this block.'))
-    .catch(() => toast('Could not copy.', { tone: 'error' }));
+  void copyText(link).then((copied) =>
+    copied ? toast('Copied a link to this block.') : toast('Could not copy.', { tone: 'error' }),
+  );
 }
 
 // blocks that can be linked to on their own
@@ -542,15 +541,31 @@ export function BlockMenu({
       icon: Heading3,
       onSelect: turn(() => c().clearNodes().setHeading({ level: 3 }).run()),
     },
-    { label: t('slash.items.bullet.title'), icon: List, onSelect: turn(() => c().clearNodes().toggleBulletList().run()) },
+    {
+      label: t('slash.items.bullet.title'),
+      icon: List,
+      onSelect: turn(() => c().clearNodes().toggleBulletList().run()),
+    },
     {
       label: t('slash.items.ordered.title'),
       icon: ListOrdered,
       onSelect: turn(() => c().clearNodes().toggleOrderedList().run()),
     },
-    { label: t('slash.items.task.title'), icon: ListChecks, onSelect: turn(() => c().clearNodes().toggleTaskList().run()) },
-    { label: t('slash.items.quote.title'), icon: Quote, onSelect: turn(() => c().clearNodes().setBlockquote().run()) },
-    { label: t('slash.items.code.title'), icon: Code2, onSelect: turn(() => c().clearNodes().setCodeBlock().run()) },
+    {
+      label: t('slash.items.task.title'),
+      icon: ListChecks,
+      onSelect: turn(() => c().clearNodes().toggleTaskList().run()),
+    },
+    {
+      label: t('slash.items.quote.title'),
+      icon: Quote,
+      onSelect: turn(() => c().clearNodes().setBlockquote().run()),
+    },
+    {
+      label: t('slash.items.code.title'),
+      icon: Code2,
+      onSelect: turn(() => c().clearNodes().setCodeBlock().run()),
+    },
     { separator: true },
     {
       label: t('editor.moveUp'),
@@ -651,7 +666,9 @@ export function BlockMenu({
     );
   }
   const textual = editor.state.doc.nodeAt(request.pos)?.isTextblock ?? false;
-  const firstTurnInto = entries.findIndex((entry) => 'heading' in entry && entry.heading === t('editor.turnInto'));
+  const firstTurnInto = entries.findIndex(
+    (entry) => 'heading' in entry && entry.heading === t('editor.turnInto'),
+  );
   const afterTurnInto = entries.findIndex((entry, index) => index > firstTurnInto && 'separator' in entry);
   const shown = textual
     ? entries

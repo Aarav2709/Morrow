@@ -18,6 +18,14 @@ export type Dialog =
       displayMode?: boolean;
       onSave: (value: string) => void;
     }
+  // edit a formula, inline or on its own line, with a preview and a palette
+  | {
+      kind: 'math';
+      value: string;
+      block: boolean;
+      onSave: (latex: string, block: boolean) => void;
+      onCancel?: () => void;
+    }
   // pick a template for a new page
   | { kind: 'template'; parentId: PageId | null }
   | { kind: 'encrypt'; pageId: PageId }

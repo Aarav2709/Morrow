@@ -28,10 +28,6 @@ contextBridge.exposeInMainWorld('morrow', {
   },
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.send('morrow:theme', theme),
   dimTitleBar: (dim: boolean) => ipcRenderer.send('morrow:dim', dim),
-  spelling: {
-    get: () => ipcRenderer.invoke('spelling:get'),
-    set: (languages: string[] | null) => ipcRenderer.invoke('spelling:set', languages),
-  },
   openExternal: (url: string) => ipcRenderer.invoke('morrow:open-external', url),
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
@@ -72,6 +68,7 @@ contextBridge.exposeInMainWorld('morrow', {
   },
   mcp: {
     status: () => ipcRenderer.invoke('mcp:status'),
+    launch: () => ipcRenderer.invoke('mcp:launch'),
     start: (port: number) => ipcRenderer.invoke('mcp:start', port),
     stop: () => ipcRenderer.invoke('mcp:stop'),
     setEnabled: (enabled: boolean) => ipcRenderer.invoke('mcp:set-enabled', enabled),

@@ -7,7 +7,7 @@ import { Logo } from './primitives';
 
 // the first screen of the desktop app when no folder is chosen yet
 export function VaultChooser({ legacy }: { legacy: number }) {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const [recent, setRecent] = useState<Array<{ path: string; name: string; exists: boolean }>>([]);
   const [copy, setCopy] = useState(legacy > 0);
   const options = { copyLegacy: copy && legacy > 0 };
@@ -20,15 +20,11 @@ export function VaultChooser({ legacy }: { legacy: number }) {
     <div className="boot vault-chooser">
       <Logo size={36} />
       <h1>{t('vaultChooser.title')}</h1>
-      <p className="boot-text">
-        {t('vaultChooser.body')}
-      </p>
+      <p className="boot-text">{t('vaultChooser.body')}</p>
       {legacy > 0 && (
         <label className="vault-legacy">
           <input type="checkbox" checked={copy} onChange={(event) => setCopy(event.target.checked)} />
-          <span>
-            {t('vaultChooser.legacyNotice', { count: legacy })}
-          </span>
+          <span>{tp('vaultChooser.legacyNotice', legacy)}</span>
         </label>
       )}
       <div className="vault-actions">
@@ -43,9 +39,7 @@ export function VaultChooser({ legacy }: { legacy: number }) {
           <FolderOpen size={20} strokeWidth={1.5} />
           <span>
             <strong>{t('vaultChooser.openFolder')}</strong>
-            <span className="muted">
-              {t('vaultChooser.openFolderHelp')}
-            </span>
+            <span className="muted">{t('vaultChooser.openFolderHelp')}</span>
           </span>
         </button>
       </div>

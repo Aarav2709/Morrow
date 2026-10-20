@@ -160,8 +160,15 @@ export interface McpServerStatus {
   vaultPath?: string | null;
 }
 
+export interface McpLaunch {
+  command: string;
+  script: string;
+  available: boolean;
+}
+
 export interface DesktopMcpApi {
   status(): Promise<McpServerStatus>;
+  launch(): Promise<McpLaunch>;
   start(port?: number): Promise<McpServerStatus>;
   stop(): Promise<McpServerStatus>;
   setEnabled(enabled: boolean): Promise<boolean>;
@@ -180,10 +187,6 @@ export interface DesktopBridge {
   onCommand(listener: (id: string) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
   dimTitleBar(dim: boolean): void;
-  spelling: {
-    get(): Promise<SpellingLanguages | null>;
-    set(languages: string[] | null): Promise<SpellingLanguages | null>;
-  };
   openExternal(url: string): Promise<void>;
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
@@ -204,14 +207,6 @@ export const isMac =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/.test(desktop?.platform === 'darwin' ? 'Mac' : navigator.platform);
 
-export interface SpellingLanguages {
-  // dictionaries this system can check with, empty on macos, which picks the language by itself
-  available: string[];
-  // what was chosen in settings, null to follow the computer's languages
-  chosen: string[] | null;
-  active: string[];
-}
-
 // the window's own buttons darken with the rest of the window while any dialog is open
 let dialogsOpen = 0;
 export function dialogOpened(): () => void {
@@ -219,6 +214,22 @@ export function dialogOpened(): () => void {
   return () => {
     if (--dialogsOpen === 0) desktop?.dimTitleBar(false);
   };
+}
+
+// the desktop app copies through electron, which works whether or not the window has focus. the web
+// clipboard needs a focused page, so it is only the fallback
+export async function copyText(text: string): Promise<boolean> {
+  try {
+    if (desktop?.copyText && (await desktop.copyText(text)) !== false) return true;
+  } catch {
+    // falls back to the web clipboard
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function openExternal(url: string): void {

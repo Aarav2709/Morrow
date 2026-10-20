@@ -29,7 +29,6 @@ import { Dialog, Logo, Switch } from './primitives';
 import { Select } from './Select';
 import { SettingRow, SettingsGroup } from './SettingsRows';
 import { CloudSettings, NetworkSettings } from './SyncSettings';
-import { SpellingSetting } from './SpellingSetting';
 
 interface SectionDef {
   id: SettingsSection;
@@ -149,7 +148,6 @@ function GeneralSettings() {
           onChange={(locale) => setPreferences({ locale })}
         />
       </SettingRow>
-      <SpellingSetting />
       <SettingRow label={t('settings.general.yourName')} help={t('settings.general.yourNameHelp')}>
         <input
           className="text-input small settings-input"
@@ -331,7 +329,7 @@ function CustomCss() {
 }
 
 function VaultSettings() {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const vault = getSession().location;
   const [legacy, setLegacy] = useState(0);
   const [files, setFiles] = useState<{ count: number; bytes: number; unused: number } | null>(null);
@@ -371,7 +369,7 @@ function VaultSettings() {
         {legacy > 0 && (
           <SettingRow
             label={t('settings.vault.copyLegacy')}
-            help={t('settings.vault.copyLegacyHelp', { count: legacy })}
+            help={tp('settings.vault.copyLegacyHelp', legacy)}
           >
             <button
               type="button"
@@ -379,7 +377,7 @@ function VaultSettings() {
               onClick={() =>
                 void copyLegacyInto(getSession()).then((result) => {
                   if (result.ok) {
-                    toast(t('settings.vault.copyLegacySuccess', { count: result.value }));
+                    toast(tp('settings.vault.copyLegacySuccess', result.value));
                     setLegacy(0);
                   } else toast(result.error, { tone: 'error' });
                 })
@@ -416,7 +414,7 @@ function VaultSettings() {
         <SettingRow
           label={
             files
-              ? t('settings.vault.filesCount', { count: files.count, bytes: formatBytes(files.bytes) })
+              ? tp('settings.vault.filesCount', files.count, { bytes: formatBytes(files.bytes) })
               : t('settings.vault.counting')
           }
           help={t('settings.vault.unusedFilesHelp')}

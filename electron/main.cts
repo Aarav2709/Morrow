@@ -48,7 +48,14 @@ import {
   copyVaultInto,
 } from './vault.cjs';
 import { cloudStatus } from './cloud.cjs';
-import { getMcpStatus, isMcpEnabled, setMcpEnabled, startMcpServer, stopMcpServer } from './mcp.cjs';
+import {
+  getMcpLaunch,
+  getMcpStatus,
+  isMcpEnabled,
+  setMcpEnabled,
+  startMcpServer,
+  stopMcpServer,
+} from './mcp.cjs';
 import { aiTurn, cancelAiTurn, getAiSettings, listAiModels, setAiSettings } from './ai.cjs';
 import type { TurnRequest } from './ai.cjs';
 import { checkForUpdate, installUpdate } from './updates.cjs';
@@ -124,19 +131,8 @@ let readyToClose = false;
 
 const backupsDir = () => path.join(app.getPath('userData'), 'Backups');
 const windowStateFile = () => path.join(app.getPath('userData'), 'window-state.json');
-const spellingFile = () => path.join(app.getPath('userData'), 'spelling.json');
-
-// the languages spelling is checked in, chosen in settings or else the ones this computer prefers. macos
-// checks spelling in the language being typed by itself, so there the list is empty and left alone
-async function chosenSpelling(): Promise<string[] | null> {
-  try {
-    const saved = JSON.parse(await readFile(spellingFile(), 'utf8')) as { languages?: unknown };
-    return Array.isArray(saved.languages) ? saved.languages.filter((code) => typeof code === 'string') : null;
-  } catch {
-    return null;
-  }
-}
-
+// spelling is checked in the languages this computer prefers. macos checks spelling in the language being
+// typed by itself, so there the list is empty and left alone
 function systemSpelling(available: string[]): string[] {
   const picked: string[] = [];
   for (const wanted of app.getPreferredSystemLanguages()) {
@@ -150,14 +146,9 @@ function systemSpelling(available: string[]): string[] {
   return picked.length ? picked : available.filter((code) => code === 'en-US').slice(0, 1);
 }
 
-async function applySpelling(): Promise<{ available: string[]; chosen: string[] | null; active: string[] }> {
+function applySpelling(): void {
   const available = session.defaultSession.availableSpellCheckerLanguages;
-  const chosen = await chosenSpelling();
-  if (available.length === 0) return { available, chosen, active: [] };
-  const valid = (chosen ?? []).filter((code) => available.includes(code));
-  const active = valid.length ? valid : systemSpelling(available);
-  session.defaultSession.setSpellCheckerLanguages(active);
-  return { available, chosen, active };
+  if (available.length) session.defaultSession.setSpellCheckerLanguages(systemSpelling(available));
 }
 
 // windows groups the taskbar button and notifications by this id
@@ -180,7 +171,7 @@ if (!app.requestSingleInstanceLock()) {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
     });
     registerIpc();
-    void applySpelling();
+    applySpelling();
     void initSync((event) => toWindow('sync:event', event));
     // macos needs its system menu for copy, paste and quit, other platforms get no menu bar
     Menu.setApplicationMenu(IS_MAC ? buildMacMenu() : null);
@@ -422,16 +413,6 @@ function registerIpc(): void {
     windowThemes.set(window, name);
     paintTitleBar(window, name, false);
   });
-  ipcMain.handle('spelling:get', (event) => (fromApp(event) ? applySpelling() : null));
-  // null goes back to the computer's own languages
-  ipcMain.handle('spelling:set', async (event, languages: unknown) => {
-    if (!fromApp(event)) return null;
-    const list = Array.isArray(languages)
-      ? languages.filter((code) => typeof code === 'string').slice(0, 10)
-      : null;
-    await writeFile(spellingFile(), JSON.stringify({ languages: list?.length ? list : null }));
-    return applySpelling();
-  });
   ipcMain.on('morrow:dim', (event, dim: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!fromApp(event) || !window) return;
@@ -519,6 +500,7 @@ function registerVaultIpc(): void {
   handle('ai:turn', (request) => aiTurn(request as TurnRequest));
   handle('ai:cancel', (id) => cancelAiTurn(id));
   handle('mcp:status', () => getMcpStatus());
+  handle('mcp:launch', () => getMcpLaunch());
   handle('mcp:start', (port) => startMcpServer(typeof port === 'number' ? port : 3030));
   handle('mcp:stop', () => stopMcpServer());
   handle('mcp:set-enabled', (enabled) => setMcpEnabled(enabled === true));

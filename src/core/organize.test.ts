@@ -23,7 +23,7 @@ import { searchWorkspace } from './search';
 import { buildSite } from './site';
 import { planPull } from './sync';
 import { collectTags, pagesWithTag } from './tags';
-import { applyTemplate, fillTemplate, formatDate } from './templates';
+import { applyTemplate, fillTemplate, formatDate, hasPlaceholder } from './templates';
 import { linkTargets, placePages } from './vault/layout';
 import { planMoves } from './vault/plan';
 
@@ -139,6 +139,13 @@ describe('templates', () => {
     expect(formatDate(date, 'DD/MM/YY [week]', 'en-GB')).toBe('15/10/26 week');
     const filled = applyTemplate(doc(p('Notes for {{date:YYYY}}')), { title: '', date });
     expect(filled).toEqual(doc(p('Notes for 2026')));
+  });
+
+  it('knows a title that asks for the date filled in', () => {
+    expect(hasPlaceholder('Standup {{date}}')).toBe(true);
+    expect(hasPlaceholder('Week of {{ date:D MMMM }}')).toBe(true);
+    expect(hasPlaceholder('Weekly review')).toBe(false);
+    expect(hasPlaceholder('{{ not a placeholder }}')).toBe(false);
   });
 });
 

@@ -18,7 +18,14 @@ import { displayTitle } from '../core/model';
 import type { FileId, FileMeta, PageId, PageKind, Snapshot } from '../core/model';
 import { databaseFromSubpages, fieldsForMove, releaseRow } from '../core/properties';
 import { buildSite } from '../core/site';
-import { applyTemplate, dailyTemplate, findTemplatesPage, TEMPLATES_TITLE } from '../core/templates';
+import {
+  applyTemplate,
+  dailyTemplate,
+  fillTemplate,
+  findTemplatesPage,
+  hasPlaceholder,
+  TEMPLATES_TITLE,
+} from '../core/templates';
 import {
   attachmentNames,
   base64ToBytes,
@@ -122,7 +129,10 @@ export function turnIntoDatabase(id: PageId): void {
     rows
       ? t('toasts.turnedIntoDatabase', {
           rows: rows === 1 ? t('toasts.databaseRowSingle') : t('toasts.databaseRowPlural', { count: rows }),
-          columns: columns === 1 ? t('toasts.databasePropertySingle') : t('toasts.databasePropertyPlural', { count: columns }),
+          columns:
+            columns === 1
+              ? t('toasts.databasePropertySingle')
+              : t('toasts.databasePropertyPlural', { count: columns }),
         })
       : t('toasts.turnedIntoDatabaseEmpty'),
   );
@@ -263,8 +273,11 @@ export function createFromTemplate(templateId: PageId, parentId: PageId | null):
   if (!template) return null;
   const id = newId();
   const now = new Date();
-  // the new page starts untitled, {{title}} reads as Untitled until the page is named
-  const title = '';
+  // the new page starts untitled, {{title}} reads as Untitled until the page is named. a template called
+  // "Standup {{date}}" names its pages with the date filled in
+  const title = hasPlaceholder(template.title)
+    ? fillTemplate(template.title, { title: '', date: now }).trim()
+    : '';
   const doc = applyTemplate(state.docs[templateId] ?? { type: 'doc', content: [{ type: 'paragraph' }] }, {
     title: displayTitle({ title }),
     date: now,
@@ -364,7 +377,9 @@ export function restorePage(id: PageId): void {
   if (!page) return;
   const result = run({ type: 'page.restore', id });
   if (result.ok)
-    toast(t('toasts.restoredPage', { title: displayTitle(page) }), { action: { label: t('toasts.open'), run: () => openPage(id) } });
+    toast(t('toasts.restoredPage', { title: displayTitle(page) }), {
+      action: { label: t('toasts.open'), run: () => openPage(id) },
+    });
 }
 
 export function deleteForever(id: PageId): void {
@@ -394,10 +409,7 @@ export function deleteForever(id: PageId): void {
 export function emptyTrash(count: number): void {
   confirmAction({
     title: t('dialogs.emptyTrash.title'),
-    body:
-      count === 1
-        ? t('dialogs.emptyTrash.bodySingle')
-        : t('dialogs.emptyTrash.bodyPlural', { count }),
+    body: count === 1 ? t('dialogs.emptyTrash.bodySingle') : t('dialogs.emptyTrash.bodyPlural', { count }),
     confirmLabel: t('dialogs.emptyTrash.confirmButton'),
     danger: true,
     onConfirm: () => {
@@ -563,9 +575,7 @@ export async function publishSite(rootId: PageId | null = null): Promise<void> {
     saveFile(`${folder}-website-${stamp()}.zip`, zipBytes(entries), 'application/zip');
     const pages = site.files.filter((file) => file.path.endsWith('.html')).length;
     toast(
-      pages === 1
-        ? t('toasts.websiteCreatedSingle')
-        : t('toasts.websiteCreatedPlural', { count: pages }),
+      pages === 1 ? t('toasts.websiteCreatedSingle') : t('toasts.websiteCreatedPlural', { count: pages }),
       { durationMs: 10_000 },
     );
   } catch (error) {

@@ -136,7 +136,8 @@ export const pt: TranslationSchema = {
       yourNameHelp: 'A página inicial cumprimentará você com ele.',
       yourNamePlaceholder: 'Opcional',
       whenOpens: 'Ao abrir o Morrow',
-      whenOpensHelp: '{shortcutDaily} abre a nota de hoje, {shortcutCapture} anota nela de qualquer aplicativo.',
+      whenOpensHelp:
+        '{shortcutDaily} abre a nota de hoje, {shortcutCapture} anota nela de qualquer aplicativo.',
       startPages: {
         today: 'Nota de hoje',
         home: 'Início',
@@ -188,15 +189,18 @@ export const pt: TranslationSchema = {
     },
     vault: {
       title: 'Cofre e arquivos',
-      groupHelp: 'Cada página é um arquivo Markdown nesta pasta. Abra em qualquer app ou faça backup como preferir.',
+      groupHelp:
+        'Cada página é um arquivo Markdown nesta pasta. Abra em qualquer app ou faça backup como preferir.',
       currentFolder: 'Pasta do cofre',
       currentFolderHelp: 'Suas notas e anexos residem aqui.',
       showFolder: 'Mostrar',
       chooseAnother: 'Abrir outro',
       copyLegacy: 'Páginas de uma versão anterior',
-      copyLegacyHelp: '{count} página(s) ainda no armazenamento interno do app.',
+      copyLegacyHelp: '{count} páginas ainda estão no armazenamento interno do app.',
+      copyLegacyHelpOne: '{count} página ainda está no armazenamento interno do app.',
       copyLegacyButton: 'Copiar para este cofre',
-      copyLegacySuccess: 'Copiou {count} página(s) para este cofre.',
+      copyLegacySuccess: '{count} páginas copiadas para este cofre.',
+      copyLegacySuccessOne: '{count} página copiada para este cofre.',
       filesTitle: 'Backups e exportação',
       exportBackup: 'Salvar backup',
       exportBackupHelp: 'Um único arquivo com todas as páginas, lixeira inclusa.',
@@ -215,7 +219,8 @@ export const pt: TranslationSchema = {
       cleanUnused: 'Remover {count} não usados',
       noneUnused: 'Nenhum não usado',
       counting: 'Contando…',
-      filesCount: '{count} arquivo(s), {bytes}',
+      filesCount: '{count} arquivos, {bytes}',
+      filesCountOne: '{count} arquivo, {bytes}',
     },
     about: {
       title: 'Sobre',
@@ -227,12 +232,14 @@ export const pt: TranslationSchema = {
       sourceCode: 'Código-fonte',
       sourceCodeHelp: 'Relate um problema ou sugira melhorias.',
       gitHubButton: 'GitHub',
-      footer: 'Sem contas, sem rastreamento e sem anúncios. Nada sai deste computador a menos que você ative o assistente ou a sincronização.',
+      footer:
+        'Sem contas, sem rastreamento e sem anúncios. Nada sai deste computador a menos que você ative o assistente ou a sincronização.',
     },
     sync: {
       title: 'Sincronização',
       networkTitle: 'Seus computadores',
-      networkHelp: 'Criptografado e direto, sem servidor intermediário. Se uma página mudar em ambos, ambas as versões são mantidas.',
+      networkHelp:
+        'Criptografado e direto, sem servidor intermediário. Se uma página mudar em ambos, ambas as versões são mantidas.',
       networkSync: 'Sincronizar nesta rede',
       networkSyncHelp: 'Emparelhe uma vez e sincronize sempre que ambos estiverem na mesma rede.',
       computerName: 'Nome deste computador',
@@ -251,11 +258,13 @@ export const pt: TranslationSchema = {
       addComputerHelp: 'Cada um exibe um código que o outro digita.',
       pairButton: 'Emparelhar',
       upToDate: 'Atualizado com {name}.',
-      receivedChanges: 'Recebeu {count} alteração(ões) de {name}.',
+      receivedChanges: '{count} alterações recebidas de {name}.',
+      receivedChangesOne: '{count} alteração recebida de {name}.',
       syncFailed: 'Falha na sincronização.',
       vaultCopyFailed: 'O cofre não pôde ser copiado.',
       cloudTitle: 'Pasta na nuvem',
-      cloudHelp: 'O aplicativo deles cuida da sincronização; o Morrow nunca se conecta a ele. Conflitos recebem um aviso para comparação.',
+      cloudHelp:
+        'O aplicativo deles cuida da sincronização; o Morrow nunca se conecta a ele. Conflitos recebem um aviso para comparação.',
       syncingThrough: 'Sincronizando via {provider}',
       openSameFolder: 'Abra esta mesma pasta nos seus outros computadores.',
       moveVaultHere: 'Mover cofre para cá',
@@ -266,7 +275,8 @@ export const pt: TranslationSchema = {
       moveFolderButton: 'Mover pasta…',
       chooseFolder: 'Escolher…',
       moveConfirmTitle: 'Mover este cofre para {where}?',
-      moveConfirmBody: 'O Morrow copia o cofre, histórico incluído, para {dir} e o abre de lá. A pasta atual permanece intocada para que você possa excluí-la após verificar a cópia.',
+      moveConfirmBody:
+        'O Morrow copia o cofre, histórico incluído, para {dir} e o abre de lá. A pasta atual permanece intocada para que você possa excluí-la após verificar a cópia.',
       copyAndOpenButton: 'Copiar e abrir',
       thatFolder: 'essa pasta',
     },
@@ -279,7 +289,8 @@ export const pt: TranslationSchema = {
       connection: 'Conexão',
       provider: 'Provedor',
       serverAddress: 'Endereço do servidor',
-      serverAddressHelp: 'Qualquer servidor compatível com a API da OpenAI, como Ollama em http://localhost:11434/v1.',
+      serverAddressHelp:
+        'Qualquer servidor compatível com a API da OpenAI, como Ollama em http://localhost:11434/v1.',
       apiKey: 'Chave de API',
       apiKeyOptional: 'Chave de API, se o servidor solicitar',
       keySavedSystem: 'Salva e criptografada pelas chaves do seu sistema.',
@@ -294,7 +305,8 @@ export const pt: TranslationSchema = {
       model: 'Modelo',
       checkingConnection: 'Verificando a conexão',
       connected: 'Conectado',
-      modelsCount: '{count} modelo(s)',
+      modelsCount: '{count} modelos',
+      modelsCountOne: '{count} modelo',
       otherProvider: 'No seu computador',
       saveKeyToSeeModels: 'Salve uma chave para ver seus modelos.',
       chooseModel: 'Escolha um modelo',
@@ -302,15 +314,18 @@ export const pt: TranslationSchema = {
       modelNamePlaceholder: 'Nome do modelo',
       reloadModels: 'Verificar a conexão e recarregar modelos',
       changesTitle: 'Alterações',
-      changesHelp: 'Suas perguntas e as páginas lidas são enviadas para {target}. Páginas bloqueadas nunca são enviadas. Abra o assistente com {shortcut}.',
+      changesHelp:
+        'Suas perguntas e as páginas lidas são enviadas para {target}. Páginas bloqueadas nunca são enviadas. Abra o assistente com {shortcut}.',
       yourServer: 'seu servidor',
       theProvider: 'o provedor',
       askBeforeChanging: 'Perguntar antes de alterar páginas',
       askBeforeChangingHelp: 'Todas as alterações são mantidas no histórico de páginas de qualquer forma.',
       mcpGroupTitle: 'Servidor MCP (Model Context Protocol)',
-      mcpGroupHelp: 'Expõe as notas, etiquetas e ferramentas do Morrow por meio do Model Context Protocol para assistentes e agentes externos.',
+      mcpGroupHelp:
+        'Expõe as notas, etiquetas e ferramentas do Morrow por meio do Model Context Protocol para assistentes e agentes externos.',
       mcpRow: 'Servidor MCP',
-      mcpRowHelp: 'Permite que agentes e assistentes de IA externos como Cursor, Claude Desktop ou Antigravity consultem e gerenciem suas notas pelo protocolo MCP.',
+      mcpRowHelp:
+        'Permite que agentes e assistentes de IA externos como Cursor, Claude Desktop ou Antigravity consultem e gerenciem suas notas pelo protocolo MCP.',
       mcpSwitch: 'Habilitar servidor MCP',
       mcpPort: 'Porta local',
       mcpPortHelp: 'Porta HTTP onde o servidor escuta (padrão 3030).',
@@ -373,9 +388,11 @@ export const pt: TranslationSchema = {
   vaultChooser: {
     title: 'Onde suas notas devem ficar?',
     body: 'O Morrow mantém cada página como um arquivo Markdown simples em uma pasta que você escolher. Abra a pasta em qualquer outro app, sincronize como preferir ou mantenha sob controle de versão. É seu.',
-    legacyNotice: 'Copiar minha(s) {count} página(s) existente(s) para esta pasta. A cópia original permanecerá.',
-    createNewVault: 'Criar um novo cofre'
-,
+    legacyNotice:
+      'Copiar minhas {count} páginas existentes para esta pasta. A cópia original fica onde está.',
+    legacyNoticeOne:
+      'Copiar minha {count} página existente para esta pasta. A cópia original fica onde está.',
+    createNewVault: 'Criar um novo cofre',
     createNewVaultHelp: 'Uma nova pasta chamada Morrow em seus documentos.',
     openFolder: 'Abrir uma pasta',
     openFolderHelp: 'Qualquer pasta, incluindo um cofre existente ou uma pasta de arquivos Markdown.',
@@ -753,12 +770,14 @@ export const pt: TranslationSchema = {
   },
   tasks: {
     title: 'Tarefas',
-    subtitle: 'Todos os itens de checklist das suas páginas em um só lugar. Marcar um aqui atualiza sua página.',
+    subtitle:
+      'Todos os itens de checklist das suas páginas em um só lugar. Marcar um aqui atualiza sua página.',
     showAria: 'Exibir',
     filterOpen: 'Pendentes ({count})',
     filterDone: 'Concluídas ({count})',
     filterAll: 'Todas ({count})',
-    emptyAll: 'Ainda não há tarefas. Digite [ ] no início de uma linha ou escolha Lista de tarefas no menu / para adicionar a qualquer página.',
+    emptyAll:
+      'Ainda não há tarefas. Digite [ ] no início de uma linha ou escolha Lista de tarefas no menu / para adicionar a qualquer página.',
     emptyOpen: 'Nada pendente. Muito bem!',
     emptyDone: 'Nada aqui.',
     untitledTask: 'Tarefa sem título',
@@ -775,7 +794,8 @@ export const pt: TranslationSchema = {
   },
   tags: {
     title: 'Tags',
-    subtitle: 'Tags das propriedades da página e cada #tag escrita em suas notas. Uma tag como #projeto/jardim também conta como #projeto.',
+    subtitle:
+      'Tags das propriedades da página e cada #tag escrita em suas notas. Uma tag como #projeto/jardim também conta como #projeto.',
     empty: 'Ainda não há tags. Escreva #algo em uma página ou adicione uma tag sob o título da página.',
     pageCountSingle: '1 página',
     pageCountPlural: '{count} páginas',
@@ -796,7 +816,8 @@ export const pt: TranslationSchema = {
     cardProgressAria: 'Cartão {current} de {total}',
     cardProgress: '{current} de {total}',
     emptyTitle: 'Ainda não há cartões de memorização',
-    emptyHelp: 'Escreva uma pergunta e sua resposta em uma linha de qualquer página, unidas por dois pontos duplos:',
+    emptyHelp:
+      'Escreva uma pergunta e sua resposta em uma linha de qualquer página, unidas por dois pontos duplos:',
     emptyExample: 'Capital da França :: Paris',
     emptyFooter: 'Aparecerá aqui imediatamente e voltará à medida que você for aprendendo.',
     allDone: 'Tudo pronto! {count} cartão{s} revisado{s}',
@@ -861,14 +882,17 @@ export const pt: TranslationSchema = {
     addedToToday: 'Adicionado à nota de hoje.',
     versionRestored: 'Versão restaurada. A versão anterior foi mantida no histórico da página.',
     pageEncrypted: '“{title}” está criptografada. O arquivo no disco só pode ser lido com a senha.',
-    encryptedNotExported: 'Páginas criptografadas não são exportadas como texto puro. Remova a criptografia primeiro se desejar exportar.',
+    encryptedNotExported:
+      'Páginas criptografadas não são exportadas como texto puro. Remova a criptografia primeiro se desejar exportar.',
     pdfSaved: 'Salvo {filename}.',
     pdfExportFailed: 'Não foi possível exportar o PDF: {error}',
     backupSaved: 'Backup salvo. Guarde-o em um local seguro.',
     backupFailed: 'Não foi possível criar o backup: {error}',
     noPagesToExport: 'Ainda não há páginas para exportar.',
-    websiteCreatedSingle: 'Site criado com 1 página. Descompacte e envie a pasta para qualquer hospedagem web.',
-    websiteCreatedPlural: 'Site criado com {count} páginas. Descompacte e envie a pasta para qualquer hospedagem web.',
+    websiteCreatedSingle:
+      'Site criado com 1 página. Descompacte e envie a pasta para qualquer hospedagem web.',
+    websiteCreatedPlural:
+      'Site criado com {count} páginas. Descompacte e envie a pasta para qualquer hospedagem web.',
     websiteFailed: 'Não foi possível criar o site: {error}',
     showInFolder: 'Mostrar na pasta',
     importedSingle: '1 página importada{notes}.',
@@ -905,5 +929,21 @@ export const pt: TranslationSchema = {
     syncCopiedFilesSingle: '1 arquivo copiado do seu outro computador.',
     syncCopiedFilesPlural: '{count} arquivos copiados do seu outro computador.',
     syncCopyFailed: 'Falha ao copiar: {error}',
+  },
+  math: {
+    editTitle: 'Editar fórmula',
+    inSentence: 'Na frase',
+    ownLine: 'Em uma linha própria',
+    showAs: 'Mostrar a fórmula',
+    latexLabel: 'Fórmula em LaTeX',
+    placeholder: 'Digite LaTeX, como e = mc^2, ou escolha abaixo',
+    previewEmpty: 'Sua fórmula aparece aqui',
+    previewLabel: 'Pré-visualização',
+    structures: 'Estruturas',
+    greek: 'Grego',
+    symbols: 'Símbolos',
+    insert: 'Inserir {name}',
+    saveHint: '{shortcut} para salvar',
+    learnMore: 'Ajuda de LaTeX',
   },
 };

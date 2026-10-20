@@ -97,7 +97,7 @@ async function main(): Promise<void> {
   const enabled = await isMcpConfigEnabled(vaultPath);
   if (!enabled) {
     process.stderr.write(
-      '[Morrow MCP] MCP is disabled in Morrow settings (Configuración > Asistente). Please enable the MCP switch in Morrow to connect.\n',
+      '[Morrow MCP] MCP is disabled in Morrow settings (Settings > Assistant). Please enable the MCP switch in Morrow to connect.\n',
     );
     process.exit(1);
   }
@@ -118,18 +118,28 @@ async function main(): Promise<void> {
     const transports = new Map<string, SSEServerTransport>();
 
     const httpServer = http.createServer(async (req, res) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', '*');
-      res.setHeader('Access-Control-Expose-Headers', '*');
-
-      if (req.method === 'OPTIONS') {
-        res.writeHead(200);
-        res.end();
+      // only apps on this computer may connect. a web page can't reach the vault through the browser: there
+      // are no cors headers, a page from elsewhere is refused, and so is a request whose host isn't this
+      // machine, as dns rebinding sends
+      const host = req.headers.host || `127.0.0.1:${port}`;
+      const local = (name: string) =>
+        ['127.0.0.1', 'localhost', '::1'].includes(name.replace(/^\[|\]$/g, ''));
+      const origin = req.headers.origin;
+      // an origin that isn't this machine, or can't be read, is a web page
+      const fromPage = (() => {
+        if (origin === undefined) return false;
+        try {
+          return !local(new URL(origin).hostname);
+        } catch {
+          return true;
+        }
+      })();
+      if (!local(host.replace(/:\d+$/, '')) || fromPage) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Forbidden');
         return;
       }
 
-      const host = req.headers.host || `127.0.0.1:${port}`;
       const url = new URL(req.url || '/', `http://${host}`);
 
       if (url.pathname === '/health' || url.pathname === '/status') {
@@ -153,15 +163,11 @@ async function main(): Promise<void> {
 
         transport.onclose = () => {
           transports.delete(transport.sessionId);
-          process.stderr.write(
-            `[Morrow MCP] Client disconnected. Active sessions: ${transports.size}\n`,
-          );
+          process.stderr.write(`[Morrow MCP] Client disconnected. Active sessions: ${transports.size}\n`);
         };
 
         await server.connect(transport);
-        process.stderr.write(
-          `[Morrow MCP] Client connected via SSE. Active sessions: ${transports.size}\n`,
-        );
+        process.stderr.write(`[Morrow MCP] Client connected via SSE. Active sessions: ${transports.size}\n`);
         return;
       }
 
@@ -197,8 +203,8 @@ async function main(): Promise<void> {
       );
     });
 
-    // Listen on dual-stack IPv4/IPv6
-    httpServer.listen(port, () => {
+    // on this computer only, never the local network
+    httpServer.listen(port, '127.0.0.1', () => {
       process.stderr.write(
         `[Morrow MCP] HTTP/SSE server running on port ${port} (endpoints: /sse, /message)\n`,
       );
@@ -237,7 +243,7 @@ async function main(): Promise<void> {
 
 main().catch((error) => {
   process.stderr.write(
-    `[Morrow MCP] Fatal error: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+    `[Morrow MCP] Fatal error: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
   );
   process.exit(1);
 });

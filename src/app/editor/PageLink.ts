@@ -1,7 +1,9 @@
-import { mergeAttributes, Node } from '@tiptap/core';
+import { InputRule, mergeAttributes, Node } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import { FilePlus2, FileText } from 'lucide-react';
+import { parseWikiLink } from '../../core/markdown/parse';
+import type { WikiLink } from '../../core/markdown/parse';
 import type { PageId } from '../../core/model';
 import { emojiElement } from '../components/Emoji';
 import type { MenuItem } from './SuggestionMenu';
@@ -29,6 +31,19 @@ export interface PageLinkOptions {
 }
 
 const CREATE_PREFIX = 'create:';
+
+// a suggestion carries the heading or block and the shown text written after the page name
+type LinkItem = MenuItem & { label?: string; anchor?: string | null; alias?: string | null };
+
+// the attributes for a link as written, the same ones a page read from markdown gets
+function linkAttrs(link: WikiLink, id: PageId | null, title: string | null): Record<string, unknown> {
+  const label = link.alias ?? title ?? (link.target.split('/').pop() || link.target);
+  const attrs: Record<string, unknown> = id ? { id, label } : { id: null, label, target: link.target };
+  if (link.anchor) attrs.anchor = link.anchor;
+  if (link.alias) attrs.alias = link.alias;
+  if (link.embed) attrs.embed = true;
+  return attrs;
+}
 
 // pages dragged out of the sidebar carry their id under this type
 export const PAGE_DRAG_TYPE = 'application/x-morrow-page';
@@ -211,6 +226,39 @@ export const PageLink = Node.create<PageLinkOptions>({
     };
   },
 
+  // typing the closing ]] turns [[Page#heading|shown text]] into a link straight away. a page that doesn't
+  // exist yet stays a link to it, created when clicked, and a date with no page of its own is a date
+  addInputRules() {
+    const options = this.options;
+    const dateType = this.editor.schema.nodes.dateMention;
+    return [
+      new InputRule({
+        find: /(!?)\[\[([^[\]\n]+)\]\]$/,
+        handler: ({ state, range, match }) => {
+          const link = parseWikiLink(match[2]!, match[1] === '!');
+          if (!link.target) return null;
+          const id = options.resolveTarget(link.target);
+          if (
+            !id &&
+            dateType &&
+            !link.embed &&
+            !link.anchor &&
+            !link.alias &&
+            /^\d{4}-\d{2}-\d{2}$/.test(link.target)
+          ) {
+            state.tr.replaceWith(range.from, range.to, dateType.create({ date: link.target }));
+            return;
+          }
+          state.tr.replaceWith(
+            range.from,
+            range.to,
+            this.type.create(linkAttrs(link, id, id ? options.getTitle(id) : null)),
+          );
+        },
+      }),
+    ];
+  },
+
   addProseMirrorPlugins() {
     const options = this.options;
     const editor = this.editor;
@@ -241,7 +289,7 @@ export const PageLink = Node.create<PageLinkOptions>({
           },
         },
       }),
-      Suggestion<MenuItem, MenuItem>({
+      Suggestion<LinkItem, LinkItem>({
         editor: this.editor,
         pluginKey: new PluginKey('pageLinkSuggestion'),
         char: '[[',
@@ -249,21 +297,32 @@ export const PageLink = Node.create<PageLinkOptions>({
         allowedPrefixes: null,
         allow: ({ state }) => state.selection.$from.parent.type.name !== 'codeBlock',
         items: ({ query }) => {
-          const title = query.replace(/\]+$/, '').trim();
-          const pages: MenuItem[] = options.findPages(title).map((page) => ({
+          // only the page name is searched, a #heading or |shown text after it goes along with the choice
+          const link = parseWikiLink(query.replace(/\]+$/, ''), false);
+          const title = link.target;
+          const extra = { anchor: link.anchor, alias: link.alias };
+          const pages: LinkItem[] = options.findPages(title).map((page) => ({
             id: page.id,
-            title: page.title,
+            title: link.anchor ? `${page.title} › ${link.anchor}` : page.title,
+            label: page.title,
+            ...extra,
             ...(page.path ? { description: page.path } : {}),
             icon: FileText,
           }));
-          if (title && !pages.some((page) => page.title.toLowerCase() === title.toLowerCase())) {
-            pages.push({ id: `${CREATE_PREFIX}${title}`, title: t('editor.newSubpage', { title }), icon: FilePlus2 });
+          if (title && !pages.some((page) => page.label?.toLowerCase() === title.toLowerCase())) {
+            pages.push({
+              id: `${CREATE_PREFIX}${title}`,
+              title: t('editor.newSubpage', { title }),
+              label: title,
+              ...extra,
+              icon: FilePlus2,
+            });
           }
           return pages;
         },
         command: ({ editor, range, props }) => {
           let id = props.id;
-          let label = props.title;
+          let label = props.label ?? props.title;
           if (id.startsWith(CREATE_PREFIX)) {
             label = id.slice(CREATE_PREFIX.length);
             const created = options.createPage(label);
@@ -278,12 +337,25 @@ export const PageLink = Node.create<PageLinkOptions>({
             .chain()
             .focus()
             .insertContentAt({ from, to: range.to }, [
-              { type: 'pageLink', attrs: embed ? { id, label, embed: true } : { id, label } },
+              {
+                type: 'pageLink',
+                attrs: {
+                  id,
+                  label: props.alias ?? label,
+                  ...(props.anchor ? { anchor: props.anchor } : {}),
+                  ...(props.alias ? { alias: props.alias } : {}),
+                  ...(embed ? { embed: true } : {}),
+                },
+              },
               { type: 'text', text: ' ' },
             ])
             .run();
         },
-        render: renderSuggestion(() => t('editor.linkToPage'), () => t('editor.noPagesFound'), 'link'),
+        render: renderSuggestion(
+          () => t('editor.linkToPage'),
+          () => t('editor.noPagesFound'),
+          'link',
+        ),
       }),
     ];
   },

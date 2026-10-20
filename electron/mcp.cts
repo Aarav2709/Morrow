@@ -51,6 +51,31 @@ function resolveMcpScript(): string {
   return direct;
 }
 
+export interface McpLaunch {
+  command: string;
+  script: string;
+  available: boolean;
+}
+
+// how an app such as claude desktop starts morrow's server: this executable run as plain node with the bundled
+// server script. an appimage mounts into a new temporary folder every run, so it gets a copy of the script in
+// morrow's own folder, written as .mjs because it is an es module
+export async function getMcpLaunch(): Promise<McpLaunch> {
+  const bundled = resolveMcpScript();
+  if (!existsSync(bundled)) return { command: process.execPath, script: bundled, available: false };
+  const appImage = process.env.APPIMAGE;
+  if (!appImage) return { command: process.execPath, script: bundled, available: true };
+  const script = path.join(app.getPath('userData'), 'mcp-server.mjs');
+  try {
+    const source = await readFile(bundled);
+    const existing = await readFile(script).catch(() => null);
+    if (!existing || !existing.equals(source)) await writeFile(script, source);
+    return { command: appImage, script, available: true };
+  } catch {
+    return { command: appImage, script, available: false };
+  }
+}
+
 export function getMcpStatus(): McpStatus {
   return {
     running: mcpChild !== null && !mcpChild.killed,

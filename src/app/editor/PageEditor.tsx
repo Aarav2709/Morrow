@@ -59,7 +59,12 @@ function mountEmbed(
   if (!page || id === hostId) return null;
   const canvas = page.kind === 'canvas' && !page.encrypted && !isEffectivelyTrashed(state.pages, id);
   if (!page.database && !canvas) return null;
-  const root = createRoot(element);
+  // react gets a box of its own inside the embed, so when the embed is emptied before the deferred unmount
+  // below runs, react still finds its nodes where it left them
+  const host = document.createElement('div');
+  host.style.display = 'contents';
+  element.append(host);
+  const root = createRoot(host);
   root.render(
     <Suspense fallback={null}>
       {page.database ? (

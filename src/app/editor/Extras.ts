@@ -165,18 +165,37 @@ export const RawBlock = Node.create({
   },
 });
 
+// a formula left empty is removed, and switching between inline and its own line swaps the node for the other
+// kind in the same place
 const editMath = (view: EditorView, node: PmNode, pos: number, block: boolean) => {
+  const removeIfEmpty = () => {
+    const current = view.state.doc.nodeAt(pos);
+    if (current?.type === node.type && !String(current.attrs.latex ?? '').trim())
+      view.dispatch(view.state.tr.delete(pos, pos + current.nodeSize));
+  };
   openDialog({
-    kind: 'source',
-    title: block ? 'Edit formula' : 'Edit inline formula',
+    kind: 'math',
     value: String(node.attrs.latex ?? ''),
-    language: 'latex',
-    displayMode: block,
-    onSave: (latex) => {
+    block,
+    onCancel: () => {
+      removeIfEmpty();
+      view.focus();
+    },
+    onSave: (latex, wantBlock) => {
       const current = view.state.doc.nodeAt(pos);
       if (!current || current.type !== node.type) return;
-      if (!latex.trim()) view.dispatch(view.state.tr.delete(pos, pos + current.nodeSize));
-      else view.dispatch(view.state.tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex }));
+      const { schema, tr } = view.state;
+      const end = pos + current.nodeSize;
+      if (!latex.trim()) tr.delete(pos, end);
+      else if (wantBlock === block) tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex });
+      else if (wantBlock) tr.replaceWith(pos, end, schema.nodes.blockMath!.create({ latex }));
+      else
+        tr.replaceWith(
+          pos,
+          end,
+          schema.nodes.paragraph!.create(null, schema.nodes.inlineMath!.create({ latex })),
+        );
+      view.dispatch(tr);
       view.focus();
     },
   });

@@ -241,7 +241,13 @@ export const BLOCK_ITEMS: BlockItem[] = [
     icon: Sigma,
     hint: '$',
     keywords: 'math equation latex inline',
-    run: (e, r) => chain(e, r).insertInlineMath({ latex: 'x^2' }).run(),
+    // inserted at the slash itself, then opened for typing like a block formula
+    run: (e, r) => {
+      chain(e, r)
+        .insertContent({ type: 'inlineMath', attrs: { latex: '' } })
+        .run();
+      editMathNear(e, r.from);
+    },
   },
   {
     id: 'highlight',

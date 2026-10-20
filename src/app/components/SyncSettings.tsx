@@ -33,7 +33,7 @@ function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
 
 // keeps this vault the same on your own computers on the same network, with no server in between
 export function NetworkSettings() {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const [status, refresh] = useSyncStatus();
   const [busy, setBusy] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function NetworkSettings() {
       toast(
         result.received === 0
           ? t('settings.sync.upToDate', { name: peerName })
-          : t('settings.sync.receivedChanges', { count: result.received, name: peerName }),
+          : tp('settings.sync.receivedChanges', result.received, { name: peerName }),
       );
     else toast(result.error ?? t('settings.sync.syncFailed'), { tone: 'error', durationMs: 10_000 });
   };
@@ -61,14 +61,8 @@ export function NetworkSettings() {
   };
 
   return (
-    <SettingsGroup
-      title={t('settings.sync.networkTitle')}
-      help={t('settings.sync.networkHelp')}
-    >
-      <SettingRow
-        label={t('settings.sync.networkSync')}
-        help={t('settings.sync.networkSyncHelp')}
-      >
+    <SettingsGroup title={t('settings.sync.networkTitle')} help={t('settings.sync.networkHelp')}>
+      <SettingRow label={t('settings.sync.networkSync')} help={t('settings.sync.networkSyncHelp')}>
         <Switch
           label={t('settings.sync.networkSync')}
           checked={status.enabled}
@@ -97,7 +91,9 @@ export function NetworkSettings() {
             </span>
           }
           help={`${peer.online ? t('settings.sync.onNetwork') : t('settings.sync.notSeenLately')}, ${
-            peer.lastSync ? t('settings.sync.synced', { time: relativeTime(peer.lastSync) }) : t('settings.sync.neverSynced')
+            peer.lastSync
+              ? t('settings.sync.synced', { time: relativeTime(peer.lastSync) })
+              : t('settings.sync.neverSynced')
           }`}
         >
           <button
@@ -175,15 +171,13 @@ export function CloudSettings() {
   };
 
   return (
-    <SettingsGroup
-      title={t('settings.sync.cloudTitle')}
-      help={t('settings.sync.cloudHelp')}
-    >
+    <SettingsGroup title={t('settings.sync.cloudTitle')} help={t('settings.sync.cloudHelp')}>
       {cloud.inside ? (
         <SettingRow
           label={
             <span className="settings-peer">
-              <Check size={14} className="settings-ok" /> {t('settings.sync.syncingThrough', { provider: cloud.inside.provider })}
+              <Check size={14} className="settings-ok" />{' '}
+              {t('settings.sync.syncingThrough', { provider: cloud.inside.provider })}
             </span>
           }
           help={t('settings.sync.openSameFolder')}
@@ -214,9 +208,7 @@ export function CloudSettings() {
         <SettingRow
           label={cloud.folders.length ? t('settings.sync.anotherFolder') : t('settings.sync.syncedFolder')}
           help={
-            cloud.folders.length
-              ? t('settings.sync.anotherFolderHelp')
-              : t('settings.sync.syncedFolderHelp')
+            cloud.folders.length ? t('settings.sync.anotherFolderHelp') : t('settings.sync.syncedFolderHelp')
           }
         >
           <button

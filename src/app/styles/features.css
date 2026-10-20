@@ -325,14 +325,90 @@
   resize: vertical;
   min-height: 80px;
 }
+/* the formula editor: preview on top, latex below, then the palette */
 .math-preview {
-  margin-top: 12px;
-  padding: 12px;
+  display: grid;
+  place-items: center;
+  min-height: 112px;
+  padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 1.35em;
   overflow-x: auto;
-  text-align: center;
-  min-height: 2.5em;
+}
+.math-preview > div {
+  max-width: 100%;
+}
+.math-preview.is-empty {
+  font-size: var(--text-sm);
+}
+.math-error {
+  margin: 8px 0 0;
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.math-input {
+  width: 100%;
+  margin-top: 12px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 76px;
+}
+.math-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+.math-groups {
+  display: flex;
+  gap: 2px;
+}
+.math-groups button {
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.math-groups button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.math-groups button.is-active {
+  background: var(--active);
+  color: var(--text);
+}
+.math-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+.math-piece {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  overflow: hidden;
+}
+.math-piece:hover {
+  border-color: var(--border-strong);
+  background: var(--hover);
+}
+.math-piece .katex {
+  font-size: 1.2em;
+}
+.math-dialog .dialog-footer {
+  align-items: center;
 }
 .dialog-hint {
   margin-right: auto;
@@ -2461,36 +2537,4 @@ td:hover .prop-empty,
 .repeat-picker .move-list {
   max-height: 320px;
   margin-top: 8px;
-}
-
-.spelling-picker {
-  width: 300px;
-}
-.spelling-list {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  max-height: 300px;
-  overflow-y: auto;
-}
-.spelling-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  text-align: left;
-}
-.spelling-option:hover {
-  background: var(--hover);
-}
-.spelling-option .muted {
-  margin-left: auto;
-}
-.spelling-check {
-  display: grid;
-  place-items: center;
-  width: 14px;
-  color: var(--accent);
 }

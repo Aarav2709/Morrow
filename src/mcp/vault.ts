@@ -5,10 +5,7 @@ import { isMcpConfigEnabled } from './config';
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import {
-  displayTitle,
-  emptyDoc,
-} from '../core/model';
+import { displayTitle, emptyDoc } from '../core/model';
 import type { PageId, PageMeta, WorkspaceState } from '../core/model';
 import { applyCommand } from '../core/commands';
 import type { Command } from '../core/commands';
@@ -24,18 +21,18 @@ import { linkTargets, placePages } from '../core/vault/layout';
 import type { Placement } from '../core/vault/layout';
 import { composeFrontmatter, managedFrontmatter, renderPageText } from '../core/vault/pageFile';
 import type { PageSource } from '../core/vault/pageFile';
-import {
-  basename,
-  dirname,
-  isInTrash,
-  isPageFile,
-  MORROW_DIR,
-  TRASH_DIR,
-} from '../core/vault/paths';
+import { basename, dirname, isInTrash, isPageFile, MORROW_DIR, TRASH_DIR } from '../core/vault/paths';
 import { childrenOf, livePages } from '../core/tree';
 import { markdownToDoc } from '../core/markdown/parse';
 import { docToMarkdown } from '../core/markdown/serialize';
-import { dailyInsertIndex, dailyTitle, dateKey, findDailyNote, findJournal, JOURNAL_TITLE } from '../core/daily';
+import {
+  dailyInsertIndex,
+  dailyTitle,
+  dateKey,
+  findDailyNote,
+  findJournal,
+  JOURNAL_TITLE,
+} from '../core/daily';
 
 const MAX_DEPTH = 64;
 const MAX_FILES = 200_000;
@@ -63,7 +60,7 @@ export class McpVaultManager {
     const enabled = await isMcpConfigEnabled(this.vaultPath);
     if (!enabled) {
       throw new Error(
-        'Morrow MCP is disabled in settings. Please enable the MCP switch in Morrow (Configuración > Asistente).'
+        'Morrow MCP is disabled in settings. Please enable the MCP switch in Morrow (Settings > Assistant).',
       );
     }
   }
@@ -184,7 +181,7 @@ export class McpVaultManager {
   }
 
   public listPages(parentId?: string | null): PageMeta[] {
-    const targetParent = parentId ? this.resolvePage(parentId)?.id ?? null : null;
+    const targetParent = parentId ? (this.resolvePage(parentId)?.id ?? null) : null;
     return childrenOf(this.state.pages, targetParent);
   }
 

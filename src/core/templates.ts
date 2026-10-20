@@ -57,6 +57,12 @@ export interface TemplateValues {
   date: Date;
 }
 
+const PLACEHOLDER = /\{\{\s*(title|date|time)(?::([^}]*))?\s*\}\}/i;
+
+export function hasPlaceholder(text: string): boolean {
+  return PLACEHOLDER.test(text);
+}
+
 // fills {{title}}, {{date}}, {{time}} and {{date:FORMAT}} in every piece of text
 export function fillTemplate(text: string, values: TemplateValues): string {
   return text.replace(

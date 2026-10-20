@@ -11,6 +11,7 @@ import { CaptureDialog } from './CaptureDialog';
 import { EmojiPicker } from './EmojiPicker';
 import { EncryptDialog } from './EncryptDialog';
 import { HistoryDialog } from './HistoryDialog';
+import { MathDialog } from './MathDialog';
 import { Dialog } from './primitives';
 import { SettingsDialog } from './Settings';
 import { useTranslation } from '../i18n';
@@ -48,6 +49,15 @@ export function Dialogs() {
           onSave={dialog.onSave}
         />
       );
+    case 'math':
+      return (
+        <MathDialog
+          value={dialog.value}
+          block={dialog.block}
+          onSave={dialog.onSave}
+          onCancel={dialog.onCancel}
+        />
+      );
     case 'template':
       return <TemplateDialog parentId={dialog.parentId} />;
     case 'encrypt':
@@ -64,7 +74,9 @@ export function Dialogs() {
           onClose={closeDialog}
           footer={
             <>
-              <button type="button" className="button" onClick={closeDialog}>{t('common.cancel')}</button>
+              <button type="button" className="button" onClick={closeDialog}>
+                {t('common.cancel')}
+              </button>
               <button
                 type="button"
                 className={`button ${dialog.danger ? 'danger-solid' : 'primary'}`}

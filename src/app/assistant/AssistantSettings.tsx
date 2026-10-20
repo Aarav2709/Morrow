@@ -6,8 +6,8 @@ import { Select } from '../components/Select';
 import { SettingRow, SettingsGroup } from '../components/SettingsRows';
 import { openHref } from '../editor/EditorMenus';
 import { useTranslation } from '../i18n';
-import { desktop } from '../platform/desktop';
-import type { AssistantProviderId, AssistantSettings as Settings } from '../platform/desktop';
+import { copyText, desktop } from '../platform/desktop';
+import type { AssistantProviderId, AssistantSettings as Settings, McpLaunch } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 
 // the open panel listens for this to show the provider and model that were just picked
@@ -30,7 +30,7 @@ type Connection =
 
 // the assistant section of settings: off by default, nothing is sent anywhere until you turn it on
 export function AssistantSettings() {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const prefs = usePreferences();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [key, setKey] = useState('');
@@ -40,11 +40,18 @@ export function AssistantSettings() {
   const api = desktop?.assistant;
 
   const [mcpCopied, setMcpCopied] = useState(false);
+  const [mcpLaunch, setMcpLaunch] = useState<McpLaunch | null>(null);
 
   useEffect(() => {
     if (desktop?.mcp?.setEnabled) {
       void desktop.mcp.setEnabled(prefs.mcpEnabled);
     }
+    // the setup starts the server bundled with this copy of morrow, nothing is downloaded
+    if (prefs.mcpEnabled)
+      void desktop?.mcp
+        ?.launch()
+        .then(setMcpLaunch)
+        .catch(() => setMcpLaunch(null));
   }, [prefs.mcpEnabled]);
 
   const provider = settings?.providers.find((item) => item.id === settings.provider);
@@ -102,10 +109,9 @@ export function AssistantSettings() {
   const mcpJson = JSON.stringify(
     {
       mcpServers: {
-        morrow: {
-          command: 'npx',
-          args: ['-y', 'morrow-mcp'],
-        },
+        morrow: mcpLaunch?.available
+          ? { command: mcpLaunch.command, args: [mcpLaunch.script], env: { ELECTRON_RUN_AS_NODE: '1' } }
+          : { command: 'morrow-mcp' },
       },
     },
     null,
@@ -113,40 +119,7 @@ export function AssistantSettings() {
   );
 
   const handleCopy = async () => {
-    let success = false;
-    if (desktop?.copyText) {
-      try {
-        await desktop.copyText(mcpJson);
-        success = true;
-      } catch {
-        // Fallback
-      }
-    }
-    if (!success) {
-      try {
-        if (navigator?.clipboard?.writeText) {
-          await navigator.clipboard.writeText(mcpJson);
-          success = true;
-        }
-      } catch {
-        // Fallback
-      }
-    }
-    if (!success) {
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.value = mcpJson;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        success = document.execCommand('copy');
-        document.body.removeChild(textarea);
-      } catch {
-        // Ignored
-      }
-    }
+    const success = await copyText(mcpJson);
     if (success) {
       setMcpCopied(true);
       setTimeout(() => setMcpCopied(false), 2000);
@@ -155,17 +128,8 @@ export function AssistantSettings() {
 
   return (
     <>
-      <SettingsGroup
-        help={
-          prefs.assistant
-            ? undefined
-            : t('settings.assistant.help')
-        }
-      >
-        <SettingRow
-          label={t('settings.assistant.row')}
-          help={t('settings.assistant.rowHelp')}
-        >
+      <SettingsGroup help={prefs.assistant ? undefined : t('settings.assistant.help')}>
+        <SettingRow label={t('settings.assistant.row')} help={t('settings.assistant.rowHelp')}>
           <Switch
             label={t('settings.assistant.switch')}
             checked={prefs.assistant}
@@ -215,7 +179,9 @@ export function AssistantSettings() {
             )}
 
             <SettingRow
-              label={provider?.needsKey ? t('settings.assistant.apiKey') : t('settings.assistant.apiKeyOptional')}
+              label={
+                provider?.needsKey ? t('settings.assistant.apiKey') : t('settings.assistant.apiKeyOptional')
+              }
               help={
                 settings.hasKey ? (
                   settings.keyStorage === 'system' ? (
@@ -248,7 +214,9 @@ export function AssistantSettings() {
                   aria-label={t('settings.assistant.apiKey')}
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder={settings.hasKey ? t('settings.assistant.replaceKey') : t('settings.assistant.pasteKey')}
+                  placeholder={
+                    settings.hasKey ? t('settings.assistant.replaceKey') : t('settings.assistant.pasteKey')
+                  }
                   value={key}
                   onChange={(event) => setKey(event.target.value)}
                 />
@@ -279,7 +247,7 @@ export function AssistantSettings() {
                   {connection.state === 'ok' && (
                     <>
                       <Check size={12} /> {t('settings.assistant.connected')}
-                      {models.length > 0 ? `, ${t('settings.assistant.modelsCount', { count: models.length })}` : ''}
+                      {models.length > 0 ? `, ${tp('settings.assistant.modelsCount', models.length)}` : ''}
                     </>
                   )}
                   {connection.state === 'error' && (
@@ -336,7 +304,10 @@ export function AssistantSettings() {
           <SettingsGroup
             title={t('settings.assistant.changesTitle')}
             help={t('settings.assistant.changesHelp', {
-              target: settings.provider === 'custom' ? t('settings.assistant.yourServer') : (provider?.label ?? t('settings.assistant.theProvider')),
+              target:
+                settings.provider === 'custom'
+                  ? t('settings.assistant.yourServer')
+                  : (provider?.label ?? t('settings.assistant.theProvider')),
               shortcut: formatShortcut('Mod+J'),
             })}
           >
@@ -358,10 +329,7 @@ export function AssistantSettings() {
         title={t('settings.assistant.mcpGroupTitle')}
         help={t('settings.assistant.mcpGroupHelp')}
       >
-        <SettingRow
-          label={t('settings.assistant.mcpRow')}
-          help={t('settings.assistant.mcpRowHelp')}
-        >
+        <SettingRow label={t('settings.assistant.mcpRow')} help={t('settings.assistant.mcpRowHelp')}>
           <Switch
             label={t('settings.assistant.mcpSwitch')}
             checked={prefs.mcpEnabled}
@@ -402,7 +370,7 @@ export function AssistantSettings() {
                     color: 'var(--text-muted)',
                   }}
                 >
-                  Stdio (npx)
+                  Stdio
                 </span>
                 <button
                   type="button"

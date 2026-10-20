@@ -35,11 +35,7 @@ export function getLocale(): SupportedLocale {
   return getPreferences().locale;
 }
 
-export function t(
-  key: TranslationKey,
-  params?: TranslationParams,
-  localeOverride?: SupportedLocale,
-): string {
+export function t(key: TranslationKey, params?: TranslationParams, localeOverride?: SupportedLocale): string {
   const locale = localeOverride ?? getLocale();
   const dict = dictionaries[locale] ?? dictionaries.en;
   let text = resolvePath(dict, key);
@@ -47,6 +43,18 @@ export function t(
     text = resolvePath(dictionaries.en, key);
   }
   return interpolate(text ?? key, params);
+}
+
+// a sentence about a number of things, using the key's One form when there is exactly one
+export function tp(
+  key: TranslationKey,
+  count: number,
+  params?: TranslationParams,
+  localeOverride?: SupportedLocale,
+): string {
+  const one = `${key}One` as TranslationKey;
+  const pick = count === 1 && resolvePath(dictionaries.en, one) !== undefined ? one : key;
+  return t(pick, { count, ...params }, localeOverride);
 }
 
 export function tAction(actionId: string, fallback?: string, localeOverride?: SupportedLocale): string {
@@ -61,6 +69,7 @@ export function useTranslation() {
   return {
     locale,
     t: (key: TranslationKey, params?: TranslationParams) => t(key, params, locale),
+    tp: (key: TranslationKey, count: number, params?: TranslationParams) => tp(key, count, params, locale),
     tAction: (actionId: string, fallback?: string) => tAction(actionId, fallback, locale),
   };
 }
