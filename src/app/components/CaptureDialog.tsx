@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { formatShortcut } from '../actions';
 import { captureToToday } from '../operations';
+import { useTranslation } from '../i18n';
 import { closeDialog, toast } from '../ui';
 import { Dialog } from './primitives';
 
 // jot something down from anywhere, it lands at the end of today's note
 export function CaptureDialog() {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const save = () => {
     if (!text.trim()) return closeDialog();
     if (captureToToday(text)) {
       closeDialog();
-      toast("Added to today's note.");
+      toast(t('toasts.addedToToday'));
     }
   };
   return (
