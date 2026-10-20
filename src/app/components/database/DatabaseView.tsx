@@ -55,6 +55,7 @@ import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { fileUrl } from '../../platform/attachments';
 import { newId } from '../../platform/files';
 import { openPage } from '../../router';
+import { t } from '../../i18n';
 import { toast } from '../../ui';
 import { run, runAll, useWorkspace } from '../../workspace';
 import { Menu } from '../Menu';
@@ -758,7 +759,7 @@ function PropertySettings({
                 (item) => item.id !== prop.id && item.name.toLowerCase() === clean.toLowerCase(),
               )
             ) {
-              toast('That name is empty or already used.', { tone: 'error' });
+              toast(t('toasts.propNameEmptyOrUsed'), { tone: 'error' });
               return;
             }
             updateProp(dbId, prop.id, (current) => ({ ...current, name: clean }));

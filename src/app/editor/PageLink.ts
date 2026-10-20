@@ -6,6 +6,7 @@ import type { PageId } from '../../core/model';
 import { emojiElement } from '../components/Emoji';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
+import { t } from '../i18n';
 
 export interface PageLinkOptions {
   // live title or null when the page is missing or trashed
@@ -254,7 +255,7 @@ export const PageLink = Node.create<PageLinkOptions>({
             icon: FileText,
           }));
           if (title && !pages.some((page) => page.title.toLowerCase() === title.toLowerCase())) {
-            pages.push({ id: `${CREATE_PREFIX}${title}`, title: `New subpage “${title}”`, icon: FilePlus2 });
+            pages.push({ id: `${CREATE_PREFIX}${title}`, title: t('editor.newSubpage', { title }), icon: FilePlus2 });
           }
           return pages;
         },
@@ -280,7 +281,7 @@ export const PageLink = Node.create<PageLinkOptions>({
             ])
             .run();
         },
-        render: renderSuggestion('Link to page', 'No pages found', 'link'),
+        render: renderSuggestion(() => t('editor.linkToPage'), () => t('editor.noPagesFound'), 'link'),
       }),
     ];
   },
