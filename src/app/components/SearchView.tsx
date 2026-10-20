@@ -13,8 +13,6 @@ import { TopBar } from './TopBar';
 
 type Order = 'best' | 'recent' | 'title';
 
-
-
 const MAX_RESULTS = 200;
 const SNIPPETS_PER_PAGE = 3;
 

@@ -2,6 +2,7 @@ import { Check, ChevronsUpDown, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { foldText } from '../../core/search';
 import { Popover } from './Popover';
+import { t } from '../i18n';
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -134,8 +135,8 @@ function SelectList<T extends string>({
             <Search size={14} />
             <input
               data-autofocus
-              placeholder="Search"
-              aria-label={`Search ${label}`}
+              placeholder={t('common.search')}
+              aria-label={t('common.searchIn', { label })}
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
@@ -164,7 +165,7 @@ function SelectList<T extends string>({
               </button>
             </li>
           ))}
-          {shown.length === 0 && <li className="select-empty">Nothing matches.</li>}
+          {shown.length === 0 && <li className="select-empty">{t('common.noMatches')}</li>}
         </ul>
         {footer && (
           <button

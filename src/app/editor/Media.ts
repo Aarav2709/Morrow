@@ -4,6 +4,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { FileMeta } from '../../core/model';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
+import { t } from '../i18n';
 
 export const Image = Node.create({
   name: 'image',
@@ -59,7 +60,7 @@ export const Image = Node.create({
           const load = document.createElement('button');
           load.type = 'button';
           load.className = 'button small';
-          load.textContent = 'Load image';
+          load.textContent = t('editor.loadImage');
           load.addEventListener('click', (event) => {
             event.preventDefault();
             img.src = src;
@@ -72,14 +73,14 @@ export const Image = Node.create({
       }
       img.addEventListener('error', () => {
         dom.classList.add('is-missing');
-        dom.textContent = 'This image is missing from your workspace.';
+        dom.textContent = t('editor.imageMissing');
       });
       void fileUrl(String(node.attrs.fileId ?? '')).then((url) => {
         dom.classList.remove('is-loading');
         if (url) img.src = url;
         else {
           dom.classList.add('is-missing');
-          dom.textContent = 'This image is missing from your workspace.';
+          dom.textContent = t('editor.imageMissing');
         }
       });
       return { dom };
@@ -128,7 +129,7 @@ export const FileAttachment = Node.create({
       const save = document.createElement('button');
       save.type = 'button';
       save.className = 'file-save';
-      save.textContent = 'Save a copy';
+      save.textContent = t('editor.saveACopy');
       save.addEventListener('click', (event) => {
         event.preventDefault();
         void downloadFile(String(node.attrs.fileId ?? ''));

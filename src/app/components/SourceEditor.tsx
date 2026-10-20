@@ -6,6 +6,7 @@ import { displayTitle } from '../../core/model';
 import type { DocNode, FileMeta, PageId } from '../../core/model';
 import { resolveLinkTarget } from '../../core/search';
 import { getSession, getState, run } from '../workspace';
+import { t } from '../i18n';
 
 const SAVE_DELAY_MS = 500;
 
@@ -81,7 +82,7 @@ export function SourceEditor({ pageId, doc, editable }: { pageId: PageId; doc: D
         value={text}
         readOnly={!editable}
         spellCheck={false}
-        aria-label="Markdown source"
+        aria-label={t('dialogs.markdownSource')}
         onChange={(event) => {
           const value = event.target.value;
           setText(value);

@@ -30,6 +30,7 @@ import { getState } from '../workspace';
 import { SETTINGS_CHANGED } from './AssistantSettings';
 import { answerProposal, newChat, sendMessage, stopTurn, undoChange, useChat } from './chat';
 import type { ChatItem } from './chat';
+import { t } from '../i18n';
 
 // the assistant's markdown as html, with [[links]] to pages you can click
 function renderMarkdown(markdown: string): string {
@@ -83,7 +84,7 @@ function compact(lines: DiffLine[], context = 2): Array<DiffLine | { kind: 'gap'
 function Diff({ before, after }: { before: string; after: string }) {
   const lines = useMemo(() => compact(diffLines(before, after)), [before, after]);
   return (
-    <div className="diff assistant-diff" aria-label="Proposed change">
+    <div className="diff assistant-diff" aria-label={t('assistant.proposedChange')}>
       {lines.map((line, index) =>
         line.kind === 'gap' ? (
           <div key={index} className="diff-gap">
@@ -126,31 +127,33 @@ function ToolLine({ item }: { item: Extract<ChatItem, { kind: 'tool' }> }) {
               className="button small primary"
               onClick={() => answerProposal(item.id, true)}
             >
-              <Check size={14} /> Apply
+              <Check size={14} /> {t('editor.apply')}
             </button>
             <button type="button" className="button small" onClick={() => answerProposal(item.id, false)}>
-              Decline
+              {t('assistant.decline')}
             </button>
           </>
         )}
         {item.status === 'running' && (
           <span className="muted small">
-            <Loader2 size={13} className="spin" /> Applying
+            <Loader2 size={13} className="spin" /> {t('assistant.applying')}
           </span>
         )}
         {item.status === 'done' && item.applied && (
           <>
             <span className="muted small">
-              <Check size={13} /> Done
+              <Check size={13} /> {t('assistant.done')}
             </span>
             <button type="button" className="button small" onClick={() => undoChange(item.id)}>
-              <Undo2 size={14} /> Undo
+              <Undo2 size={14} /> {t('toasts.undo')}
             </button>
           </>
         )}
-        {item.status === 'declined' && <span className="muted small">Declined</span>}
-        {item.status === 'undone' && <span className="muted small">Undone</span>}
-        {item.status === 'failed' && <span className="small is-error">Could not apply this change</span>}
+        {item.status === 'declined' && <span className="muted small">{t('assistant.declined')}</span>}
+        {item.status === 'undone' && <span className="muted small">{t('assistant.undone')}</span>}
+        {item.status === 'failed' && (
+          <span className="small is-error">{t('assistant.applyFailed')}</span>
+        )}
       </div>
     </div>
   );
@@ -188,10 +191,10 @@ export function AssistantPanel() {
   };
 
   return (
-    <aside className="assistant-panel" aria-label="Assistant">
+    <aside className="assistant-panel" aria-label={t('settings.sections.assistant')}>
       <header className="assistant-header">
         <Sparkles size={15} />
-        <strong>Assistant</strong>
+        <strong>{t('settings.sections.assistant')}</strong>
         {settings?.model && (
           <span className="assistant-model" title={`${label}, ${settings.model}`}>
             {settings.model}
@@ -201,8 +204,8 @@ export function AssistantPanel() {
           <button
             type="button"
             className="icon-button"
-            aria-label="New chat"
-            title="New chat"
+            aria-label={t('assistant.newChat')}
+            title={t('assistant.newChat')}
             onClick={newChat}
           >
             <Plus size={16} />
@@ -210,8 +213,8 @@ export function AssistantPanel() {
           <button
             type="button"
             className="icon-button"
-            aria-label="Assistant settings"
-            title="Assistant settings"
+            aria-label={t('assistant.assistantSettings')}
+            title={t('assistant.assistantSettings')}
             onClick={() => openDialog({ kind: 'settings', section: 'assistant' })}
           >
             <Settings size={15} />
@@ -219,8 +222,8 @@ export function AssistantPanel() {
           <button
             type="button"
             className="icon-button"
-            aria-label="Close the assistant"
-            title={`Close (${formatShortcut('Mod+J')})`}
+            aria-label={t('assistant.close')}
+            title={t('assistant.closeWithShortcut', { shortcut: formatShortcut('Mod+J') })}
             onClick={() => setPreferences({ assistantOpen: false })}
           >
             <X size={16} />
@@ -230,22 +233,20 @@ export function AssistantPanel() {
       <div className="assistant-messages" ref={list} aria-live="polite">
         {!ready && settings && (
           <div className="assistant-empty">
-            <p>Add an API key and pick a model to start.</p>
+            <p>{t('assistant.needsSetup')}</p>
             <button
               type="button"
               className="button small"
               onClick={() => openDialog({ kind: 'settings', section: 'assistant' })}
             >
-              Open settings
+              {t('assistant.openSettings')}
             </button>
           </div>
         )}
         {ready && chat.items.length === 0 && (
           <div className="assistant-empty">
-            <p>Ask about your notes, or ask for a page to be written or tidied up.</p>
-            <p className="muted small">
-              It can search and read your pages. Changes are shown to you first and kept in page history.
-            </p>
+            <p>{t('assistant.introAsk')}</p>
+            <p className="muted small">{t('assistant.introSafety')}</p>
           </div>
         )}
         {chat.items.map((item) => {
@@ -266,7 +267,7 @@ export function AssistantPanel() {
         })}
         {chat.busy && !chat.items.some((item) => item.kind === 'tool' && item.status === 'waiting') && (
           <div className="assistant-thinking">
-            <Loader2 size={14} className="spin" /> Working
+            <Loader2 size={14} className="spin" /> {t('assistant.working')}
           </div>
         )}
       </div>
@@ -283,7 +284,7 @@ export function AssistantPanel() {
           value={text}
           disabled={!ready}
           placeholder={ready ? 'Ask anything about your notes' : 'Set up the assistant in settings'}
-          aria-label="Message the assistant"
+          aria-label={t('assistant.messageAria')}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -296,8 +297,8 @@ export function AssistantPanel() {
           <button
             type="button"
             className="icon-button assistant-send"
-            aria-label="Stop"
-            title="Stop"
+            aria-label={t('assistant.stop')}
+            title={t('assistant.stop')}
             onClick={stopTurn}
           >
             <Square size={14} />
@@ -306,8 +307,8 @@ export function AssistantPanel() {
           <button
             type="submit"
             className="icon-button assistant-send"
-            aria-label="Send"
-            title="Send (Enter)"
+            aria-label={t('assistant.send')}
+            title={t('assistant.sendHint')}
             disabled={!text.trim() || !ready}
           >
             <ArrowUp size={16} />

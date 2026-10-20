@@ -111,7 +111,9 @@ function Heatmap({ activity, locale }: { activity: Record<string, number>; local
                 key={day.key}
                 className={`heatmap-day level-${day.future ? 'future' : level(day.count)}`}
                 title={
-                  day.future ? '' : `${dayLabel(day.key)}: ${t('home.saveCount', { count: day.count, s: day.count === 1 ? t('home.saveSingle') : t('home.savePlural') })}`
+                  day.future
+                    ? ''
+                    : `${dayLabel(day.key)}: ${t('home.saveCount', { count: day.count, s: day.count === 1 ? t('home.saveSingle') : t('home.savePlural') })}`
                 }
               />
             ))}
@@ -120,7 +122,10 @@ function Heatmap({ activity, locale }: { activity: Record<string, number>; local
       </div>
       <div className="heatmap-foot">
         <span>
-          {t('home.wroteOnDays', { count: active.toLocaleString(locale), days: active === 1 ? t('home.wroteDaySingle') : t('home.wroteDayPlural') })}
+          {t('home.wroteOnDays', {
+            count: active.toLocaleString(locale),
+            days: active === 1 ? t('home.wroteDaySingle') : t('home.wroteDayPlural'),
+          })}
         </span>
         <span className="heatmap-legend" aria-hidden="true">
           {t('home.heatmapLess')}

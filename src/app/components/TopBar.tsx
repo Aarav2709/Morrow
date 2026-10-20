@@ -28,6 +28,7 @@ import { Menu } from './Menu';
 import { useTranslation } from '../i18n';
 import type { MenuEntry } from './Menu';
 import { relativeTime } from './primitives';
+import { t } from '../i18n';
 
 export function SidebarToggle() {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ export function SidebarToggle() {
           type="button"
           className="icon-button desktop-only"
           aria-label={t('topBar.showSidebar')}
-          title={`Show sidebar (${formatShortcut('Mod+\\')})`}
+          title={t('topBar.showSidebar', { shortcut: formatShortcut('Mod+\\') })}
           onClick={() => runAction('view.sidebar')}
         >
           <PanelLeftOpen size={16} strokeWidth={1.75} />
@@ -71,7 +72,7 @@ function HistoryButtons() {
         type="button"
         className="icon-button"
         aria-label={t('topBar.goBack')}
-        title={`Back (${formatShortcut(ACTION_SHORTCUTS.back)})`}
+        title={t('topBar.back', { shortcut: formatShortcut(ACTION_SHORTCUTS.back) })}
         disabled={!back}
         onClick={() => goBack(pane)}
       >
@@ -81,7 +82,7 @@ function HistoryButtons() {
         type="button"
         className="icon-button"
         aria-label={t('topBar.goForward')}
-        title={`Forward (${formatShortcut(ACTION_SHORTCUTS.forward)})`}
+        title={t('topBar.forward', { shortcut: formatShortcut(ACTION_SHORTCUTS.forward) })}
         disabled={!forward}
         onClick={() => goForward(pane)}
       >
@@ -104,7 +105,7 @@ function SplitButtons() {
           type="button"
           className="icon-button desktop-only"
           aria-label={t('topBar.swapSplit')}
-          title="Swap the two sides"
+          title={t('topBar.swapTheTwoSides')}
           onClick={swapSides}
         >
           <ArrowRightLeft size={15} strokeWidth={1.75} />
@@ -113,7 +114,7 @@ function SplitButtons() {
           type="button"
           className="icon-button desktop-only"
           aria-label={t('topBar.closeSplit')}
-          title="Close this side"
+          title={t('topBar.closeThisSide')}
           onClick={closeSide}
         >
           <X size={16} strokeWidth={1.75} />
@@ -126,7 +127,7 @@ function SplitButtons() {
       type="button"
       className="icon-button desktop-only"
       aria-label={t('topBar.openSplit')}
-      title={`Open beside, in a split (${formatShortcut('Mod+Shift+\\')})`}
+      title={t('topBar.openSplit', { shortcut: formatShortcut('Mod+Shift+\\') })}
       onClick={() => openSide()}
     >
       <Columns2 size={16} strokeWidth={1.75} />
@@ -178,7 +179,6 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
 }
 
 export function TopBar({
-
   page,
   editing,
   menu,
@@ -203,7 +203,7 @@ export function TopBar({
       </div>
       <div className="topbar-center">
         {page ? (
-          <nav className="breadcrumbs" aria-label="Breadcrumb">
+          <nav className="breadcrumbs" aria-label={t('topBar.breadcrumb')}>
             <ol>
               {trail.map((ancestor) => (
                 <li key={ancestor.id}>

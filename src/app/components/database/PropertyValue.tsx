@@ -144,7 +144,7 @@ export function PropertyInput({
             disabled={!editable}
             onClick={(event) => setPicker(event.currentTarget)}
           >
-            {targets.length === 0 && editable && <span className="prop-empty">Empty</span>}
+            {targets.length === 0 && editable && <span className="prop-empty">{t('database.empty')}</span>}
             <RelationChips targets={targets} />
           </button>
           {picker && (
@@ -216,7 +216,7 @@ export function PropertyInput({
             <button
               type="button"
               className="icon-button tiny"
-              aria-label="Open link"
+              aria-label={t('editor.openLink')}
               onClick={() => openExternal(value)}
             >
               <ExternalLink size={13} />
@@ -236,7 +236,7 @@ export function PropertyInput({
             disabled={!editable}
             onClick={(event) => setPicker(event.currentTarget)}
           >
-            {ids.length === 0 && editable && <span className="prop-empty">Empty</span>}
+            {ids.length === 0 && editable && <span className="prop-empty">{t('database.empty')}</span>}
             {ids.map((id) => {
               const option = prop.options.find((candidate) => candidate.id === id);
               return option ? <Chip key={id} option={option} /> : null;
@@ -364,12 +364,17 @@ function OptionPicker({
     }
   };
   return (
-    <Popover anchor={anchor} onClose={onClose} label={`Choose ${prop.name}`} className="option-picker">
+    <Popover
+      anchor={anchor}
+      onClose={onClose}
+      label={t('database.chooseAria', { name: prop.name })}
+      className="option-picker"
+    >
       <input
         className="text-input small"
         data-autofocus
         placeholder={prop.options.length ? 'Find or create an option' : 'Create an option'}
-        aria-label="Option"
+        aria-label={t('database.option')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
@@ -397,7 +402,8 @@ function OptionPicker({
         {query.trim() && !exact && (
           <li>
             <button type="button" className="option-row" onClick={create}>
-              <Plus size={14} /> Create <Chip option={{ name: query.trim(), color: 'gray' }} />
+              <Plus size={14} /> {t('database.create')}
+              <Chip option={{ name: query.trim(), color: 'gray' }} />
             </button>
           </li>
         )}
@@ -411,7 +417,7 @@ function OptionPicker({
                 onClose();
               }}
             >
-              <X size={14} /> Clear
+              <X size={14} /> {t('database.clear')}
             </button>
           </li>
         )}
@@ -458,14 +464,14 @@ export function NewProperty({
     >
       <input
         className="text-input small"
-        placeholder="New property"
-        aria-label="New property name"
+        placeholder={t('database.newProperty')}
+        aria-label={t('page.newPropertyNameAria')}
         value={name}
         onChange={(event) => setName(event.target.value)}
       />
       <select
         className="text-input small"
-        aria-label="Type"
+        aria-label={t('database.type')}
         value={type}
         onChange={(event) => setType(event.target.value as PropType)}
       >
@@ -476,7 +482,7 @@ export function NewProperty({
         ))}
       </select>
       <button type="submit" className="button small" disabled={!name.trim()}>
-        Add
+        {t('common.add')}
       </button>
     </form>
   );
@@ -490,7 +496,7 @@ function FormulaCell({ dbId, prop, row }: { dbId: PageId; prop: PropDef; row: Pa
   if (result.error)
     return (
       <span className="formula-error" title={result.error}>
-        Error
+        {t('database.error')}
       </span>
     );
   if (prop.display === 'bar' && typeof result.value === 'number')
@@ -532,8 +538,8 @@ function RelationPicker({
       <input
         className="text-input small"
         data-autofocus
-        placeholder="Search pages"
-        aria-label="Search pages"
+        placeholder={t('database.searchPages')}
+        aria-label={t('database.searchPages')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
       />
@@ -555,7 +561,7 @@ function RelationPicker({
             </li>
           );
         })}
-        {found.length === 0 && <li className="muted small">No pages match.</li>}
+        {found.length === 0 && <li className="muted small">{t('database.noPagesMatch')}</li>}
       </ul>
     </Popover>
   );

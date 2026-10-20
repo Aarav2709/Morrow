@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { commitEditors } from '../editor/commits';
+import { t } from '../i18n';
 
 interface Props {
   children: ReactNode;
@@ -37,11 +38,11 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return this.props.children;
     return (
       <div className="empty-state" role="alert">
-        <h1>Something went wrong showing this view</h1>
-        <p>Your saved pages are safe. Reloading usually fixes this.</p>
+        <h1>{t('errors.viewFailed')}</h1>
+        <p>{t('errors.pagesSafe')}</p>
         <p className="muted small">{this.state.error.message}</p>
         <button type="button" className="button primary" onClick={() => window.location.reload()}>
-          Reload Morrow
+          {t('errors.reloadMorrow')}
         </button>
       </div>
     );

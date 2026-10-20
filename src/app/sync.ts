@@ -123,7 +123,8 @@ export async function syncAll(quiet = true): Promise<void> {
   if (!status.enabled) return;
   for (const peer of status.peers.filter((item) => item.online || item.reachable)) {
     const result = await syncWith(peer.id);
-    if (!result.ok && !quiet) toast(`Sync with ${peer.name} failed: ${result.error}`, { tone: 'error' });
+    if (!result.ok && !quiet)
+      toast(t('toasts.syncFailed', { name: peer.name, error: result.error }), { tone: 'error' });
     else if (result.conflicts > 0)
       toast(
         `${result.conflicts} page${result.conflicts === 1 ? ' was' : 's were'} changed on both computers. Both versions are kept, look for “conflict” in the name.`,

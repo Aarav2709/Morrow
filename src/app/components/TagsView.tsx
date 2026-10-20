@@ -59,7 +59,7 @@ export function TagView({ tag }: { tag: string }) {
   return (
     <div className="view">
       <TopBar>
-        <nav className="breadcrumbs" aria-label="Breadcrumb">
+        <nav className="breadcrumbs" aria-label={t('common.breadcrumb')}>
           <ol>
             <li>
               <button type="button" className="crumb" onClick={() => navigate({ name: 'tags' })}>

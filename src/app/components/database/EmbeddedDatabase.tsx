@@ -5,6 +5,7 @@ import { openPage } from '../../router';
 import { useWorkspace } from '../../workspace';
 import { PageIcon } from '../Sidebar';
 import { DatabaseView } from './DatabaseView';
+import { t } from '../../i18n';
 
 // a database living inside another page, with all its views, still a page of its own
 export function EmbeddedDatabase({ pageId, editable }: { pageId: PageId; editable: boolean }) {
@@ -21,8 +22,8 @@ export function EmbeddedDatabase({ pageId, editable }: { pageId: PageId; editabl
         <button
           type="button"
           className="icon-button"
-          title="Open as a full page"
-          aria-label="Open as a full page"
+          title={t('database.openAsAFullPage')}
+          aria-label={t('database.openAsAFullPage')}
           onClick={() => openPage(page.id)}
         >
           <Maximize2 size={14} />

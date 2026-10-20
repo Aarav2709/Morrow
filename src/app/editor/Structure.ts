@@ -111,7 +111,7 @@ export const TableOfContents = Node.create({
       const dom = document.createElement('nav');
       dom.className = 'toc';
       dom.contentEditable = 'false';
-      dom.setAttribute('aria-label', 'Table of contents');
+      dom.setAttribute('aria-label', t('slash.items.toc.title'));
       let last = '';
       const render = () => {
         const headings: Array<{ level: number; text: string; pos: number }> = [];
@@ -127,7 +127,7 @@ export const TableOfContents = Node.create({
         if (!headings.length) {
           const empty = document.createElement('p');
           empty.className = 'toc-empty';
-          empty.textContent = 'Add headings to this page and they will be listed here.';
+          empty.textContent = t('editor.tocEmpty');
           dom.append(empty);
           return;
         }
@@ -328,7 +328,10 @@ export const DateMention = Node.create<DateMentionOptions>({
           return [...dates, ...pages];
         },
         command: ({ editor, range, props }) => insertMention(editor, range, props),
-        render: renderSuggestion(() => t('editor.mentionDateOrPage'), () => t('editor.nothingMatches')),
+        render: renderSuggestion(
+          () => t('editor.mentionDateOrPage'),
+          () => t('editor.nothingMatches'),
+        ),
       }),
     ];
   },

@@ -49,7 +49,7 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
   };
 
   return (
-    <div className="find-bar popover" role="search" aria-label="Find and replace" onKeyDown={keys}>
+    <div className="find-bar popover" role="search" aria-label={t('editor.findAndReplace')} onKeyDown={keys}>
       <div className="find-row">
         <input
           ref={inputRef}
@@ -70,7 +70,12 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
         >
           <ChevronUp size={15} />
         </button>
-        <button type="button" className="icon-button small" aria-label={t('editor.nextMatch')} onClick={() => step(1)}>
+        <button
+          type="button"
+          className="icon-button small"
+          aria-label={t('editor.nextMatch')}
+          onClick={() => step(1)}
+        >
           <ChevronDown size={15} />
         </button>
         <button
@@ -82,7 +87,12 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
         >
           <Replace size={15} />
         </button>
-        <button type="button" className="icon-button small" aria-label={t('editor.closeFind')} onClick={close}>
+        <button
+          type="button"
+          className="icon-button small"
+          aria-label={t('editor.closeFind')}
+          onClick={close}
+        >
           <X size={15} />
         </button>
       </div>
@@ -107,7 +117,7 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
             disabled={!find.count}
             onClick={() => replaceCurrent(editor.state, editor.view.dispatch, replacement)}
           >
-            Replace
+            {t('editor.replace')}
           </button>
           <button
             type="button"
@@ -123,7 +133,7 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
               );
             }}
           >
-            Replace all
+            {t('editor.replaceAll')}
           </button>
         </div>
       )}

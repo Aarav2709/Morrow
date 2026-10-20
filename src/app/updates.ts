@@ -6,6 +6,7 @@ import { desktop } from './platform/desktop';
 import type { UpdateInfo } from './platform/desktop';
 import { getPreferences } from './platform/preferences';
 import { toast } from './ui';
+import { t } from './i18n';
 
 export type UpdateState =
   | { kind: 'idle' }
@@ -67,11 +68,11 @@ export async function installUpdate(update: UpdateInfo): Promise<void> {
 }
 
 function offer(update: UpdateInfo): void {
-  toast(`Morrow ${update.version} is out.`, {
+  toast(t('updates.available', { version: update.version }), {
     durationMs: 15_000,
     action: update.installable
-      ? { label: 'Install and restart', run: () => void installUpdate(update) }
-      : { label: 'Download', run: () => openHref(update.url) },
+      ? { label: t('updates.installAndRestart'), run: () => void installUpdate(update) }
+      : { label: t('updates.download'), run: () => openHref(update.url) },
   });
 }
 

@@ -9,6 +9,7 @@ import { openPage } from '../router';
 import { useWorkspace } from '../workspace';
 import { CanvasView } from './CanvasView';
 import { PageIcon } from './Sidebar';
+import { t } from '../i18n';
 
 const MIN_WIDTH = 360;
 const MIN_HEIGHT = 180;
@@ -67,8 +68,8 @@ export function EmbeddedCanvas({ pageId, editable }: { pageId: PageId; editable:
         <button
           type="button"
           className="icon-button"
-          title="Open as a full page"
-          aria-label="Open as a full page"
+          title={t('canvas.openAsAFullPage')}
+          aria-label={t('canvas.openAsAFullPage')}
           onClick={() => openPage(page.id)}
         >
           <Maximize2 size={14} />
@@ -84,8 +85,8 @@ export function EmbeddedCanvas({ pageId, editable }: { pageId: PageId; editable:
         <span
           className="inline-canvas-resize"
           role="separator"
-          aria-label="Drag to resize"
-          title="Drag to resize"
+          aria-label={t('canvas.dragToResize')}
+          title={t('canvas.dragToResize')}
           onPointerDown={onPointerDown}
         />
       </div>

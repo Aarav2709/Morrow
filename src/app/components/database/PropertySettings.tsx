@@ -20,6 +20,7 @@ import { Popover } from '../Popover';
 import { Select } from '../Select';
 import { updateDatabase, updateProp, updateView } from './data';
 import { DraftInput } from './PropertyValue';
+import { t } from '../../i18n';
 
 // rename a property, change its type, options or how it shows. opened from a column, or from a page's
 // properties, where there is no view to sort or hide in
@@ -78,14 +79,14 @@ export function PropertySettings({
     <Popover
       anchor={anchor}
       onClose={onClose}
-      label={`Property ${prop.name}`}
+      label={t('database.propertyAria', { name: prop.name })}
       className={`db-panel${prop.type === 'formula' ? ' is-wide' : ''}`}
     >
       <label className="field">
-        <span>Name</span>
+        <span>{t('database.name')}</span>
         <DraftInput
           type="text"
-          label="Property name"
+          label={t('page.propertyNamePlaceholder')}
           className="text-input small"
           value={prop.name}
           editable
@@ -98,7 +99,7 @@ export function PropertySettings({
                 (item) => item.id !== prop.id && item.name.toLowerCase() === clean.toLowerCase(),
               )
             ) {
-              toast('That name is empty or already used.', { tone: 'error' });
+              toast(t('toasts.propNameEmptyOrUsed'), { tone: 'error' });
               return;
             }
             updateProp(dbId, prop.id, (current) => ({ ...current, name: clean }));
@@ -106,9 +107,9 @@ export function PropertySettings({
         />
       </label>
       <div className="field">
-        <span>Type</span>
+        <span>{t('database.type')}</span>
         <Select<PropType>
-          label="Type"
+          label={t('database.type')}
           value={prop.type}
           options={PROP_TYPES.map((item) => ({ value: item, label: PROP_LABELS[item] }))}
           onChange={changeType}
@@ -116,8 +117,8 @@ export function PropertySettings({
       </div>
       {(prop.type === 'number' || prop.type === 'formula') && (
         <div className="field">
-          <span>Show as</span>
-          <div className="segmented" role="radiogroup" aria-label="Show as">
+          <span>{t('database.showAs')}</span>
+          <div className="segmented" role="radiogroup" aria-label={t('database.showAs')}>
             {(
               [
                 [undefined, 'Number'],
@@ -143,10 +144,10 @@ export function PropertySettings({
           </div>
           {prop.display === 'bar' && (
             <label className="field-inline">
-              <span>Out of</span>
+              <span>{t('database.outOf')}</span>
               <DraftInput
                 type="number"
-                label="Out of"
+                label={t('database.outOf')}
                 className="text-input small"
                 value={String(prop.max ?? 100)}
                 editable
@@ -167,7 +168,7 @@ export function PropertySettings({
             <li key={option.id}>
               <DraftInput
                 type="text"
-                label="Option name"
+                label={t('database.optionName')}
                 className="text-input small"
                 value={option.name}
                 editable
@@ -182,7 +183,7 @@ export function PropertySettings({
                 }
               />
               <Select<ColorName>
-                label="Colour"
+                label={t('editor.colour')}
                 value={option.color}
                 options={COLORS.map((color) => ({ value: color, label: COLOR_LABELS[color] }))}
                 onChange={(color) =>
@@ -197,7 +198,7 @@ export function PropertySettings({
               <button
                 type="button"
                 className="icon-button tiny"
-                aria-label={`Delete option ${option.name}`}
+                aria-label={t('database.deleteOptionAria', { name: option.name })}
                 onClick={() =>
                   updateProp(dbId, prop.id, (current) => ({
                     ...current,
@@ -225,7 +226,7 @@ export function PropertySettings({
                 onClose();
               }}
             >
-              Sort ascending
+              {t('database.sortAscending')}
             </button>
             <button
               type="button"
@@ -238,7 +239,7 @@ export function PropertySettings({
                 onClose();
               }}
             >
-              <EyeOff size={13} /> Hide
+              <EyeOff size={13} /> {t('database.hide')}
             </button>
           </>
         )}
@@ -260,7 +261,7 @@ export function PropertySettings({
             onClose();
           }}
         >
-          <Trash2 size={13} /> Delete
+          <Trash2 size={13} /> {t('common.delete')}
         </button>
       </div>
     </Popover>
@@ -286,13 +287,13 @@ function FormulaField({ dbId, prop, database }: { dbId: PageId; prop: PropDef; d
   };
   return (
     <div className="field formula-field">
-      <span>Formula</span>
+      <span>{t('slash.items.math.title')}</span>
       <textarea
         className="text-input small formula-input"
         spellCheck={false}
         value={draft}
         placeholder='prop("Price") * prop("Count")'
-        aria-label="Formula"
+        aria-label={t('slash.items.math.title')}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={save}
         onKeyDown={(event) => {
@@ -310,7 +311,7 @@ function FormulaField({ dbId, prop, database }: { dbId: PageId; prop: PropDef; d
         </span>
       ) : null}
       <details className="formula-help">
-        <summary>How formulas work</summary>
+        <summary>{t('database.howFormulasWork')}</summary>
         <p className="muted small">
           Use <code>prop("Name")</code> for another property, maths like <code>+ - * / ^</code>, comparisons
           like <code>&gt; == !=</code>, <code>and</code>, <code>or</code>, <code>not</code>, and functions:

@@ -88,8 +88,16 @@ export function PageIcon({ page }: { page: PageMeta }) {
 export function newPageEntries(parentId: PageId | null) {
   return [
     { label: t('sidebar.page'), icon: FileText, onSelect: () => createPage({ parentId }) },
-    { label: t('sidebar.database'), icon: Table2, onSelect: () => createPage({ parentId, kind: 'database' }) },
-    { label: t('sidebar.canvas'), icon: LayoutDashboard, onSelect: () => createPage({ parentId, kind: 'canvas' }) },
+    {
+      label: t('sidebar.database'),
+      icon: Table2,
+      onSelect: () => createPage({ parentId, kind: 'database' }),
+    },
+    {
+      label: t('sidebar.canvas'),
+      icon: LayoutDashboard,
+      onSelect: () => createPage({ parentId, kind: 'canvas' }),
+    },
     {
       label: t('sidebar.fromTemplate'),
       icon: LayoutTemplate,
@@ -180,7 +188,7 @@ export function Sidebar() {
   return (
     <aside
       className="sidebar"
-      aria-label="Sidebar"
+      aria-label={t('sidebar.sidebar')}
       style={{ '--sidebar-width': `${prefs.sidebarWidth}px` } as React.CSSProperties}
     >
       <div className="sidebar-header">
@@ -204,7 +212,7 @@ export function Sidebar() {
             type="button"
             className="brand"
             onClick={go(() => navigate({ name: 'home' }))}
-            aria-label="Morrow home"
+            aria-label={t('sidebar.morrowHome')}
           >
             <Logo size={20} />
             <span className="brand-name">Morrow</span>
@@ -221,14 +229,19 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="sidebar-nav" aria-label="Main">
+      <nav className="sidebar-nav" aria-label={t('sidebar.main')}>
         <NavItem
           icon={Search}
           label={t('common.search')}
           hint={formatShortcut('Mod+K')}
           onClick={() => setUi({ palette: true, mobileSidebar: false })}
         />
-        <NavItem icon={CalendarDays} label={t('sidebar.today')} active={isToday} onClick={go(() => openToday())} />
+        <NavItem
+          icon={CalendarDays}
+          label={t('sidebar.today')}
+          active={isToday}
+          onClick={go(() => openToday())}
+        />
         <NavItem
           icon={Home}
           label={t('settings.general.startPages.home')}
@@ -334,10 +347,19 @@ export function Sidebar() {
           count={trashCount}
           onClick={go(() => navigate({ name: 'trash' }))}
         />
-        <NavItem icon={Settings} label={t('settings.title')} onClick={() => openDialog({ kind: 'settings' })} />
+        <NavItem
+          icon={Settings}
+          label={t('settings.title')}
+          onClick={() => openDialog({ kind: 'settings' })}
+        />
       </div>
       {newMenu && (
-        <Menu anchor={newMenu} label={t('common.add')} entries={newPageEntries(null)} onClose={() => setNewMenu(null)} />
+        <Menu
+          anchor={newMenu}
+          label={t('common.add')}
+          entries={newPageEntries(null)}
+          onClose={() => setNewMenu(null)}
+        />
       )}
       {vaultMenu && (
         <Menu
@@ -356,11 +378,23 @@ export function Sidebar() {
                 },
               })),
             { separator: true },
-            { label: t('sidebar.openAnotherFolder'), icon: FolderOpen, onSelect: () => void chooseVaultFolder() },
+            {
+              label: t('sidebar.openAnotherFolder'),
+              icon: FolderOpen,
+              onSelect: () => void chooseVaultFolder(),
+            },
             { label: t('sidebar.createNewVault'), icon: FolderPlus, onSelect: () => void createVault() },
-            { label: t('sidebar.showVaultFolder'), icon: FolderOpen, onSelect: () => void desktop?.vault?.reveal('') },
+            {
+              label: t('sidebar.showVaultFolder'),
+              icon: FolderOpen,
+              onSelect: () => void desktop?.vault?.reveal(''),
+            },
             { separator: true },
-            { label: t('settings.general.startPages.home'), icon: Home, onSelect: () => navigate({ name: 'home' }) },
+            {
+              label: t('settings.general.startPages.home'),
+              icon: Home,
+              onSelect: () => navigate({ name: 'home' }),
+            },
           ]}
         />
       )}
@@ -368,7 +402,7 @@ export function Sidebar() {
         className="sidebar-resizer"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize sidebar"
+        aria-label={t('sidebar.resizeSidebar')}
         onPointerDown={startResize}
       />
     </aside>
@@ -707,7 +741,7 @@ function RenameInput({ page }: { page: PageMeta }) {
   return (
     <input
       className="tree-rename"
-      aria-label="Page title"
+      aria-label={t('page.titleAria')}
       value={value}
       autoFocus
       onFocus={(event) => event.currentTarget.select()}

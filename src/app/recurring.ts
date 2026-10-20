@@ -9,6 +9,7 @@ import { newId } from './platform/files';
 import { openPage } from './router';
 import { toast } from './ui';
 import { getState, runAll } from './workspace';
+import { t } from './i18n';
 
 // the new page's name says which period it is for, like "Weekly review, week of 19 October"
 export function periodLabel(repeat: Repeat, date: Date): string {
@@ -56,10 +57,10 @@ export function makeDuePages(now = new Date()): void {
     if (result.ok) made.push({ id, title });
   }
   if (made.length === 1)
-    toast(`Made “${made[0]!.title}” from its template.`, {
-      action: { label: 'Open', run: () => openPage(made[0]!.id) },
+    toast(t('repeat.madeOne', { title: made[0]!.title }), {
+      action: { label: t('common.open'), run: () => openPage(made[0]!.id) },
     });
-  else if (made.length > 1) toast(`Made ${made.length} pages from repeating templates.`);
+  else if (made.length > 1) toast(t('repeat.madeMany', { length: made.length }));
 }
 
 const CHECK_EVERY_MS = 10 * 60 * 1000;

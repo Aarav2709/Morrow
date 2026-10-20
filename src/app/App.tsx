@@ -256,7 +256,7 @@ function SplitResizer() {
       className="split-resizer"
       role="separator"
       aria-orientation="vertical"
-      aria-label="Drag to resize the two sides"
+      aria-label={t('tabs.resizeSplit')}
       onPointerDown={onPointerDown}
       onDoubleClick={() => setPreferences({ splitShare: 0.5 })}
     />

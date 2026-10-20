@@ -57,6 +57,7 @@ import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
 import { PropertySettings } from './PropertySettings';
+import { t } from '../../i18n';
 
 const VIEW_ICONS: Record<ViewType, LucideIcon> = {
   table: Table2,
@@ -108,9 +109,9 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
   const visible = database.properties.filter((prop) => !view.hidden.includes(prop.id));
 
   return (
-    <section className="database" aria-label="Database">
+    <section className="database" aria-label={t('sidebar.database')}>
       <div className="db-bar">
-        <div className="db-tabs" role="tablist" aria-label="Views">
+        <div className="db-tabs" role="tablist" aria-label={t('database.views')}>
           {database.views.map((candidate) => {
             const Icon = VIEW_ICONS[candidate.type];
             return (
@@ -138,7 +139,7 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
             <button
               type="button"
               className="icon-button small"
-              aria-label="Add a view"
+              aria-label={t('database.addAView')}
               onClick={(event) => setAddMenu(event.currentTarget)}
             >
               <Plus size={14} />
@@ -176,7 +177,7 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       {view.type === 'gallery' && <GalleryView rows={rows} props={visible} database={database} />}
       {view.type !== 'table' && editable && (
         <button type="button" className="db-new-row" onClick={() => newRowAndOpen(page.id, {})}>
-          <Plus size={14} /> New
+          <Plus size={14} /> {t('database.new')}
         </button>
       )}
       <p className="db-count muted small">
@@ -188,7 +189,7 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       {addMenu && (
         <Menu
           anchor={addMenu}
-          label="Add a view"
+          label={t('database.addAView')}
           onClose={() => setAddMenu(null)}
           entries={VIEW_TYPES.map((type) => ({
             label: VIEW_LABELS[type],
@@ -233,12 +234,12 @@ function ViewSettings({
   onClose: () => void;
 }) {
   return (
-    <Popover anchor={anchor} onClose={onClose} label="View settings">
+    <Popover anchor={anchor} onClose={onClose} label={t('database.viewSettings')}>
       <label className="field">
-        <span>Name</span>
+        <span>{t('database.name')}</span>
         <DraftInput
           type="text"
-          label="View name"
+          label={t('database.viewName')}
           className="text-input small"
           value={view.name}
           editable
@@ -251,7 +252,7 @@ function ViewSettings({
         />
       </label>
       <label className="field">
-        <span>Layout</span>
+        <span>{t('slash.sections.layout')}</span>
         <select
           className="text-input small"
           value={view.type}
@@ -287,7 +288,7 @@ function ViewSettings({
             onClose();
           }}
         >
-          Duplicate
+          {t('pageMenu.duplicate')}
         </button>
         <button
           type="button"
@@ -301,7 +302,7 @@ function ViewSettings({
             onClose();
           }}
         >
-          <Trash2 size={13} /> Delete view
+          <Trash2 size={13} /> {t('database.deleteView')}
         </button>
       </div>
     </Popover>
@@ -341,12 +342,12 @@ function ColumnSuggestion({
         {keys.length === 1 ? 'is not a column' : 'are not columns'} yet: {shown}.
       </span>
       <button type="button" className="button small" onClick={() => addColumnsFromPages(dbId, keys)}>
-        Add as columns
+        {t('database.addAsColumns')}
       </button>
       <button
         type="button"
         className="icon-button tiny"
-        aria-label="Dismiss"
+        aria-label={t('common.dismiss')}
         onClick={() => {
           setDismissed(signature);
           try {
@@ -404,13 +405,16 @@ function Toolbar({
         </button>
       )}
       <button type="button" className="text-tool" onClick={open('properties')}>
-        <Eye size={13} /> Properties
+        <Eye size={13} /> {t('database.properties')}
       </button>
       {panel?.kind === 'filter' && (
-        <Popover anchor={panel.anchor} onClose={() => setPanel(null)} label="Filters" className="db-panel">
-          {view.filters.length === 0 && (
-            <p className="muted small">No filters. Rows that match every filter are shown.</p>
-          )}
+        <Popover
+          anchor={panel.anchor}
+          onClose={() => setPanel(null)}
+          label={t('database.filters')}
+          className="db-panel"
+        >
+          {view.filters.length === 0 && <p className="muted small">{t('database.noFilters')}</p>}
           {view.filters.map((rule) => {
             const type = propType(database, rule.prop) ?? 'text';
             const prop = database.properties.find((candidate) => candidate.id === rule.prop);
@@ -425,7 +429,7 @@ function Toolbar({
               <div key={rule.id} className="db-rule">
                 <select
                   className="text-input small"
-                  aria-label="Property"
+                  aria-label={t('database.property')}
                   value={rule.prop}
                   onChange={(event) => {
                     const nextType = propType(database, event.target.value) ?? 'text';
@@ -444,7 +448,7 @@ function Toolbar({
                 </select>
                 <select
                   className="text-input small"
-                  aria-label="Condition"
+                  aria-label={t('database.condition')}
                   value={rule.op}
                   onChange={(event) => change({ op: event.target.value as FilterOp })}
                 >
@@ -458,11 +462,11 @@ function Toolbar({
                   (prop && (prop.type === 'select' || prop.type === 'multiSelect') ? (
                     <select
                       className="text-input small"
-                      aria-label="Value"
+                      aria-label={t('database.value')}
                       value={String(rule.value ?? '')}
                       onChange={(event) => change({ value: event.target.value || null })}
                     >
-                      <option value="">Choose</option>
+                      <option value="">{t('database.choose')}</option>
                       {prop.options.map((option) => (
                         <option key={option.id} value={option.id}>
                           {option.name}
@@ -472,7 +476,7 @@ function Toolbar({
                   ) : (
                     <input
                       className="text-input small"
-                      aria-label="Value"
+                      aria-label={t('database.value')}
                       type={prop?.type === 'number' ? 'number' : prop?.type === 'date' ? 'date' : 'text'}
                       value={rule.value === null ? '' : String(rule.value)}
                       onChange={(event) =>
@@ -488,7 +492,7 @@ function Toolbar({
                 <button
                   type="button"
                   className="icon-button tiny"
-                  aria-label="Remove filter"
+                  aria-label={t('database.removeFilter')}
                   onClick={() =>
                     updateView(dbId, view.id, (current) => ({
                       ...current,
@@ -511,18 +515,23 @@ function Toolbar({
               }))
             }
           >
-            <Plus size={13} /> Add a filter
+            <Plus size={13} /> {t('database.addAFilter')}
           </button>
         </Popover>
       )}
       {panel?.kind === 'sort' && (
-        <Popover anchor={panel.anchor} onClose={() => setPanel(null)} label="Sorting" className="db-panel">
-          {view.sorts.length === 0 && <p className="muted small">Rows keep the order you give them.</p>}
+        <Popover
+          anchor={panel.anchor}
+          onClose={() => setPanel(null)}
+          label={t('database.sorting')}
+          className="db-panel"
+        >
+          {view.sorts.length === 0 && <p className="muted small">{t('database.noSorts')}</p>}
           {view.sorts.map((sort, index) => (
             <div key={`${sort.prop}-${index}`} className="db-rule">
               <select
                 className="text-input small"
-                aria-label="Sort by"
+                aria-label={t('database.sortBy')}
                 value={sort.prop}
                 onChange={(event) =>
                   updateView(dbId, view.id, (current) => ({
@@ -543,7 +552,7 @@ function Toolbar({
               </select>
               <select
                 className="text-input small"
-                aria-label="Direction"
+                aria-label={t('database.direction')}
                 value={sort.dir}
                 onChange={(event) =>
                   updateView(dbId, view.id, (current) => ({
@@ -554,13 +563,13 @@ function Toolbar({
                   }))
                 }
               >
-                <option value="asc">Ascending</option>
-                <option value="desc">Descending</option>
+                <option value="asc">{t('database.ascending')}</option>
+                <option value="desc">{t('database.descending')}</option>
               </select>
               <button
                 type="button"
                 className="icon-button tiny"
-                aria-label="Remove sort"
+                aria-label={t('database.removeSort')}
                 onClick={() =>
                   updateView(dbId, view.id, (current) => ({
                     ...current,
@@ -582,12 +591,17 @@ function Toolbar({
               }))
             }
           >
-            <Plus size={13} /> Add a sort
+            <Plus size={13} /> {t('database.addASort')}
           </button>
         </Popover>
       )}
       {panel?.kind === 'layout' && (
-        <Popover anchor={panel.anchor} onClose={() => setPanel(null)} label="Layout" className="db-panel">
+        <Popover
+          anchor={panel.anchor}
+          onClose={() => setPanel(null)}
+          label={t('slash.sections.layout')}
+          className="db-panel"
+        >
           <label className="field">
             <span>{view.type === 'board' ? 'Group cards by' : 'Place rows by'}</span>
             <select
@@ -601,7 +615,7 @@ function Toolbar({
                 )
               }
             >
-              <option value="">None</option>
+              <option value="">{t('database.none')}</option>
               {database.properties
                 .filter((prop) =>
                   view.type === 'board'
@@ -618,7 +632,12 @@ function Toolbar({
         </Popover>
       )}
       {panel?.kind === 'properties' && (
-        <Popover anchor={panel.anchor} onClose={() => setPanel(null)} label="Properties" className="db-panel">
+        <Popover
+          anchor={panel.anchor}
+          onClose={() => setPanel(null)}
+          label={t('database.properties')}
+          className="db-panel"
+        >
           <ul className="db-prop-list">
             {database.properties.map((prop) => {
               const hidden = view.hidden.includes(prop.id);
@@ -649,7 +668,7 @@ function Toolbar({
           {editable && <NewProperty dbId={dbId} database={database} />}
           {editable && unclaimed.length > 0 && (
             <>
-              <p className="db-panel-heading">In your pages</p>
+              <p className="db-panel-heading">{t('database.inYourPages')}</p>
               <ul className="db-prop-list">
                 {unclaimed.map((key) => (
                   <li key={key}>
@@ -657,8 +676,8 @@ function Toolbar({
                     <button
                       type="button"
                       className="icon-button tiny"
-                      aria-label={`Add ${key} as a column`}
-                      title="Add as a column"
+                      aria-label={t('database.addColumnAria', { key })}
+                      title={t('database.addAsAColumn')}
                       onClick={() => addColumnsFromPages(dbId, [key])}
                     >
                       <Plus size={13} />
@@ -672,7 +691,7 @@ function Toolbar({
                   className="button small"
                   onClick={() => addColumnsFromPages(dbId, unclaimed)}
                 >
-                  Add all as columns
+                  {t('database.addAllAsColumns')}
                 </button>
               )}
             </>
@@ -701,10 +720,10 @@ function RowTitle({ row, editable, autoFocus }: { row: PageMeta; editable: boole
       </span>
       <DraftInput
         type="text"
-        label="Name"
+        label={t('database.name')}
         className="db-title-input"
         value={row.title}
-        placeholder="Untitled"
+        placeholder={t('page.untitled')}
         editable={editable}
         onCommit={(title) => run({ type: 'page.rename', id: row.id, title, now: Date.now() })}
       />
@@ -712,8 +731,8 @@ function RowTitle({ row, editable, autoFocus }: { row: PageMeta; editable: boole
       <button
         type="button"
         className="icon-button tiny db-open"
-        aria-label={`Open ${displayTitle(row)}`}
-        title="Open"
+        aria-label={t('database.openTitle', { title: displayTitle(row) })}
+        title={t('common.open')}
         onClick={() => openPage(row.id)}
       >
         <Maximize2 size={13} />
@@ -751,7 +770,7 @@ function ColumnResizer({
       className="db-resize"
       role="separator"
       aria-orientation="vertical"
-      aria-label="Drag to resize"
+      aria-label={t('database.dragToResize')}
       onDoubleClick={onReset}
       onPointerDown={(event) => {
         event.preventDefault();
@@ -842,7 +861,7 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
                 <button
                   type="button"
                   className="icon-button tiny"
-                  aria-label="Add a property"
+                  aria-label={t('page.addAProperty')}
                   onClick={(event) => setAdding(event.currentTarget)}
                 >
                   <Plus size={13} />
@@ -876,7 +895,7 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
             if (id) setFocusNew(id);
           }}
         >
-          <Plus size={14} /> New
+          <Plus size={14} /> {t('database.new')}
         </button>
       )}
       {header && (
@@ -890,7 +909,12 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         />
       )}
       {adding && (
-        <Popover anchor={adding} onClose={() => setAdding(null)} label="New property" className="db-panel">
+        <Popover
+          anchor={adding}
+          onClose={() => setAdding(null)}
+          label={t('database.newProperty')}
+          className="db-panel"
+        >
           <NewProperty dbId={dbId} database={database} onDone={() => setAdding(null)} />
         </Popover>
       )}
@@ -944,7 +968,10 @@ function Card({
         ))}
       </span>
       {progress.total > 0 && (
-        <span className="db-progress" title={`${progress.done} of ${progress.total} tasks done`}>
+        <span
+          className="db-progress"
+          title={t('database.tasksDone', { done: progress.done, total: progress.total })}
+        >
           <span className="db-progress-bar">
             <span style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} />
           </span>
@@ -981,10 +1008,7 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
     (group) => group.key !== null || group.rows.length > 0,
   );
   const [over, setOver] = useState<string | null>(null);
-  if (!prop)
-    return (
-      <p className="muted db-hint">Choose a select or checkbox property to group cards by, under Group.</p>
-    );
+  if (!prop) return <p className="muted db-hint">{t('database.boardHint')}</p>;
   const shown = props.filter((item) => item.id !== prop.id);
   const valueFor = (key: string | null): PropValue => {
     if (prop.type === 'checkbox') return key === 'true';
@@ -1035,7 +1059,7 @@ function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
                 className="db-new-row"
                 onClick={() => newRowAndOpen(dbId, { [prop.id]: valueFor(group.key) })}
               >
-                <Plus size={13} /> New
+                <Plus size={13} /> {t('database.new')}
               </button>
             )}
           </section>
@@ -1052,7 +1076,7 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
   });
   const [over, setOver] = useState<string | null>(null);
   const prop = database.properties.find((candidate) => candidate.id === view.dateProp);
-  if (!prop) return <p className="muted db-hint">Choose a date property to place rows by, under Date.</p>;
+  if (!prop) return <p className="muted db-hint">{t('database.calendarHint')}</p>;
   // weeks start on monday
   const start = new Date(month);
   start.setDate(1 - ((month.getDay() + 6) % 7));
@@ -1074,7 +1098,7 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
         <button
           type="button"
           className="icon-button small"
-          aria-label="Previous month"
+          aria-label={t('database.previousMonth')}
           onClick={() => shift(-1)}
         >
           <ChevronLeft size={15} />
@@ -1084,9 +1108,14 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
           className="button small"
           onClick={() => setMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))}
         >
-          Today
+          {t('sidebar.today')}
         </button>
-        <button type="button" className="icon-button small" aria-label="Next month" onClick={() => shift(1)}>
+        <button
+          type="button"
+          className="icon-button small"
+          aria-label={t('database.nextMonth')}
+          onClick={() => shift(1)}
+        >
           <ChevronRight size={15} />
         </button>
       </header>

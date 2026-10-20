@@ -29,6 +29,7 @@ import { Dialog, Logo, Switch } from './primitives';
 import { Select } from './Select';
 import { SettingRow, SettingsGroup } from './SettingsRows';
 import { CloudSettings, NetworkSettings } from './SyncSettings';
+import { t } from '../i18n';
 
 interface SectionDef {
   id: SettingsSection;
@@ -453,7 +454,7 @@ function UpdateSettings() {
             : 'Checks GitHub for a new version when Morrow opens and once a day.';
   return (
     <SettingsGroup>
-      <SettingRow label="Check for updates" help={status}>
+      <SettingRow label={t('updates.check')} help={status}>
         <div className="settings-actions">
           <button
             type="button"
@@ -461,10 +462,10 @@ function UpdateSettings() {
             disabled={update.kind === 'checking' || update.kind === 'installing'}
             onClick={() => void checkForUpdate()}
           >
-            Check now
+            {t('updates.checkNow')}
           </button>
           <Switch
-            label="Check for updates automatically"
+            label={t('updates.checkAutomatically')}
             checked={prefs.checkUpdates}
             onChange={(checkUpdates) => setPreferences({ checkUpdates })}
           />
@@ -472,7 +473,7 @@ function UpdateSettings() {
       </SettingRow>
       {found && (
         <SettingRow
-          label={`Morrow ${found.version}`}
+          label={t('settings.about.version', { version: found.version })}
           help={
             update.kind === 'installing'
               ? `Downloading… ${Math.round(update.share * 100)}%`
@@ -483,7 +484,7 @@ function UpdateSettings() {
         >
           <div className="settings-actions">
             <button type="button" className="button small" onClick={() => openHref(found.url)}>
-              What's new
+              {t('updates.whatsNew')}
             </button>
             <button
               type="button"
@@ -531,10 +532,7 @@ function AboutSettings() {
           </button>
         </SettingRow>
       </SettingsGroup>
-      <p className="settings-group-help">
-        No accounts, no tracking and no ads. Nothing leaves this computer unless you turn on the assistant,
-        sync or update checks.
-      </p>
+      <p className="settings-group-help">{t('settings.about.footer')}</p>
     </>
   );
 }

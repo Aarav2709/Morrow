@@ -114,17 +114,20 @@ export function ReviewView() {
                   ? t('review.subtitleEmpty')
                   : t('review.subtitleCards', {
                       cards: cards.length,
-                      cardsPlural: cards.length === 1 ? t('review.cardsPluralSingle') : t('review.cardsPluralMultiple'),
+                      cardsPlural:
+                        cards.length === 1 ? t('review.cardsPluralSingle') : t('review.cardsPluralMultiple'),
                       pages,
-                      pagesPlural: pages === 1 ? t('review.pagesPluralSingle') : t('review.pagesPluralMultiple'),
+                      pagesPlural:
+                        pages === 1 ? t('review.pagesPluralSingle') : t('review.pagesPluralMultiple'),
                     })}
               </p>
             </div>
             {current && (
-              <div className="review-progress" aria-label={t('review.cardProgressAria', { current: done + 1, total })}>
-                <span>
-                  {t('review.cardProgress', { current: done + 1, total })}
-                </span>
+              <div
+                className="review-progress"
+                aria-label={t('review.cardProgressAria', { current: done + 1, total })}
+              >
+                <span>{t('review.cardProgress', { current: done + 1, total })}</span>
                 <span className="review-progress-bar">
                   <span style={{ width: `${(done / Math.max(1, total)) * 100}%` }} />
                 </span>
@@ -136,9 +139,7 @@ export function ReviewView() {
             <section className="review-empty">
               <GraduationCap size={28} strokeWidth={1.5} />
               <h2>{t('review.emptyTitle')}</h2>
-              <p className="muted">
-                {t('review.emptyHelp')}
-              </p>
+              <p className="muted">{t('review.emptyHelp')}</p>
               <code className="review-example">{t('review.emptyExample')}</code>
               <p className="muted small">{t('review.emptyFooter')}</p>
             </section>
@@ -147,12 +148,25 @@ export function ReviewView() {
               <PartyPopper size={28} strokeWidth={1.5} />
               <h2>
                 {done > 0
-                  ? t('review.allDone', { count: done, s: done === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural') })
+                  ? t('review.allDone', {
+                      count: done,
+                      s: done === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'),
+                    })
                   : t('review.nothingDue')}
               </h2>
               {next ? (
                 <p className="muted review-next">
-                  <CalendarClock size={15} /> {describeDay(next.day) === t('review.intervals.tomorrow').toLowerCase() ? t('review.cardsDueTomorrow', { count: next.count, s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural') }) : t('review.cardsDueDay', { count: next.count, s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'), day: describeDay(next.day) })}
+                  <CalendarClock size={15} />{' '}
+                  {describeDay(next.day) === t('review.intervals.tomorrow').toLowerCase()
+                    ? t('review.cardsDueTomorrow', {
+                        count: next.count,
+                        s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'),
+                      })
+                    : t('review.cardsDueDay', {
+                        count: next.count,
+                        s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'),
+                        day: describeDay(next.day),
+                      })}
                 </p>
               ) : (
                 <p className="muted">{t('review.newCardsHelp')}</p>

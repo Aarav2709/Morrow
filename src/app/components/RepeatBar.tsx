@@ -18,6 +18,7 @@ import { flattenTree, isDescendantOf } from '../../core/tree';
 import { run, useWorkspace } from '../workspace';
 import { Popover } from './Popover';
 import { Select } from './Select';
+import { t } from '../i18n';
 
 const REPEAT_LABELS: Record<Repeat | 'off', string> = {
   off: 'Never',
@@ -39,7 +40,7 @@ export function RepeatBar({ page, editable }: { page: PageMeta; editable: boolea
     <div className="repeat-bar">
       <RepeatIcon size={14} aria-hidden="true" />
       <Select<Repeat | 'off'>
-        label="Repeat"
+        label={t('repeat.repeat')}
         value={recurrence?.repeat ?? 'off'}
         options={(['off', ...REPEATS] as const).map((value) => ({ value, label: REPEAT_LABELS[value] }))}
         disabled={!editable}
@@ -53,7 +54,7 @@ export function RepeatBar({ page, editable }: { page: PageMeta; editable: boolea
       />
       {recurrence && (
         <>
-          <span className="muted">makes a new page in</span>
+          <span className="muted">{t('repeat.makesPageIn')}</span>
           <button
             type="button"
             className="button small"
@@ -68,7 +69,7 @@ export function RepeatBar({ page, editable }: { page: PageMeta; editable: boolea
         <Popover
           anchor={picking}
           onClose={() => setPicking(null)}
-          label="Where new pages go"
+          label={t('repeat.whereNewPagesGo')}
           className="repeat-picker"
         >
           <DestinationList
@@ -106,17 +107,17 @@ function DestinationList({
     <>
       <input
         className="text-input small"
-        placeholder="Find a page"
-        aria-label="Find a page"
+        placeholder={t('dialogs.move.placeholder')}
+        aria-label={t('dialogs.move.placeholder')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         autoFocus
       />
-      <ul className="move-list" role="listbox" aria-label="Destinations">
+      <ul className="move-list" role="listbox" aria-label={t('dialogs.move.ariaList')}>
         {!query && (
           <li>
             <button type="button" className="move-target" onClick={() => onPick(null)}>
-              Top level
+              {t('dialogs.move.topLevel')}
             </button>
           </li>
         )}
@@ -132,7 +133,7 @@ function DestinationList({
             </button>
           </li>
         ))}
-        {targets.length === 0 && <li className="muted move-empty">No matching pages.</li>}
+        {targets.length === 0 && <li className="muted move-empty">{t('dialogs.move.noMatches')}</li>}
       </ul>
     </>
   );

@@ -156,7 +156,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
         )}
         {unreadable ? (
           <div className="banner is-error" role="alert">
-            This canvas file could not be read. It has been left untouched on disk.
+            {t('page.canvasUnreadable')}
           </div>
         ) : (
           <Suspense fallback={<div className="canvas-view" aria-busy="true" />}>
@@ -179,7 +179,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
               className="button small"
               onClick={() => restorePage(findTrashedAncestor(state.pages, id) ?? id)}
             >
-              <RotateCcw size={14} /> Restore
+              <RotateCcw size={14} /> {t('page.restore')}
             </button>
             <button
               type="button"
@@ -266,8 +266,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
             <LockedPage page={page} />
           ) : unreadable ? (
             <div className="banner is-error" role="alert">
-              The content of this page could not be read. It has been left untouched in storage and is
-              protected from changes. Saving a backup will not include it.
+              {t('page.contentUnreadable')}
             </div>
           ) : ui.sourceMode === id && page.kind === 'page' ? (
             <>
@@ -341,11 +340,11 @@ function ConflictBanner({ id }: { id: PageId }) {
           className="button small"
           onClick={() => openSide(routeHash({ name: 'page', id: original, find: null }))}
         >
-          <Columns2 size={14} /> Compare side by side
+          <Columns2 size={14} /> {t('page.compareSideBySide')}
         </button>
       )}
       <button type="button" className="button small" onClick={() => trashPage(id)}>
-        <Trash2 size={14} /> Move copy to trash
+        <Trash2 size={14} /> {t('page.moveCopyToTrash')}
       </button>
     </div>
   );

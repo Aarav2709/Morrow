@@ -69,6 +69,6 @@ export function formatBytes(bytes: number): string {
 // puts a picture from the vault on the clipboard
 export async function copyImageFile(id: FileId): Promise<void> {
   const copied = await (desktop?.vault?.copyImage(id) ?? Promise.resolve(false)).catch(() => false);
-  if (copied) toast('Image copied.');
-  else toast('Could not copy the image.', { tone: 'error' });
+  if (copied) toast(t('toasts.imageCopied'));
+  else toast(t('toasts.couldNotCopyTheImage'), { tone: 'error' });
 }

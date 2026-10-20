@@ -4,6 +4,7 @@ import { captureToToday } from '../operations';
 import { useTranslation } from '../i18n';
 import { closeDialog, toast } from '../ui';
 import { Dialog } from './primitives';
+import { t } from '../i18n';
 
 // jot something down from anywhere, it lands at the end of today's note
 export function CaptureDialog() {
@@ -18,17 +19,17 @@ export function CaptureDialog() {
   };
   return (
     <Dialog
-      title="Quick note"
+      title={t('dialogs.quickNote')}
       size="small"
       onClose={closeDialog}
       footer={
         <>
           <span className="muted small dialog-hint">{formatShortcut('Mod+Enter')} to save</span>
           <button type="button" className="button" onClick={closeDialog}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="button primary" onClick={save}>
-            Add to today
+            {t('dialogs.addToToday')}
           </button>
         </>
       }
@@ -37,8 +38,8 @@ export function CaptureDialog() {
         className="text-input capture-input"
         data-autofocus
         rows={5}
-        aria-label="Quick note"
-        placeholder="What's on your mind? Start with [ ] to make it a task."
+        aria-label={t('dialogs.quickNote')}
+        placeholder={t('dialogs.quickNotePlaceholder')}
         value={text}
         onChange={(event) => setText(event.target.value)}
         onKeyDown={(event) => {

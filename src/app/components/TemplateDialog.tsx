@@ -7,13 +7,14 @@ import { closeDialog } from '../ui';
 import { useWorkspace } from '../workspace';
 import { Dialog } from './primitives';
 import { PageIcon } from './Sidebar';
+import { t } from '../i18n';
 
 export function TemplateDialog({ parentId }: { parentId: PageId | null }) {
   const state = useWorkspace();
   const templates = listTemplates(state);
   const container = findTemplatesPage(state);
   return (
-    <Dialog title="New page from a template" onClose={closeDialog}>
+    <Dialog title={t('actions.items.page_fromTemplate')} onClose={closeDialog}>
       {templates.length === 0 ? (
         <div className="empty-state compact">
           <LayoutTemplate size={24} strokeWidth={1.5} />
@@ -27,15 +28,15 @@ export function TemplateDialog({ parentId }: { parentId: PageId | null }) {
             className="button primary"
             onClick={() => {
               closeDialog();
-              if (container) createPage({ parentId: container.id, title: 'New template' });
+              if (container) createPage({ parentId: container.id, title: t('dialogs.newTemplate') });
               else createTemplatesPage();
             }}
           >
-            <FilePlus2 size={15} /> Make a template
+            <FilePlus2 size={15} /> {t('dialogs.makeATemplate')}
           </button>
         </div>
       ) : (
-        <ul className="link-list" role="listbox" aria-label="Templates">
+        <ul className="link-list" role="listbox" aria-label={t('dialogs.templates')}>
           {templates.map((template) => (
             <li key={template.id}>
               <button

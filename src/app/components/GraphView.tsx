@@ -331,7 +331,9 @@ export function GraphView({ focus }: { focus: PageId | null }) {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">{focused ? t('graph.graphAround', { title: displayTitle(focused) }) : t('graph.title')}</span>
+        <span className="topbar-title">
+          {focused ? t('graph.graphAround', { title: displayTitle(focused) }) : t('graph.title')}
+        </span>
       </TopBar>
       <div className="graph-wrap" ref={wrapRef}>
         <canvas

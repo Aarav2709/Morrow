@@ -55,15 +55,33 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       icon: Smile,
       onSelect: () => openDialog({ kind: 'icon', pageId }),
     },
-    { label: t('pageMenu.pageHistory'), icon: History, onSelect: () => openDialog({ kind: 'history', pageId }) },
+    {
+      label: t('pageMenu.pageHistory'),
+      icon: History,
+      onSelect: () => openDialog({ kind: 'history', pageId }),
+    },
     page.favorite
       ? { label: t('pageMenu.removeFromFavorites'), icon: StarOff, onSelect: () => toggleFavorite(pageId) }
       : { label: t('pageMenu.addToFavorites'), icon: Star, onSelect: () => toggleFavorite(pageId) },
     { label: t('pageMenu.duplicate'), icon: Copy, onSelect: () => duplicatePage(pageId) },
-    { label: t('pageMenu.moveTo'), icon: ArrowRightLeft, onSelect: () => openDialog({ kind: 'move', pageId }) },
-    { label: t('pageMenu.openLocalGraph'), icon: Network, onSelect: () => navigate({ name: 'graph', focus: pageId }) },
+    {
+      label: t('pageMenu.moveTo'),
+      icon: ArrowRightLeft,
+      onSelect: () => openDialog({ kind: 'move', pageId }),
+    },
+    {
+      label: t('pageMenu.openLocalGraph'),
+      icon: Network,
+      onSelect: () => navigate({ name: 'graph', focus: pageId }),
+    },
     ...(page.kind === 'page'
-      ? [{ label: t('pageMenu.saveAsTemplate'), icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }]
+      ? [
+          {
+            label: t('pageMenu.saveAsTemplate'),
+            icon: LayoutTemplate,
+            onSelect: () => saveAsTemplate(pageId),
+          },
+        ]
       : []),
     // a folder of notes becomes a database of them, like a notion database sitting on the folder
     ...(page.kind === 'page' && !page.dailyDate && !page.encrypted && !getSession().unreadable.has(pageId)
@@ -88,7 +106,11 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
         ? getSession().unreadable.has(pageId)
           ? []
           : [
-              { label: t('pageMenu.lockNow'), icon: Lock, onSelect: () => void getSession().lockPage(pageId) },
+              {
+                label: t('pageMenu.lockNow'),
+                icon: Lock,
+                onSelect: () => void getSession().lockPage(pageId),
+              },
               {
                 label: t('pageMenu.removeEncryption'),
                 icon: LockOpen,
@@ -106,8 +128,16 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     ...(page.kind === 'page' && !getSession().unreadable.has(pageId)
       ? [
           getUi().sourceMode === pageId
-            ? { label: t('pageMenu.backToEditor'), icon: FileText, onSelect: () => setUi({ sourceMode: null }) }
-            : { label: t('pageMenu.editAsMarkdown'), icon: FileCode2, onSelect: () => setUi({ sourceMode: pageId }) },
+            ? {
+                label: t('pageMenu.backToEditor'),
+                icon: FileText,
+                onSelect: () => setUi({ sourceMode: null }),
+              }
+            : {
+                label: t('pageMenu.editAsMarkdown'),
+                icon: FileCode2,
+                onSelect: () => setUi({ sourceMode: pageId }),
+              },
         ]
       : []),
     { separator: true },

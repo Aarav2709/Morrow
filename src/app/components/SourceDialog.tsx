@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { closeDialog } from '../ui';
 import { formatShortcut } from '../actions';
 import { Dialog } from './primitives';
+import { t } from '../i18n';
 
 // edits a formula with a live preview, or markdown that morrow keeps exactly as written
 export function SourceDialog({
@@ -41,10 +42,10 @@ export function SourceDialog({
         <>
           <span className="muted small dialog-hint">{formatShortcut('Mod+Enter')} to save</span>
           <button type="button" className="button" onClick={closeDialog}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="button primary" onClick={save}>
-            Save
+            {t('common.save')}
           </button>
         </>
       }
@@ -66,7 +67,11 @@ export function SourceDialog({
         }}
       />
       {preview && (
-        <div className="math-preview" aria-label="Preview" dangerouslySetInnerHTML={{ __html: preview }} />
+        <div
+          className="math-preview"
+          aria-label={t('math.previewLabel')}
+          dangerouslySetInnerHTML={{ __html: preview }}
+        />
       )}
     </Dialog>
   );

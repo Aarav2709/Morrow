@@ -9,6 +9,7 @@ import { useWorkspace } from '../workspace';
 import { Popover } from './Popover';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
+import { t } from '../i18n';
 
 const shortDate = (key: string) =>
   parseDateKey(key)?.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) ?? key;
@@ -22,7 +23,7 @@ export function DailyNav({ page }: { page: PageMeta }) {
   const [calendar, setCalendar] = useState<HTMLElement | null>(null);
 
   return (
-    <nav className="daily-nav" aria-label="Daily notes">
+    <nav className="daily-nav" aria-label={t('daily.dailyNotes')}>
       <button
         type="button"
         className="daily-nav-step"
@@ -53,11 +54,11 @@ export function DailyNav({ page }: { page: PageMeta }) {
       </button>
       {key !== today && (
         <button type="button" className="button small daily-nav-today" onClick={() => openToday()}>
-          Go to today
+          {t('daily.goToToday')}
         </button>
       )}
       {calendar && (
-        <Popover anchor={calendar} onClose={() => setCalendar(null)} label="Daily notes calendar">
+        <Popover anchor={calendar} onClose={() => setCalendar(null)} label={t('daily.dailyNotesCalendar')}>
           <DailyCalendar
             selected={key}
             onPick={(date) => {
@@ -103,11 +104,21 @@ export function DailyCalendar({
   return (
     <div className="daily-calendar">
       <div className="daily-calendar-head">
-        <button type="button" className="icon-button" aria-label="Previous month" onClick={() => shift(-1)}>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={t('daily.previousMonth')}
+          onClick={() => shift(-1)}
+        >
           <ChevronLeft size={15} />
         </button>
         <strong>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
-        <button type="button" className="icon-button" aria-label="Next month" onClick={() => shift(1)}>
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={t('daily.nextMonth')}
+          onClick={() => shift(1)}
+        >
           <ChevronRight size={15} />
         </button>
       </div>
@@ -134,7 +145,7 @@ export function DailyCalendar({
         })}
       </div>
       <button type="button" className="button small daily-calendar-today" onClick={() => onPick(new Date())}>
-        Today
+        {t('sidebar.today')}
       </button>
     </div>
   );
@@ -147,7 +158,7 @@ export function MadeThisDay({ dailyDate }: { dailyDate: string }) {
   const { shown, more } = useShowMore(pages, 12);
   if (pages.length === 0) return null;
   return (
-    <section className="page-section" aria-label="Made this day">
+    <section className="page-section" aria-label={t('daily.madeThisDay')}>
       <h2 className="section-label">
         Made this day <span className="section-count">{pages.length}</span>
       </h2>

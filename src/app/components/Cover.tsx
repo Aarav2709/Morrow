@@ -62,7 +62,7 @@ export function CoverPicker({
     onClose();
   };
   return (
-    <Popover anchor={anchor} onClose={onClose} label="Cover" className="cover-picker">
+    <Popover anchor={anchor} onClose={onClose} label={t('page.cover')} className="cover-picker">
       <div className="cover-grid">
         {Array.from({ length: COVER_GRADIENTS }, (_, index) => `gradient-${index + 1}`).map((cover) => (
           <button
@@ -89,7 +89,7 @@ export function CoverPicker({
         </button>
         {page.cover && (
           <button type="button" className="button small danger" onClick={() => pick(null)}>
-            <Trash2 size={13} /> Remove
+            <Trash2 size={13} /> {t('common.remove')}
           </button>
         )}
       </div>

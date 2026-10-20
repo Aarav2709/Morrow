@@ -36,8 +36,11 @@ export async function createVault(options: { copyLegacy?: boolean } = {}): Promi
   try {
     await switchVault(await vault.createDefault(), options);
   } catch (error) {
-    toast(t('toasts.folderCouldNotCreate', { error: error instanceof Error ? error.message : String(error) }), {
-      tone: 'error',
-    });
+    toast(
+      t('toasts.folderCouldNotCreate', { error: error instanceof Error ? error.message : String(error) }),
+      {
+        tone: 'error',
+      },
+    );
   }
 }

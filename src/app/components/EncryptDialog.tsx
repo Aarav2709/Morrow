@@ -6,6 +6,7 @@ import { useTranslation } from '../i18n';
 import { closeDialog, toast } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { Dialog } from './primitives';
+import { t } from '../i18n';
 
 const MIN_LENGTH = 8;
 
@@ -33,13 +34,13 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
   };
   return (
     <Dialog
-      title={`Encrypt “${displayTitle(page)}”`}
+      title={t('encrypt.title', { title: displayTitle(page) })}
       size="small"
       onClose={closeDialog}
       footer={
         <>
           <button type="button" className="button" onClick={closeDialog}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -61,10 +62,10 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
       >
         <p className="muted small">
           The page's file is encrypted with AES-256. Morrow keeps no copy of the password and no plain version
-          in page history. <strong>If you forget the password, the page cannot be recovered.</strong>
+          in page history. <strong>{t('encrypt.cannotRecover')}</strong>
         </p>
         <label className="field">
-          <span>Password</span>
+          <span>{t('encrypt.password')}</span>
           <input
             className="text-input"
             type="password"
@@ -75,7 +76,7 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
           />
         </label>
         <label className="field">
-          <span>Repeat it</span>
+          <span>{t('encrypt.repeatIt')}</span>
           <input
             className="text-input"
             type="password"
@@ -87,7 +88,7 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
         {password.length > 0 && tooShort && (
           <p className="field-error">Use at least {MIN_LENGTH} characters.</p>
         )}
-        {mismatch && <p className="field-error">The two passwords are different.</p>}
+        {mismatch && <p className="field-error">{t('encrypt.mismatch')}</p>}
         <button type="submit" hidden />
       </form>
     </Dialog>
@@ -118,12 +119,12 @@ export function LockedPage({ page }: { page: PageMeta }) {
       }}
     >
       <Lock size={28} strokeWidth={1.5} />
-      <p>This page is encrypted. Enter its password to open it.</p>
+      <p>{t('encrypt.lockedHint')}</p>
       <div className="locked-row">
         <input
           className="text-input"
           type="password"
-          aria-label="Password"
+          aria-label={t('encrypt.password')}
           autoFocus
           autoComplete="current-password"
           value={password}

@@ -21,6 +21,7 @@ import type { CalloutTone, ColorName } from '../../core/model';
 import { tagColor } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
 import { openDialog } from '../ui';
+import { t } from '../i18n';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -137,7 +138,7 @@ export const RawBlock = Node.create({
       dom.contentEditable = 'false';
       const label = document.createElement('span');
       label.className = 'raw-block-label';
-      label.textContent = 'Kept as written';
+      label.textContent = t('editor.keptAsWritten');
       const pre = document.createElement('pre');
       pre.textContent = String(node.attrs.text ?? '');
       dom.append(label, pre);
@@ -145,7 +146,7 @@ export const RawBlock = Node.create({
         if (!editor.isEditable) return;
         openDialog({
           kind: 'source',
-          title: 'Edit as written',
+          title: t('editor.editAsWritten'),
           value: String(current.attrs.text ?? ''),
           language: 'markdown',
           onSave: (text) => setAttrs(editor.view, getPos, { text }),
@@ -363,10 +364,10 @@ export const CodeBlock = CodeBlockLowlight.extend({
       const select = document.createElement('select');
       select.className = 'code-language';
       select.contentEditable = 'false';
-      select.setAttribute('aria-label', 'Code language');
+      select.setAttribute('aria-label', t('editor.codeLanguage'));
       const plain = document.createElement('option');
       plain.value = '';
-      plain.textContent = 'Plain text';
+      plain.textContent = t('editor.plainText');
       select.append(plain);
       for (const language of CODE_LANGUAGES) {
         const option = document.createElement('option');
@@ -536,8 +537,8 @@ export function calloutNodeView(): NodeViewRenderer {
     tone.className = 'callout-tone';
     const title = document.createElement('input');
     title.className = 'callout-title';
-    title.placeholder = 'Add a title';
-    title.setAttribute('aria-label', 'Callout title');
+    title.placeholder = t('editor.addATitle');
+    title.setAttribute('aria-label', t('editor.calloutTitle'));
     const fold = document.createElement('button');
     fold.type = 'button';
     fold.className = 'callout-fold';

@@ -406,14 +406,14 @@ export function TableMenu({ editor }: { editor: Editor }) {
       getReferencedVirtualElement={reference}
       shouldShow={showTable}
     >
-      <div className="toolbar popover table-toolbar" role="toolbar" aria-label="Table">
+      <div className="toolbar popover table-toolbar" role="toolbar" aria-label={t('slash.items.table.title')}>
         <button
           type="button"
           className="text-tool"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().addRowAfter().run()}
         >
-          + Row
+          {t('editor.addRow')}
         </button>
         <button
           type="button"
@@ -421,7 +421,7 @@ export function TableMenu({ editor }: { editor: Editor }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().addColumnAfter().run()}
         >
-          + Column
+          {t('editor.addColumn')}
         </button>
         <span className="toolbar-divider" />
         <button
@@ -430,7 +430,7 @@ export function TableMenu({ editor }: { editor: Editor }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().deleteRow().run()}
         >
-          Delete row
+          {t('editor.deleteRow')}
         </button>
         <button
           type="button"
@@ -438,7 +438,7 @@ export function TableMenu({ editor }: { editor: Editor }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().deleteColumn().run()}
         >
-          Delete column
+          {t('editor.deleteColumn')}
         </button>
         <span className="toolbar-divider" />
         <button
@@ -447,7 +447,7 @@ export function TableMenu({ editor }: { editor: Editor }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().toggleHeaderRow().run()}
         >
-          Header row
+          {t('editor.headerRow')}
         </button>
         <button
           type="button"
@@ -455,7 +455,7 @@ export function TableMenu({ editor }: { editor: Editor }) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().deleteTable().run()}
         >
-          Delete table
+          {t('editor.deleteTable')}
         </button>
       </div>
     </BubbleMenu>
@@ -488,7 +488,7 @@ function copyBlockLink(editor: Editor, pos: number, pageTitle: string): void {
   }
   const link = `[[${pageTitle.replace(/[[\]|#^]/g, ' ').trim()}#${anchor}]]`;
   void copyText(link).then((copied) =>
-    copied ? toast('Copied a link to this block.') : toast('Could not copy.', { tone: 'error' }),
+    copied ? toast(t('editor.blockLinkCopied')) : toast(t('editor.couldNotCopy'), { tone: 'error' }),
   );
 }
 
@@ -582,7 +582,7 @@ export function BlockMenu({
     ...(linkable(editor, request.pos)
       ? [
           {
-            label: 'Copy link to block',
+            label: t('editor.copyLinkToBlock'),
             icon: Link2,
             onSelect: () => copyBlockLink(editor, request.pos, pageTitle),
           },
@@ -621,18 +621,18 @@ export function BlockMenu({
   const vault = desktop?.vault;
   if (blockType === 'image' && fileId) {
     entries.unshift(
-      { heading: 'Image' },
-      { label: 'Copy image', icon: ImageIcon, onSelect: () => void copyImageFile(fileId) },
-      { label: 'Save a copy', icon: Download, onSelect: () => void downloadFile(fileId) },
+      { heading: t('slash.items.image.title') },
+      { label: t('editor.copyImage'), icon: ImageIcon, onSelect: () => void copyImageFile(fileId) },
+      { label: t('editor.saveACopy'), icon: Download, onSelect: () => void downloadFile(fileId) },
       ...(vault
         ? [
             {
-              label: 'Open in default app',
+              label: t('editor.openInDefaultApp'),
               icon: ExternalLink,
               onSelect: () => void vault.openFile(fileId),
             },
             {
-              label: 'Show in folder',
+              label: t('pageMenu.showInFolder'),
               icon: FolderOpen,
               onSelect: () => void vault.reveal(fileId),
             },

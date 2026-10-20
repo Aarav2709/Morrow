@@ -29,6 +29,7 @@ import { openDialog } from '../ui';
 import { getState, run, useWorkspace } from '../workspace';
 import { Emoji } from './Emoji';
 import { Popover } from './Popover';
+import { t } from '../i18n';
 
 interface Viewport {
   x: number;
@@ -696,7 +697,7 @@ export function CanvasView({
       else if (node?.type === 'group')
         openDialog({
           kind: 'source',
-          title: 'Group name',
+          title: t('canvas.groupName'),
           value: node.label ?? '',
           language: 'markdown',
           onSave: (label) => updateNode(node.id, { label: label.trim() || undefined } as Partial<CanvasNode>),
@@ -795,7 +796,7 @@ export function CanvasView({
       className={`canvas-view tool-${tool}`}
       tabIndex={0}
       role="application"
-      aria-label="Canvas. Double-click to add a card, drag to move, Delete to remove."
+      aria-label={t('canvas.canvasAria')}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -869,7 +870,7 @@ export function CanvasView({
                     if (!editable) return;
                     openDialog({
                       kind: 'source',
-                      title: 'Label',
+                      title: t('canvas.label'),
                       value: edge.label ?? '',
                       language: 'markdown',
                       onSave: (label) =>
@@ -924,7 +925,7 @@ export function CanvasView({
         ))}
       </div>
 
-      <div className="canvas-toolbar" role="toolbar" aria-label="Canvas tools">
+      <div className="canvas-toolbar" role="toolbar" aria-label={t('canvas.canvasTools')}>
         {editable && (
           <>
             {(
@@ -965,7 +966,7 @@ export function CanvasView({
                     key={width}
                     type="button"
                     className={`icon-button ink-width${ink.width === width ? ' is-tool' : ''}`}
-                    aria-label={`Line width ${width}`}
+                    aria-label={t('canvas.lineWidth', { width })}
                     onClick={() => setInk((current) => ({ ...current, width }))}
                   >
                     <span style={{ width: width + 4, height: width + 4 }} />
@@ -977,8 +978,8 @@ export function CanvasView({
             <button
               type="button"
               className="icon-button"
-              title="Add a card"
-              aria-label="Add a card"
+              title={t('canvas.addACard')}
+              aria-label={t('canvas.addACard')}
               onClick={() => {
                 const point = center();
                 addNode(
@@ -999,8 +1000,8 @@ export function CanvasView({
             <button
               type="button"
               className="icon-button"
-              title="Add a page"
-              aria-label="Add a page"
+              title={t('canvas.addAPage')}
+              aria-label={t('canvas.addAPage')}
               onClick={(event) => setPageAnchor(event.currentTarget)}
             >
               <FileText size={16} />
@@ -1008,13 +1009,13 @@ export function CanvasView({
             <button
               type="button"
               className="icon-button"
-              title="Add a group"
-              aria-label="Add a group"
+              title={t('canvas.addAGroup')}
+              aria-label={t('canvas.addAGroup')}
               onClick={() => {
                 const point = center();
                 addNode({
                   type: 'group',
-                  label: 'Group',
+                  label: t('canvas.group'),
                   x: Math.round(point.x - 200),
                   y: Math.round(point.y - 150),
                   width: 400,
@@ -1025,10 +1026,22 @@ export function CanvasView({
               <Group size={16} />
             </button>
             <span className="toolbar-divider" />
-            <button type="button" className="icon-button" title="Undo" aria-label="Undo" onClick={undo}>
+            <button
+              type="button"
+              className="icon-button"
+              title={t('toasts.undo')}
+              aria-label={t('toasts.undo')}
+              onClick={undo}
+            >
               <Undo2 size={16} />
             </button>
-            <button type="button" className="icon-button" title="Redo" aria-label="Redo" onClick={redo}>
+            <button
+              type="button"
+              className="icon-button"
+              title={t('canvas.redo')}
+              aria-label={t('canvas.redo')}
+              onClick={redo}
+            >
               <Redo2 size={16} />
             </button>
             <span className="toolbar-divider" />
@@ -1037,8 +1050,8 @@ export function CanvasView({
         <button
           type="button"
           className="icon-button"
-          title="Zoom out"
-          aria-label="Zoom out"
+          title={t('canvas.zoomOut')}
+          aria-label={t('canvas.zoomOut')}
           onClick={() => zoomAt(1 / 1.25)}
         >
           <Minus size={16} />
@@ -1047,8 +1060,8 @@ export function CanvasView({
         <button
           type="button"
           className="icon-button"
-          title="Zoom in"
-          aria-label="Zoom in"
+          title={t('canvas.zoomIn')}
+          aria-label={t('canvas.zoomIn')}
           onClick={() => zoomAt(1.25)}
         >
           <Plus size={16} />
@@ -1056,8 +1069,8 @@ export function CanvasView({
         <button
           type="button"
           className="icon-button"
-          title="Fit everything in view"
-          aria-label="Fit everything in view"
+          title={t('canvas.fitEverythingInView')}
+          aria-label={t('canvas.fitEverythingInView')}
           onClick={fit}
         >
           <Maximize size={16} />
@@ -1088,8 +1101,8 @@ export function CanvasView({
             <button
               type="button"
               className="icon-button"
-              title="Delete"
-              aria-label="Delete selection"
+              title={t('common.delete')}
+              aria-label={t('canvas.deleteSelection')}
               onClick={removeSelection}
             >
               <Trash2 size={16} />
@@ -1098,9 +1111,7 @@ export function CanvasView({
         )}
       </div>
       {data.nodes.length === 0 && (
-        <p className="canvas-empty muted">
-          Double-click anywhere to add a card. Drag from the dot on a card's edge to connect it to another.
-        </p>
+        <p className="canvas-empty muted">{t('canvas.emptyHint')}</p>
       )}
       {pageAnchor && (
         <PagePicker
@@ -1139,12 +1150,12 @@ function PagePicker({
   const [query, setQuery] = useState('');
   const pages = findPagesByTitle(getState(), query, 10).filter((page) => page.id !== exclude);
   return (
-    <Popover anchor={element} onClose={onClose} label="Add a page" className="option-picker">
+    <Popover anchor={element} onClose={onClose} label={t('canvas.addAPage')} className="option-picker">
       <input
         className="text-input small"
         data-autofocus
-        placeholder="Find a page"
-        aria-label="Find a page"
+        placeholder={t('dialogs.move.placeholder')}
+        aria-label={t('dialogs.move.placeholder')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={(event) => {
@@ -1232,7 +1243,7 @@ function DrawingCard({ node }: { node: Extract<CanvasNode, { type: 'drawing' }> 
       width={node.width}
       height={node.height}
       viewBox={`0 0 ${node.width} ${node.height}`}
-      aria-label="Drawing"
+      aria-label={t('canvas.drawing')}
     >
       {node.strokes.map((stroke, index) => (
         <path
@@ -1264,7 +1275,7 @@ function TextEditor({ text, onDone }: { text: string; onDone: (text: string) => 
     <textarea
       className="canvas-textarea"
       autoFocus
-      aria-label="Card text"
+      aria-label={t('canvas.cardText')}
       value={value}
       onChange={(event) => setValue(event.target.value)}
       onBlur={() => onDone(value)}
@@ -1282,7 +1293,7 @@ function TextEditor({ text, onDone }: { text: string; onDone: (text: string) => 
 
 // card text is markdown, headings and lists are shown lightly styled
 function TextCard({ text }: { text: string }) {
-  if (!text.trim()) return <span className="canvas-placeholder">Empty card</span>;
+  if (!text.trim()) return <span className="canvas-placeholder">{t('canvas.emptyCard')}</span>;
   return (
     <div className="canvas-text">
       {text.split('\n').map((line, index) => {
@@ -1313,7 +1324,7 @@ function PageCard({ pageId }: { pageId: PageId }) {
     () => docToPlainText(state.docs[pageId] ?? { type: 'doc' }).slice(0, 400),
     [state.docs, pageId],
   );
-  if (!page) return <span className="canvas-placeholder">This page no longer exists.</span>;
+  if (!page) return <span className="canvas-placeholder">{t('canvas.pageMissing')}</span>;
   return (
     <div className="canvas-page">
       <strong className="canvas-page-title">

@@ -10,6 +10,7 @@ import { getSession } from '../workspace';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import { Dialog, relativeTime, Switch } from './primitives';
 import { SettingRow, SettingsGroup } from './SettingsRows';
+import { t } from '../i18n';
 
 function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -261,20 +262,17 @@ export function PairDialog() {
   };
 
   return (
-    <Dialog title="Pair a computer" onClose={closeDialog}>
+    <Dialog title={t('pairing.pairAComputer')} onClose={closeDialog}>
       <div className="pair-columns">
         <section>
-          <h4>On the other computer, enter this code</h4>
-          <p className="pair-code" aria-label="Pairing code">
+          <h4>{t('pairing.enterThisCode')}</h4>
+          <p className="pair-code" aria-label={t('pairing.pairingCode')}>
             {code ?? '…'}
           </p>
-          <p className="muted small">
-            Open Settings there, choose Pair a computer, pick this one and type the code. It works for ten
-            minutes.
-          </p>
+          <p className="muted small">{t('pairing.howTo')}</p>
         </section>
         <section>
-          <h4>Or pair with a computer showing a code</h4>
+          <h4>{t('pairing.orPairWithCode')}</h4>
           {status && status.waiting.length > 0 ? (
             <ul className="pair-waiting">
               {status.waiting.map((item) => (
@@ -292,15 +290,13 @@ export function PairDialog() {
               ))}
             </ul>
           ) : (
-            <p className="muted small">
-              Looking for computers showing a code… If yours does not appear, type its address.
-            </p>
+            <p className="muted small">{t('pairing.looking')}</p>
           )}
           {!target && (
             <input
               className="text-input small"
-              placeholder="Address, like 192.168.1.20"
-              aria-label="Address of the other computer"
+              placeholder={t('pairing.addressPlaceholder')}
+              aria-label={t('pairing.addressAria')}
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
@@ -308,7 +304,7 @@ export function PairDialog() {
           <input
             className="text-input"
             placeholder="XXXX-XXXX-XXXX-XXXX"
-            aria-label="Code shown on the other computer"
+            aria-label={t('pairing.codeAria')}
             value={entered}
             onChange={(event) => setEntered(event.target.value.toUpperCase())}
             onKeyDown={(event) => event.key === 'Enter' && void pair()}

@@ -67,7 +67,7 @@ export function PageProperties({
   };
 
   return (
-    <section className="row-props" aria-label="Properties">
+    <section className="row-props" aria-label={t('properties.properties')}>
       {database &&
         props.map((prop) => (
           <div key={prop.id} className="row-prop">
@@ -75,7 +75,7 @@ export function PageProperties({
               <button
                 type="button"
                 className="row-prop-name row-prop-button"
-                title="Edit property"
+                title={t('properties.editProperty')}
                 onClick={(event) => setSettings({ prop, anchor: event.currentTarget })}
               >
                 {prop.name}
@@ -108,8 +108,8 @@ export function PageProperties({
                 <button
                   type="button"
                   className="icon-button tiny"
-                  aria-label={`Make ${key} a column of the database`}
-                  title="Make this a column of the database"
+                  aria-label={t('properties.makeColumnAria', { key })}
+                  title={t('properties.makeColumn')}
                   onClick={() => addColumnsFromPages(database.id, [key])}
                 >
                   <Columns3 size={13} />
@@ -118,8 +118,8 @@ export function PageProperties({
               <button
                 type="button"
                 className="icon-button tiny"
-                aria-label={`Remove ${key}`}
-                title="Remove this property"
+                aria-label={t('properties.removeAria', { key })}
+                title={t('properties.remove')}
                 onClick={() => {
                   const { [key]: _removed, ...rest } = page.extra;
                   setExtra(rest);
@@ -173,7 +173,12 @@ export function PageProperties({
             <Plus size={13} /> {t('page.addAProperty')}
           </button>
           {menu && database && (
-            <Popover anchor={menu} onClose={() => setMenu(null)} label="New property" className="db-panel">
+            <Popover
+              anchor={menu}
+              onClose={() => setMenu(null)}
+              label={t('properties.newProperty')}
+              className="db-panel"
+            >
               <NewProperty dbId={database.id} database={database.database} onDone={() => setMenu(null)} />
             </Popover>
           )}
@@ -252,7 +257,7 @@ function ExtraValue({
   // nested values can not be edited here without losing their shape, the markdown view can change them
   if (value !== null && typeof value === 'object' && !Array.isArray(value))
     return (
-      <code className="prop-yaml" title="Edit the page as Markdown to change this value">
+      <code className="prop-yaml" title={t('properties.editAsMarkdownHint')}>
         {stringify(value, { lineWidth: 0 }).trim()}
       </code>
     );

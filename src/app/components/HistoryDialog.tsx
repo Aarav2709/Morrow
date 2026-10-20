@@ -14,6 +14,7 @@ import { fileUrl } from '../platform/attachments';
 import { closeDialog } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { Dialog, relativeTime } from './primitives';
+import { t } from '../i18n';
 
 let previewExtensions: ReturnType<typeof createExtensions> | null = null;
 
@@ -83,21 +84,21 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
 
   return (
     <Dialog
-      title={`History of “${displayTitle(page)}”`}
+      title={t('history.title', { title: displayTitle(page) })}
       size="large"
       className="history-dialog"
       onClose={closeDialog}
     >
       {versions === null ? (
-        <p className="muted">Loading versions…</p>
+        <p className="muted">{t('history.loadingVersions')}</p>
       ) : versions.length === 0 ? (
         <div className="empty-state compact">
           <History size={24} strokeWidth={1.5} />
-          <p>No versions yet. Morrow keeps a version of a page every ten minutes while you edit it.</p>
+          <p>{t('history.empty')}</p>
         </div>
       ) : (
         <div className="history-layout">
-          <ul className="history-list" role="listbox" aria-label="Versions">
+          <ul className="history-list" role="listbox" aria-label={t('history.versions')}>
             {versions.map((version, index) => {
               const words = docToPlainText(version.doc).split(/\s+/).filter(Boolean).length;
               return (
@@ -124,7 +125,7 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
             })}
           </ul>
           <div className="history-preview">
-            <div className="segmented history-mode" role="radiogroup" aria-label="Show">
+            <div className="segmented history-mode" role="radiogroup" aria-label={t('common.show')}>
               {(['changes', 'version'] as const).map((value) => (
                 <button
                   key={value}
@@ -150,7 +151,7 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
                   className="button primary"
                   onClick={() => void restoreVersion(snapshot).then((done) => done && closeDialog())}
                 >
-                  Restore this version
+                  {t('history.restoreThisVersion')}
                 </button>
               </div>
             )}
@@ -164,7 +165,7 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
 // shows removed lines in red and added lines in green, long unchanged stretches fold away
 function DiffView({ lines }: { lines: DiffLine[] }) {
   if (lines.every((line) => line.kind === 'same'))
-    return <p className="muted history-same">This version is the same as the page now.</p>;
+    return <p className="muted history-same">{t('history.sameAsNow')}</p>;
   const rows: Array<DiffLine | { kind: 'gap'; count: number }> = [];
   let run: DiffLine[] = [];
   const flush = (end: boolean) => {
@@ -184,7 +185,7 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
   }
   flush(true);
   return (
-    <div className="diff" role="table" aria-label="Changes">
+    <div className="diff" role="table" aria-label={t('settings.assistant.changesTitle')}>
       {rows.map((row, index) =>
         row.kind === 'gap' ? (
           <div key={index} className="diff-gap">

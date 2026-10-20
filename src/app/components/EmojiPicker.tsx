@@ -6,6 +6,7 @@ import { closeDialog } from '../ui';
 import { useWorkspace } from '../workspace';
 import { Emoji, emojiSrc } from './Emoji';
 import { Dialog } from './primitives';
+import { t } from '../i18n';
 
 interface Emoji {
   unicode: string;
@@ -102,13 +103,17 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
   };
 
   return (
-    <Dialog title={`Icon for “${displayTitle(page)}”`} onClose={closeDialog} className="emoji-dialog">
+    <Dialog
+      title={t('emoji.title', { title: displayTitle(page) })}
+      onClose={closeDialog}
+      className="emoji-dialog"
+    >
       <div className="emoji-top">
         <input
           className="text-input"
           data-autofocus
-          placeholder="Search emoji, like rocket or book"
-          aria-label="Search emoji"
+          placeholder={t('emoji.searchPlaceholder')}
+          aria-label={t('emoji.searchEmoji')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
@@ -118,20 +123,20 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
         <button
           type="button"
           className="button"
-          title="Random"
+          title={t('emoji.random')}
           disabled={!emoji}
           onClick={() => emoji && pick(emoji[Math.floor(Math.random() * emoji.length)]!.unicode)}
         >
-          <Shuffle size={14} /> Random
+          <Shuffle size={14} /> {t('emoji.random')}
         </button>
         {page.icon && (
           <button type="button" className="button" onClick={() => pick(null)}>
-            Remove
+            {t('common.remove')}
           </button>
         )}
       </div>
       {!query && (
-        <div className="emoji-groups" role="tablist" aria-label="Categories">
+        <div className="emoji-groups" role="tablist" aria-label={t('emoji.categories')}>
           <button
             type="button"
             role="tab"
@@ -139,7 +144,7 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
             className={group === null ? 'is-active' : ''}
             onClick={() => setGroup(null)}
           >
-            All
+            {t('emoji.all')}
           </button>
           {GROUPS.map((item) => (
             <button
@@ -159,7 +164,7 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
       )}
       {!query && group === null && recent.length > 0 && (
         <>
-          <p className="emoji-section">Recent</p>
+          <p className="emoji-section">{t('actions.groups.recent')}</p>
           <div className="emoji-grid">
             {recent.map((icon) => (
               <button key={icon} type="button" className="emoji-choice" onClick={() => pick(icon)}>
@@ -169,8 +174,8 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
           </div>
         </>
       )}
-      <div className="emoji-grid emoji-all" role="listbox" aria-label="Emoji">
-        {emoji === null && <p className="muted">Loading…</p>}
+      <div className="emoji-grid emoji-all" role="listbox" aria-label={t('emoji.emoji')}>
+        {emoji === null && <p className="muted">{t('emoji.loading')}</p>}
         {shown.map((item) => (
           <button
             key={item.unicode}
