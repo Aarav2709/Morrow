@@ -1,7 +1,7 @@
 // the desktop shell's main process and preload, each bundled into one file with what they use from npm,
 // so the packaged app carries no node_modules folder
 import { defineConfig } from 'vite';
-import { thirdPartyLicenses } from './scripts/licenses';
+import { thirdPartyLicenses } from './scripts/licenses.ts';
 
 export default defineConfig({
   publicDir: false,

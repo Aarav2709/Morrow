@@ -2,7 +2,7 @@
 import { defineConfig } from 'vite';
 import type { Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { thirdPartyLicenses } from './scripts/licenses';
+import { thirdPartyLicenses } from './scripts/licenses.ts';
 import { spawn, spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -24,7 +24,8 @@ function desktopShell(): Plugin {
         const shellBuild = spawnSync(
           process.execPath,
           [
-            require.resolve('vite/bin/vite.js'),
+            // vite exports no path to its cli, so it is found beside its package.json
+            path.join(path.dirname(require.resolve('vite/package.json')), 'bin', 'vite.js'),
             'build',
             '--config',
             'vite.electron.config.ts',
