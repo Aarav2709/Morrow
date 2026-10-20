@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { SupportedLocale } from '../i18n/types';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
@@ -26,6 +27,7 @@ export interface CanvasSize {
 }
 
 export interface Preferences {
+  locale: SupportedLocale;
   theme: ThemePreference;
   font: WritingFont;
   width: PageWidth;
@@ -50,7 +52,18 @@ export interface Preferences {
 }
 
 const KEY = 'morrow.preferences';
+
+function defaultLocale(): SupportedLocale {
+  if (typeof navigator !== 'undefined') {
+    const lang = navigator.language?.toLowerCase() ?? '';
+    if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('pt')) return 'pt';
+  }
+  return 'en';
+}
+
 const defaults: Preferences = {
+  locale: defaultLocale(),
   theme: 'system',
   font: 'sans',
   width: 'comfortable',
@@ -88,6 +101,9 @@ function read(): Preferences {
     if (!raw) return defaults;
     const parsed = JSON.parse(raw) as Partial<Preferences>;
     return {
+      locale: ['en', 'es', 'pt'].includes(parsed.locale as SupportedLocale)
+        ? (parsed.locale as SupportedLocale)
+        : defaults.locale,
       theme: ['system', 'light', 'dark'].includes(parsed.theme as string) ? parsed.theme! : defaults.theme,
       font: ['serif', 'sans', 'mono'].includes(parsed.font as string) ? parsed.font! : defaults.font,
       width: parsed.width === 'wide' ? 'wide' : 'comfortable',
