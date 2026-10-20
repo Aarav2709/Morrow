@@ -25,17 +25,19 @@ import { canGo, closeSide, goBack, goForward, openSide, swapSides, usePane, useT
 import { setUi } from '../ui';
 import { getSession, useSaveStatus, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
+import { useTranslation } from '../i18n';
 import type { MenuEntry } from './Menu';
 import { relativeTime } from './primitives';
 
 export function SidebarToggle() {
+  const { t } = useTranslation();
   const prefs = usePreferences();
   return (
     <>
       <button
         type="button"
         className="icon-button mobile-only"
-        aria-label="Open sidebar"
+        aria-label={t('topBar.openSidebar')}
         onClick={() => setUi({ mobileSidebar: true })}
       >
         <MenuIcon size={18} strokeWidth={1.75} />
@@ -44,7 +46,7 @@ export function SidebarToggle() {
         <button
           type="button"
           className="icon-button desktop-only"
-          aria-label="Show sidebar"
+          aria-label={t('topBar.showSidebar')}
           title={`Show sidebar (${formatShortcut('Mod+\\')})`}
           onClick={() => runAction('view.sidebar')}
         >
@@ -57,6 +59,7 @@ export function SidebarToggle() {
 
 // back and forward for the side of the window this bar belongs to
 function HistoryButtons() {
+  const { t } = useTranslation();
   const pane = usePane();
   const { tabs, active } = useTabs();
   const tab = tabs.find((item) => item.id === active);
@@ -67,7 +70,7 @@ function HistoryButtons() {
       <button
         type="button"
         className="icon-button"
-        aria-label="Go back"
+        aria-label={t('topBar.goBack')}
         title={`Back (${formatShortcut(ACTION_SHORTCUTS.back)})`}
         disabled={!back}
         onClick={() => goBack(pane)}
@@ -77,7 +80,7 @@ function HistoryButtons() {
       <button
         type="button"
         className="icon-button"
-        aria-label="Go forward"
+        aria-label={t('topBar.goForward')}
         title={`Forward (${formatShortcut(ACTION_SHORTCUTS.forward)})`}
         disabled={!forward}
         onClick={() => goForward(pane)}
@@ -90,6 +93,7 @@ function HistoryButtons() {
 
 // opening a split from the first side, closing or swapping it from the second
 function SplitButtons() {
+  const { t } = useTranslation();
   const pane = usePane();
   const { tabs, active } = useTabs();
   const split = Boolean(tabs.find((item) => item.id === active)?.side);
@@ -99,7 +103,7 @@ function SplitButtons() {
         <button
           type="button"
           className="icon-button desktop-only"
-          aria-label="Swap sides"
+          aria-label={t('topBar.swapSplit')}
           title="Swap the two sides"
           onClick={swapSides}
         >
@@ -108,7 +112,7 @@ function SplitButtons() {
         <button
           type="button"
           className="icon-button desktop-only"
-          aria-label="Close this side"
+          aria-label={t('topBar.closeSplit')}
           title="Close this side"
           onClick={closeSide}
         >
@@ -121,7 +125,7 @@ function SplitButtons() {
     <button
       type="button"
       className="icon-button desktop-only"
-      aria-label="Open beside"
+      aria-label={t('topBar.openSplit')}
       title={`Open beside, in a split (${formatShortcut('Mod+Shift+\\')})`}
       onClick={() => openSide()}
     >
@@ -131,6 +135,7 @@ function SplitButtons() {
 }
 
 export function SaveIndicator({ editing }: { editing: boolean }) {
+  const { t } = useTranslation();
   const status = useSaveStatus();
   const [, tick] = useState(0);
   useEffect(() => {
@@ -147,14 +152,14 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
         title={`${status.error ?? 'Unknown error'}. Your changes are kept in memory and will be retried. Click to retry now.`}
         onClick={() => void getSession().flush()}
       >
-        <AlertTriangle size={14} /> <span className="save-label">Not saved, retrying</span>
+        <AlertTriangle size={14} /> <span className="save-label">{t('topBar.saveFailed')}</span>
       </button>
     );
   }
   if (editing || status.state === 'pending' || status.state === 'saving') {
     return (
       <span className="save-status is-saving">
-        <Loader2 size={13} className="spin" /> <span className="save-label">Saving</span>
+        <Loader2 size={13} className="spin" /> <span className="save-label">{t('topBar.saving')}</span>
       </span>
     );
   }
@@ -167,12 +172,13 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
           : 'All changes are saved on this device'
       }
     >
-      <Check size={14} /> <span className="save-label">Saved</span>
+      <Check size={14} /> <span className="save-label">{t('topBar.saved')}</span>
     </span>
   );
 }
 
 export function TopBar({
+
   page,
   editing,
   menu,
@@ -186,6 +192,7 @@ export function TopBar({
   const state = useWorkspace();
   const pane = usePane();
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const { t } = useTranslation();
   const trail = page ? ancestorsOf(state.pages, page.id).reverse() : [];
 
   return (
@@ -229,12 +236,12 @@ export function TopBar({
         {pane === 'main' && <SaveIndicator editing={editing ?? false} />}
         {page && (
           <>
-            <span className="topbar-meta">Edited {relativeTime(page.updatedAt)}</span>
+            <span className="topbar-meta">{t('topBar.edited', { time: relativeTime(page.updatedAt) })}</span>
             <button
               type="button"
               className={`icon-button${page.favorite ? ' is-favorite' : ''}`}
-              aria-label={page.favorite ? 'Remove from favourites' : 'Add to favourites'}
-              title={page.favorite ? 'Remove from favourites' : 'Add to favourites'}
+              aria-label={page.favorite ? t('pageMenu.removeFromFavorites') : t('pageMenu.addToFavorites')}
+              title={page.favorite ? t('pageMenu.removeFromFavorites') : t('pageMenu.addToFavorites')}
               aria-pressed={page.favorite}
               onClick={() => toggleFavorite(page.id)}
             >
@@ -246,8 +253,8 @@ export function TopBar({
           <button
             type="button"
             className="icon-button"
-            aria-label="Page options"
-            title="Page options"
+            aria-label={t('pageMenu.pageOptions')}
+            title={t('pageMenu.pageOptions')}
             aria-haspopup="menu"
             onClick={(event) => setAnchor(event.currentTarget)}
           >
@@ -262,7 +269,7 @@ export function TopBar({
           entries={menu()}
           onClose={() => setAnchor(null)}
           placement="bottom-end"
-          label="Page options"
+          label={t('pageMenu.pageOptions')}
         />
       )}
     </header>
