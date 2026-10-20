@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { dismissToast, useUi } from '../ui';
 import { dialogOpened } from '../platform/desktop';
+import { getLocale, t } from '../i18n';
 
 // a sun on the horizon, drawn in code so it carries no third party license
 export function Logo({ size = 20 }: { size?: number }) {
@@ -103,7 +104,12 @@ export function Dialog({
       >
         <header className={`dialog-header${hideTitle ? ' visually-hidden' : ''}`}>
           <h2 id={titleId}>{title}</h2>
-          <button type="button" className="icon-button dialog-close" aria-label="Close" onClick={onClose}>
+          <button
+            type="button"
+            className="icon-button dialog-close"
+            aria-label={t('common.close')}
+            onClick={onClose}
+          >
             <X size={16} />
           </button>
         </header>
@@ -167,7 +173,7 @@ export function Toasts() {
           <button
             type="button"
             className="toast-close"
-            aria-label="Dismiss"
+            aria-label={t('common.dismiss')}
             onClick={() => dismissToast(entry.id)}
           >
             <X size={14} />
@@ -178,17 +184,28 @@ export function Toasts() {
   );
 }
 
-const rtf = typeof Intl !== 'undefined' ? new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }) : null;
+const formatters = new Map<string, Intl.RelativeTimeFormat>();
+function getRtf(locale: string): Intl.RelativeTimeFormat | null {
+  if (typeof Intl === 'undefined' || !Intl.RelativeTimeFormat) return null;
+  let formatter = formatters.get(locale);
+  if (!formatter) {
+    formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+    formatters.set(locale, formatter);
+  }
+  return formatter;
+}
 
-export function relativeTime(timestamp: number, now = Date.now()): string {
+export function relativeTime(timestamp: number, now = Date.now(), localeOverride?: string): string {
+  const locale = localeOverride ?? getLocale();
   const seconds = Math.round((timestamp - now) / 1000);
   const abs = Math.abs(seconds);
-  if (abs < 45) return 'just now';
-  if (!rtf) return new Date(timestamp).toLocaleString();
+  if (abs < 45) return t('common.justNow');
+  const rtf = getRtf(locale);
+  if (!rtf) return new Date(timestamp).toLocaleString(locale);
   if (abs < 3600) return rtf.format(Math.round(seconds / 60), 'minute');
   if (abs < 86400) return rtf.format(Math.round(seconds / 3600), 'hour');
   if (abs < 86400 * 7) return rtf.format(Math.round(seconds / 86400), 'day');
-  return new Date(timestamp).toLocaleDateString(undefined, {
+  return new Date(timestamp).toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
     year: abs > 86400 * 300 ? 'numeric' : undefined,

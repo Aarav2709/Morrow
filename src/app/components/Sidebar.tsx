@@ -43,6 +43,7 @@ import { collectCards, dueCards } from '../../core/flashcards';
 import { collectTags } from '../../core/tags';
 import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
+import { t, useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import { vaultName } from '../platform/vault';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
@@ -86,11 +87,11 @@ export function PageIcon({ page }: { page: PageMeta }) {
 // the four kinds of page a person can make from the sidebar or a page's menu
 export function newPageEntries(parentId: PageId | null) {
   return [
-    { label: 'Page', icon: FileText, onSelect: () => createPage({ parentId }) },
-    { label: 'Database', icon: Table2, onSelect: () => createPage({ parentId, kind: 'database' }) },
-    { label: 'Canvas', icon: LayoutDashboard, onSelect: () => createPage({ parentId, kind: 'canvas' }) },
+    { label: t('sidebar.page'), icon: FileText, onSelect: () => createPage({ parentId }) },
+    { label: t('sidebar.database'), icon: Table2, onSelect: () => createPage({ parentId, kind: 'database' }) },
+    { label: t('sidebar.canvas'), icon: LayoutDashboard, onSelect: () => createPage({ parentId, kind: 'canvas' }) },
     {
-      label: 'From a template…',
+      label: t('sidebar.fromTemplate'),
       icon: LayoutTemplate,
       onSelect: () => openDialog({ kind: 'template', parentId }),
     },
@@ -128,6 +129,7 @@ function NavItem({
 }
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const state = useWorkspace();
   const route = useActiveRoute();
   const prefs = usePreferences();
@@ -186,7 +188,7 @@ export function Sidebar() {
           <button
             type="button"
             className="brand"
-            aria-label={`Vault ${vaultName(location)}, switch vault`}
+            aria-label={t('sidebar.switchVaultAria', { name: vaultName(location) })}
             title={location}
             onClick={(event) => {
               const anchor = event.currentTarget;
@@ -211,8 +213,8 @@ export function Sidebar() {
         <button
           type="button"
           className="icon-button"
-          aria-label="Hide sidebar"
-          title={`Hide sidebar (${formatShortcut('Mod+\\')})`}
+          aria-label={t('sidebar.collapseSidebar')}
+          title={`${t('sidebar.collapseSidebar')} (${formatShortcut('Mod+\\')})`}
           onClick={() => runAction('view.sidebar')}
         >
           <PanelLeftClose size={16} strokeWidth={1.75} />
@@ -222,48 +224,48 @@ export function Sidebar() {
       <nav className="sidebar-nav" aria-label="Main">
         <NavItem
           icon={Search}
-          label="Search"
+          label={t('common.search')}
           hint={formatShortcut('Mod+K')}
           onClick={() => setUi({ palette: true, mobileSidebar: false })}
         />
-        <NavItem icon={CalendarDays} label="Today" active={isToday} onClick={go(() => openToday())} />
+        <NavItem icon={CalendarDays} label={t('sidebar.today')} active={isToday} onClick={go(() => openToday())} />
         <NavItem
           icon={Home}
-          label="Home"
+          label={t('settings.general.startPages.home')}
           active={route.name === 'home'}
           onClick={go(() => navigate({ name: 'home' }))}
         />
         <NavItem
           icon={CheckSquare}
-          label="Tasks"
+          label={t('sidebar.tasks')}
           active={route.name === 'tasks'}
           count={openTasks}
           onClick={go(() => navigate({ name: 'tasks' }))}
         />
         <NavItem
           icon={Hash}
-          label="Tags"
+          label={t('sidebar.tags')}
           active={route.name === 'tags' || route.name === 'tag'}
           count={tagCount}
           onClick={go(() => navigate({ name: 'tags' }))}
         />
         <NavItem
           icon={GraduationCap}
-          label="Review"
+          label={t('sidebar.review')}
           active={route.name === 'review'}
           count={dueCount}
           onClick={go(() => navigate({ name: 'review' }))}
         />
         <NavItem
           icon={Network}
-          label="Graph"
+          label={t('sidebar.graph')}
           active={route.name === 'graph'}
           onClick={go(() => navigate({ name: 'graph', focus: null }))}
         />
         {prefs.assistant && desktop?.assistant && (
           <NavItem
             icon={Sparkles}
-            label="Assistant"
+            label={t('settings.sections.assistant')}
             active={prefs.assistantOpen}
             onClick={() => setPreferences({ assistantOpen: !prefs.assistantOpen })}
           />
@@ -272,8 +274,8 @@ export function Sidebar() {
 
       <div className="sidebar-scroll">
         {favorites.length > 0 && (
-          <section className="sidebar-section" aria-label="Favourites">
-            <h2 className="sidebar-heading">Favourites</h2>
+          <section className="sidebar-section" aria-label={t('sidebar.favorites')}>
+            <h2 className="sidebar-heading">{t('sidebar.favorites')}</h2>
             <ul className="flat-list">
               {favorites.map((page) => {
                 return (
@@ -287,7 +289,7 @@ export function Sidebar() {
                         <PageIcon page={page} />
                       </span>
                       <span className="tree-title">{displayTitle(page)}</span>
-                      <Star size={12} className="favorite-mark" aria-label="Favourite" />
+                      <Star size={12} className="favorite-mark" aria-label={t('sidebar.favorites')} />
                     </button>
                   </li>
                 );
@@ -296,15 +298,15 @@ export function Sidebar() {
           </section>
         )}
 
-        <section className="sidebar-section" aria-label="Pages">
+        <section className="sidebar-section" aria-label={t('sidebar.pagesHeading')}>
           <div className="sidebar-heading-row">
-            <h2 className="sidebar-heading">Pages</h2>
+            <h2 className="sidebar-heading">{t('sidebar.pagesHeading')}</h2>
             <button
               type="button"
               className="icon-button small"
-              aria-label="New page, database or canvas"
+              aria-label={t('sidebar.newPageAria')}
               aria-haspopup="menu"
-              title={`New (${formatShortcut('Alt+N')} for a page)`}
+              title={t('sidebar.newPageTitle', { shortcut: formatShortcut('Alt+N') })}
               onClick={(event) => setNewMenu(event.currentTarget)}
             >
               <Plus size={15} strokeWidth={1.75} />
@@ -312,9 +314,9 @@ export function Sidebar() {
           </div>
           {live.length === 0 ? (
             <div className="sidebar-empty">
-              <p>No pages yet.</p>
+              <p>{t('sidebar.noPages')}</p>
               <button type="button" className="link-button" onClick={() => createPage()}>
-                Create your first page
+                {t('sidebar.createFirstPage')}
               </button>
             </div>
           ) : (
@@ -324,26 +326,26 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar-footer">
-        <NavItem icon={FileUp} label="Import" onClick={() => void importMarkdown()} />
+        <NavItem icon={FileUp} label={t('sidebar.import')} onClick={() => void importMarkdown()} />
         <NavItem
           icon={Trash2}
-          label="Trash"
+          label={t('sidebar.trash')}
           active={route.name === 'trash'}
           count={trashCount}
           onClick={go(() => navigate({ name: 'trash' }))}
         />
-        <NavItem icon={Settings} label="Settings" onClick={() => openDialog({ kind: 'settings' })} />
+        <NavItem icon={Settings} label={t('settings.title')} onClick={() => openDialog({ kind: 'settings' })} />
       </div>
       {newMenu && (
-        <Menu anchor={newMenu} label="New" entries={newPageEntries(null)} onClose={() => setNewMenu(null)} />
+        <Menu anchor={newMenu} label={t('common.add')} entries={newPageEntries(null)} onClose={() => setNewMenu(null)} />
       )}
       {vaultMenu && (
         <Menu
           anchor={vaultMenu.anchor}
-          label="Vaults"
+          label={t('sidebar.vaultsMenu')}
           onClose={() => setVaultMenu(null)}
           entries={[
-            { heading: 'Vaults' },
+            { heading: t('sidebar.vaultsHeading') },
             ...vaultMenu.recent
               .filter((item) => item.exists)
               .map((item) => ({
@@ -354,11 +356,11 @@ export function Sidebar() {
                 },
               })),
             { separator: true },
-            { label: 'Open another folder…', icon: FolderOpen, onSelect: () => void chooseVaultFolder() },
-            { label: 'Create a new vault', icon: FolderPlus, onSelect: () => void createVault() },
-            { label: 'Show vault folder', icon: FolderOpen, onSelect: () => void desktop?.vault?.reveal('') },
+            { label: t('sidebar.openAnotherFolder'), icon: FolderOpen, onSelect: () => void chooseVaultFolder() },
+            { label: t('sidebar.createNewVault'), icon: FolderPlus, onSelect: () => void createVault() },
+            { label: t('sidebar.showVaultFolder'), icon: FolderOpen, onSelect: () => void desktop?.vault?.reveal('') },
             { separator: true },
-            { label: 'Home', icon: Home, onSelect: () => navigate({ name: 'home' }) },
+            { label: t('settings.general.startPages.home'), icon: Home, onSelect: () => navigate({ name: 'home' }) },
           ]}
         />
       )}
@@ -551,7 +553,7 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
       <ul
         className="page-tree"
         role="tree"
-        aria-label="Pages"
+        aria-label={t('sidebar.pagesHeading')}
         ref={treeRef}
         onKeyDown={onKeyDown}
         onDragEnd={() => setDrop(null)}
@@ -561,7 +563,7 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
       {menu && (
         <Menu
           anchor={menu.anchor}
-          label="Page options"
+          label={t('pageMenu.pageOptions')}
           entries={pageMenuEntries(menu.id, () => setUi({ renaming: menu.id }))}
           onClose={() => setMenu(null)}
         />
@@ -663,7 +665,8 @@ const TreeRow = memo(function TreeRow(props: RowProps) {
             type="button"
             tabIndex={-1}
             className="icon-button tiny"
-            aria-label={`Options for ${displayTitle(page)}`}
+            aria-label={t('sidebar.pageOptions', { title: displayTitle(page) })}
+            title={t('sidebar.pageOptions', { title: displayTitle(page) })}
             onClick={(event) => {
               event.stopPropagation();
               props.onMenu(event.currentTarget);
@@ -675,7 +678,8 @@ const TreeRow = memo(function TreeRow(props: RowProps) {
             type="button"
             tabIndex={-1}
             className="icon-button tiny"
-            aria-label={`Add a subpage to ${displayTitle(page)}`}
+            aria-label={t('sidebar.addSubpageTo', { title: displayTitle(page) })}
+            title={t('sidebar.addSubpageTo', { title: displayTitle(page) })}
             onClick={(event) => {
               event.stopPropagation();
               createPage({ parentId: page.id });

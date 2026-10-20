@@ -1,6 +1,7 @@
 import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { commitEditors } from '../editor/commits';
+import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import type { CloudFolder, SyncStatus } from '../platform/desktop';
 import { copyVaultFrom, syncWith } from '../sync';
@@ -32,6 +33,7 @@ function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
 
 // keeps this vault the same on your own computers on the same network, with no server in between
 export function NetworkSettings() {
+  const { t } = useTranslation();
   const [status, refresh] = useSyncStatus();
   const [busy, setBusy] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
@@ -45,38 +47,38 @@ export function NetworkSettings() {
     if (result.ok)
       toast(
         result.received === 0
-          ? `Up to date with ${peerName}.`
-          : `Received ${result.received} change${result.received === 1 ? '' : 's'} from ${peerName}.`,
+          ? t('settings.sync.upToDate', { name: peerName })
+          : t('settings.sync.receivedChanges', { count: result.received, name: peerName }),
       );
-    else toast(result.error ?? 'Sync failed.', { tone: 'error', durationMs: 10_000 });
+    else toast(result.error ?? t('settings.sync.syncFailed'), { tone: 'error', durationMs: 10_000 });
   };
 
   const copyHere = async (peerId: string) => {
     const dir = await desktop?.vault?.choose();
     if (!dir) return;
     const result = await copyVaultFrom(peerId, dir);
-    if (!result.ok) toast(result.error ?? 'The vault could not be copied.', { tone: 'error' });
+    if (!result.ok) toast(result.error ?? t('settings.sync.vaultCopyFailed'), { tone: 'error' });
   };
 
   return (
     <SettingsGroup
-      title="Your computers"
-      help="Encrypted and direct, with no server. When a page changed on both, both versions are kept."
+      title={t('settings.sync.networkTitle')}
+      help={t('settings.sync.networkHelp')}
     >
       <SettingRow
-        label="Sync on this network"
-        help="Pair once, then sync whenever both are on the same network."
+        label={t('settings.sync.networkSync')}
+        help={t('settings.sync.networkSyncHelp')}
       >
         <Switch
-          label="Sync on this network"
+          label={t('settings.sync.networkSync')}
           checked={status.enabled}
           onChange={(enabled) => void desktop?.sync?.enable(enabled).then(refresh)}
         />
       </SettingRow>
-      <SettingRow label="This computer's name">
+      <SettingRow label={t('settings.sync.computerName')}>
         <input
           className="text-input small settings-input"
-          aria-label="Name of this computer"
+          aria-label={t('settings.sync.computerNameAria')}
           value={name ?? status.name}
           onChange={(event) => setName(event.target.value)}
           onBlur={() => {
@@ -94,8 +96,8 @@ export function NetworkSettings() {
               <Laptop size={14} /> {peer.name}
             </span>
           }
-          help={`${peer.online ? 'On this network' : 'Not seen lately'}, ${
-            peer.lastSync ? `synced ${relativeTime(peer.lastSync)}` : 'never synced'
+          help={`${peer.online ? t('settings.sync.onNetwork') : t('settings.sync.notSeenLately')}, ${
+            peer.lastSync ? t('settings.sync.synced', { time: relativeTime(peer.lastSync) }) : t('settings.sync.neverSynced')
           }`}
         >
           <button
@@ -104,31 +106,31 @@ export function NetworkSettings() {
             disabled={!peer.reachable || !status.enabled || busy !== null}
             onClick={() => void syncNow(peer.id, peer.name)}
           >
-            <RefreshCw size={13} className={busy === peer.id ? 'spin' : ''} /> Sync now
+            <RefreshCw size={13} className={busy === peer.id ? 'spin' : ''} /> {t('settings.sync.syncNow')}
           </button>
           <button
             type="button"
             className="button small"
             disabled={!peer.reachable || !status.enabled}
-            title="Copy the vault open on that computer into a new folder here"
+            title={t('settings.sync.copyVaultTitle')}
             onClick={() => void copyHere(peer.id)}
           >
-            Copy its vault
+            {t('settings.sync.copyVault')}
           </button>
           <button
             type="button"
             className="icon-button small"
-            aria-label={`Forget ${peer.name}`}
-            title="Forget this computer"
+            aria-label={t('settings.sync.forgetComputer', { name: peer.name })}
+            title={t('settings.sync.forgetTitle')}
             onClick={() => void desktop?.sync?.forget(peer.id).then(refresh)}
           >
             <Trash2 size={14} />
           </button>
         </SettingRow>
       ))}
-      <SettingRow label="Add a computer" help="Each shows a code the other one types in.">
+      <SettingRow label={t('settings.sync.addComputer')} help={t('settings.sync.addComputerHelp')}>
         <button type="button" className="button small" onClick={() => openDialog({ kind: 'pair' })}>
-          <Link2 size={13} /> Pair
+          <Link2 size={13} /> {t('settings.sync.pairButton')}
         </button>
       </SettingRow>
     </SettingsGroup>
@@ -138,6 +140,7 @@ export function NetworkSettings() {
 // a vault is a plain folder, so dropbox, icloud, google drive, onedrive or syncthing can carry it between
 // computers. morrow only finds their folders and copies the vault in, their own apps do the syncing
 export function CloudSettings() {
+  const { t } = useTranslation();
   const [cloud, setCloud] = useState<{ folders: CloudFolder[]; inside: CloudFolder | null } | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -148,12 +151,13 @@ export function CloudSettings() {
   }, []);
   if (!desktop?.vault || !cloud) return null;
 
-  const copyInto = (dir: string | null | undefined, where = 'that folder') => {
+  const copyInto = (dir: string | null | undefined, where?: string) => {
     if (!dir) return;
+    const dest = where ?? t('settings.sync.thatFolder');
     confirmAction({
-      title: `Move this vault to ${where}?`,
-      body: `Morrow copies the vault, history included, into ${dir} and opens it from there. The current folder stays as it is, so you can delete it once you have checked the copy.`,
-      confirmLabel: 'Copy and open',
+      title: t('settings.sync.moveConfirmTitle', { where: dest }),
+      body: t('settings.sync.moveConfirmBody', { dir }),
+      confirmLabel: t('settings.sync.copyAndOpenButton'),
       onConfirm: () => void copyAndOpen(dir),
     });
   };
@@ -164,7 +168,7 @@ export function CloudSettings() {
       await getSession().flush();
       const result = await desktop!.vault!.copyInto(dir);
       if (result.ok && result.path) await switchVault(result.path);
-      else toast(result.error ?? 'The vault could not be copied.', { tone: 'error' });
+      else toast(result.error ?? t('settings.sync.vaultCopyFailed'), { tone: 'error' });
     } finally {
       setBusy(false);
     }
@@ -172,17 +176,17 @@ export function CloudSettings() {
 
   return (
     <SettingsGroup
-      title="Cloud folder"
-      help="Their app does the syncing, Morrow never connects to it. Conflicted copies get a banner to compare them."
+      title={t('settings.sync.cloudTitle')}
+      help={t('settings.sync.cloudHelp')}
     >
       {cloud.inside ? (
         <SettingRow
           label={
             <span className="settings-peer">
-              <Check size={14} className="settings-ok" /> Syncing through {cloud.inside.provider}
+              <Check size={14} className="settings-ok" /> {t('settings.sync.syncingThrough', { provider: cloud.inside.provider })}
             </span>
           }
-          help="Open this same folder on your other computers."
+          help={t('settings.sync.openSameFolder')}
         />
       ) : (
         cloud.folders.map((folder) => (
@@ -201,18 +205,18 @@ export function CloudSettings() {
               disabled={busy}
               onClick={() => copyInto(folder.path, folder.provider)}
             >
-              Move vault here
+              {t('settings.sync.moveVaultHere')}
             </button>
           </SettingRow>
         ))
       )}
       {!cloud.inside && (
         <SettingRow
-          label={cloud.folders.length ? 'Another folder' : 'A synced folder'}
+          label={cloud.folders.length ? t('settings.sync.anotherFolder') : t('settings.sync.syncedFolder')}
           help={
             cloud.folders.length
-              ? 'Any folder a sync app keeps up to date.'
-              : 'No cloud app was found. Pick any folder one syncs.'
+              ? t('settings.sync.anotherFolderHelp')
+              : t('settings.sync.syncedFolderHelp')
           }
         >
           <button
@@ -221,7 +225,7 @@ export function CloudSettings() {
             disabled={busy}
             onClick={() => void desktop?.vault?.choose().then((dir) => copyInto(dir))}
           >
-            Choose…
+            {t('settings.sync.chooseFolder')}
           </button>
         </SettingRow>
       )}
@@ -230,6 +234,7 @@ export function CloudSettings() {
 }
 
 export function PairDialog() {
+  const { t } = useTranslation();
   const [status] = useSyncStatus(1500);
   const [code, setCode] = useState<string | null>(null);
   const [entered, setEntered] = useState('');
@@ -258,7 +263,7 @@ export function PairDialog() {
     const result = await desktop?.sync?.pair(chosen, entered);
     setBusy(false);
     if (result?.ok) {
-      toast(`Paired with ${result.name}. Turn on sync there too, then press Sync now.`);
+      toast(t('toasts.pairedWithTurnSync', { name: result.name ?? '' }));
       closeDialog();
     } else setError(result?.error ?? 'Pairing failed.');
   };

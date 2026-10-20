@@ -40,6 +40,7 @@ import { navigate } from '../router';
 import { getUi, openDialog, setUi } from '../ui';
 import { childrenOf } from '../../core/tree';
 import { getSession, getState } from '../workspace';
+import { t } from '../i18n';
 import type { MenuEntry } from './Menu';
 
 // one menu definition for the sidebar row and the page header
@@ -47,56 +48,56 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
   const page = getState().pages[pageId];
   if (!page) return [];
   return [
-    { label: 'Add subpage', icon: Plus, onSelect: () => createPage({ parentId: pageId }) },
-    { label: 'Rename', icon: Pencil, shortcut: 'F2', onSelect: rename },
+    { label: t('pageMenu.addSubpage'), icon: Plus, onSelect: () => createPage({ parentId: pageId }) },
+    { label: t('pageMenu.rename'), icon: Pencil, shortcut: 'F2', onSelect: rename },
     {
-      label: page.icon ? 'Change icon' : 'Add icon',
+      label: page.icon ? t('pageMenu.changeIcon') : t('pageMenu.addIcon'),
       icon: Smile,
       onSelect: () => openDialog({ kind: 'icon', pageId }),
     },
-    { label: 'Page history', icon: History, onSelect: () => openDialog({ kind: 'history', pageId }) },
+    { label: t('pageMenu.pageHistory'), icon: History, onSelect: () => openDialog({ kind: 'history', pageId }) },
     page.favorite
-      ? { label: 'Remove from favourites', icon: StarOff, onSelect: () => toggleFavorite(pageId) }
-      : { label: 'Add to favourites', icon: Star, onSelect: () => toggleFavorite(pageId) },
-    { label: 'Duplicate', icon: Copy, onSelect: () => duplicatePage(pageId) },
-    { label: 'Move to…', icon: ArrowRightLeft, onSelect: () => openDialog({ kind: 'move', pageId }) },
-    { label: 'Open local graph', icon: Network, onSelect: () => navigate({ name: 'graph', focus: pageId }) },
+      ? { label: t('pageMenu.removeFromFavorites'), icon: StarOff, onSelect: () => toggleFavorite(pageId) }
+      : { label: t('pageMenu.addToFavorites'), icon: Star, onSelect: () => toggleFavorite(pageId) },
+    { label: t('pageMenu.duplicate'), icon: Copy, onSelect: () => duplicatePage(pageId) },
+    { label: t('pageMenu.moveTo'), icon: ArrowRightLeft, onSelect: () => openDialog({ kind: 'move', pageId }) },
+    { label: t('pageMenu.openLocalGraph'), icon: Network, onSelect: () => navigate({ name: 'graph', focus: pageId }) },
     ...(page.kind === 'page'
-      ? [{ label: 'Save as template', icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }]
+      ? [{ label: t('pageMenu.saveAsTemplate'), icon: LayoutTemplate, onSelect: () => saveAsTemplate(pageId) }]
       : []),
     // a folder of notes becomes a database of them, like a notion database sitting on the folder
     ...(page.kind === 'page' && !page.dailyDate && !page.encrypted && !getSession().unreadable.has(pageId)
       ? [
           {
             label: childrenOf(getState().pages, pageId).length
-              ? 'Turn subpages into a database'
-              : 'Turn into database',
+              ? t('pageMenu.turnSubpagesIntoDatabase')
+              : t('pageMenu.turnIntoDatabase'),
             icon: Database,
             onSelect: () => turnIntoDatabase(pageId),
           },
         ]
       : []),
     ...(page.kind === 'database'
-      ? [{ label: 'Turn into page', icon: FileText, onSelect: () => turnIntoPage(pageId) }]
+      ? [{ label: t('pageMenu.turnIntoPage'), icon: FileText, onSelect: () => turnIntoPage(pageId) }]
       : []),
     ...(desktop?.vault && getSession().pathOf(pageId) !== null
-      ? [{ label: 'Show in folder', icon: FolderOpen, onSelect: () => revealPage(pageId) }]
+      ? [{ label: t('pageMenu.showInFolder'), icon: FolderOpen, onSelect: () => revealPage(pageId) }]
       : []),
     ...(page.kind === 'page' && getSession().supportsEncryption
       ? page.encrypted
         ? getSession().unreadable.has(pageId)
           ? []
           : [
-              { label: 'Lock now', icon: Lock, onSelect: () => void getSession().lockPage(pageId) },
+              { label: t('pageMenu.lockNow'), icon: Lock, onSelect: () => void getSession().lockPage(pageId) },
               {
-                label: 'Remove encryption',
+                label: t('pageMenu.removeEncryption'),
                 icon: LockOpen,
                 onSelect: () => void getSession().unprotectPage(pageId),
               },
             ]
         : [
             {
-              label: 'Encrypt with a password…',
+              label: t('pageMenu.encryptWithPassword'),
               icon: Lock,
               onSelect: () => openDialog({ kind: 'encrypt', pageId }),
             },
@@ -105,20 +106,20 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     ...(page.kind === 'page' && !getSession().unreadable.has(pageId)
       ? [
           getUi().sourceMode === pageId
-            ? { label: 'Back to the editor', icon: FileText, onSelect: () => setUi({ sourceMode: null }) }
-            : { label: 'Edit as Markdown', icon: FileCode2, onSelect: () => setUi({ sourceMode: pageId }) },
+            ? { label: t('pageMenu.backToEditor'), icon: FileText, onSelect: () => setUi({ sourceMode: null }) }
+            : { label: t('pageMenu.editAsMarkdown'), icon: FileCode2, onSelect: () => setUi({ sourceMode: pageId }) },
         ]
       : []),
     { separator: true },
-    { label: 'Export as Markdown', icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
+    { label: t('pageMenu.exportMarkdown'), icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
     ...(desktop && page.kind !== 'canvas'
-      ? [{ label: 'Export as PDF', icon: FileText, onSelect: () => void exportPagePdf(pageId) }]
+      ? [{ label: t('pageMenu.exportPdf'), icon: FileText, onSelect: () => void exportPagePdf(pageId) }]
       : []),
-    { label: 'Publish as a website', icon: Globe, onSelect: () => void publishSite(pageId) },
-    { label: 'Import Markdown here', icon: FileUp, onSelect: () => void importMarkdown(pageId) },
+    { label: t('pageMenu.publishWebsite'), icon: Globe, onSelect: () => void publishSite(pageId) },
+    { label: t('pageMenu.importMarkdownHere'), icon: FileUp, onSelect: () => void importMarkdown(pageId) },
     { separator: true },
     {
-      label: 'Move to trash',
+      label: t('pageMenu.moveToTrash'),
       icon: Trash2,
       danger: true,
       shortcut: 'Del',

@@ -5,6 +5,8 @@ import { formatShortcut } from '../actions';
 import { AssistantSettings } from '../assistant/AssistantSettings';
 import { previewCustomCss, saveCustomCss, useCustomCss } from '../customCss';
 import { openHref } from '../editor/EditorMenus';
+import { SUPPORTED_LOCALES, useTranslation } from '../i18n';
+import type { SupportedLocale, TranslationKey } from '../i18n';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
 import {
   deleteUnusedFiles,
@@ -16,7 +18,7 @@ import {
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
-import { ACCENT_LABELS, ACCENTS, setPreferences, usePreferences } from '../platform/preferences';
+import { ACCENTS, setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -24,17 +26,24 @@ import { chooseVaultFolder } from '../vaults';
 import { checkForUpdate, installUpdate, useUpdateState } from '../updates';
 import { getSession } from '../workspace';
 import { Dialog, Logo, Switch } from './primitives';
+import { Select } from './Select';
 import { SettingRow, SettingsGroup } from './SettingsRows';
 import { CloudSettings, NetworkSettings } from './SyncSettings';
 import { SpellingSetting } from './SpellingSetting';
 
-const SECTIONS: Array<{ id: SettingsSection; label: string; icon: LucideIcon }> = [
-  { id: 'general', label: 'General', icon: SlidersHorizontal },
-  { id: 'appearance', label: 'Appearance', icon: Palette },
-  { id: 'assistant', label: 'Assistant', icon: MessageSquareText },
-  { id: 'sync', label: 'Sync', icon: RefreshCw },
-  { id: 'vault', label: 'Vault and files', icon: HardDrive },
-  { id: 'about', label: 'About', icon: Info },
+interface SectionDef {
+  id: SettingsSection;
+  key: TranslationKey;
+  icon: LucideIcon;
+}
+
+const SECTIONS: SectionDef[] = [
+  { id: 'general', key: 'settings.sections.general', icon: SlidersHorizontal },
+  { id: 'appearance', key: 'settings.sections.appearance', icon: Palette },
+  { id: 'assistant', key: 'settings.sections.assistant', icon: MessageSquareText },
+  { id: 'sync', key: 'settings.sections.sync', icon: RefreshCw },
+  { id: 'vault', key: 'settings.sections.vault', icon: HardDrive },
+  { id: 'about', key: 'settings.sections.about', icon: Info },
 ];
 
 function Segmented<T extends string>({
@@ -67,14 +76,22 @@ function Segmented<T extends string>({
 }
 
 export function SettingsDialog({ section }: { section?: SettingsSection }) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState<SettingsSection>(section ?? 'general');
   const shown = SECTIONS.find((item) => item.id === current) ?? SECTIONS[0]!;
   return (
-    <Dialog title="Settings" size="large" className="settings-dialog" hideTitle onClose={closeDialog}>
-      <nav className="settings-nav" aria-label="Settings">
-        <p className="settings-nav-title">Settings</p>
+    <Dialog
+      title={t('settings.title')}
+      size="large"
+      className="settings-dialog"
+      hideTitle
+      onClose={closeDialog}
+    >
+      <nav className="settings-nav" aria-label={t('settings.title')}>
+        <p className="settings-nav-title">{t('settings.title')}</p>
         {SECTIONS.map((item) => {
           const Icon = item.icon;
+          const label = t(item.key);
           return (
             <button
               key={item.id}
@@ -83,15 +100,20 @@ export function SettingsDialog({ section }: { section?: SettingsSection }) {
               aria-current={item.id === current ? 'page' : undefined}
               onClick={() => setCurrent(item.id)}
             >
-              <Icon size={15} /> {item.label}
+              <Icon size={15} /> {label}
             </button>
           );
         })}
       </nav>
       <div className="settings-page" key={current}>
         <header className="settings-page-head">
-          <h3>{shown.label}</h3>
-          <button type="button" className="icon-button" aria-label="Close settings" onClick={closeDialog}>
+          <h3>{t(shown.key)}</h3>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={t('settings.closeSettings')}
+            onClick={closeDialog}
+          >
             <X size={16} />
           </button>
         </header>
@@ -112,15 +134,27 @@ export function SettingsDialog({ section }: { section?: SettingsSection }) {
 }
 
 function GeneralSettings() {
+  const { t } = useTranslation();
   const prefs = usePreferences();
   return (
     <SettingsGroup>
+      <SettingRow label={t('settings.general.language')} help={t('settings.general.languageHelp')}>
+        <Select<SupportedLocale>
+          label={t('settings.general.language')}
+          value={prefs.locale}
+          options={SUPPORTED_LOCALES.map((locale) => ({
+            value: locale.id,
+            label: locale.label,
+          }))}
+          onChange={(locale) => setPreferences({ locale })}
+        />
+      </SettingRow>
       <SpellingSetting />
-      <SettingRow label="Your name" help="The home page greets you with it.">
+      <SettingRow label={t('settings.general.yourName')} help={t('settings.general.yourNameHelp')}>
         <input
           className="text-input small settings-input"
-          placeholder="Optional"
-          aria-label="Your name"
+          placeholder={t('settings.general.yourNamePlaceholder')}
+          aria-label={t('settings.general.yourName')}
           maxLength={60}
           defaultValue={prefs.name}
           onBlur={(event) => setPreferences({ name: event.target.value.trim() })}
@@ -128,16 +162,19 @@ function GeneralSettings() {
         />
       </SettingRow>
       <SettingRow
-        label="When Morrow opens"
-        help={`${formatShortcut('Alt+D')} opens today's note, ${formatShortcut('Mod+Alt+M')} jots into it from any app.`}
+        label={t('settings.general.whenOpens')}
+        help={t('settings.general.whenOpensHelp', {
+          shortcutDaily: formatShortcut('Alt+D'),
+          shortcutCapture: formatShortcut('Mod+Alt+M'),
+        })}
       >
         <Segmented<StartPage>
-          label="When Morrow opens"
+          label={t('settings.general.whenOpens')}
           value={prefs.startPage}
           options={[
-            ['today', "Today's note"],
-            ['home', 'Home'],
-            ['last', 'Where I left off'],
+            ['today', t('settings.general.startPages.today')],
+            ['home', t('settings.general.startPages.home')],
+            ['last', t('settings.general.startPages.last')],
           ]}
           onChange={(startPage) => setPreferences({ startPage })}
         />
@@ -147,66 +184,77 @@ function GeneralSettings() {
 }
 
 function AppearanceSettings() {
+  const { t } = useTranslation();
   const prefs = usePreferences();
   return (
     <>
       <SettingsGroup>
-        <SettingRow label="Theme">
+        <SettingRow label={t('settings.appearance.theme')}>
           <Segmented<ThemePreference>
-            label="Theme"
+            label={t('settings.appearance.theme')}
             value={prefs.theme}
             options={[
-              ['system', 'System'],
-              ['light', 'Light'],
-              ['dark', 'Dark'],
+              ['system', t('settings.appearance.themes.system')],
+              ['light', t('settings.appearance.themes.light')],
+              ['dark', t('settings.appearance.themes.dark')],
             ]}
             onChange={(theme) => setPreferences({ theme })}
           />
         </SettingRow>
-        <SettingRow label="Accent colour">
-          <div className="accent-swatches" role="radiogroup" aria-label="Accent colour">
-            {ACCENTS.map((accent) => (
-              <button
-                key={accent}
-                type="button"
-                role="radio"
-                aria-checked={prefs.accent === accent}
-                aria-label={ACCENT_LABELS[accent]}
-                title={ACCENT_LABELS[accent]}
-                className={`accent-swatch accent-${accent}`}
-                onClick={() => setPreferences({ accent })}
-              />
-            ))}
+        <SettingRow label={t('settings.appearance.accentColour')}>
+          <div
+            className="accent-swatches"
+            role="radiogroup"
+            aria-label={t('settings.appearance.accentColour')}
+          >
+            {ACCENTS.map((accent) => {
+              const label = t(`settings.appearance.accents.${accent}` as TranslationKey);
+              return (
+                <button
+                  key={accent}
+                  type="button"
+                  role="radio"
+                  aria-checked={prefs.accent === accent}
+                  aria-label={label}
+                  title={label}
+                  className={`accent-swatch accent-${accent}`}
+                  onClick={() => setPreferences({ accent })}
+                />
+              );
+            })}
           </div>
         </SettingRow>
-        <SettingRow label="Colourful pages" help="Coloured headings, lists, icons and tags.">
+        <SettingRow
+          label={t('settings.appearance.colourfulPages')}
+          help={t('settings.appearance.colourfulPagesHelp')}
+        >
           <Switch
-            label="Colourful pages"
+            label={t('settings.appearance.colourfulPages')}
             checked={prefs.colorful}
             onChange={(colorful) => setPreferences({ colorful })}
           />
         </SettingRow>
       </SettingsGroup>
-      <SettingsGroup title="Writing">
-        <SettingRow label="Font">
+      <SettingsGroup title={t('settings.appearance.writingTitle')}>
+        <SettingRow label={t('settings.appearance.font')}>
           <Segmented<WritingFont>
-            label="Writing font"
+            label={t('settings.appearance.font')}
             value={prefs.font}
             options={[
-              ['serif', 'Serif'],
-              ['sans', 'Sans'],
-              ['mono', 'Mono'],
+              ['serif', t('settings.appearance.fonts.serif')],
+              ['sans', t('settings.appearance.fonts.sans')],
+              ['mono', t('settings.appearance.fonts.mono')],
             ]}
             onChange={(font) => setPreferences({ font })}
           />
         </SettingRow>
-        <SettingRow label="Page width">
+        <SettingRow label={t('settings.appearance.pageWidth')}>
           <Segmented<PageWidth>
-            label="Page width"
+            label={t('settings.appearance.pageWidth')}
             value={prefs.width}
             options={[
-              ['comfortable', 'Comfortable'],
-              ['wide', 'Wide'],
+              ['comfortable', t('settings.appearance.widths.comfortable')],
+              ['wide', t('settings.appearance.widths.wide')],
             ]}
             onChange={(width) => setPreferences({ width })}
           />
@@ -219,15 +267,20 @@ function AppearanceSettings() {
 
 // styles of your own, saved in the vault and shown as you type
 function CustomCss() {
+  const { t } = useTranslation();
   const saved = useCustomCss();
   const [draft, setDraft] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const text = draft ?? saved;
   return (
     <SettingsGroup>
-      <SettingRow label="Custom CSS" help="Restyle anything. Saved in your vault as .morrow/style.css.">
+      <SettingRow label={t('settings.appearance.customCss')} help={t('settings.appearance.customCssHelp')}>
         <button type="button" className="button small" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? 'Close' : saved.trim() ? 'Edit' : 'Add'}
+          {open
+            ? t('settings.appearance.customCssClose')
+            : saved.trim()
+              ? t('settings.appearance.customCssEdit')
+              : t('settings.appearance.customCssAdd')}
         </button>
       </SettingRow>
       {open && (
@@ -235,7 +288,7 @@ function CustomCss() {
           <textarea
             className="text-input css-input"
             spellCheck={false}
-            aria-label="Custom CSS"
+            aria-label={t('settings.appearance.customCss')}
             placeholder={'.page-title { letter-spacing: -0.03em; }\n:root { --accent: #e5484d; }'}
             value={text}
             onChange={(event) => {
@@ -253,7 +306,7 @@ function CustomCss() {
                 previewCustomCss(saved);
               }}
             >
-              Discard
+              {t('settings.appearance.customCssDiscard')}
             </button>
             <button
               type="button"
@@ -263,12 +316,12 @@ function CustomCss() {
                 void saveCustomCss(text)
                   .then(() => {
                     setDraft(null);
-                    toast('Custom CSS saved.');
+                    toast(t('settings.appearance.customCssSaved'));
                   })
-                  .catch(() => toast('Could not save the CSS.', { tone: 'error' }))
+                  .catch(() => toast(t('settings.appearance.customCssFailed'), { tone: 'error' }))
               }
             >
-              Save
+              {t('settings.appearance.customCssSave')}
             </button>
           </div>
         </div>
@@ -278,6 +331,7 @@ function CustomCss() {
 }
 
 function VaultSettings() {
+  const { t } = useTranslation();
   const vault = getSession().location;
   const [legacy, setLegacy] = useState(0);
   const [files, setFiles] = useState<{ count: number; bytes: number; unused: number } | null>(null);
@@ -300,21 +354,24 @@ function VaultSettings() {
 
   return (
     <>
-      <SettingsGroup help="Every page is a Markdown file in this folder. Open it in any app or back it up however you like.">
-        <SettingRow label="Vault folder" help={<span className="settings-path">{vault}</span>}>
+      <SettingsGroup help={t('settings.vault.groupHelp')}>
+        <SettingRow
+          label={t('settings.vault.currentFolder')}
+          help={<span className="settings-path">{vault}</span>}
+        >
           {desktop?.vault && (
             <button type="button" className="button small" onClick={() => void desktop?.vault?.reveal('')}>
-              Show
+              {t('settings.vault.showFolder')}
             </button>
           )}
           <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
-            Open another
+            {t('settings.vault.chooseAnother')}
           </button>
         </SettingRow>
         {legacy > 0 && (
           <SettingRow
-            label="Pages from an earlier version"
-            help={`${legacy} page${legacy === 1 ? ' is' : 's are'} still in the app's own storage.`}
+            label={t('settings.vault.copyLegacy')}
+            help={t('settings.vault.copyLegacyHelp', { count: legacy })}
           >
             <button
               type="button"
@@ -322,47 +379,47 @@ function VaultSettings() {
               onClick={() =>
                 void copyLegacyInto(getSession()).then((result) => {
                   if (result.ok) {
-                    toast(`Copied ${result.value} page${result.value === 1 ? '' : 's'} into this vault.`);
+                    toast(t('settings.vault.copyLegacySuccess', { count: result.value }));
                     setLegacy(0);
                   } else toast(result.error, { tone: 'error' });
                 })
               }
             >
-              Copy into this vault
+              {t('settings.vault.copyLegacyButton')}
             </button>
           </SettingRow>
         )}
       </SettingsGroup>
-      <SettingsGroup title="Backups and export">
-        <SettingRow label="Save a backup" help="One file with every page, the trash included.">
+      <SettingsGroup title={t('settings.vault.filesTitle')}>
+        <SettingRow label={t('settings.vault.exportBackup')} help={t('settings.vault.exportBackupHelp')}>
           <button type="button" className="button small" onClick={() => void exportBackup()}>
-            Save…
+            {t('settings.vault.saveBackupButton')}
           </button>
         </SettingRow>
-        <SettingRow label="Restore a backup" help="Adds its pages. Existing pages are never overwritten.">
+        <SettingRow label={t('settings.vault.restoreBackup')} help={t('settings.vault.restoreBackupHelp')}>
           <button type="button" className="button small" onClick={() => void restoreBackup()}>
-            Restore…
+            {t('settings.vault.restoreBackupButton')}
           </button>
         </SettingRow>
-        <SettingRow label="Export as Markdown" help="A zip of plain text files.">
+        <SettingRow label={t('settings.vault.exportMarkdown')} help={t('settings.vault.exportMarkdownHelp')}>
           <button type="button" className="button small" onClick={() => void exportAllMarkdown()}>
-            Export…
+            {t('settings.vault.exportMarkdownButton')}
           </button>
         </SettingRow>
-        <SettingRow label="Import Markdown" help="Files, folders or a Notion export.">
+        <SettingRow label={t('settings.vault.importMarkdown')} help={t('settings.vault.importMarkdownHelp')}>
           <button type="button" className="button small" onClick={() => void importMarkdown()}>
-            Import…
+            {t('settings.vault.importMarkdownButton')}
           </button>
         </SettingRow>
       </SettingsGroup>
-      <SettingsGroup title="Images and files">
+      <SettingsGroup title={t('settings.vault.unusedFiles')}>
         <SettingRow
           label={
             files
-              ? `${files.count} file${files.count === 1 ? '' : 's'}, ${formatBytes(files.bytes)}`
-              : 'Counting…'
+              ? t('settings.vault.filesCount', { count: files.count, bytes: formatBytes(files.bytes) })
+              : t('settings.vault.counting')
           }
-          help="A file stays while any page or page version uses it."
+          help={t('settings.vault.unusedFilesHelp')}
         >
           <button
             type="button"
@@ -370,7 +427,9 @@ function VaultSettings() {
             disabled={!files?.unused}
             onClick={() => void deleteUnusedFiles().then(countFiles)}
           >
-            {files?.unused ? `Remove ${files.unused} unused` : 'None unused'}
+            {files?.unused
+              ? t('settings.vault.cleanUnused', { count: files.unused })
+              : t('settings.vault.noneUnused')}
           </button>
         </SettingRow>
       </SettingsGroup>
@@ -444,29 +503,33 @@ function UpdateSettings() {
 }
 
 function AboutSettings() {
+  const { t } = useTranslation();
   return (
     <>
       <div className="settings-about">
         <Logo size={36} />
         <div>
           <strong>Morrow {desktop?.version ?? __APP_VERSION__}</strong>
-          <span>Free and open source under the Apache License 2.0.</span>
+          <span>{t('settings.about.description')}</span>
         </div>
       </div>
       <UpdateSettings />
       <SettingsGroup>
-        <SettingRow label="Keyboard shortcuts" help={`Or press ${formatShortcut('Mod+/')} anywhere.`}>
+        <SettingRow
+          label={t('settings.about.shortcuts')}
+          help={t('settings.about.shortcutsHelp', { shortcut: formatShortcut('Mod+/') })}
+        >
           <button type="button" className="button small" onClick={() => openDialog({ kind: 'shortcuts' })}>
-            Show
+            {t('settings.about.shortcutsButton')}
           </button>
         </SettingRow>
-        <SettingRow label="Source code" help="Report a problem or suggest something.">
+        <SettingRow label={t('settings.about.sourceCode')} help={t('settings.about.sourceCodeHelp')}>
           <button
             type="button"
             className="button small"
             onClick={() => openHref('https://github.com/Aarav2709/Morrow')}
           >
-            GitHub
+            {t('settings.about.gitHubButton')}
           </button>
         </SettingRow>
       </SettingsGroup>

@@ -7,6 +7,7 @@ import { foldText, searchWorkspace } from '../../core/search';
 import type { SearchSnippet } from '../../core/search';
 import { ancestorsOf, livePages } from '../../core/tree';
 import { ACTIONS, currentContext, formatShortcut } from '../actions';
+import { useTranslation } from '../i18n';
 import { navigate, openPage } from '../router';
 import { setUi } from '../ui';
 import { useWorkspace } from '../workspace';
@@ -24,6 +25,7 @@ interface Entry {
 }
 
 export function CommandPalette() {
+  const { t, tAction } = useTranslation();
   const state = useWorkspace();
   const [query, setQuery] = useState('');
   // results follow a moment behind the typing in a big vault, so every key press shows at once
@@ -51,15 +53,19 @@ export function CommandPalette() {
     const actions = ACTIONS.filter(
       (action) => action.id !== 'search' && (!action.enabled || action.enabled(context)),
     )
+      .map((action) => ({
+        action,
+        title: tAction(action.id, action.label),
+      }))
       .filter(
-        (action) =>
+        ({ action, title }) =>
           !actionQuery ||
-          foldText(`${action.label} ${action.keywords ?? ''} ${action.group}`).includes(actionQuery),
+          foldText(`${title} ${action.label} ${action.keywords ?? ''} ${action.group}`).includes(actionQuery),
       )
-      .map<Entry>((action) => ({
+      .map<Entry>(({ action, title }) => ({
         key: `action:${action.id}`,
-        group: 'Actions',
-        title: action.label,
+        group: t('common.actions'),
+        title,
         icon: action.icon,
         ...(action.shortcut ? { shortcut: formatShortcut(action.shortcut) } : {}),
         run: () => action.run(context),
@@ -74,7 +80,7 @@ export function CommandPalette() {
         .slice(0, 6)
         .map<Entry>((page) => ({
           key: `page:${page.id}`,
-          group: 'Recent',
+          group: t('actions.groups.recent'),
           title: displayTitle(page),
           icon: pageIcon(page),
           detail: ancestorsOf(state.pages, page.id).reverse().map(displayTitle).join(' / '),
@@ -85,7 +91,7 @@ export function CommandPalette() {
 
     const pages = searchWorkspace(state, searched, 30).map<Entry>((result) => ({
       key: `page:${result.page.id}`,
-      group: 'Pages',
+      group: t('actions.groups.pages'),
       title: displayTitle(result.page),
       icon: result.page ? pageIcon(result.page) : FileText,
       detail: result.path.join(' / '),
@@ -94,14 +100,14 @@ export function CommandPalette() {
     }));
     const everywhere: Entry = {
       key: 'search:all',
-      group: 'Pages',
-      title: `Search every page for “${searched.trim()}”`,
+      group: t('actions.groups.pages'),
+      title: t('actions.searchEverywhere', { query: searched.trim() }),
       icon: Search,
       shortcut: formatShortcut('Mod+Enter'),
       run: () => navigate({ name: 'search', query: searched.trim() }),
     };
     return [...pages, everywhere, ...actions.slice(0, 5)];
-  }, [searched, state]);
+  }, [searched, state, t, tAction]);
 
   const [lastQuery, setLastQuery] = useState(query);
   if (query !== lastQuery) {
@@ -148,13 +154,13 @@ export function CommandPalette() {
       className="dialog-backdrop palette-backdrop"
       onMouseDown={(event) => event.target === event.currentTarget && close()}
     >
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Search and commands">
+      <div className="palette" role="dialog" aria-modal="true" aria-label={t('actions.paletteAria')}>
         <div className="palette-input-row">
           <Search size={18} strokeWidth={1.75} className="palette-search-icon" />
           <input
             ref={inputRef}
             className="palette-input"
-            placeholder="Search pages, or type > for commands"
+            placeholder={t('actions.searchPlaceholder')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
@@ -167,7 +173,7 @@ export function CommandPalette() {
           />
         </div>
         <div className="palette-results" id="palette-results" role="listbox" ref={listRef}>
-          {entries.length === 0 && <div className="palette-empty">No pages or commands match “{query}”.</div>}
+          {entries.length === 0 && <div className="palette-empty">{t('actions.noResults')}</div>}
           {entries.map((entry, index) => {
             const Icon = entry.icon;
             const showGroup = entry.group !== entries[index - 1]?.group;
@@ -208,16 +214,16 @@ export function CommandPalette() {
         </div>
         <div className="palette-footer">
           <span>
-            <kbd className="kbd">↑</kbd> <kbd className="kbd">↓</kbd> to move
+            <kbd className="kbd">↑</kbd> <kbd className="kbd">↓</kbd> {t('actions.footer.toMove')}
           </span>
           <span>
-            <kbd className="kbd">Enter</kbd> to open
+            <kbd className="kbd">Enter</kbd> {t('actions.footer.toOpen')}
           </span>
           <span>
-            <kbd className="kbd">{formatShortcut('Mod+Enter')}</kbd> for every result
+            <kbd className="kbd">{formatShortcut('Mod+Enter')}</kbd> {t('actions.footer.forEveryResult')}
           </span>
           <span>
-            <kbd className="kbd">Esc</kbd> to close
+            <kbd className="kbd">Esc</kbd> {t('actions.footer.toClose')}
           </span>
         </div>
       </div>

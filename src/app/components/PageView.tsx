@@ -36,6 +36,7 @@ import { openSide } from '../tabs';
 import { getUi, openDialog, setUi, useUi } from '../ui';
 import { getSession, run, useWorkspace } from '../workspace';
 import type { MenuEntry } from './Menu';
+import { getLocale, t } from '../i18n';
 import { pageMenuEntries } from './pageMenu';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
@@ -97,10 +98,10 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
         <TopBar />
         <div className="empty-state">
           <FileWarning size={28} strokeWidth={1.5} />
-          <h1>This page does not exist</h1>
-          <p>It may have been deleted forever.</p>
+          <h1>{t('page.pageNotFoundTitle')}</h1>
+          <p>{t('page.pageNotFoundBody')}</p>
           <button type="button" className="button" onClick={() => navigate({ name: 'home' })}>
-            Go home
+            {t('page.goHome')}
           </button>
         </div>
       </div>
@@ -115,7 +116,10 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
   const menu = (): MenuEntry[] => {
     const words = docToPlainText(doc).split(/\s+/).filter(Boolean).length;
     const info: MenuEntry = {
-      heading: `${words.toLocaleString()} word${words === 1 ? '' : 's'} · created ${relativeTime(page.createdAt)}`,
+      heading: t('pageMenu.infoHeading', {
+        words: words.toLocaleString(getLocale()),
+        time: relativeTime(page.createdAt),
+      }),
     };
     if (trashed) return [info];
     return [info, ...pageMenuEntries(id, () => titleRef.current?.focus())];
@@ -140,13 +144,13 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
         <TopBar page={page} editing={editing} menu={menu} />
         {trashed && (
           <div className="banner" role="note">
-            <span>This canvas is in the trash.</span>
+            <span>{t('page.canvasInTrash')}</span>
             <button
               type="button"
               className="button small"
               onClick={() => restorePage(findTrashedAncestor(state.pages, id) ?? id)}
             >
-              <RotateCcw size={14} /> Restore
+              <RotateCcw size={14} /> {t('page.restore')}
             </button>
           </div>
         )}
@@ -169,7 +173,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
       <div className="page-scroll">
         {trashed && (
           <div className="banner" role="note">
-            <span>This page is in the trash.</span>
+            <span>{t('page.pageInTrash')}</span>
             <button
               type="button"
               className="button small"
@@ -182,7 +186,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
               className="button small danger"
               onClick={() => deleteForever(findTrashedAncestor(state.pages, id) ?? id)}
             >
-              <Trash2 size={14} /> Delete forever
+              <Trash2 size={14} /> {t('page.deleteForever')}
             </button>
           </div>
         )}
@@ -195,7 +199,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
               <button
                 type="button"
                 className="page-icon"
-                aria-label="Change icon"
+                aria-label={t('page.changeIcon')}
                 disabled={trashed}
                 onClick={() => openDialog({ kind: 'icon', pageId: id })}
               >
@@ -211,7 +215,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                   className="add-icon"
                   onClick={() => openDialog({ kind: 'icon', pageId: id })}
                 >
-                  <Smile size={14} /> Add icon
+                  <Smile size={14} /> {t('page.addIcon')}
                 </button>
               )}
               {!page.cover && (
@@ -220,12 +224,12 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                   className="add-icon"
                   onClick={(event) => setCoverPicker(event.currentTarget)}
                 >
-                  <ImageIcon size={14} /> Add cover
+                  <ImageIcon size={14} /> {t('page.addCover')}
                 </button>
               )}
               {canAddProperty && (
                 <button type="button" className="add-icon" onClick={() => setAddingFor(id)}>
-                  <ListPlus size={14} /> Add property
+                  <ListPlus size={14} /> {t('page.addProperty')}
                 </button>
               )}
             </div>
@@ -268,9 +272,9 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
           ) : ui.sourceMode === id && page.kind === 'page' ? (
             <>
               <div className="banner source-banner" role="note">
-                <span>You are editing this page as Markdown.</span>
+                <span>{t('page.editingAsMarkdown')}</span>
                 <button type="button" className="button small" onClick={() => setUi({ sourceMode: null })}>
-                  Back to the editor
+                  {t('page.backToEditor')}
                 </button>
               </div>
               <SourceEditor pageId={id} doc={doc} editable={!trashed} />
@@ -439,8 +443,8 @@ function TitleField({
       ref={inputRef}
       className="page-title"
       rows={1}
-      placeholder="Untitled"
-      aria-label="Page title"
+      placeholder={t('page.untitled')}
+      aria-label={t('page.titleAria')}
       value={page.title}
       readOnly={readOnly}
       spellCheck
@@ -477,8 +481,8 @@ function Subpages({ parentId }: { parentId: PageId }) {
   const children = useMemo(() => childrenOf(state.pages, parentId), [state.pages, parentId]);
   if (children.length === 0) return null;
   return (
-    <section className="page-section" aria-label="Subpages">
-      <h2 className="section-label">Subpages</h2>
+    <section className="page-section" aria-label={t('page.subpages')}>
+      <h2 className="section-label">{t('page.subpages')}</h2>
       <ul className="link-list">
         {children.map((child) => {
           return (
@@ -509,18 +513,18 @@ function Backlinks({ id }: { id: PageId }) {
   );
   const title = displayTitle(state.pages[id]);
   const mentionsSection = (
-    <section className="page-section" aria-label="Unlinked mentions">
+    <section className="page-section" aria-label={t('page.unlinkedMentionsAria')}>
       <button
         type="button"
         className="section-label link-button mentions-toggle"
         aria-expanded={showMentions}
         onClick={() => setShowMentions((open) => !open)}
       >
-        {showMentions ? 'Hide' : 'Find'} pages that mention “{title}” without linking
+        {showMentions ? t('page.hideMentions', { title }) : t('page.findMentions', { title })}
       </button>
       {showMentions &&
         (mentions.length === 0 ? (
-          <p className="muted small">No other page mentions it.</p>
+          <p className="muted small">{t('page.noMentions')}</p>
         ) : (
           <ul className="link-list">
             {mentions.map(({ source, context }) => (
@@ -544,9 +548,11 @@ function Backlinks({ id }: { id: PageId }) {
   if (backlinks.length === 0) return mentionsSection;
   return (
     <>
-      <section className="page-section" aria-label="Backlinks">
+      <section className="page-section" aria-label={t('page.backlinksAria')}>
         <h2 className="section-label">
-          Linked from {backlinks.length} page{backlinks.length === 1 ? '' : 's'}
+          {backlinks.length === 1
+            ? t('page.linkedFromSingular')
+            : t('page.linkedFromPlural', { count: backlinks.length })}
         </h2>
         <ul className="link-list">
           {linked.shown.map(({ source, contexts }) => (
@@ -660,9 +666,9 @@ function Outline({ doc }: { doc: DocNode }) {
       ref={ref}
       className={`page-outline${roomy ? ' is-roomy' : ''}`}
       style={top === null ? undefined : { top, maxHeight: `calc(100% - ${top + 46}px)` }}
-      aria-label="Outline"
+      aria-label={t('page.outlineAria')}
     >
-      <p className="page-outline-title">On this page</p>
+      <p className="page-outline-title">{t('page.onThisPage')}</p>
       <ul>
         {headings.map((heading, index) =>
           hidden.has(index) ? null : (

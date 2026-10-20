@@ -42,6 +42,7 @@ import { navigate, openPage, parseRoute } from './router';
 import type { Route } from './router';
 import { getTabs } from './tabs';
 import type { PaneId } from './tabs';
+import { t } from './i18n';
 import { confirmAction, setUi, toast } from './ui';
 import { getSession, getState, run, runAll } from './workspace';
 
@@ -119,8 +120,11 @@ export function turnIntoDatabase(id: PageId): void {
   const columns = adopted.database.properties.length;
   toast(
     rows
-      ? `Turned into a database with ${plural(rows, 'row')} and ${columns} propert${columns === 1 ? 'y' : 'ies'}.`
-      : 'Turned into a database. Add a row to get started.',
+      ? t('toasts.turnedIntoDatabase', {
+          rows: rows === 1 ? t('toasts.databaseRowSingle') : t('toasts.databaseRowPlural', { count: rows }),
+          columns: columns === 1 ? t('toasts.databasePropertySingle') : t('toasts.databasePropertyPlural', { count: columns }),
+        })
+      : t('toasts.turnedIntoDatabaseEmpty'),
   );
 }
 
@@ -304,8 +308,8 @@ export function saveAsTemplate(id: PageId): void {
     doc: state.docs[id] ?? { type: 'doc', content: [{ type: 'paragraph' }] },
   });
   if (result.ok)
-    toast(`Saved “${displayTitle(page)}” as a template.`, {
-      action: { label: 'Open', run: () => openPage(copy) },
+    toast(t('toasts.savedAsTemplate', { title: displayTitle(page) }), {
+      action: { label: t('toasts.open'), run: () => openPage(copy) },
     });
 }
 
@@ -344,9 +348,9 @@ export function trashPage(id: PageId): void {
       navigate({ name: 'page', id: page.parentId, find: null }, { pane });
     else navigate({ name: 'home' }, { pane });
   }
-  toast(`Moved “${displayTitle(page)}” to the trash`, {
+  toast(t('toasts.movedToTrash', { title: displayTitle(page) }), {
     action: {
-      label: 'Undo',
+      label: t('toasts.undo'),
       run: () => {
         const restored = run({ type: 'page.restore', id });
         if (restored.ok) for (const pane of affected) navigate({ name: 'page', id, find: null }, { pane });
@@ -360,7 +364,7 @@ export function restorePage(id: PageId): void {
   if (!page) return;
   const result = run({ type: 'page.restore', id });
   if (result.ok)
-    toast(`Restored “${displayTitle(page)}”`, { action: { label: 'Open', run: () => openPage(id) } });
+    toast(t('toasts.restoredPage', { title: displayTitle(page) }), { action: { label: t('toasts.open'), run: () => openPage(id) } });
 }
 
 export function deleteForever(id: PageId): void {
@@ -369,12 +373,14 @@ export function deleteForever(id: PageId): void {
   if (!page) return;
   const count = descendantsOf(state.pages, id).length;
   confirmAction({
-    title: `Delete “${displayTitle(page)}” forever?`,
+    title: t('dialogs.confirmDelete.title', { title: displayTitle(page) }),
     body:
       count > 0
-        ? `This also deletes ${count} subpage${count === 1 ? '' : 's'}. This cannot be undone.`
-        : 'This cannot be undone.',
-    confirmLabel: 'Delete forever',
+        ? count === 1
+          ? t('dialogs.confirmDelete.bodySubpagesSingle')
+          : t('dialogs.confirmDelete.bodySubpagesPlural', { count })
+        : t('dialogs.confirmDelete.bodyNoSubpages'),
+    confirmLabel: t('dialogs.confirmDelete.confirmButton'),
     danger: true,
     onConfirm: () => {
       const result = run({ type: 'page.deleteForever', id });
@@ -387,9 +393,12 @@ export function deleteForever(id: PageId): void {
 
 export function emptyTrash(count: number): void {
   confirmAction({
-    title: 'Empty the trash?',
-    body: `${count} page${count === 1 ? '' : 's'} and everything inside ${count === 1 ? 'it' : 'them'} will be deleted forever.`,
-    confirmLabel: 'Empty trash',
+    title: t('dialogs.emptyTrash.title'),
+    body:
+      count === 1
+        ? t('dialogs.emptyTrash.bodySingle')
+        : t('dialogs.emptyTrash.bodyPlural', { count }),
+    confirmLabel: t('dialogs.emptyTrash.confirmButton'),
     danger: true,
     onConfirm: () => {
       run({ type: 'trash.empty' });
@@ -435,7 +444,7 @@ export async function exportPageMarkdown(id: PageId): Promise<void> {
   const doc = state.docs[id];
   if (!page || !doc) return;
   if (page.encrypted) {
-    toast('Encrypted pages are not exported as plain text. Remove the encryption first if you mean to.', {
+    toast(t('toasts.encryptedNotExported'), {
       tone: 'error',
     });
     return;
@@ -474,8 +483,8 @@ export async function exportPagePdf(id: PageId): Promise<void> {
   root.dataset.theme = 'light';
   try {
     const result = await desktop.exportPdf(displayTitle(page));
-    if (result.ok) toast(`Saved ${result.path.split(/[\\/]/).pop() ?? 'the PDF'}.`);
-    else if (result.error) toast(`Could not export the PDF: ${result.error}`, { tone: 'error' });
+    if (result.ok) toast(t('toasts.pdfSaved', { filename: result.path.split(/[\\/]/).pop() ?? 'PDF' }));
+    else if (result.error) toast(t('toasts.pdfExportFailed', { error: result.error }), { tone: 'error' });
   } finally {
     root.classList.remove('is-printing');
     delete root.dataset.printPane;
@@ -506,9 +515,9 @@ async function backupJson(includeAttachments = true): Promise<string> {
 export async function exportBackup(): Promise<void> {
   try {
     saveFile(`morrow-backup-${stamp()}.json`, await backupJson(), 'application/json');
-    toast('Backup saved. Keep it somewhere safe.');
+    toast(t('toasts.backupSaved'));
   } catch (error) {
-    toast(`The backup could not be created: ${message(error)}`, { tone: 'error' });
+    toast(t('toasts.backupFailed', { error: message(error) }), { tone: 'error' });
   }
 }
 
@@ -516,7 +525,7 @@ export async function exportAllMarkdown(): Promise<void> {
   commitEditors();
   const { files, attachments } = workspaceMarkdownFiles(getState(), await fileIndex());
   if (files.length === 0) {
-    toast('There are no pages to export yet.');
+    toast(t('toasts.noPagesToExport'));
     return;
   }
   const entries: Record<string, Uint8Array> = {};
@@ -553,11 +562,14 @@ export async function publishSite(rootId: PageId | null = null): Promise<void> {
     }
     saveFile(`${folder}-website-${stamp()}.zip`, zipBytes(entries), 'application/zip');
     const pages = site.files.filter((file) => file.path.endsWith('.html')).length;
-    toast(`Made a website of ${plural(pages, 'page')}. Unzip it and upload the folder to any web host.`, {
-      durationMs: 10_000,
-    });
+    toast(
+      pages === 1
+        ? t('toasts.websiteCreatedSingle')
+        : t('toasts.websiteCreatedPlural', { count: pages }),
+      { durationMs: 10_000 },
+    );
   } catch (error) {
-    toast(`The website could not be made: ${message(error)}`, { tone: 'error' });
+    toast(t('toasts.websiteFailed', { error: message(error) }), { tone: 'error' });
   }
 }
 
@@ -628,11 +640,16 @@ export async function importMarkdown(parentId: PageId | null = null): Promise<vo
       archive?.files.length ? plural(archive.files.length, 'attachment') : '',
       ...(archive?.problems ?? []),
     ].filter(Boolean);
-    toast(`Imported ${plural(pages.length, 'page')}${notes.length ? ` (${notes.join(', ')})` : ''}.`);
+    const notesStr = notes.length ? ` (${notes.join(', ')})` : '';
+    toast(
+      pages.length === 1
+        ? t('toasts.importedSingle', { notes: notesStr })
+        : t('toasts.importedPlural', { count: pages.length, notes: notesStr }),
+    );
     const top = pages.filter((page) => page.parentId === parentId);
     if (top.length === 1) openPage(top[0]!.id);
   } catch (error) {
-    toast(`Import failed: ${message(error)}`, { tone: 'error' });
+    toast(t('toasts.importFailed', { error: message(error) }), { tone: 'error' });
   }
 }
 
@@ -649,7 +666,7 @@ export async function restoreBackup(): Promise<void> {
     const existing = new Set((await getSession().listFiles()).map((meta) => meta.id));
     const missing = parsed.value.files.filter((backupFile) => !existing.has(backupFile.id));
     if (plan.pages.length === 0 && missing.length === 0) {
-      toast('Everything in this backup is already in your workspace.');
+      toast(t('toasts.backupAlreadyPresent'));
       return;
     }
     // files go first, so no restored page ever points at something that is not saved yet
@@ -672,9 +689,14 @@ export async function restoreBackup(): Promise<void> {
       plan.skipped ? `${plan.skipped} already present` : '',
       plan.problems.length ? `${plan.problems.length} could not be read` : '',
     ].filter(Boolean);
-    toast(`Restored ${plural(plan.pages.length, 'page')}${notes.length ? ` (${notes.join(', ')})` : ''}.`);
+    const notesStr = notes.length ? ` (${notes.join(', ')})` : '';
+    toast(
+      plan.pages.length === 1
+        ? t('toasts.restoredBackupSingle', { notes: notesStr })
+        : t('toasts.restoredBackupPlural', { count: plan.pages.length, notes: notesStr }),
+    );
   } catch (error) {
-    toast(`Restore failed: ${message(error)}`, { tone: 'error' });
+    toast(t('toasts.restoreFailed', { error: message(error) }), { tone: 'error' });
   }
 }
 
@@ -690,11 +712,15 @@ export async function unusedFiles(): Promise<FileMeta[]> {
 export async function deleteUnusedFiles(): Promise<void> {
   const unused = await unusedFiles();
   if (unused.length === 0) {
-    toast('There are no unused files.');
+    toast(t('toasts.noUnusedFiles'));
     return;
   }
   await getSession().deleteFiles(unused.map((file) => file.id));
-  toast(`Removed ${plural(unused.length, 'unused file')}.`);
+  toast(
+    unused.length === 1
+      ? t('toasts.removedUnusedFilesSingle')
+      : t('toasts.removedUnusedFilesPlural', { count: unused.length }),
+  );
 }
 
 export async function restoreVersion(snapshot: Snapshot): Promise<boolean> {
@@ -704,7 +730,7 @@ export async function restoreVersion(snapshot: Snapshot): Promise<boolean> {
     toast(result.error, { tone: 'error' });
     return false;
   }
-  toast('Version restored. The version it replaced is kept in the page history.');
+  toast(t('toasts.versionRestored'));
   return true;
 }
 
@@ -720,8 +746,8 @@ export async function writeAutoBackup(force = false): Promise<void> {
     // files in a vault are already on disk as they are, automatic backups only need the pages
     const result = await desktop.writeAutoBackup(await backupJson(getSession().location === null));
     if (result.ok) lastAutoBackup = latest;
-    else toast(`Automatic backup failed: ${result.error}`, { tone: 'error' });
+    else toast(t('toasts.autoBackupFailed', { error: result.error }), { tone: 'error' });
   } catch (error) {
-    toast(`Automatic backup failed: ${message(error)}`, { tone: 'error' });
+    toast(t('toasts.autoBackupFailed', { error: message(error) }), { tone: 'error' });
   }
 }

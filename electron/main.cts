@@ -1,6 +1,7 @@
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   globalShortcut,
   ipcMain,
@@ -47,6 +48,7 @@ import {
   copyVaultInto,
 } from './vault.cjs';
 import { cloudStatus } from './cloud.cjs';
+import { getMcpStatus, isMcpEnabled, setMcpEnabled, startMcpServer, stopMcpServer } from './mcp.cjs';
 import { aiTurn, cancelAiTurn, getAiSettings, listAiModels, setAiSettings } from './ai.cjs';
 import type { TurnRequest } from './ai.cjs';
 import { checkForUpdate, installUpdate } from './updates.cjs';
@@ -439,6 +441,13 @@ function registerIpc(): void {
   ipcMain.handle('morrow:open-external', (event, url: unknown) => {
     if (fromApp(event) && typeof url === 'string') openExternal(url);
   });
+  ipcMain.handle('morrow:copy-text', (event, text: unknown) => {
+    if (fromApp(event) && typeof text === 'string') {
+      clipboard.writeText(text);
+      return true;
+    }
+    return false;
+  });
   ipcMain.handle('morrow:show-data-folder', async (event) => {
     if (fromApp(event)) await shell.openPath(app.getPath('userData'));
   });
@@ -509,6 +518,11 @@ function registerVaultIpc(): void {
   handle('ai:models', () => listAiModels());
   handle('ai:turn', (request) => aiTurn(request as TurnRequest));
   handle('ai:cancel', (id) => cancelAiTurn(id));
+  handle('mcp:status', () => getMcpStatus());
+  handle('mcp:start', (port) => startMcpServer(typeof port === 'number' ? port : 3030));
+  handle('mcp:stop', () => stopMcpServer());
+  handle('mcp:set-enabled', (enabled) => setMcpEnabled(enabled === true));
+  handle('mcp:is-enabled', () => isMcpEnabled());
   handle('vault:state', () => vaultState());
   handle('vault:choose', (start) => chooseFolder(mainWindow, start));
   handle('vault:cloud', () => cloudStatus(currentVault()));

@@ -13,6 +13,7 @@ import { addColumnsFromPages } from './database/data';
 import { DraftInput, NewProperty, PropertyInput, RelationChips } from './database/PropertyValue';
 import { PropertySettings } from './database/PropertySettings';
 import { Popover } from './Popover';
+import { t } from '../i18n';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -50,14 +51,14 @@ export function PageProperties({
     const clean = name.trim();
     if (!clean) return false;
     if (MANAGED_KEYS.has(clean) || clean.length > 200) {
-      toast(`“${clean}” is set elsewhere on the page, choose another name.`, { tone: 'error' });
+      toast(t('toasts.propNameUsed', { name: clean }), { tone: 'error' });
       return false;
     }
     if (
       findKey(page.extra, clean) !== undefined ||
       props.some((prop) => prop.name.toLowerCase() === clean.toLowerCase())
     ) {
-      toast(`This page already has “${clean}”.`, { tone: 'error' });
+      toast(t('toasts.pageHasProp', { name: clean }), { tone: 'error' });
       return false;
     }
     if (!setExtra({ ...page.extra, [clean]: '' })) return false;
@@ -145,8 +146,8 @@ export function PageProperties({
           <input
             name="name"
             className="prop-input row-prop-name-input"
-            placeholder="Property name"
-            aria-label="New property name"
+            placeholder={t('page.propertyNamePlaceholder')}
+            aria-label={t('page.newPropertyNameAria')}
             autoFocus
             onKeyDown={(event) => {
               if (event.key !== 'Escape') return;
@@ -159,7 +160,7 @@ export function PageProperties({
               onAdded();
             }}
           />
-          <span className="muted small">Press Enter to add</span>
+          <span className="muted small">{t('page.pressEnterToAdd')}</span>
         </form>
       )}
       {editable && !showNaming && (
@@ -169,7 +170,7 @@ export function PageProperties({
             className="link-button row-prop-add"
             onClick={(event) => (database ? setMenu(event.currentTarget) : setNaming(true))}
           >
-            <Plus size={13} /> Add a property
+            <Plus size={13} /> {t('page.addAProperty')}
           </button>
           {menu && database && (
             <Popover anchor={menu} onClose={() => setMenu(null)} label="New property" className="db-panel">

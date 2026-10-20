@@ -153,9 +153,25 @@ export interface DesktopUpdatesApi {
   onProgress(listener: (share: number) => void): () => void;
 }
 
+export interface McpServerStatus {
+  running: boolean;
+  port: number;
+  error?: string | null;
+  vaultPath?: string | null;
+}
+
+export interface DesktopMcpApi {
+  status(): Promise<McpServerStatus>;
+  start(port?: number): Promise<McpServerStatus>;
+  stop(): Promise<McpServerStatus>;
+  setEnabled(enabled: boolean): Promise<boolean>;
+  isEnabled(): Promise<boolean>;
+}
+
 export interface DesktopBridge {
   assistant?: DesktopAssistantApi;
   updates?: DesktopUpdatesApi;
+  mcp?: DesktopMcpApi;
   vault?: DesktopVaultApi;
   sync?: DesktopSyncApi;
   platform: string;
@@ -173,6 +189,7 @@ export interface DesktopBridge {
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   showBackupsFolder(): Promise<void>;
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
+  copyText(text: string): Promise<boolean> | void;
 }
 
 declare global {

@@ -5,6 +5,7 @@ import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
 import { Placeholder } from '@tiptap/extensions';
 import StarterKit from '@tiptap/starter-kit';
+import { t } from '../i18n';
 import { BlockHandle } from './BlockHandle';
 import { Callout, FindReplace } from './Blocks';
 import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
@@ -78,10 +79,10 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       showOnlyCurrent: true,
       includeChildren: false,
       placeholder: ({ node, editor }) => {
-        if (node.type.name === 'heading') return `Heading ${node.attrs.level}`;
-        if (node.type.name === 'detailsSummary') return 'Toggle title';
-        if (editor.isEmpty) return 'Start writing, or press / for blocks';
-        return 'Press / for blocks';
+        if (node.type.name === 'heading') return t('editor.headingPlaceholder', { level: node.attrs.level });
+        if (node.type.name === 'detailsSummary') return t('editor.toggleTitlePlaceholder');
+        if (editor.isEmpty) return t('editor.placeholderEmpty');
+        return t('editor.placeholder');
       },
     }),
     PageLink.configure({

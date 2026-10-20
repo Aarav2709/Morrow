@@ -31,6 +31,8 @@ import {
   Table,
 } from 'lucide-react';
 import { foldText } from '../../core/search';
+import { t } from '../i18n';
+import type { TranslationKey } from '../i18n';
 import { pickFiles } from '../platform/files';
 import { editMathNear } from './Extras';
 import { insertFiles } from './Media';
@@ -350,10 +352,29 @@ export const BLOCK_ITEMS: BlockItem[] = [
   },
 ];
 
+export function getLocalizedBlocks(): BlockItem[] {
+  return BLOCK_ITEMS.map((item) => {
+    const titleKey = `slash.items.${item.id}.title` as TranslationKey;
+    const descKey = `slash.items.${item.id}.description` as TranslationKey;
+    const kwKey = `slash.items.${item.id}.keywords` as TranslationKey;
+    const title = t(titleKey);
+    const description = t(descKey);
+    const localizedKw = t(kwKey);
+    const keywords =
+      localizedKw && localizedKw !== kwKey ? `${item.keywords ?? ''} ${localizedKw}` : item.keywords;
+    return {
+      ...item,
+      title: title && title !== titleKey ? title : item.title,
+      description: description && description !== descKey ? description : item.description,
+      keywords,
+    };
+  });
+}
+
 // the groups the menu shows before you type, in this order
-const SECTIONS: Array<[string, string[]]> = [
+const SECTIONS: Array<[string, string[], TranslationKey]> = [
   [
-    'Basic blocks',
+    'basic',
     [
       'text',
       'h1',
@@ -371,27 +392,35 @@ const SECTIONS: Array<[string, string[]]> = [
       'divider',
       'code',
     ],
+    'slash.sections.basic',
   ],
-  ['Media', ['image', 'file']],
-  ['Layout', ['columns2', 'columns3', 'table', 'toc']],
-  ['Pages and data', ['link', 'embed', 'date', 'database', 'inlineDatabase', 'canvas', 'inlineCanvas']],
-  ['Maths and diagrams', ['math', 'inlineMath', 'diagram', 'highlight']],
+  ['media', ['image', 'file'], 'slash.sections.media'],
+  ['layout', ['columns2', 'columns3', 'table', 'toc'], 'slash.sections.layout'],
+  [
+    'pagesAndData',
+    ['link', 'embed', 'date', 'database', 'inlineDatabase', 'canvas', 'inlineCanvas'],
+    'slash.sections.pagesAndData',
+  ],
+  ['mathsAndDiagrams', ['math', 'inlineMath', 'diagram', 'highlight'], 'slash.sections.mathsAndDiagrams'],
 ];
 
 function grouped(): BlockItem[] {
+  const items = getLocalizedBlocks();
   const placed = new Set<string>();
   const out: BlockItem[] = [];
-  for (const [section, ids] of SECTIONS) {
+  for (const [, ids, sectionKey] of SECTIONS) {
+    const sectionName = t(sectionKey);
     for (const id of ids) {
-      const item = BLOCK_ITEMS.find((candidate) => candidate.id === id);
+      const item = items.find((candidate) => candidate.id === id);
       if (item) {
-        out.push({ ...item, section });
+        out.push({ ...item, section: sectionName });
         placed.add(id);
       }
     }
   }
   // anything not given a group still shows, at the end
-  for (const item of BLOCK_ITEMS) if (!placed.has(item.id)) out.push({ ...item, section: 'More' });
+  const moreName = t('slash.sections.more');
+  for (const item of items) if (!placed.has(item.id)) out.push({ ...item, section: moreName });
   return out;
 }
 
@@ -400,14 +429,16 @@ export function filterBlocks(query: string): BlockItem[] {
   const folded = foldText(query.trim());
   if (!folded) return grouped();
   const words = folded.split(/\s+/);
+  const items = getLocalizedBlocks();
   const rank = (item: BlockItem): number => {
     const title = foldText(item.title);
     if (title.startsWith(folded)) return 0;
     if (title.includes(folded)) return 1;
-    const haystack = `${title} ${foldText(item.keywords)}`;
+    const haystack = `${title} ${foldText(item.keywords ?? '')}`;
     return words.every((word) => haystack.includes(word)) ? 2 : -1;
   };
-  return BLOCK_ITEMS.map((item) => ({ item, score: rank(item) }))
+  return items
+    .map((item) => ({ item, score: rank(item) }))
     .filter((entry) => entry.score >= 0)
     .sort((a, b) => a.score - b.score)
     .map((entry) => entry.item);
@@ -438,7 +469,11 @@ export const SlashCommand = Extension.create<SlashOptions>({
           const item = BLOCK_ITEMS.find((candidate) => candidate.id === props.id);
           item?.run(editor, range, options);
         },
-        render: renderSuggestion('Insert block', 'No matching blocks', 'insert'),
+        render: renderSuggestion(
+          () => t('slash.menu.insertBlock'),
+          () => t('slash.menu.noMatchingBlocks'),
+          'insert',
+        ),
       }),
     ];
   },

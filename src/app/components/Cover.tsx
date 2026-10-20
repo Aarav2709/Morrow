@@ -6,6 +6,7 @@ import { fileUrl, storeFiles } from '../platform/attachments';
 import { pickFiles } from '../platform/files';
 import { run } from '../workspace';
 import { Popover } from './Popover';
+import { t } from '../i18n';
 
 export function setCover(page: PageMeta, cover: string | null): void {
   run({ type: 'page.setCover', id: page.id, cover, now: Date.now() });
@@ -38,7 +39,7 @@ export function CoverBanner({ page, editable }: { page: PageMeta; editable: bool
       {editable && (
         <div className="page-cover-actions">
           <button type="button" className="button small" onClick={(event) => setPicker(event.currentTarget)}>
-            Change cover
+            {t('page.changeCover')}
           </button>
         </div>
       )}
@@ -84,7 +85,7 @@ export function CoverPicker({
             })
           }
         >
-          <ImageIcon size={13} /> Use an image
+          <ImageIcon size={13} /> {t('page.useAnImage')}
         </button>
         {page.cover && (
           <button type="button" className="button small danger" onClick={() => pick(null)}>

@@ -8,6 +8,7 @@ import { normalizeTag } from '../../core/vault/frontmatter';
 import { navigate, openPage } from '../router';
 import { run, useWorkspace } from '../workspace';
 import { relativeTime, useShowMore } from './primitives';
+import { t } from '../i18n';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -17,21 +18,18 @@ export function TagsView() {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">Tags</span>
+        <span className="topbar-title">{t('tags.title')}</span>
       </TopBar>
       <div className="page-scroll">
         <div className="collection">
           <header className="collection-header">
-            <h1>Tags</h1>
-            <p className="muted">
-              Tags from page properties and every #tag written in your pages. A tag like #project/garden also
-              counts as #project.
-            </p>
+            <h1>{t('tags.title')}</h1>
+            <p className="muted">{t('tags.subtitle')}</p>
           </header>
           {tags.length === 0 ? (
             <div className="empty-state compact">
               <Hash size={24} strokeWidth={1.5} />
-              <p>No tags yet. Write #something in a page, or add a tag under a page's title.</p>
+              <p>{t('tags.empty')}</p>
             </div>
           ) : (
             <ul className="tag-cloud">
@@ -65,7 +63,7 @@ export function TagView({ tag }: { tag: string }) {
           <ol>
             <li>
               <button type="button" className="crumb" onClick={() => navigate({ name: 'tags' })}>
-                Tags
+                {t('tags.breadcrumbTags')}
               </button>
               <span className="crumb-sep" aria-hidden="true">
                 /
@@ -82,7 +80,9 @@ export function TagView({ tag }: { tag: string }) {
           <header className="collection-header">
             <h1>#{tag}</h1>
             <p className="muted">
-              {pages.length} page{pages.length === 1 ? '' : 's'}
+              {pages.length === 1
+                ? t('tags.pageCountSingle')
+                : t('tags.pageCountPlural', { count: pages.length })}
             </p>
           </header>
           <ul className="link-list">
@@ -138,7 +138,7 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
     setDraft('');
   };
   return (
-    <div className="page-tags" aria-label="Tags">
+    <div className="page-tags" aria-label={t('tags.title')}>
       {page.tags.map((tag) => (
         <span key={tag} className={`tag-chip tag-${tagColor(tag)}`}>
           <button type="button" className="tag-chip-name" onClick={() => navigate({ name: 'tag', tag })}>
@@ -148,7 +148,7 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
             <button
               type="button"
               className="tag-remove"
-              aria-label={`Remove tag ${tag}`}
+              aria-label={t('tags.removeTag', { tag })}
               onClick={() => save(page.tags.filter((item) => item !== tag))}
             >
               <X size={11} />
@@ -162,8 +162,8 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
             ref={inputRef}
             className="tag-input"
             autoFocus
-            aria-label="New tag"
-            placeholder="tag"
+            aria-label={t('tags.newTag')}
+            placeholder={t('tags.tagPlaceholder')}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={() => {
@@ -183,7 +183,7 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
           />
         ) : (
           <button type="button" className="add-tag" onClick={() => setAdding(true)}>
-            <Plus size={12} /> {page.tags.length ? 'Tag' : 'Add tag'}
+            <Plus size={12} /> {page.tags.length ? t('page.tag') : t('page.addTag')}
           </button>
         ))}
     </div>

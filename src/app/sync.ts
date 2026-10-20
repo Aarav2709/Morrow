@@ -3,6 +3,7 @@ import { planPull } from '../core/sync';
 import { commitEditors } from './editor/commits';
 import { desktop } from './platform/desktop';
 import type { SyncStatus } from './platform/desktop';
+import { t } from './i18n';
 import { toast } from './ui';
 import { getSession } from './workspace';
 
@@ -144,7 +145,7 @@ export function startAutoSync(): () => void {
   });
   const stopEvents = sync.onEvent((event) => {
     if (event.type === 'pull-requested') void syncWith(event.peerId, { askBack: false });
-    if (event.type === 'paired') toast(`Paired with ${event.name}.`);
+    if (event.type === 'paired') toast(t('toasts.pairedWith', { name: event.name }));
   });
   const first = setTimeout(() => void syncAll(), 5000);
   return () => {

@@ -6,6 +6,7 @@ import { CalendarDays, FileText } from 'lucide-react';
 import { dateKey, parseDateKey } from '../../core/daily';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
+import { t } from '../i18n';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -327,7 +328,7 @@ export const DateMention = Node.create<DateMentionOptions>({
           return [...dates, ...pages];
         },
         command: ({ editor, range, props }) => insertMention(editor, range, props),
-        render: renderSuggestion('Mention a date or page', 'Nothing matches'),
+        render: renderSuggestion(() => t('editor.mentionDateOrPage'), () => t('editor.nothingMatches')),
       }),
     ];
   },

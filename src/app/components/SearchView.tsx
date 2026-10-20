@@ -8,15 +8,12 @@ import { usePane } from '../tabs';
 import { useWorkspace } from '../workspace';
 import { PageIcon } from './Sidebar';
 import { relativeTime } from './primitives';
+import { useTranslation } from '../i18n';
 import { TopBar } from './TopBar';
 
 type Order = 'best' | 'recent' | 'title';
 
-const ORDERS: Array<[Order, string]> = [
-  ['best', 'Best match'],
-  ['recent', 'Recently edited'],
-  ['title', 'Title'],
-];
+
 
 const MAX_RESULTS = 200;
 const SNIPPETS_PER_PAGE = 3;
@@ -30,7 +27,13 @@ function sorted(results: SearchResult[], order: Order): SearchResult[] {
 
 // every page that matches, with each place it matched, the query lives in the address so tabs keep it
 export function SearchView({ query }: { query: string }) {
+  const { t } = useTranslation();
   const state = useWorkspace();
+  const orders: Array<[Order, string]> = [
+    ['best', t('searchView.orders.best')],
+    ['recent', t('searchView.orders.recent')],
+    ['title', t('searchView.orders.title')],
+  ];
   const pane = usePane();
   const [text, setText] = useState(query);
   const [order, setOrder] = useState<Order>('best');
@@ -55,7 +58,7 @@ export function SearchView({ query }: { query: string }) {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">Search</span>
+        <span className="topbar-title">{t('common.search')}</span>
       </TopBar>
       <div className="page-scroll">
         <div className="collection search-view">
@@ -65,8 +68,8 @@ export function SearchView({ query }: { query: string }) {
               <input
                 ref={inputRef}
                 type="search"
-                placeholder="Search every page"
-                aria-label="Search every page"
+                placeholder={t('searchView.placeholder')}
+                aria-label={t('searchView.ariaLabel')}
                 value={text}
                 spellCheck={false}
                 onChange={(event) => setText(event.target.value)}
@@ -83,11 +86,14 @@ export function SearchView({ query }: { query: string }) {
             {query.trim() && (
               <div className="search-meta">
                 <span className="muted">
-                  {results.length === MAX_RESULTS ? `${MAX_RESULTS}+` : results.length} page
-                  {results.length === 1 ? '' : 's'}
+                  {results.length === 1
+                    ? t('searchView.pageCountSingular', { count: 1 })
+                    : t('searchView.pageCountPlural', {
+                        count: results.length === MAX_RESULTS ? `${MAX_RESULTS}+` : results.length,
+                      })}
                 </span>
-                <div className="segmented" role="radiogroup" aria-label="Order">
-                  {ORDERS.map(([value, label]) => (
+                <div className="segmented" role="radiogroup" aria-label={t('searchView.orderAria')}>
+                  {orders.map(([value, label]) => (
                     <button
                       key={value}
                       type="button"
@@ -106,7 +112,7 @@ export function SearchView({ query }: { query: string }) {
           {query.trim() && results.length === 0 && (
             <div className="empty-state compact">
               <Search size={24} strokeWidth={1.5} />
-              <p>No page matches “{query}”.</p>
+              <p>{t('searchView.noMatches', { query })}</p>
             </div>
           )}
           <ul className="search-results">
@@ -116,7 +122,7 @@ export function SearchView({ query }: { query: string }) {
                   type="button"
                   className="search-result"
                   data-page-id={result.page.id}
-                  title="Open. Ctrl or Cmd click for a new tab, Alt click to open beside"
+                  title={t('searchView.resultTooltip')}
                   onClick={() => openPage(result.page.id, result.titleMatch ? null : result.firstMatch)}
                 >
                   <span className="search-result-head">

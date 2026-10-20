@@ -8,22 +8,23 @@ import { gradeCard, useReviewLog } from '../review';
 import { openPage } from '../router';
 import { useWorkspace } from '../workspace';
 import { TopBar } from './TopBar';
+import { getLocale, t } from '../i18n';
 
-const GRADES: Array<{ grade: Grade; label: string; key: string }> = [
-  { grade: 'again', label: 'Again', key: '1' },
-  { grade: 'hard', label: 'Hard', key: '2' },
-  { grade: 'good', label: 'Good', key: '3' },
-  { grade: 'easy', label: 'Easy', key: '4' },
+const getGrades = (): Array<{ grade: Grade; label: string; key: string }> => [
+  { grade: 'again', label: t('review.grades.again'), key: '1' },
+  { grade: 'hard', label: t('review.grades.hard'), key: '2' },
+  { grade: 'good', label: t('review.grades.good'), key: '3' },
+  { grade: 'easy', label: t('review.grades.easy'), key: '4' },
 ];
 
 // how long until the card comes back with each answer, like anki shows it
 function nextIn(card: Card, log: ReviewLog, grade: Grade): string {
-  if (grade === 'again') return 'This session';
+  if (grade === 'again') return t('review.intervals.thisSession');
   const days = schedule(log[card.id], grade, new Date()).interval;
-  if (days === 1) return 'Tomorrow';
-  if (days < 30) return `${days} days`;
-  if (days < 365) return `${Math.round(days / 30)} mo`;
-  return `${(days / 365).toFixed(1).replace(/\.0$/, '')} yr`;
+  if (days === 1) return t('review.intervals.tomorrow');
+  if (days < 30) return t('review.intervals.days', { count: days });
+  if (days < 365) return t('review.intervals.months', { count: Math.round(days / 30) });
+  return t('review.intervals.years', { count: (days / 365).toFixed(1).replace(/\.0$/, '') });
 }
 
 // when the next cards are due once today's are done
@@ -47,8 +48,8 @@ function describeDay(key: string): string {
   if (!date) return key;
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (dateKey(tomorrow) === key) return 'tomorrow';
-  return date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+  if (dateKey(tomorrow) === key) return t('review.intervals.tomorrow').toLowerCase();
+  return date.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 export function ReviewView() {
@@ -85,7 +86,7 @@ export function ReviewView() {
         setShown(true);
         return;
       }
-      const match = GRADES.find((item) => item.key === event.key);
+      const match = getGrades().find((item) => item.key === event.key);
       if (shown && match) {
         event.preventDefault();
         grade(match.grade);
@@ -101,23 +102,28 @@ export function ReviewView() {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">Review</span>
+        <span className="topbar-title">{t('review.title')}</span>
       </TopBar>
       <div className="page-scroll">
         <div className="review">
           <header className="review-header">
             <div>
-              <h1>Review</h1>
+              <h1>{t('review.heading')}</h1>
               <p className="muted">
                 {cards.length === 0
-                  ? 'Flashcards from your notes, shown just before you would forget them.'
-                  : `${cards.length} card${cards.length === 1 ? '' : 's'} from ${pages} page${pages === 1 ? '' : 's'}`}
+                  ? t('review.subtitleEmpty')
+                  : t('review.subtitleCards', {
+                      cards: cards.length,
+                      cardsPlural: cards.length === 1 ? t('review.cardsPluralSingle') : t('review.cardsPluralMultiple'),
+                      pages,
+                      pagesPlural: pages === 1 ? t('review.pagesPluralSingle') : t('review.pagesPluralMultiple'),
+                    })}
               </p>
             </div>
             {current && (
-              <div className="review-progress" aria-label={`Card ${done + 1} of ${total}`}>
+              <div className="review-progress" aria-label={t('review.cardProgressAria', { current: done + 1, total })}>
                 <span>
-                  {done + 1} <span className="muted">of {total}</span>
+                  {t('review.cardProgress', { current: done + 1, total })}
                 </span>
                 <span className="review-progress-bar">
                   <span style={{ width: `${(done / Math.max(1, total)) * 100}%` }} />
@@ -129,28 +135,27 @@ export function ReviewView() {
           {cards.length === 0 ? (
             <section className="review-empty">
               <GraduationCap size={28} strokeWidth={1.5} />
-              <h2>No flashcards yet</h2>
+              <h2>{t('review.emptyTitle')}</h2>
               <p className="muted">
-                Write a question and its answer on one line of any page, joined by two colons:
+                {t('review.emptyHelp')}
               </p>
-              <code className="review-example">Capital of France :: Paris</code>
-              <p className="muted small">It shows up here straight away, and comes back as you learn it.</p>
+              <code className="review-example">{t('review.emptyExample')}</code>
+              <p className="muted small">{t('review.emptyFooter')}</p>
             </section>
           ) : !current ? (
             <section className="review-empty">
               <PartyPopper size={28} strokeWidth={1.5} />
               <h2>
                 {done > 0
-                  ? `All done, ${done} card${done === 1 ? '' : 's'} reviewed`
-                  : 'Nothing due right now'}
+                  ? t('review.allDone', { count: done, s: done === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural') })
+                  : t('review.nothingDue')}
               </h2>
               {next ? (
                 <p className="muted review-next">
-                  <CalendarClock size={15} /> {next.count} card{next.count === 1 ? '' : 's'} due{' '}
-                  {describeDay(next.day)}
+                  <CalendarClock size={15} /> {describeDay(next.day) === t('review.intervals.tomorrow').toLowerCase() ? t('review.cardsDueTomorrow', { count: next.count, s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural') }) : t('review.cardsDueDay', { count: next.count, s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'), day: describeDay(next.day) })}
                 </p>
               ) : (
-                <p className="muted">New cards show up here as soon as you write them.</p>
+                <p className="muted">{t('review.newCardsHelp')}</p>
               )}
             </section>
           ) : (
@@ -160,7 +165,7 @@ export function ReviewView() {
                   <button
                     type="button"
                     className="review-source"
-                    title="Open the page this card is on"
+                    title={t('review.openCardPage')}
                     onClick={() => openPage(source.id, current.front)}
                   >
                     {displayTitle(source)} <ArrowUpRight size={13} />
@@ -175,8 +180,8 @@ export function ReviewView() {
                 )}
               </article>
               {shown ? (
-                <div className="review-grades" role="group" aria-label="How well did you remember it?">
-                  {GRADES.map((item) => (
+                <div className="review-grades" role="group" aria-label={t('review.gradesAria')}>
+                  {getGrades().map((item) => (
                     <button
                       key={item.grade}
                       type="button"
@@ -192,7 +197,7 @@ export function ReviewView() {
               ) : (
                 <div className="review-actions">
                   <button type="button" className="button primary review-show" onClick={() => setShown(true)}>
-                    Show answer <kbd className="kbd">Space</kbd>
+                    {t('review.showAnswer')} <kbd className="kbd">Space</kbd>
                   </button>
                 </div>
               )}

@@ -1,5 +1,6 @@
 import type { FileId, FileMeta } from '../../core/model';
 import type { StoredFile } from '../../storage/repository';
+import { t } from '../i18n';
 import { toast } from '../ui';
 import { getSession } from '../workspace';
 import { desktop } from './desktop';
@@ -27,7 +28,7 @@ export function fileUrl(id: FileId): Promise<string | null> {
 // reads and stores files, returns their metadata only once every file is safely saved
 export async function storeFiles(files: File[]): Promise<FileMeta[]> {
   const accepted = files.filter((file) => file.size <= MAX_FILE_BYTES);
-  if (accepted.length < files.length) toast('Files larger than 100 MB were not added.', { tone: 'error' });
+  if (accepted.length < files.length) toast(t('toasts.filesTooLarge'), { tone: 'error' });
   if (accepted.length === 0) return [];
   const stored: StoredFile[] = await Promise.all(
     accepted.map(async (file) => ({
@@ -52,7 +53,7 @@ export async function storeFiles(files: File[]): Promise<FileMeta[]> {
 export async function downloadFile(id: FileId): Promise<void> {
   const file = await getSession().getFile(id);
   if (!file) {
-    toast('This file is missing from your workspace.', { tone: 'error' });
+    toast(t('toasts.fileMissing'), { tone: 'error' });
     return;
   }
   saveFile(file.meta.name, file.data, file.meta.type);
