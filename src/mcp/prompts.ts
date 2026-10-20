@@ -14,6 +14,7 @@ export function registerMcpPrompts(server: McpServer, vault: McpVaultManager): v
         "Synthesizes today's daily note and recent activities into a concise engineering standup report (Done, Doing, Blockers).",
     },
     async () => {
+      await vault.assertEnabled();
       let todayNoteContent = '(No daily note created yet today)';
       try {
         const today = await vault.todaysNote();
@@ -56,6 +57,7 @@ ${todayNoteContent}
       },
     },
     async ({ topic }) => {
+      await vault.assertEnabled();
       const results = vault.searchPages(topic, 10);
       const notesContext = results
         .map((r) => {
@@ -103,6 +105,7 @@ Please provide:
       },
     },
     async ({ page }) => {
+      await vault.assertEnabled();
       const read = vault.readPage(page);
       const allPages = livePages(vault.getState().pages)
         .filter((p) => p.id !== read.page.id)

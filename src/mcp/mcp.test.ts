@@ -154,4 +154,18 @@ describe('MCP Server Registration', () => {
     expect(() => registerMcpResources(server, vault)).not.toThrow();
     expect(() => registerMcpPrompts(server, vault)).not.toThrow();
   });
+
+  it('respects the enabled/disabled switch and guards vault access', async () => {
+    const vault = await McpVaultManager.open(tempDir);
+
+    // When disabled
+    process.env.MORROW_MCP_ENABLED = 'false';
+    await expect(vault.assertEnabled()).rejects.toThrow('Morrow MCP is disabled in settings');
+
+    // When enabled
+    process.env.MORROW_MCP_ENABLED = 'true';
+    await expect(vault.assertEnabled()).resolves.toBeUndefined();
+
+    delete process.env.MORROW_MCP_ENABLED;
+  });
 });

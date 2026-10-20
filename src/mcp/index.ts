@@ -1,3 +1,4 @@
+import { isMcpConfigEnabled } from './config';
 // Main entry point for Morrow MCP Server.
 // Communicates via stdio or HTTP/SSE using the Model Context Protocol.
 
@@ -92,6 +93,14 @@ function createServerInstance(vault: McpVaultManager): McpServer {
 
 async function main(): Promise<void> {
   const { vaultPath, port } = parseArgs(process.argv.slice(2));
+
+  const enabled = await isMcpConfigEnabled(vaultPath);
+  if (!enabled) {
+    process.stderr.write(
+      '[Morrow MCP] MCP is disabled in Morrow settings (Configuración > Asistente). Please enable the MCP switch in Morrow to connect.\n',
+    );
+    process.exit(1);
+  }
 
   let vault: McpVaultManager;
   try {

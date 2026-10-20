@@ -21,6 +21,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ parent }) => {
       try {
+        await vault.assertEnabled();
         const pages = vault.listPages(parent);
         const state = vault.getState();
         const results = pages.map((p) => ({
@@ -57,6 +58,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ page }) => {
       try {
+        await vault.assertEnabled();
         const { page: meta, markdown, path: filePath } = vault.readPage(page);
         const result = {
           id: meta.id,
@@ -101,6 +103,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ query, limit }) => {
       try {
+        await vault.assertEnabled();
         const results = vault.searchPages(query, limit ?? 20);
         const mapped = results.map((r) => ({
           id: r.page.id,
@@ -141,6 +144,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ title, content, parent, tags }) => {
       try {
+        await vault.assertEnabled();
         const created = await vault.createPage({ title, content, parent, tags });
         return {
           content: [
@@ -181,6 +185,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ page, content }) => {
       try {
+        await vault.assertEnabled();
         const edited = await vault.editPage({ page, content });
         return {
           content: [
@@ -221,6 +226,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ page, content }) => {
       try {
+        await vault.assertEnabled();
         const updated = await vault.appendToPage({ page, content });
         return {
           content: [
@@ -260,6 +266,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ page }) => {
       try {
+        await vault.assertEnabled();
         const trashed = await vault.trashPage(page);
         return {
           content: [
@@ -298,6 +305,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async () => {
       try {
+        await vault.assertEnabled();
         const note = await vault.todaysNote();
         return {
           content: [
@@ -337,6 +345,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async () => {
       try {
+        await vault.assertEnabled();
         const tags = vault.listTags();
         const mapped = tags.map((t) => ({
           tag: t.tag,
@@ -383,6 +392,7 @@ export function registerMcpTools(server: McpServer, vault: McpVaultManager): voi
     },
     async ({ tags, hierarchy, orphans, depth }) => {
       try {
+        await vault.assertEnabled();
         const graph = vault.getGraph({
           tags: tags ?? false,
           hierarchy: hierarchy ?? false,

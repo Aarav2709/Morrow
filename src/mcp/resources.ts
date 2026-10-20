@@ -15,6 +15,7 @@ export function registerMcpResources(server: McpServer, vault: McpVaultManager):
       mimeType: 'application/json',
     },
     async (uri: URL) => {
+      await vault.assertEnabled();
       const state = vault.getState();
       const pages = livePages(state.pages);
       const tags = vault.listTags();
@@ -46,6 +47,7 @@ export function registerMcpResources(server: McpServer, vault: McpVaultManager):
     'Morrow Page Content',
     new ResourceTemplate('morrow://pages/{id}', {
       list: async () => {
+        await vault.assertEnabled();
         const pages = livePages(vault.getState().pages);
         return {
           resources: pages.map((p) => ({
@@ -74,6 +76,7 @@ export function registerMcpResources(server: McpServer, vault: McpVaultManager):
       mimeType: 'text/markdown',
     },
     async (uri: URL, variables: Variables) => {
+      await vault.assertEnabled();
       const idRaw = variables.id;
       const pageId = Array.isArray(idRaw) ? idRaw[0] : idRaw;
       if (!pageId) {
@@ -101,6 +104,7 @@ export function registerMcpResources(server: McpServer, vault: McpVaultManager):
       mimeType: 'text/markdown',
     },
     async (uri: URL) => {
+      await vault.assertEnabled();
       const note = await vault.todaysNote();
       return {
         contents: [
@@ -123,6 +127,7 @@ export function registerMcpResources(server: McpServer, vault: McpVaultManager):
       mimeType: 'application/json',
     },
     async (uri: URL) => {
+      await vault.assertEnabled();
       const tags = vault.listTags();
       return {
         contents: [

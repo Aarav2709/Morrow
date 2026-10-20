@@ -1,3 +1,4 @@
+import { isMcpConfigEnabled } from './config';
 // Standalone vault manager for Morrow MCP server.
 // Directly interacts with the file system and uses Morrow's core pure logic without requiring Electron.
 
@@ -56,6 +57,15 @@ export class McpVaultManager {
     const manager = new McpVaultManager(resolvedPath);
     await manager.reload();
     return manager;
+  }
+
+  public async assertEnabled(): Promise<void> {
+    const enabled = await isMcpConfigEnabled(this.vaultPath);
+    if (!enabled) {
+      throw new Error(
+        'Morrow MCP is disabled in settings. Please enable the MCP switch in Morrow (Configuración > Asistente).'
+      );
+    }
   }
 
   public getState(): WorkspaceState {
