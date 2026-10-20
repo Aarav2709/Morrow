@@ -45,6 +45,7 @@ import {
   copyVaultInto,
 } from './vault.cjs';
 import { cloudStatus } from './cloud.cjs';
+import { getMcpStatus, startMcpServer, stopMcpServer } from './mcp.cjs';
 import { aiTurn, cancelAiTurn, getAiSettings, listAiModels, setAiSettings } from './ai.cjs';
 import type { TurnRequest } from './ai.cjs';
 import {
@@ -421,6 +422,9 @@ function registerVaultIpc(): void {
   handle('ai:models', () => listAiModels());
   handle('ai:turn', (request) => aiTurn(request as TurnRequest));
   handle('ai:cancel', (id) => cancelAiTurn(id));
+  handle('mcp:status', () => getMcpStatus());
+  handle('mcp:start', (port) => startMcpServer(typeof port === 'number' ? port : 3030));
+  handle('mcp:stop', () => stopMcpServer());
   handle('vault:state', () => vaultState());
   handle('vault:choose', (start) => chooseFolder(mainWindow, start));
   handle('vault:cloud', () => cloudStatus(currentVault()));

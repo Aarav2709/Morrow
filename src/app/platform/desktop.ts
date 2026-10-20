@@ -137,8 +137,22 @@ export interface DesktopAssistantApi {
   cancel(id: string): Promise<void>;
 }
 
+export interface McpServerStatus {
+  running: boolean;
+  port: number;
+  error?: string | null;
+  vaultPath?: string | null;
+}
+
+export interface DesktopMcpApi {
+  status(): Promise<McpServerStatus>;
+  start(port?: number): Promise<McpServerStatus>;
+  stop(): Promise<McpServerStatus>;
+}
+
 export interface DesktopBridge {
   assistant?: DesktopAssistantApi;
+  mcp?: DesktopMcpApi;
   vault?: DesktopVaultApi;
   sync?: DesktopSyncApi;
   platform: string;

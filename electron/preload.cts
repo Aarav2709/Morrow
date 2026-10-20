@@ -55,6 +55,11 @@ contextBridge.exposeInMainWorld('morrow', {
     turn: (request: unknown) => ipcRenderer.invoke('ai:turn', request),
     cancel: (id: string) => ipcRenderer.invoke('ai:cancel', id),
   },
+  mcp: {
+    status: () => ipcRenderer.invoke('mcp:status'),
+    start: (port: number) => ipcRenderer.invoke('mcp:start', port),
+    stop: () => ipcRenderer.invoke('mcp:stop'),
+  },
   vault: {
     state: () => ipcRenderer.invoke('vault:state'),
     choose: (start?: string) => ipcRenderer.invoke('vault:choose', start),

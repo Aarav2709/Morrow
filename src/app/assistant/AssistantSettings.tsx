@@ -1,4 +1,4 @@
-import { Check, CircleAlert, Loader2, RefreshCw } from 'lucide-react';
+import { Check, CircleAlert, Copy, Loader2, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatShortcut } from '../actions';
 import { Switch } from '../components/primitives';
@@ -7,7 +7,7 @@ import { SettingRow, SettingsGroup } from '../components/SettingsRows';
 import { openHref } from '../editor/EditorMenus';
 import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
-import type { AssistantProviderId, AssistantSettings as Settings } from '../platform/desktop';
+import type { AssistantProviderId, AssistantSettings as Settings, McpServerStatus } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 
 // the open panel listens for this to show the provider and model that were just picked
@@ -38,6 +38,32 @@ export function AssistantSettings() {
   const [refresh, setRefresh] = useState(0);
   const [typing, setTyping] = useState(false);
   const api = desktop?.assistant;
+
+  const [mcpStatus, setMcpStatus] = useState<McpServerStatus | null>(null);
+  const [mcpTab, setMcpTab] = useState<'sse' | 'stdio'>('sse');
+  const [mcpCopied, setMcpCopied] = useState(false);
+  const [mcpPortInput, setMcpPortInput] = useState(String(prefs.mcpPort || 3030));
+  const [vaultPath, setVaultPath] = useState<string>('');
+
+  useEffect(() => {
+    if (desktop?.vault) {
+      void desktop.vault.state().then((st) => {
+        if (st.current) setVaultPath(st.current);
+      });
+    }
+    if (desktop?.mcp) {
+      void desktop.mcp.status().then(setMcpStatus);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!desktop?.mcp) return;
+    if (prefs.mcpEnabled) {
+      void desktop.mcp.start(prefs.mcpPort || 3030).then(setMcpStatus);
+    } else {
+      void desktop.mcp.stop().then(setMcpStatus);
+    }
+  }, [prefs.mcpEnabled, prefs.mcpPort]);
 
   const provider = settings?.providers.find((item) => item.id === settings.provider);
   const usable = Boolean(settings && (settings.hasKey || !provider?.needsKey));
@@ -90,6 +116,43 @@ export function AssistantSettings() {
     ...(settings?.model && !models.includes(settings.model) ? [settings.model] : []),
     ...models,
   ];
+
+  const sseJson = JSON.stringify(
+    {
+      mcpServers: {
+        morrow: {
+          url: `http://localhost:${prefs.mcpPort || 3030}/sse`,
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  const stdioJson = JSON.stringify(
+    {
+      mcpServers: {
+        morrow: {
+          command: 'node',
+          args: [
+            desktop?.dataPath ? `${desktop.dataPath}/dist-mcp/index.js` : 'dist-mcp/index.js',
+            '--vault',
+            vaultPath || 'C:\\Ruta\\A\\Tu\\Vault',
+          ],
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  const activeSnippet = mcpTab === 'sse' ? sseJson : stdioJson;
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(activeSnippet);
+    setMcpCopied(true);
+    setTimeout(() => setMcpCopied(false), 2000);
+  };
 
   return (
     <>
@@ -291,6 +354,129 @@ export function AssistantSettings() {
           </SettingsGroup>
         </>
       )}
+
+      <SettingsGroup
+        title={t('settings.assistant.mcpGroupTitle')}
+        help={t('settings.assistant.mcpGroupHelp')}
+      >
+        <SettingRow
+          label={t('settings.assistant.mcpRow')}
+          help={t('settings.assistant.mcpRowHelp')}
+        >
+          <Switch
+            label={t('settings.assistant.mcpSwitch')}
+            checked={prefs.mcpEnabled}
+            onChange={(mcpEnabled) => setPreferences({ mcpEnabled })}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('settings.assistant.mcpPort')}
+          help={t('settings.assistant.mcpPortHelp')}
+        >
+          <input
+            className="text-input small"
+            type="number"
+            min={1024}
+            max={65535}
+            aria-label={t('settings.assistant.mcpPort')}
+            style={{ width: 100 }}
+            value={mcpPortInput}
+            onChange={(e) => setMcpPortInput(e.target.value)}
+            onBlur={() => {
+              const val = parseInt(mcpPortInput, 10);
+              if (!isNaN(val) && val >= 1024 && val <= 65535) {
+                setPreferences({ mcpPort: val });
+              } else {
+                setMcpPortInput(String(prefs.mcpPort || 3030));
+              }
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t('settings.assistant.mcpStatus')}
+          help={
+            mcpStatus?.running ? (
+              <span className="connection is-ok" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <Check size={12} /> {t('settings.assistant.mcpRunning')} — http://127.0.0.1:{mcpStatus.port}/sse
+              </span>
+            ) : mcpStatus?.error ? (
+              <span className="connection is-error" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <CircleAlert size={12} /> {mcpStatus.error}
+              </span>
+            ) : (
+              <span className="connection is-idle">
+                {t('settings.assistant.mcpStopped')}
+              </span>
+            )
+          }
+        />
+
+        <SettingRow
+          label={t('settings.assistant.mcpConfigTitle')}
+          help={t('settings.assistant.mcpConfigHelp')}
+          stacked
+        >
+          <div
+            style={{
+              marginTop: 6,
+              background: 'var(--code-bg)',
+              borderRadius: 6,
+              padding: '10px 12px',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 8,
+                gap: 8,
+              }}
+            >
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  type="button"
+                  className={`button small ${mcpTab === 'sse' ? 'primary' : ''}`}
+                  onClick={() => setMcpTab('sse')}
+                >
+                  {t('settings.assistant.mcpTabSse')}
+                </button>
+                <button
+                  type="button"
+                  className={`button small ${mcpTab === 'stdio' ? 'primary' : ''}`}
+                  onClick={() => setMcpTab('stdio')}
+                >
+                  {t('settings.assistant.mcpTabStdio')}
+                </button>
+              </div>
+              <button
+                type="button"
+                className="button small"
+                onClick={handleCopy}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                {mcpCopied ? <Check size={13} /> : <Copy size={13} />}
+                {mcpCopied ? t('settings.assistant.mcpCopied') : t('settings.assistant.mcpCopyButton')}
+              </button>
+            </div>
+            <pre
+              style={{
+                margin: 0,
+                fontSize: 12,
+                lineHeight: 1.45,
+                overflowX: 'auto',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              <code>{activeSnippet}</code>
+            </pre>
+          </div>
+        </SettingRow>
+      </SettingsGroup>
     </>
   );
 }

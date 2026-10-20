@@ -49,6 +49,8 @@ export interface Preferences {
   assistantOpen: boolean;
   // changes the assistant proposes wait for approval
   assistantAsk: boolean;
+  mcpEnabled: boolean;
+  mcpPort: number;
 }
 
 const KEY = 'morrow.preferences';
@@ -79,6 +81,8 @@ const defaults: Preferences = {
   assistant: false,
   assistantOpen: false,
   assistantAsk: true,
+  mcpEnabled: false,
+  mcpPort: 3030,
 };
 
 // view preferences only, losing them never loses work
@@ -127,6 +131,11 @@ function read(): Preferences {
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,
+      mcpEnabled: parsed.mcpEnabled === true,
+      mcpPort:
+        typeof parsed.mcpPort === 'number' && parsed.mcpPort > 0 && parsed.mcpPort <= 65535
+          ? parsed.mcpPort
+          : defaults.mcpPort,
     };
   } catch {
     return defaults;
