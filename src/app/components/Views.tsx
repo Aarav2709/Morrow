@@ -8,7 +8,7 @@ import { ancestorsOf, trashedPages } from '../../core/tree';
 import { deleteForever, emptyTrash, restorePage } from '../operations';
 import { openPage } from '../router';
 import { run, useWorkspace } from '../workspace';
-import { relativeTime } from './primitives';
+import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -30,9 +30,15 @@ export function TaskList({
 }) {
   const groups = useMemo(() => {
     const map = new Map<PageId, TaskRef[]>();
-    for (const task of tasks) map.set(task.pageId, [...(map.get(task.pageId) ?? []), task]);
+    for (const task of tasks) {
+      const list = map.get(task.pageId);
+      if (list) list.push(task);
+      else map.set(task.pageId, [task]);
+    }
     return [...map.entries()];
   }, [tasks]);
+  const flat = useShowMore(tasks, 100);
+  const pages = useShowMore(groups, 40);
 
   const row = (task: TaskRef, showPage: boolean) => (
     <li key={`${task.pageId}:${task.index}`} className={`task-row${task.checked ? ' is-done' : ''}`}>
@@ -59,10 +65,16 @@ export function TaskList({
     </li>
   );
 
-  if (!grouped) return <ul className="task-list">{tasks.map((task) => row(task, true))}</ul>;
+  if (!grouped)
+    return (
+      <>
+        <ul className="task-list">{flat.shown.map((task) => row(task, true))}</ul>
+        {flat.more}
+      </>
+    );
   return (
     <div className="task-groups">
-      {groups.map(([pageId, items]) => (
+      {pages.shown.map(([pageId, items]) => (
         <section key={pageId} className="task-group">
           <button type="button" className="task-group-title" onClick={() => openPage(pageId)}>
             {displayTitle(state.pages[pageId])}
@@ -70,6 +82,7 @@ export function TaskList({
           <ul className="task-list">{items.map((task) => row(task, false))}</ul>
         </section>
       ))}
+      {pages.more}
     </div>
   );
 }
@@ -139,6 +152,7 @@ export function TasksView() {
 export function TrashView() {
   const state = useWorkspace();
   const trashed = useMemo(() => trashedPages(state.pages), [state.pages]);
+  const listed = useShowMore(trashed, 60);
 
   return (
     <div className="view">
@@ -162,37 +176,40 @@ export function TrashView() {
               <p>The trash is empty.</p>
             </div>
           ) : (
-            <ul className="link-list">
-              {trashed.map((page) => {
-                const path = pathOf(state, page.id);
-                return (
-                  <li key={page.id} className="trash-row">
-                    <button type="button" className="link-row" onClick={() => openPage(page.id)}>
-                      <span className="tree-icon">
-                        <PageIcon page={page} />
-                      </span>
-                      <span className="link-row-title">
-                        {displayTitle(page)}
-                        {path && <span className="link-row-path">in {path}</span>}
-                      </span>
-                      <span className="link-row-meta">Trashed {relativeTime(page.trashedAt ?? 0)}</span>
-                    </button>
-                    <div className="row-actions">
-                      <button type="button" className="button small" onClick={() => restorePage(page.id)}>
-                        <RotateCcw size={14} /> Restore
+            <>
+              <ul className="link-list">
+                {listed.shown.map((page) => {
+                  const path = pathOf(state, page.id);
+                  return (
+                    <li key={page.id} className="trash-row">
+                      <button type="button" className="link-row" onClick={() => openPage(page.id)}>
+                        <span className="tree-icon">
+                          <PageIcon page={page} />
+                        </span>
+                        <span className="link-row-title">
+                          {displayTitle(page)}
+                          {path && <span className="link-row-path">in {path}</span>}
+                        </span>
+                        <span className="link-row-meta">Trashed {relativeTime(page.trashedAt ?? 0)}</span>
                       </button>
-                      <button
-                        type="button"
-                        className="button small danger"
-                        onClick={() => deleteForever(page.id)}
-                      >
-                        Delete forever
-                      </button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+                      <div className="row-actions">
+                        <button type="button" className="button small" onClick={() => restorePage(page.id)}>
+                          <RotateCcw size={14} /> Restore
+                        </button>
+                        <button
+                          type="button"
+                          className="button small danger"
+                          onClick={() => deleteForever(page.id)}
+                        >
+                          Delete forever
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {listed.more}
+            </>
           )}
         </div>
       </div>

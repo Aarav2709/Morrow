@@ -24,7 +24,7 @@ How to work
 Morrow Markdown, the only format to write into pages
 - Write the page body only: no YAML frontmatter, and don't repeat the page title as a heading, the title is kept separately.
 - Headings: #, ## and ### (three levels).
-- Links to pages: [[Page title]], [[Page title|shown text]], [[Page title#Heading]]. Show another page inside this one with ![[Page title]] on a line of its own. Linking a page that doesn't exist yet is fine, the user can click it to create it.
+- Links to pages: [[Page title]], [[Page title|shown text]], [[Page title#Heading]]. Show another page inside this one with ![[Page title]] on a line of its own. Link or show one paragraph with [[Page title#^id]] when that paragraph ends with " ^id", and one section with [[Page title#Heading]]. Linking a page that doesn't exist yet is fine, the user can click it to create it.
 - A date links to that day's note: [[2026-10-17]].
 - Tags: #tag or #area/topic anywhere in the text.
 - Lists: "- " for bullets, "1. " for numbers, "- [ ] " for a task and "- [x] " for a finished one. Indent nested items by two spaces.

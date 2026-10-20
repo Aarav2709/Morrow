@@ -12,6 +12,7 @@ import 'katex/dist/katex.min.css';
 import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { sampleCommands } from './core/sample';
+import { startRecurring } from './app/recurring';
 import { WorkspaceSession } from './storage/session';
 import { VaultRepository } from './storage/vaultRepository';
 import { App } from './app/App';
@@ -68,6 +69,7 @@ async function openWorkspace(): Promise<BootState> {
   }
   await session.markInitialized();
   setSession(session);
+  startRecurring();
   if (session.problems.length > 0) {
     console.warn('Morrow could not read some stored records:', session.problems);
     toast(

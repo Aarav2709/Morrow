@@ -64,6 +64,8 @@ export interface EncryptedHeader {
 
 // reads the plain settings at the top of an encrypted page, null for an ordinary page
 export function readEncrypted(text: string): EncryptedHeader | null {
+  // most pages are not encrypted, a quick look spares parsing their frontmatter twice on every load
+  if (!text.includes(MARKER)) return null;
   const split = splitFrontmatter(text);
   const data = split.data;
   if (!data || !isRecord(data) || data[MARKER] !== CIPHER) return null;

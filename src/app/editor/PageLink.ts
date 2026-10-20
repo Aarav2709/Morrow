@@ -13,7 +13,8 @@ export interface PageLinkOptions {
   // the linked page's emoji, shown in front of its name like notion does
   getIcon?: (id: PageId) => string | null;
   subscribe: (listener: () => void) => () => void;
-  open: (id: PageId) => void;
+  // the anchor is what follows # in the link: a heading, or ^id for a single block
+  open: (id: PageId, anchor: string | null) => void;
   findPages: (query: string) => Array<{ id: PageId; title: string; path: string }>;
   createPage: (title: string) => PageId | null;
   // finds the page a written [[target]] means, for links made before the page existed
@@ -21,7 +22,7 @@ export interface PageLinkOptions {
   // makes the page a link points at, used when following a link to a page that does not exist yet
   createFromTarget: (target: string) => PageId | null;
   // an embedded page shows the other page's content as html, read only
-  renderEmbed: (id: PageId) => string | null;
+  renderEmbed: (id: PageId, anchor: string | null) => string | null;
   // some pages, like databases, embed as a live view instead, the result removes it again
   mountEmbed?: (id: PageId, element: HTMLElement, editable: boolean) => (() => void) | null;
 }
@@ -147,7 +148,8 @@ export const PageLink = Node.create<PageLinkOptions>({
           mounted = null;
           body.replaceChildren();
         }
-        if (body && id && !mounted && this.options.mountEmbed) {
+        // a part of a page embeds as that part only, a whole database or canvas as the live thing
+        if (body && id && !mounted && !anchor && this.options.mountEmbed) {
           const unmount = this.options.mountEmbed(id, body, editor.isEditable);
           if (unmount) {
             mounted = { id, unmount };
@@ -158,7 +160,7 @@ export const PageLink = Node.create<PageLinkOptions>({
         }
         if (body && !mounted) {
           wrapper?.classList.remove('is-live');
-          const html = id ? this.options.renderEmbed(id) : null;
+          const html = id ? this.options.renderEmbed(id, anchor) : null;
           if (html !== lastHtml) {
             lastHtml = html;
             body.innerHTML = html ?? '';
@@ -170,7 +172,7 @@ export const PageLink = Node.create<PageLinkOptions>({
         event.preventDefault();
         const id = resolved();
         if (id) {
-          this.options.open(id);
+          this.options.open(id, typeof current.attrs.anchor === 'string' ? current.attrs.anchor : null);
           return;
         }
         if (!target()) return;
@@ -184,7 +186,7 @@ export const PageLink = Node.create<PageLinkOptions>({
               editor.state.tr.setNodeMarkup(pos, undefined, { ...live.attrs, id: created, target: null }),
             );
         }
-        this.options.open(created);
+        this.options.open(created, null);
       });
       refresh();
       const unsubscribe = this.options.subscribe(refresh);

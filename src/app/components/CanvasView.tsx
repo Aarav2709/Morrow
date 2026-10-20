@@ -45,7 +45,16 @@ type Interaction =
       origins: Map<string, { x: number; y: number }>;
       moved: boolean;
     }
-  | { kind: 'resize'; id: string; startX: number; startY: number; width: number; height: number }
+  | {
+      kind: 'resize';
+      id: string;
+      // which way the card grows: both from the corner, one way from its right or bottom edge
+      axis: 'both' | 'x' | 'y';
+      startX: number;
+      startY: number;
+      width: number;
+      height: number;
+    }
   | { kind: 'connect'; from: string; side: CanvasSide; x: number; y: number }
   | { kind: 'draw'; points: number[] }
   | { kind: 'erase'; removed: boolean };
@@ -453,11 +462,13 @@ export function CanvasView({
     const nodeElement = target.closest<HTMLElement>('[data-node]');
     if (handle && editable) {
       const id = handle.dataset.node!;
-      if (handle.dataset.handle === 'resize') {
+      const resize = handle.dataset.handle?.match(/^resize(?:-(x|y))?$/);
+      if (resize) {
         const node = data.nodes.find((item) => item.id === id)!;
         interaction.current = {
           kind: 'resize',
           id,
+          axis: (resize[1] as 'x' | 'y' | undefined) ?? 'both',
           startX: event.clientX,
           startY: event.clientY,
           width: node.width,
@@ -552,8 +563,10 @@ export function CanvasView({
       });
       setData({ ...dataRef.current, nodes });
     } else if (current.kind === 'resize') {
-      const width = Math.max(60, Math.round(current.width + (event.clientX - current.startX) / view.zoom));
-      const height = Math.max(40, Math.round(current.height + (event.clientY - current.startY) / view.zoom));
+      const dx = current.axis === 'y' ? 0 : event.clientX - current.startX;
+      const dy = current.axis === 'x' ? 0 : event.clientY - current.startY;
+      const width = Math.max(60, Math.round(current.width + dx / view.zoom));
+      const height = Math.max(40, Math.round(current.height + dy / view.zoom));
       setData({
         ...dataRef.current,
         nodes: dataRef.current.nodes.map((node) =>
@@ -1200,7 +1213,14 @@ function CanvasCard({
           ))}
         </>
       )}
-      {editable && selected && <span className="canvas-resize" data-handle="resize" data-node={node.id} />}
+      {editable && (
+        // the right and bottom edges stretch a card one way, the corner both, without selecting it first
+        <>
+          <span className="canvas-resize-edge is-x" data-handle="resize-x" data-node={node.id} />
+          <span className="canvas-resize-edge is-y" data-handle="resize-y" data-node={node.id} />
+          <span className="canvas-resize" data-handle="resize" data-node={node.id} />
+        </>
+      )}
     </div>
   );
 }

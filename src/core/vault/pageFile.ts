@@ -287,6 +287,8 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       type: prop.type,
       ...(prop.options.length ? { options: prop.options.map((option) => ({ ...option })) } : {}),
       ...(prop.type === 'formula' && prop.formula ? { formula: prop.formula } : {}),
+      ...(prop.display === 'bar' ? { display: 'bar' } : {}),
+      ...(prop.display === 'bar' && prop.max && prop.max !== 100 ? { max: prop.max } : {}),
     })),
     views: database.views.map((view) => ({
       id: view.id,
@@ -297,6 +299,7 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       ...(view.groupBy ? { groupBy: view.groupBy } : {}),
       ...(view.dateProp ? { dateProp: view.dateProp } : {}),
       ...(view.hidden.length ? { hidden: [...view.hidden] } : {}),
+      ...(view.widths && Object.keys(view.widths).length ? { widths: { ...view.widths } } : {}),
     })),
   };
 }

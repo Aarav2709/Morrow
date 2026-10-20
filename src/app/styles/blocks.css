@@ -340,23 +340,32 @@
   flex: none;
   display: flex;
   align-items: flex-end;
-  gap: 2px;
   padding: 0 8px;
   height: 46px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-sidebar);
-  overflow-x: auto;
-  scrollbar-width: none;
   -webkit-app-region: drag;
 }
-.tab-bar > * {
+/* reaches over the bar's bottom border, so the active tab can cover it */
+.tab-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+  height: calc(100% + 1px);
+  margin-bottom: -1px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.tab-strip > * {
   -webkit-app-region: no-drag;
 }
 .tab {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-width: 90px;
+  min-width: 72px;
   max-width: 200px;
   flex: 0 1 200px;
   height: 31px;
@@ -413,9 +422,10 @@
   background: var(--active);
   color: var(--text);
 }
-/* sits on the same line as the middle of the tabs */
+/* sits on the same line as the middle of the tabs, outside the strip so it stays in view */
 .tab-new {
   flex: none;
+  -webkit-app-region: no-drag;
   align-self: flex-end;
   margin: 0 0 2px 2px;
 }
@@ -630,6 +640,12 @@ html.is-printing .split-resizer {
 .relation-option.is-on {
   color: var(--accent-strong);
 }
+/* the same inset as the editable cells beside it */
+.formula-value,
+.formula-error {
+  display: inline-block;
+  padding: 0 8px;
+}
 .formula-value {
   font-variant-numeric: tabular-nums;
 }
@@ -642,8 +658,11 @@ html.is-printing .split-resizer {
   flex-direction: column;
   gap: 4px;
 }
+.db-panel.is-wide {
+  width: min(520px, calc(100vw - 32px));
+}
 .formula-input {
-  min-height: 64px;
+  min-height: 132px;
   font-family: var(--font-mono);
   font-size: 12.5px;
   resize: vertical;

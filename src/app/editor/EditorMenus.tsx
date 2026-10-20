@@ -11,11 +11,14 @@ import {
   Code,
   Code2,
   Copy,
+  Download,
   ExternalLink,
+  FolderOpen,
   Heading1,
   Heading2,
   Heading3,
   Highlighter,
+  ImageIcon,
   Info,
   Italic,
   Link2,
@@ -39,10 +42,12 @@ import type { ColorName } from '../../core/model';
 import { formatShortcut } from '../actions';
 import { Menu } from '../components/Menu';
 import type { MenuEntry } from '../components/Menu';
-import { openExternal } from '../platform/desktop';
+import { copyImageFile, downloadFile } from '../platform/attachments';
+import { desktop, openExternal } from '../platform/desktop';
 import { openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
+import { toast } from '../ui';
 
 function ToolButton({
   label,
@@ -170,7 +175,7 @@ function useMarks(editor: Editor) {
   });
 }
 
-const COLOR_LABELS: Record<ColorName, string> = {
+export const COLOR_LABELS: Record<ColorName, string> = {
   gray: 'Grey',
   brown: 'Brown',
   orange: 'Orange',
@@ -456,13 +461,57 @@ export function TableMenu({ editor }: { editor: Editor }) {
   );
 }
 
+// a short id for a block, only needs to be unique within its page
+function newBlockId(): string {
+  return Math.random().toString(36).slice(2, 8);
+}
+
+// copies a [[link]] to one block: a heading by its text, anything else by a ^id written after it,
+// the same way obsidian links blocks, so the link works in both apps
+function copyBlockLink(editor: Editor, pos: number, pageTitle: string): void {
+  const block = editor.state.doc.nodeAt(pos);
+  if (!block) return;
+  let anchor: string;
+  if (block.type.name === 'heading') anchor = block.textContent.trim();
+  else {
+    // a list item's id belongs to its first paragraph
+    const at = block.type.name === 'paragraph' ? pos : pos + 1;
+    const paragraph = editor.state.doc.nodeAt(at);
+    if (paragraph?.type.name !== 'paragraph' || !paragraph.textContent.trim()) return;
+    let id = typeof paragraph.attrs.blockId === 'string' ? paragraph.attrs.blockId : '';
+    if (!id) {
+      id = newBlockId();
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, { ...paragraph.attrs, blockId: id }));
+    }
+    anchor = `^${id}`;
+  }
+  const link = `[[${pageTitle.replace(/[[\]|#^]/g, ' ').trim()}#${anchor}]]`;
+  void navigator.clipboard
+    .writeText(link)
+    .then(() => toast('Copied a link to this block.'))
+    .catch(() => toast('Could not copy.', { tone: 'error' }));
+}
+
+// blocks that can be linked to on their own
+function linkable(editor: Editor, pos: number): boolean {
+  const block = editor.state.doc.nodeAt(pos);
+  if (!block || !block.textContent.trim()) return false;
+  if (block.type.name === 'heading' || block.type.name === 'paragraph') return true;
+  return (
+    (block.type.name === 'listItem' || block.type.name === 'taskItem') &&
+    block.firstChild?.type.name === 'paragraph'
+  );
+}
+
 export function BlockMenu({
   editor,
   request,
+  pageTitle,
   onClose,
 }: {
   editor: Editor;
   request: BlockMenuRequest;
+  pageTitle: string;
   onClose: () => void;
 }) {
   const turn = (apply: () => void) => () => {
@@ -514,6 +563,15 @@ export function BlockMenu({
       shortcut: formatShortcut('Alt+Shift+↓'),
       onSelect: () => moveBlock(editor.state, editor.view.dispatch, 1),
     },
+    ...(linkable(editor, request.pos)
+      ? [
+          {
+            label: 'Copy link to block',
+            icon: Link2,
+            onSelect: () => copyBlockLink(editor, request.pos, pageTitle),
+          },
+        ]
+      : []),
     {
       label: 'Duplicate',
       icon: Copy,
@@ -543,6 +601,30 @@ export function BlockMenu({
     },
   ];
   const blockType = editor.state.doc.nodeAt(request.pos)?.type.name;
+  const fileId = editor.state.doc.nodeAt(request.pos)?.attrs.fileId as string | null | undefined;
+  const vault = desktop?.vault;
+  if (blockType === 'image' && fileId) {
+    entries.unshift(
+      { heading: 'Image' },
+      { label: 'Copy image', icon: ImageIcon, onSelect: () => void copyImageFile(fileId) },
+      { label: 'Save a copy', icon: Download, onSelect: () => void downloadFile(fileId) },
+      ...(vault
+        ? [
+            {
+              label: 'Open in default app',
+              icon: ExternalLink,
+              onSelect: () => void vault.openFile(fileId),
+            },
+            {
+              label: 'Show in folder',
+              icon: FolderOpen,
+              onSelect: () => void vault.reveal(fileId),
+            },
+          ]
+        : []),
+      { separator: true },
+    );
+  }
   if (blockType === 'callout') {
     const tone = (value: string, label: string): MenuEntry => ({
       label,

@@ -43,9 +43,7 @@
   margin: 0;
 }
 
-.prose h1,
-.prose h2,
-.prose h3 {
+.prose :is(h1, h2, h3, h4, h5, h6) {
   font-weight: 650;
   line-height: 1.28;
   letter-spacing: -0.012em;
@@ -53,9 +51,7 @@
   margin-bottom: 0.15em;
 }
 
-.font-sans .prose h1,
-.font-sans .prose h2,
-.font-sans .prose h3 {
+.font-sans .prose :is(h1, h2, h3, h4, h5, h6) {
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -70,6 +66,19 @@
 
 .prose h3 {
   font-size: 1.13em;
+}
+
+.prose h4 {
+  font-size: 1em;
+}
+
+.prose h5 {
+  font-size: 0.92em;
+}
+
+.prose h6 {
+  font-size: 0.85em;
+  color: var(--text-muted);
 }
 
 .prose > :first-child {
@@ -147,7 +156,7 @@
   margin-left: 0;
   margin-right: 0;
   padding-left: 1em;
-  border-left: 3px solid var(--accent-line);
+  border-left: 3px solid var(--border-strong);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -267,9 +276,7 @@
 }
 
 .prose p.is-empty::before,
-.prose h1.is-empty::before,
-.prose h2.is-empty::before,
-.prose h3.is-empty::before {
+.prose :is(h1, h2, h3, h4, h5, h6).is-empty::before {
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -530,7 +537,8 @@
 .suggestion-footer {
   flex: none;
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 12px;
   padding: 7px 12px;
   border-top: 1px solid var(--border);
   font-size: 11px;
@@ -742,14 +750,13 @@
 }
 
 .find-bar {
-  position: sticky;
-  top: 8px;
+  position: absolute;
+  top: 52px;
+  right: 20px;
   z-index: 20;
-  float: right;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: -8px -24px 0 12px;
   padding: 6px;
   font-family: var(--font-ui);
   font-size: var(--text-ui);
@@ -795,4 +802,12 @@
 .prose.preview {
   min-height: 0;
   font-size: 15px;
+}
+
+/* a paragraph other pages link to shows its ^id when hovered, the way it is written in the file */
+.prose p[data-block-id]:hover::after {
+  content: ' ^' attr(data-block-id);
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  color: var(--text-faint);
 }

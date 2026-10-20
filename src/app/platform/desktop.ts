@@ -25,6 +25,8 @@ export interface DesktopVaultApi {
   exists(path: string): Promise<boolean>;
   list(path: string): Promise<Array<{ path: string; size: number; mtime: number }>>;
   reveal(path?: string): Promise<void>;
+  openFile(path: string): Promise<boolean>;
+  copyImage(path: string): Promise<boolean>;
   onChanges(listener: (changes: unknown) => void): () => void;
   manifest(): Promise<Record<string, string>>;
   identity(): Promise<{ id: string; name: string }>;
@@ -137,8 +139,23 @@ export interface DesktopAssistantApi {
   cancel(id: string): Promise<void>;
 }
 
+export interface UpdateInfo {
+  version: string;
+  notes: string;
+  url: string;
+  // windows installs and linux appimages update themselves, the rest open the release page
+  installable: boolean;
+}
+
+export interface DesktopUpdatesApi {
+  check(): Promise<{ ok: true; update: UpdateInfo | null } | { ok: false; error: string }>;
+  install(): Promise<{ ok: true } | { ok: false; error: string }>;
+  onProgress(listener: (share: number) => void): () => void;
+}
+
 export interface DesktopBridge {
   assistant?: DesktopAssistantApi;
+  updates?: DesktopUpdatesApi;
   vault?: DesktopVaultApi;
   sync?: DesktopSyncApi;
   platform: string;
@@ -146,6 +163,11 @@ export interface DesktopBridge {
   dataPath: string;
   onCommand(listener: (id: string) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
+  dimTitleBar(dim: boolean): void;
+  spelling: {
+    get(): Promise<SpellingLanguages | null>;
+    set(languages: string[] | null): Promise<SpellingLanguages | null>;
+  };
   openExternal(url: string): Promise<void>;
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
@@ -164,6 +186,23 @@ export const desktop: DesktopBridge | null = typeof window !== 'undefined' ? (wi
 export const isMac =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/.test(desktop?.platform === 'darwin' ? 'Mac' : navigator.platform);
+
+export interface SpellingLanguages {
+  // dictionaries this system can check with, empty on macos, which picks the language by itself
+  available: string[];
+  // what was chosen in settings, null to follow the computer's languages
+  chosen: string[] | null;
+  active: string[];
+}
+
+// the window's own buttons darken with the rest of the window while any dialog is open
+let dialogsOpen = 0;
+export function dialogOpened(): () => void {
+  if (dialogsOpen++ === 0) desktop?.dimTitleBar(true);
+  return () => {
+    if (--dialogsOpen === 0) desktop?.dimTitleBar(false);
+  };
+}
 
 export function openExternal(url: string): void {
   if (!/^(https?:|mailto:)/i.test(url)) return;

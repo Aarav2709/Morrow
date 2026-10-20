@@ -47,6 +47,73 @@ function plainValue(value: unknown, depth: number): unknown {
   return undefined;
 }
 
+// the frontmatter most notes have, keys with plain values and simple lists, read without the full yaml
+// parser, which is most of the time spent opening a big vault. anything else, or anything this can't
+// be sure reads the same as yaml would, returns null and goes to the real parser
+const SIMPLE_KEY = /^([A-Za-z_][\w -]*?)[ \t]*:(?:[ \t]+(.*?))?[ \t]*$/;
+const SIMPLE_ITEM = /^([ \t]*)-[ \t]+(.*?)[ \t]*$/;
+// a plain scalar with no character yaml gives a meaning to
+const PLAIN = /^[A-Za-z0-9_+-][\w ./+,-]*$/;
+const INT = /^[-+]?[0-9]+$/;
+const FLOAT = /^[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?$/;
+const UNSURE = undefined;
+
+function plainScalar(text: string, inList: boolean): unknown {
+  if (text === '' || text === '~' || /^(?:null|Null|NULL)$/.test(text)) return null;
+  if (/^(?:true|True|TRUE)$/.test(text)) return true;
+  if (/^(?:false|False|FALSE)$/.test(text)) return false;
+  if (!PLAIN.test(text) || (inList && text.includes(',')) || /^-[ \t]/.test(text)) return UNSURE;
+  // hex and octal numbers
+  if (/^[-+]?0[xXoO]/.test(text)) return UNSURE;
+  if (INT.test(text) || FLOAT.test(text)) return Number(text);
+  return text;
+}
+
+export function parseSimple(yaml: string): Record<string, unknown> | null {
+  const out: Record<string, unknown> = {};
+  // the key a block list can still follow, and the indent its items use
+  let open: { key: string; indent: string | null } | null = null;
+  for (const line of yaml.split('\n')) {
+    if (!line.trim()) continue;
+    const item = open ? SIMPLE_ITEM.exec(line) : null;
+    if (open && item) {
+      if (open.indent !== null && item[1] !== open.indent) return null;
+      open.indent = item[1]!;
+      const value = plainScalar(item[2]!, false);
+      if (value === UNSURE || value === null) return null;
+      const list = out[open.key];
+      if (Array.isArray(list)) list.push(value);
+      else out[open.key] = [value];
+      continue;
+    }
+    open = null;
+    if (line.startsWith(' ') || line.startsWith('\t')) return null;
+    const pair = SIMPLE_KEY.exec(line);
+    if (!pair) return null;
+    const key = pair[1]!;
+    if (Object.hasOwn(out, key)) return null;
+    const raw = pair[2] ?? '';
+    if (raw === '') {
+      // a key alone is null, unless a list follows on the next lines
+      out[key] = null;
+      open = { key, indent: null };
+      continue;
+    }
+    const flow = /^\[(.*)\]$/.exec(raw);
+    if (flow) {
+      const inner = flow[1]!.trim();
+      const items = inner ? inner.split(',').map((part) => plainScalar(part.trim(), true)) : [];
+      if (items.some((value) => value === UNSURE || value === null)) return null;
+      out[key] = items;
+      continue;
+    }
+    const value = plainScalar(raw, false);
+    if (value === UNSURE) return null;
+    out[key] = value;
+  }
+  return out;
+}
+
 export interface SplitFile {
   // null when the file has no frontmatter
   data: Record<string, unknown> | null;
@@ -75,7 +142,7 @@ export function splitFrontmatter(text: string): SplitFile {
   const head = source.slice(0, source.length - body.length);
   if (!yaml.trim()) return { data: {}, head, yaml, body, error: null };
   try {
-    const data: unknown = parse(yaml, { maxAliasCount: 100, uniqueKeys: false });
+    const data: unknown = parseSimple(yaml) ?? parse(yaml, { maxAliasCount: 100, uniqueKeys: false });
     if (data === null || data === undefined) return { data: {}, head, yaml, body, error: null };
     if (!isRecord(data))
       return {

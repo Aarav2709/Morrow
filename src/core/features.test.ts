@@ -4,7 +4,7 @@ import { applyCommand } from './commands';
 import type { Command } from './commands';
 import { fileIdsInDoc } from './doc';
 import { MAX_SNAPSHOTS_PER_PAGE, snapshotDue, snapshotsToPrune, SNAPSHOT_INTERVAL_MS } from './history';
-import { parseCsv, planArchiveImport } from './importer';
+import { parseCsv, planArchiveImport, readImportedFile } from './importer';
 import { markdownToDoc } from './markdown/parse';
 import { docToMarkdown } from './markdown/serialize';
 import { emptyWorkspace, newPageMeta, SCHEMA_VERSION } from './model';
@@ -102,6 +102,31 @@ describe('images and attachments in markdown', () => {
 });
 
 describe('notion and folder imports', () => {
+  it('leaves out the custom emoji notion puts in a callout', () => {
+    for (const source of [
+      '<aside>\n<img src="notion://custom_emoji/abc/def" alt="x" width="40px" /> Read this\n</aside>\n',
+      '<aside>\n\n<img src="/icons/light-bulb_yellow.svg" alt="/icons/light-bulb_yellow.svg" width="40px" />\n\nRead this\n\n</aside>\n',
+    ]) {
+      const callout = markdownToDoc(source).content![0]!;
+      expect(callout.type).toBe('callout');
+      expect(JSON.stringify(callout)).not.toContain('img');
+      expect(JSON.stringify(callout)).toContain('Read this');
+    }
+  });
+
+  it('turns notion’s table of contents back into one', () => {
+    const imported = readImportedFile(
+      '- [Intro](#intro)\n    - [Detail](#detail)\n- [End](about:blank#end)\n\n# Intro\n\n- [a normal link](https://example.com)\n',
+      'Page',
+      {},
+    );
+    expect(imported.doc.content!.map((node) => node.type)).toEqual([
+      'tableOfContents',
+      'heading',
+      'bulletList',
+    ]);
+  });
+
   const id = (n: string) => n.repeat(32).slice(0, 32);
   const entries = [
     {

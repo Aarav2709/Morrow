@@ -466,15 +466,20 @@ export async function exportPagePdf(id: PageId): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400));
   // a split tab prints only the side with the page on it
   const pane = showing[0] ?? (getTabs().pane === 'side' ? 'side' : 'main');
-  document.documentElement.dataset.printPane = pane;
-  document.documentElement.classList.add('is-printing');
+  const root = document.documentElement;
+  root.dataset.printPane = pane;
+  root.classList.add('is-printing');
+  // paper is white, so a dark theme prints in the light one, with dark text
+  const theme = root.dataset.theme;
+  root.dataset.theme = 'light';
   try {
     const result = await desktop.exportPdf(displayTitle(page));
     if (result.ok) toast(`Saved ${result.path.split(/[\\/]/).pop() ?? 'the PDF'}.`);
     else if (result.error) toast(`Could not export the PDF: ${result.error}`, { tone: 'error' });
   } finally {
-    document.documentElement.classList.remove('is-printing');
-    delete document.documentElement.dataset.printPane;
+    root.classList.remove('is-printing');
+    delete root.dataset.printPane;
+    if (theme) root.dataset.theme = theme;
   }
 }
 

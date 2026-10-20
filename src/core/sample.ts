@@ -393,7 +393,16 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           ' handle on its left to move it, or click the handle to turn it into another kind of block, duplicate it or delete it.',
         ),
         h(2, 'Lists'),
-        bullets(['A bulleted list starts with ', k('-')], ['Press Tab to indent and Shift Tab to outdent']),
+        {
+          type: 'bulletList',
+          content: [
+            item(
+              p('A bulleted list starts with ', k('-')),
+              // shown indented, the way pressing tab leaves it
+              { type: 'bulletList', content: [item(p('Press Tab to indent and Shift Tab to outdent'))] },
+            ),
+          ],
+        },
         numbered(['A numbered list starts with ', k('1.')], ['It counts by itself']),
         tasks(
           [true, 'A checklist starts with ', k('[ ]')],

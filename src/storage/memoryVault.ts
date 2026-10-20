@@ -10,7 +10,8 @@ export class MemoryVault implements VaultBridge {
   readonly dirs = new Set<string>();
   readonly trashed: string[] = [];
   private listeners = new Set<(changes: VaultChange[]) => void>();
-  private clock = 1_000_000;
+  // real time, so files the tests change look newer than what morrow wrote, as they would on disk
+  private clock = Date.now();
 
   constructor(initial: Record<string, string> = {}) {
     for (const [path, text] of Object.entries(initial)) this.put(path, text);
@@ -58,14 +59,29 @@ export class MemoryVault implements VaultBridge {
     };
   }
 
+  // called after each operation, so a test can have the watcher report files while a save is half done
+  midway: ((done: number) => void) | null = null;
+
   async apply(ops: VaultOp[]): Promise<VaultOpResult[]> {
     const results: VaultOpResult[] = [];
     for (const op of ops) {
       const result = this.applyOne(op);
       results.push(result);
       if (!result.ok) break;
+      this.midway?.(results.length);
     }
     return results;
+  }
+
+  // what the file watcher would report for files already on disk
+  report(paths: string[]): void {
+    const reported: VaultChange[] = paths.map((path) => ({
+      path,
+      text: this.text(path) ?? null,
+      mtime: Date.now(),
+      birthtime: Date.now(),
+    }));
+    for (const listener of this.listeners) listener(reported);
   }
 
   private applyOne(op: VaultOp): VaultOpResult {

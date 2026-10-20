@@ -85,6 +85,14 @@ export class VaultRepository implements WorkspaceRepository {
   // the plain text last encrypted for each page, to tell whether anything changed
   private readonly plainTexts = new Map<PageId, string>();
   private readonly pendingPlain = new Map<PageId, string>();
+  // when morrow last wrote each path, lower case. a page moved and rewritten is renamed first and written
+  // after, and the file watcher can catch it in between, still holding the text from before the move. such
+  // a file is older than morrow's write, so it is not taken for an edit made elsewhere
+  private readonly wroteAt = new Map<string, number>();
+  // changes the watcher reports while a save is still writing files wait for it to finish. until then the
+  // files written so far are not known as morrow's own, and would come back in as new pages
+  private saving = 0;
+  private held: VaultChange[] = [];
   private readonly historyCleared = new Set<PageId>();
   // saves per day, for the activity chart on the home page
   private readonly days = new Map<string, number>();
@@ -380,6 +388,22 @@ export class VaultRepository implements WorkspaceRepository {
 
   // carries out the operations and keeps track of what reached the disk, even when something fails halfway
   private async run(ops: VaultOp[], next: Map<PageId, Placement>): Promise<void> {
+    const started = Date.now();
+    for (const op of ops) if (op.op === 'write') this.wroteAt.set(op.path.toLowerCase(), started);
+    this.saving++;
+    try {
+      await this.runOps(ops, next);
+    } finally {
+      this.saving--;
+      if (this.saving === 0 && this.held.length > 0) {
+        const held = this.held;
+        this.held = [];
+        this.onChanges(held);
+      }
+    }
+  }
+
+  private async runOps(ops: VaultOp[], next: Map<PageId, Placement>): Promise<void> {
     let pending = ops;
     const layout = new Map(this.layout);
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -680,6 +704,10 @@ export class VaultRepository implements WorkspaceRepository {
   // ---- edits made by other apps, sync tools or git
 
   private onChanges(changes: VaultChange[]): void {
+    if (this.saving > 0) {
+      this.held.push(...changes);
+      return;
+    }
     const state = this.currentState() ?? this.lastState;
     if (!state || this.listeners.size === 0) return;
     const result = this.readChanges(changes, state);
@@ -794,6 +822,8 @@ export class VaultRepository implements WorkspaceRepository {
 
     for (const change of written) {
       const text = change.text!;
+      const ours = this.wroteAt.get(change.path.toLowerCase());
+      if (ours !== undefined && change.mtime > 0 && change.mtime < ours) continue;
       const known = byFile.get(change.path.toLowerCase()) ?? moves.get(change.path);
       if (known !== undefined && text === this.texts.get(known) && !moves.has(change.path)) continue;
       const folder = stripExtension(change.path);

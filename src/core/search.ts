@@ -29,6 +29,17 @@ export function foldText(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
+// page records are immutable, so a folded title stays right for as long as its record lives
+const titleCache = new WeakMap<PageMeta, string>();
+function foldedTitle(page: PageMeta): string {
+  let folded = titleCache.get(page);
+  if (folded === undefined) {
+    folded = foldText(displayTitle(page));
+    titleCache.set(page, folded);
+  }
+  return folded;
+}
+
 function textOf(doc: DocNode | undefined): { raw: string; folded: string } {
   if (!doc) return { raw: '', folded: '' };
   let entry = textCache.get(doc);
@@ -85,14 +96,20 @@ export function searchWorkspace(
   const { terms, excluded, tags: wantedTags } = parseQuery(query);
   if (terms.length === 0 && wantedTags.length === 0) return [];
   const phrase = terms.join(' ');
-  const results: SearchResult[] = [];
+  const scored: Array<{
+    page: PageMeta;
+    score: number;
+    titleMatch: boolean;
+    body: { raw: string; folded: string };
+    bodyTerms: string[];
+  }> = [];
 
   for (const page of livePages(state.pages)) {
     if (wantedTags.length > 0) {
       const tags = tagsOf(page, state.docs[page.id]);
       if (!wantedTags.every((wanted) => tags.some((tag) => tagMatches(foldText(tag), wanted)))) continue;
     }
-    const title = foldText(displayTitle(page));
+    const title = foldedTitle(page);
     const body = textOf(state.docs[page.id]);
     if (excluded.some((term) => title.includes(term) || body.folded.includes(term))) continue;
     let score = 0;
@@ -118,22 +135,28 @@ export function searchWorkspace(
       ...(phrase && terms.length > 1 && body.folded.includes(phrase) ? [phrase] : []),
       ...terms.filter((term) => body.folded.includes(term)),
     ];
-    const snippets = makeSnippets(body, bodyTerms, Math.max(1, snippetCount));
-    const snippet = snippets[0] ?? null;
-    results.push({
-      page,
-      score,
-      titleMatch,
-      snippet,
-      snippets: snippetCount > 1 ? snippets : snippets.slice(0, 1),
-      firstMatch: snippet?.match ?? null,
-      path: ancestorsOf(state.pages, page.id)
-        .reverse()
-        .map((ancestor) => displayTitle(ancestor)),
-    });
+    scored.push({ page, score, titleMatch, body, bodyTerms });
   }
 
-  return results.sort((a, b) => b.score - a.score || b.page.updatedAt - a.page.updatedAt).slice(0, limit);
+  // snippets and paths only for the results shown, a common word can match thousands of pages
+  return scored
+    .sort((a, b) => b.score - a.score || b.page.updatedAt - a.page.updatedAt)
+    .slice(0, limit)
+    .map(({ page, score, titleMatch, body, bodyTerms }) => {
+      const snippets = makeSnippets(body, bodyTerms, Math.max(1, snippetCount));
+      const snippet = snippets[0] ?? null;
+      return {
+        page,
+        score,
+        titleMatch,
+        snippet,
+        snippets: snippetCount > 1 ? snippets : snippets.slice(0, 1),
+        firstMatch: snippet?.match ?? null,
+        path: ancestorsOf(state.pages, page.id)
+          .reverse()
+          .map((ancestor) => displayTitle(ancestor)),
+      };
+    });
 }
 
 function countOccurrences(haystack: string, needle: string): number {
@@ -196,7 +219,7 @@ export function findPagesByTitle(state: WorkspaceState, query: string, limit = 8
       .slice(0, limit);
   }
   return pages
-    .map((page) => ({ page, title: foldText(displayTitle(page)) }))
+    .map((page) => ({ page, title: foldedTitle(page) }))
     .filter((entry) => entry.title.includes(folded))
     .sort(
       (a, b) =>
@@ -209,7 +232,7 @@ export function findPagesByTitle(state: WorkspaceState, query: string, limit = 8
 
 export function pageIdByTitle(state: WorkspaceState, title: string): PageId | null {
   const folded = foldText(title.trim());
-  const match = livePages(state.pages).find((page) => foldText(displayTitle(page)) === folded);
+  const match = livePages(state.pages).find((page) => foldedTitle(page) === folded);
   return match?.id ?? null;
 }
 

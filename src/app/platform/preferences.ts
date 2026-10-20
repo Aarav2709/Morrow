@@ -47,6 +47,8 @@ export interface Preferences {
   assistantOpen: boolean;
   // changes the assistant proposes wait for approval
   assistantAsk: boolean;
+  // look for a new version when morrow opens and once a day, off until turned on
+  checkUpdates: boolean;
 }
 
 const KEY = 'morrow.preferences';
@@ -66,6 +68,7 @@ const defaults: Preferences = {
   assistant: false,
   assistantOpen: false,
   assistantAsk: true,
+  checkUpdates: false,
 };
 
 // view preferences only, losing them never loses work
@@ -111,6 +114,7 @@ function read(): Preferences {
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,
+      checkUpdates: parsed.checkUpdates === true,
     };
   } catch {
     return defaults;

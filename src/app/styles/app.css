@@ -1958,3 +1958,14 @@ input[type='checkbox']:checked::after {
     max-height: 30vh;
   }
 }
+
+.show-more {
+  margin: 8px 0 0;
+  font-size: var(--text-sm);
+}
+
+.tree-more {
+  padding-left: calc(28px + var(--depth, 0) * 16px);
+  font-size: var(--text-sm);
+  color: var(--text-faint);
+}

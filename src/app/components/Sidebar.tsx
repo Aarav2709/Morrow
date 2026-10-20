@@ -379,13 +379,21 @@ interface TreeProps {
   expanded: string[];
 }
 
+const SUBPAGES_SHOWN = 50;
+
 function PageTree({ state, activeId, expanded }: TreeProps) {
   const ui = useUi();
   const [drop, setDrop] = useState<{ id: PageId; zone: DropZone } | null>(null);
   const [menu, setMenu] = useState<{ id: PageId; anchor: HTMLElement } | null>(null);
   const dragging = useRef<PageId | null>(null);
   const treeRef = useRef<HTMLUListElement>(null);
+  // how many subpages each folder shows, a journal of years opens with its latest days and the rest on request
+  const [limits, setLimits] = useState<Record<string, number>>({});
 
+  const ancestorIds = useMemo(
+    () => new Set(activeId ? ancestorsOf(state.pages, activeId).map((page) => page.id) : []),
+    [activeId, state.pages],
+  );
   const expandedSet = useMemo(() => {
     const set = new Set(expanded);
     // the open page is always revealed
@@ -471,9 +479,18 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
   };
 
   const renderLevel = (parentId: PageId | null, depth: number): React.ReactNode => {
-    const children = childrenOf(state.pages, parentId);
-    if (children.length === 0) return null;
-    return children.map((page) => {
+    const all = childrenOf(state.pages, parentId);
+    if (all.length === 0) return null;
+    const key = parentId ?? '';
+    let limit = limits[key] ?? SUBPAGES_SHOWN;
+    // the open page and the folders on its way always show
+    const needed = all.findIndex(
+      (page) => page.id === activeId || (expandedSet.has(page.id) && ancestorIds.has(page.id)),
+    );
+    if (needed >= limit) limit = needed + 1;
+    const children = all.length > limit ? all.slice(0, limit) : all;
+    const rest = all.length - children.length;
+    const rows = children.map((page) => {
       const hasChildren = childrenOf(state.pages, page.id).length > 0;
       const isOpen = expandedSet.has(page.id);
       return (
@@ -513,6 +530,20 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
         </li>
       );
     });
+    if (rest > 0)
+      rows.push(
+        <li key="more" role="none">
+          <button
+            type="button"
+            className="tree-row tree-more"
+            style={{ '--depth': depth } as React.CSSProperties}
+            onClick={() => setLimits((current) => ({ ...current, [key]: limit + SUBPAGES_SHOWN * 4 }))}
+          >
+            Show {Math.min(rest, SUBPAGES_SHOWN * 4)} more
+          </button>
+        </li>,
+      );
+    return rows;
   };
 
   return (

@@ -1,13 +1,17 @@
 import { Columns3, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { stringify } from 'yaml';
-import type { DatabaseDef, PageId, PageMeta } from '../../core/model';
+import type { DatabaseDef, PageId, PageMeta, PropDef } from '../../core/model';
 import { inferFrontmatterType } from '../../core/properties';
 import { findKey, MANAGED_KEYS } from '../../core/vault/frontmatter';
+import { RECURRENCE_KEYS } from '../../core/recurring';
+import { findTemplatesPage } from '../../core/templates';
+import { getState } from '../workspace';
 import { toast } from '../ui';
 import { run } from '../workspace';
 import { addColumnsFromPages } from './database/data';
 import { DraftInput, NewProperty, PropertyInput, RelationChips } from './database/PropertyValue';
+import { PropertySettings } from './database/PropertySettings';
 import { Popover } from './Popover';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,7 +35,11 @@ export function PageProperties({
   const [menu, setMenu] = useState<HTMLElement | null>(null);
   const [naming, setNaming] = useState(false);
   const [focusKey, setFocusKey] = useState<string | null>(null);
-  const extraKeys = Object.keys(page.extra);
+  const [settings, setSettings] = useState<{ prop: PropDef; anchor: HTMLElement } | null>(null);
+  // a template's repeat settings have their own bar under its title
+  const extraKeys = Object.keys(page.extra).filter(
+    (key) => !(isTemplate(page) && RECURRENCE_KEYS.includes(key.toLowerCase())),
+  );
   const props = database?.database.properties ?? [];
   const showNaming = editable && (naming || adding);
   if (props.length === 0 && extraKeys.length === 0 && !showNaming && !(database && editable)) return null;
@@ -62,7 +70,18 @@ export function PageProperties({
       {database &&
         props.map((prop) => (
           <div key={prop.id} className="row-prop">
-            <span className="row-prop-name">{prop.name}</span>
+            {editable ? (
+              <button
+                type="button"
+                className="row-prop-name row-prop-button"
+                title="Edit property"
+                onClick={(event) => setSettings({ prop, anchor: event.currentTarget })}
+              >
+                {prop.name}
+              </button>
+            ) : (
+              <span className="row-prop-name">{prop.name}</span>
+            )}
             <span className="row-prop-value">
               <PropertyInput dbId={database.id} prop={prop} row={page} editable={editable} />
             </span>
@@ -159,9 +178,21 @@ export function PageProperties({
           )}
         </>
       )}
+      {database && settings && (
+        <PropertySettings
+          dbId={database.id}
+          database={database.database}
+          prop={settings.prop}
+          anchor={settings.anchor}
+          onClose={() => setSettings(null)}
+        />
+      )}
     </section>
   );
 }
+
+const isTemplate = (page: PageMeta) =>
+  page.parentId !== null && page.parentId === findTemplatesPage(getState())?.id;
 
 function saveExtra(id: PageId, extra: Record<string, unknown>): boolean {
   return run({ type: 'page.setFields', id, extra, now: Date.now() }).ok;

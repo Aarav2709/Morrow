@@ -157,6 +157,8 @@ function normalizeProp(raw: Record<string, unknown>): PropDef | null {
     ...(raw.type === 'formula' && typeof raw.formula === 'string'
       ? { formula: raw.formula.slice(0, 2000) }
       : {}),
+    ...(raw.display === 'bar' ? { display: 'bar' as const } : {}),
+    ...(typeof raw.max === 'number' && Number.isFinite(raw.max) && raw.max > 0 ? { max: raw.max } : {}),
   };
 }
 
@@ -181,7 +183,20 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
     groupBy: propRef(raw.groupBy),
     dateProp: propRef(raw.dateProp),
     hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((id): id is string => propRef(id) !== null) : [],
+    ...(isRecord(raw.widths) ? { widths: normalizeWidths(raw.widths) } : {}),
   };
+}
+
+export const MIN_COLUMN_WIDTH = 80;
+export const MAX_COLUMN_WIDTH = 1200;
+
+function normalizeWidths(raw: Record<string, unknown>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw).slice(0, 200)) {
+    if (key.length > 64 || typeof value !== 'number' || !Number.isFinite(value)) continue;
+    out[key] = Math.round(Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, value)));
+  }
+  return out;
 }
 
 export function normalizeDatabase(raw: unknown): DatabaseDef | null {

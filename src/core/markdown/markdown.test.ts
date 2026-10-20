@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { anchorSlice } from '../anchors';
 import type { DocNode } from '../model';
 import { markdownToDoc, markdownToPage } from './parse';
 import { docToMarkdown } from './serialize';
@@ -293,5 +294,68 @@ describe('layout blocks', () => {
     expect(markdown).toContain('<!-- toc -->');
     expect(markdown).toContain('[[2026-10-20]]');
     expect(markdownToDoc(markdown)).toEqual(doc);
+  });
+});
+
+describe('block ids and anchors', () => {
+  it('keeps an obsidian block id on its paragraph and writes it back the same', () => {
+    const source = 'A thought worth linking to ^idea-1\n\n- [ ] A task ^task9\n\n^loose\n';
+    const doc = markdownToDoc(source);
+    expect(doc.content![0]).toEqual({
+      type: 'paragraph',
+      attrs: { blockId: 'idea-1' },
+      content: [{ type: 'text', text: 'A thought worth linking to' }],
+    });
+    expect(docToMarkdown(doc)).toBe(source);
+  });
+
+  it('cuts out the block or the heading section an anchor points at', () => {
+    const doc = markdownToDoc(
+      '# Plan\n\nIntro\n\n## Goals\n\nShip it ^ship\n\n### Detail\n\nMore\n\n## Later\n\nAfter\n',
+    );
+    expect(anchorSlice(doc, '^ship')?.content?.[0]?.attrs?.blockId).toBe('ship');
+    const goals = anchorSlice(doc, 'goals');
+    expect(goals?.content?.map((node) => node.type)).toEqual([
+      'heading',
+      'paragraph',
+      'heading',
+      'paragraph',
+    ]);
+    expect(anchorSlice(doc, '^missing')).toBeNull();
+  });
+});
+
+describe('things that used to change on a reload', () => {
+  const files = {
+    resolveFile: (href: string) => ({ fileId: href, name: href, image: href.endsWith('.png') }),
+  };
+  const settles = (markdown: string) => {
+    let current = markdown;
+    for (let i = 0; i < 3; i++)
+      current = docToMarkdown(markdownToDoc(current, files), { filePath: (id) => id });
+    return current;
+  };
+
+  it('keeps empty lines left between paragraphs', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'One' }] },
+        { type: 'paragraph' },
+        { type: 'paragraph' },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Two' }] },
+        { type: 'paragraph' },
+      ],
+    };
+    const markdown = docToMarkdown(doc);
+    expect(markdown).toBe('One\n\n<br>\n\n<br>\n\nTwo\n');
+    expect(markdownToDoc(markdown).content?.map((node) => (node.content ?? []).length)).toEqual([1, 0, 0, 1]);
+  });
+
+  it('keeps a picture in a nested bullet as a bullet, not a heading', () => {
+    expect(settles('- parent\n  - ![](attachments/pic.png)\n')).toBe(
+      '- parent\n  - ![](attachments/pic.png)\n',
+    );
+    expect(settles('- parent\n  - <br>\n  - b\n')).toBe('- parent\n  - <br>\n  - b\n');
   });
 });

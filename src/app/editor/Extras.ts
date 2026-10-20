@@ -458,7 +458,12 @@ export const CodeBlock = CodeBlockLowlight.extend({
       };
     };
   },
-}).configure({ lowlight, defaultLanguage: null, HTMLAttributes: { spellcheck: 'false' } });
+}).configure({
+  // a block with no language is plain text, never guessed at and coloured as something it is not
+  lowlight: { ...lowlight, highlightAuto: (value: string) => lowlight.highlight('plaintext', value) },
+  defaultLanguage: null,
+  HTMLAttributes: { spellcheck: 'false' },
+});
 
 const TONE_LABELS: Record<CalloutTone, string> = {
   note: 'Note',

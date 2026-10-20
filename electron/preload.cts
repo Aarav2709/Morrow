@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('morrow', {
     return () => listeners.delete(listener);
   },
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.send('morrow:theme', theme),
+  dimTitleBar: (dim: boolean) => ipcRenderer.send('morrow:dim', dim),
+  spelling: {
+    get: () => ipcRenderer.invoke('spelling:get'),
+    set: (languages: string[] | null) => ipcRenderer.invoke('spelling:set', languages),
+  },
   openExternal: (url: string) => ipcRenderer.invoke('morrow:open-external', url),
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
@@ -46,6 +51,15 @@ contextBridge.exposeInMainWorld('morrow', {
       const handler = (_event: unknown, event: unknown) => listener(event);
       ipcRenderer.on('sync:event', handler);
       return () => ipcRenderer.removeListener('sync:event', handler);
+    },
+  },
+  updates: {
+    check: () => ipcRenderer.invoke('update:check'),
+    install: () => ipcRenderer.invoke('update:install'),
+    onProgress(listener: (share: number) => void) {
+      const handler = (_event: unknown, share: number) => listener(share);
+      ipcRenderer.on('update:progress', handler);
+      return () => ipcRenderer.removeListener('update:progress', handler);
     },
   },
   assistant: {
@@ -74,6 +88,8 @@ contextBridge.exposeInMainWorld('morrow', {
     exists: (path: string) => ipcRenderer.invoke('vault:exists', path),
     list: (path: string) => ipcRenderer.invoke('vault:list', path),
     reveal: (path?: string) => ipcRenderer.invoke('vault:reveal', path ?? ''),
+    openFile: (path: string) => ipcRenderer.invoke('vault:open-file', path),
+    copyImage: (path: string) => ipcRenderer.invoke('vault:copy-image', path),
     manifest: () => ipcRenderer.invoke('vault:manifest'),
     identity: () => ipcRenderer.invoke('vault:identity'),
     readSynced: (path: string) => ipcRenderer.invoke('vault:read-synced', path),

@@ -1,0 +1,23 @@
+name: Feature request
+description: An idea that would make Morrow better for you
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: The problem or the moment where Morrow gets in your way. Start here rather than with the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: How you imagine it working. Other apps that do it well are useful to mention.
+  - type: checkboxes
+    id: fit
+    attributes:
+      label: Before you send it
+      options:
+        - label: I searched the issues and this hasn't been asked yet.
+          required: true

@@ -1,5 +1,5 @@
 // file system access for the vault, every path is checked to stay inside the chosen folder
-import { app, dialog, shell } from 'electron';
+import { app, clipboard, ClipboardItem, dialog, nativeImage, shell } from 'electron';
 import type { BrowserWindow } from 'electron';
 import { watch } from 'node:fs';
 import type { FSWatcher } from 'node:fs';
@@ -51,6 +51,7 @@ const MAX_DEPTH = 64;
 const MAX_TEXT_BYTES = 32 * 1024 * 1024;
 const MAX_FILE_BYTES = 1024 * 1024 * 1024;
 const TEMP_MARK = '.morrow-tmp-';
+const READ_AT_ONCE = 64;
 
 const listFile = () => path.join(app.getPath('userData'), 'vaults.json');
 
@@ -247,6 +248,24 @@ export async function scanVault(): Promise<unknown> {
   const folders: Array<{ path: string; mtime: number; empty: boolean }> = [];
   const others: string[] = [];
   let count = 0;
+  // files are read many at a time, which is far quicker than one by one on every kind of disk, and capped
+  // so a folder of thousands never runs out of file handles
+  const readPage = async (absolute: string, relative: string): Promise<void> => {
+    const info = await stat(absolute).catch(() => null);
+    if (!info || info.size > MAX_TEXT_BYTES) {
+      others.push(relative);
+      return;
+    }
+    const text = await readFile(absolute, 'utf8').catch(() => null);
+    if (text === null) return;
+    files.push({ path: relative, text, mtime: info.mtimeMs, birthtime: info.birthtimeMs || info.ctimeMs });
+  };
+  const pending = new Set<Promise<void>>();
+  const queue = async (task: () => Promise<void>): Promise<void> => {
+    while (pending.size >= READ_AT_ONCE) await Promise.race(pending);
+    const run = task().finally(() => pending.delete(run));
+    pending.add(run);
+  };
   const walk = async (dir: string, depth: number): Promise<void> => {
     if (depth > MAX_DEPTH || count > MAX_FILES) return;
     const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
@@ -261,25 +280,13 @@ export async function scanVault(): Promise<unknown> {
         folders.push({ path: relative, mtime: info?.mtimeMs ?? 0, empty: children.length === 0 });
         await walk(absolute, depth + 1);
       } else if (entry.isFile()) {
-        if (isPage(relative)) {
-          const info = await stat(absolute).catch(() => null);
-          if (!info || info.size > MAX_TEXT_BYTES) {
-            others.push(relative);
-            continue;
-          }
-          const text = await readFile(absolute, 'utf8').catch(() => null);
-          if (text === null) continue;
-          files.push({
-            path: relative,
-            text,
-            mtime: info.mtimeMs,
-            birthtime: info.birthtimeMs || info.ctimeMs,
-          });
-        } else others.push(relative);
+        if (isPage(relative)) await queue(() => readPage(absolute, relative));
+        else others.push(relative);
       }
     }
   };
   await walk(root, 0);
+  await Promise.all(pending);
   const json = async (relative: string) => {
     try {
       return JSON.parse(await readFile(path.join(root!, relative), 'utf8')) as unknown;
@@ -563,6 +570,29 @@ export async function writeSyncBase(peerId: string, files: unknown): Promise<voi
     path.join(root, '.morrow', 'sync', `${peerId}.json`),
     JSON.stringify({ version: 1, files }),
   );
+}
+
+// pictures, sound, video and pdfs open in the app the system uses for them. nothing that could run as a
+// program is ever opened this way, whatever is in the vault
+const OPENABLE =
+  /\.(png|jpe?g|gif|webp|avif|bmp|svg|ico|tiff?|heic|mp3|m4a|wav|ogg|oga|flac|aac|opus|mp4|m4v|webm|mov|mkv|pdf)$/i;
+
+export async function openInDefaultApp(relative: unknown): Promise<boolean> {
+  if (typeof relative !== 'string' || !OPENABLE.test(relative)) return false;
+  const absolute = vaultFilePath(relative);
+  if (!absolute) return false;
+  return (await shell.openPath(absolute)) === '';
+}
+
+// electron reads png and jpeg everywhere, and more kinds on some systems. false when it can not
+export async function copyImage(relative: unknown): Promise<boolean> {
+  if (typeof relative !== 'string' || !OPENABLE.test(relative)) return false;
+  const absolute = vaultFilePath(relative);
+  const image = absolute ? nativeImage.createFromPath(absolute) : null;
+  if (!image || image.isEmpty()) return false;
+  const png = new Blob([new Uint8Array(image.toPNG())], { type: 'image/png' });
+  await clipboard.write([new ClipboardItem({ 'image/png': png })]);
+  return true;
 }
 
 export function revealInFolder(relative: unknown): void {

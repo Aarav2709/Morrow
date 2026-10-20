@@ -55,6 +55,9 @@ export interface PropDef {
   options: SelectOption[];
   // the expression a formula property computes, see core/formula
   formula?: string;
+  // a number or formula shown as a progress bar filled to value out of max, 100 when not set
+  display?: 'bar';
+  max?: number;
 }
 
 export type FilterOp =
@@ -86,6 +89,8 @@ export interface ViewDef {
   groupBy: string | null;
   dateProp: string | null;
   hidden: string[];
+  // table column widths in pixels, by property id or title, missing means the default width
+  widths?: Record<string, number>;
 }
 
 export interface DatabaseDef {

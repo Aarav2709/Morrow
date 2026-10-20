@@ -15,8 +15,20 @@ export interface LinkOccurrence {
   context: string;
 }
 
+// documents never change once made, so the links of each are worked out once. backlinks and the graph
+// look through every page after every edit, which this keeps quick in a big vault
+const linkCache = new WeakMap<DocNode, LinkOccurrence[]>();
+
 // page link nodes plus ordinary links that point at a page
 export function linksInDoc(doc: DocNode): LinkOccurrence[] {
+  const cached = linkCache.get(doc);
+  if (cached) return cached;
+  const result = findLinks(doc);
+  linkCache.set(doc, result);
+  return result;
+}
+
+function findLinks(doc: DocNode): LinkOccurrence[] {
   const result: LinkOccurrence[] = [];
   const visitBlock = (block: DocNode) => {
     const targets: PageId[] = [];

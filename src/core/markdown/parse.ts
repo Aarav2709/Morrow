@@ -152,6 +152,26 @@ function mathBlockRule(state: StateBlock, startLine: number, endLine: number, si
   return true;
 }
 
+// obsidian's block id: " ^id" at the end of a paragraph, kept on the paragraph rather than in its text
+const BLOCK_ID = /[ \t]\^([A-Za-z0-9-]{1,64})[ \t]*$/;
+
+// a paragraph of nothing but <br> is an empty line someone left on purpose, the way morrow writes one
+function emptyLine(paragraph: DocNode): void {
+  if (paragraph.content?.length === 1 && paragraph.content[0]!.type === 'hardBreak') paragraph.content = [];
+}
+
+function takeBlockId(paragraph: DocNode): void {
+  const last = paragraph.content?.[paragraph.content.length - 1];
+  if (paragraph.type !== 'paragraph' || last?.type !== 'text' || !last.text) return;
+  const match = BLOCK_ID.exec(last.text);
+  // a paragraph that is only an id belongs to the block before it in obsidian, so it stays as text
+  if (!match || (!last.text.slice(0, match.index).trim() && paragraph.content!.length === 1)) return;
+  const rest = last.text.slice(0, match.index);
+  if (rest) last.text = rest;
+  else paragraph.content!.pop();
+  paragraph.attrs = { ...paragraph.attrs, blockId: match[1] };
+}
+
 export function markdownToDoc(source: string, options: ParseOptions = {}): DocNode {
   const text = source.length > MAX_INPUT ? source.slice(0, MAX_INPUT) : source;
   const tokens = md.parse(text.replace(/\r\n?/g, '\n'), {});
@@ -208,6 +228,10 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         close();
         break;
       case 'paragraph_close':
+        emptyLine(top());
+        takeBlockId(top());
+        close();
+        break;
       case 'heading_close':
       case 'blockquote_close':
       case 'bullet_list_close':
@@ -256,9 +280,18 @@ interface Builder {
   stack: DocNode[];
 }
 
+// the icon notion writes at the start of a callout: a custom emoji or one of its own icon pictures
+const NOTION_ICON = /^<img\s[^>]*src=["'](?:notion:\/\/custom_emoji\/|\/icons\/)[^>]*>\s*/i;
+
 // toggles and notion asides become blocks, any other html is kept exactly as written
 function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
   const html = source.trim();
+  if (NOTION_ICON.test(html) && !html.replace(NOTION_ICON, '').trim()) return;
+  // an empty line kept on purpose, the way morrow writes one
+  if (/^<br\s*\/?>$/i.test(html)) {
+    b.push({ type: 'paragraph', content: [] });
+    return;
+  }
   if (/^<!--\s*toc\s*-->$/i.test(html)) {
     b.push({ type: 'tableOfContents' });
     return;
@@ -310,7 +343,8 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
     const inner = html
       .slice(aside[0].length)
       .replace(/<\/aside>\s*$/i, '')
-      .trim();
+      .trim()
+      .replace(NOTION_ICON, '');
     const node: DocNode = { type: 'callout', attrs: { tone: 'note', kind: 'note' }, content: [] };
     if (inner) node.content!.push(...(markdownToDoc(inner, options).content ?? []));
     b.push(node);
@@ -443,7 +477,7 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         else if (tag === '<mark>') marks.push({ type: 'highlight' });
         else if (tag === '</mark>') remove('highlight');
         else if (/^<br\s*\/?>$/.test(tag)) out.push({ type: 'hardBreak' });
-        else add(token.content);
+        else if (!NOTION_ICON.test(token.content.trim())) add(token.content);
         break;
       }
       default:

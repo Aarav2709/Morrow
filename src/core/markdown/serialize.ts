@@ -47,10 +47,17 @@ export function pageToMarkdown(title: string, doc: DocNode, options: SerializeOp
   return body ? `${heading}\n${body}` : heading;
 }
 
+const isEmptyParagraph = (node: DocNode | undefined) =>
+  node?.type === 'paragraph' && !(node.content ?? []).length;
+
+// an empty line someone left between paragraphs is written as <br>, which markdown keeps, where plain
+// blank lines would all fold into one. empty lines at the very end are left out
 function blocks(nodes: DocNode[], options: SerializeOptions): string {
+  let last = nodes.length - 1;
+  while (last >= 0 && isEmptyParagraph(nodes[last])) last--;
   const parts: string[] = [];
-  for (const node of nodes) {
-    const text = block(node, options);
+  for (const node of nodes.slice(0, last + 1)) {
+    const text = isEmptyParagraph(node) ? '<br>' : block(node, options);
     if (text !== null) parts.push(text);
   }
   return parts.join('\n\n');
@@ -58,8 +65,11 @@ function blocks(nodes: DocNode[], options: SerializeOptions): string {
 
 function block(node: DocNode, options: SerializeOptions): string | null {
   switch (node.type) {
-    case 'paragraph':
-      return escapeLineStart(inline(node.content ?? [], options));
+    case 'paragraph': {
+      const text = escapeLineStart(inline(node.content ?? [], options));
+      const id = node.attrs?.blockId;
+      return typeof id === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(id) && text ? `${text} ^${id}` : text;
+    }
     case 'heading': {
       const level = clampLevel(node.attrs?.level);
       return `${'#'.repeat(level)} ${inline(node.content ?? [], options)}`;
@@ -146,11 +156,20 @@ function listItems(
   return (list.content ?? [])
     .map((item, index) => {
       const bullet = marker(index, item);
-      const children = item.content ?? [];
+      let children = item.content ?? [];
       const parts: string[] = [];
+      // an item that starts empty never leaves a bare - on its line, under text that reads as a heading
+      // underline. a picture moves up onto the line, anything else waits under a <br>
+      if (isEmptyParagraph(children[0]) && bullet.trim() === '-') {
+        if (children[1]?.type === 'image') children = children.slice(1);
+        else {
+          parts.push('<br>');
+          children = children.slice(1);
+        }
+      }
       children.forEach((child, childIndex) => {
         const text = block(child, options) ?? '';
-        if (childIndex === 0) parts.push(text);
+        if (childIndex === 0 && parts.length === 0) parts.push(text);
         else parts.push((isList(child) ? '\n' : '\n\n') + text);
       });
       const body = parts.join('');

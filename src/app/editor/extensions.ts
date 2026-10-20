@@ -1,3 +1,4 @@
+import { Extension } from '@tiptap/core';
 import type { AnyExtension } from '@tiptap/core';
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
@@ -23,10 +24,32 @@ export interface ExtensionOptions extends PageLinkOptions {
   openDate: (date: Date) => void;
 }
 
+// obsidian block ids live on paragraphs and are written back as " ^id". pressing enter at the end of one
+// never hands its id to the new paragraph
+const BlockIds = Extension.create({
+  name: 'blockIds',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph'],
+        attributes: {
+          blockId: {
+            default: null,
+            keepOnSplit: false,
+            parseHTML: (element) => element.getAttribute('data-block-id'),
+            renderHTML: (attrs) => (attrs.blockId ? { 'data-block-id': attrs.blockId } : {}),
+          },
+        },
+      },
+    ];
+  },
+});
+
 export function createExtensions(options: ExtensionOptions): AnyExtension[] {
   return [
+    BlockIds,
     StarterKit.configure({
-      heading: { levels: [1, 2, 3] },
+      heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: {
         openOnClick: false,
         autolink: true,

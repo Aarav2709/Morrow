@@ -15,6 +15,7 @@ import { TasksView, TrashView } from './components/Views';
 import { commitEditors, undoRedo } from './editor/commits';
 import { ensureToday, writeAutoBackup } from './operations';
 import { startAutoSync, syncWith } from './sync';
+import { startUpdateChecks } from './updates';
 import { desktop, isMac } from './platform/desktop';
 import { getPreferences, resolvedTheme, setPreferences, usePreferences } from './platform/preferences';
 import { navigate, parseRoute, routeHash, useRoute } from './router';
@@ -122,6 +123,7 @@ function useLifecycle() {
 
     void loadCustomCss();
     const stopSync = startAutoSync();
+    const stopUpdates = startUpdateChecks();
     // a vault just copied from another computer fills up straight away
     const copyFrom = sessionStorage.getItem('morrow.syncAfterOpen');
     if (copyFrom) {
@@ -145,6 +147,7 @@ function useLifecycle() {
       document.removeEventListener('visibilitychange', onVisibility);
       unsubscribe?.();
       stopSync();
+      stopUpdates();
       if (first) clearTimeout(first);
       if (timer) clearInterval(timer);
     };
@@ -154,7 +157,7 @@ function useLifecycle() {
 function viewFor(route: Route) {
   switch (route.name) {
     case 'page':
-      return <PageView key={route.id} id={route.id} find={route.find} />;
+      return <PageView key={route.id} id={route.id} find={route.find} anchor={route.anchor ?? null} />;
     case 'tasks':
       return <TasksView />;
     case 'trash':

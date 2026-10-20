@@ -1,6 +1,7 @@
 import { CornerDownLeft, FileText, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { dialogOpened } from '../platform/desktop';
 import { displayTitle } from '../../core/model';
 import { foldText, searchWorkspace } from '../../core/search';
 import type { SearchSnippet } from '../../core/search';
@@ -25,6 +26,8 @@ interface Entry {
 export function CommandPalette() {
   const state = useWorkspace();
   const [query, setQuery] = useState('');
+  // results follow a moment behind the typing in a big vault, so every key press shows at once
+  const searched = useDeferredValue(query);
   const [active, setActive] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -33,7 +36,9 @@ export function CommandPalette() {
   useEffect(() => {
     previousFocus.current = document.activeElement as HTMLElement | null;
     inputRef.current?.focus();
+    const closed = dialogOpened();
     return () => {
+      closed();
       if (previousFocus.current?.isConnected) previousFocus.current.focus();
     };
   }, []);
@@ -42,7 +47,7 @@ export function CommandPalette() {
 
   const entries = useMemo<Entry[]>(() => {
     const context = currentContext();
-    const actionQuery = foldText(query.trim().replace(/^>/, ''));
+    const actionQuery = foldText(searched.trim().replace(/^>/, ''));
     const actions = ACTIONS.filter(
       (action) => action.id !== 'search' && (!action.enabled || action.enabled(context)),
     )
@@ -60,9 +65,9 @@ export function CommandPalette() {
         run: () => action.run(context),
       }));
 
-    if (query.trim().startsWith('>')) return actions;
+    if (searched.trim().startsWith('>')) return actions;
 
-    if (!query.trim()) {
+    if (!searched.trim()) {
       const recent = livePages(state.pages)
         .filter((page) => page.lastOpenedAt !== null)
         .sort((a, b) => (b.lastOpenedAt ?? 0) - (a.lastOpenedAt ?? 0))
@@ -78,7 +83,7 @@ export function CommandPalette() {
       return [...recent, ...actions];
     }
 
-    const pages = searchWorkspace(state, query, 30).map<Entry>((result) => ({
+    const pages = searchWorkspace(state, searched, 30).map<Entry>((result) => ({
       key: `page:${result.page.id}`,
       group: 'Pages',
       title: displayTitle(result.page),
@@ -90,13 +95,13 @@ export function CommandPalette() {
     const everywhere: Entry = {
       key: 'search:all',
       group: 'Pages',
-      title: `Search every page for “${query.trim()}”`,
+      title: `Search every page for “${searched.trim()}”`,
       icon: Search,
       shortcut: formatShortcut('Mod+Enter'),
-      run: () => navigate({ name: 'search', query: query.trim() }),
+      run: () => navigate({ name: 'search', query: searched.trim() }),
     };
     return [...pages, everywhere, ...actions.slice(0, 5)];
-  }, [query, state]);
+  }, [searched, state]);
 
   const [lastQuery, setLastQuery] = useState(query);
   if (query !== lastQuery) {

@@ -2,6 +2,7 @@ import type { FileId, FileMeta } from '../../core/model';
 import type { StoredFile } from '../../storage/repository';
 import { toast } from '../ui';
 import { getSession } from '../workspace';
+import { desktop } from './desktop';
 import { newId, saveFile } from './files';
 
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
@@ -62,4 +63,11 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+// puts a picture from the vault on the clipboard
+export async function copyImageFile(id: FileId): Promise<void> {
+  const copied = await (desktop?.vault?.copyImage(id) ?? Promise.resolve(false)).catch(() => false);
+  if (copied) toast('Image copied.');
+  else toast('Could not copy the image.', { tone: 'error' });
 }

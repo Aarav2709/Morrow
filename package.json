@@ -2,7 +2,7 @@
   "name": "morrow",
   "productName": "Morrow",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, and no AI unless you bring your own.",
   "desktopName": "morrow.desktop",
   "license": "Apache-2.0",
@@ -21,7 +21,7 @@
   },
   "scripts": {
     "dev": "vite --mode desktop",
-    "build": "tsc -p tsconfig.json && vite build && tsc -p tsconfig.electron.json",
+    "build": "tsc -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit && vite build && vite build --config vite.electron.config.ts",
     "start": "electron .",
     "dist": "npm run build && electron-builder --publish never",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit",
@@ -31,6 +31,7 @@
     "check": "npm run typecheck && npm run lint && npm test && npm run build"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@eslint/js": "^10.0.1",
     "@floating-ui/dom": "^1.8.0",
     "@fontsource-variable/inter": "^5.3.0",
@@ -105,6 +106,15 @@
       }
     ],
     "asar": true,
+    "electronLanguages": [
+      "en",
+      "en-US",
+      "en-GB",
+      "es",
+      "es-419",
+      "pt-BR",
+      "pt-PT"
+    ],
     "win": {
       "target": [
         "nsis",
@@ -162,8 +172,5 @@
         "repo": "Morrow"
       }
     ]
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.135.0"
   }
 }

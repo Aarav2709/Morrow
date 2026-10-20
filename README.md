@@ -38,7 +38,10 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 - **Date mentions**: type `@` for `@today`, `@friday` or any day, linked to that
   day's note
 - **Links**: `[[` to link pages, with aliases and headings, live titles,
-  backlinks, links to pages that do not exist yet, and links that follow renames
+  backlinks, links to pages that do not exist yet, and links that follow renames.
+  Link to one block with `[[Page#^id]]` or a section with `[[Page#Heading]]`,
+  or show just that part with `![[…]]`, the same way Obsidian does. **Copy link
+  to block** in a block's menu makes one
 - **Databases**: table, board, calendar, list and gallery views of pages, with
   text, number, select, multi-select, date, checkbox, link, relation and
   formula properties, filters, sorts and grouping, checklist progress on cards,
@@ -92,6 +95,8 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   Ollama or LM Studio. You bring the key, every change is shown for approval,
   kept in page history and can be undone, and locked pages are never sent
 - **Export as PDF**, and **edit as Markdown** to work on a page's source directly
+- **Updates when you want them**: turn on update checks in Settings, About. Windows
+  and Linux AppImage copies download, verify and install the new version themselves
 - **Custom CSS** kept in the vault as `.morrow/style.css`
 - A full emoji picker for page icons, drawn the same on every system
 - Find and replace, Markdown shortcuts, Markdown paste, an outline of each page, focus mode
@@ -103,7 +108,7 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 
 ## Status
 
-Version **1.1.0**. Pages are files in a folder you choose. Earlier builds kept
+Version **1.2.0**. Pages are files in a folder you choose. Earlier builds kept
 them inside the app; the first time this version opens it offers to copy those
 pages into the folder and leaves the original copy untouched. Releases are built
 for Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64).
@@ -141,6 +146,11 @@ in `%APPDATA%\Morrow` on Windows, `~/Library/Application Support/Morrow` on
 macOS and `~/.config/Morrow` on Linux. If you turn on the assistant, its API key
 is kept there too, encrypted by your system's keychain (or only until Morrow
 closes when the system has none).
+
+## Contributing
+
+Bug reports, ideas and code are all welcome. [CONTRIBUTING.md](CONTRIBUTING.md)
+explains how to set up and what to check before a pull request, and [ARCHITECTURE.md](ARCHITECTURE.md) is a map of the code.
 
 ## How Morrow was made
 

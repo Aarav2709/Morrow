@@ -5,7 +5,8 @@ import type { PaneId } from './tabs';
 
 export type Route =
   | { name: 'home' }
-  | { name: 'page'; id: PageId; find: string | null }
+  // anchor is a heading or ^block id to scroll to once the page opens
+  | { name: 'page'; id: PageId; find: string | null; anchor?: string | null }
   | { name: 'tasks' }
   | { name: 'trash' }
   | { name: 'tags' }
@@ -18,8 +19,10 @@ export function parseRoute(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#/, '').split('?');
   const parts = path.split('/').filter(Boolean);
   if (parts[0] === 'page' && parts[1]) {
-    const find = new URLSearchParams(query).get('find');
-    return { name: 'page', id: decodeURIComponent(parts[1]), find: find || null };
+    const params = new URLSearchParams(query);
+    const find = params.get('find');
+    const anchor = params.get('anchor');
+    return { name: 'page', id: decodeURIComponent(parts[1]), find: find || null, anchor: anchor || null };
   }
   if (parts[0] === 'tasks') return { name: 'tasks' };
   if (parts[0] === 'trash') return { name: 'trash' };
@@ -34,8 +37,13 @@ export function parseRoute(hash: string): Route {
 
 export function routeHash(route: Route): string {
   switch (route.name) {
-    case 'page':
-      return `#/page/${encodeURIComponent(route.id)}${route.find ? `?find=${encodeURIComponent(route.find)}` : ''}`;
+    case 'page': {
+      const params = new URLSearchParams();
+      if (route.find) params.set('find', route.find);
+      if (route.anchor) params.set('anchor', route.anchor);
+      const query = params.toString();
+      return `#/page/${encodeURIComponent(route.id)}${query ? `?${query}` : ''}`;
+    }
     case 'tasks':
       return '#/tasks';
     case 'trash':
@@ -66,8 +74,8 @@ export function navigate(route: Route, options: { replace?: boolean; pane?: Pane
   showInMain(hash, options.replace);
 }
 
-export function openPage(id: PageId, find: string | null = null): void {
-  navigate({ name: 'page', id, find });
+export function openPage(id: PageId, find: string | null = null, anchor: string | null = null): void {
+  navigate({ name: 'page', id, find, anchor });
 }
 
 let cachedHash = '';

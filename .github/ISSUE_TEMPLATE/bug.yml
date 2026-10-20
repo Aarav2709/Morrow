@@ -1,0 +1,39 @@
+name: Bug report
+description: Something in Morrow doesn't work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: |
+        1. Open a page
+        2. Type …
+        3. …
+  - type: input
+    id: version
+    attributes:
+      label: Morrow version
+      description: In Settings, About.
+      placeholder: '1.2.0'
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options: [Windows, macOS, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Screenshots, or the Markdown of a page that shows the problem. Leave out anything private.

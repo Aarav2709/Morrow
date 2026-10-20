@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { canvasFromDoc } from '../core/canvas';
 import type { Command } from '../core/commands';
 import type { DocNode, PageId } from '../core/model';
+import { sampleCommands } from '../core/sample';
 import { MemoryVault } from './memoryVault';
 import { WorkspaceSession } from './session';
 import { VaultRepository } from './vaultRepository';
@@ -187,6 +188,51 @@ describe('opening a folder of markdown files', () => {
 });
 
 describe('edits made outside morrow', () => {
+  it('does not read its own first save back in as new pages', async () => {
+    const vault = new MemoryVault();
+    const opened = await WorkspaceSession.open(new VaultRepository(vault, newId), { delayMs: 0 });
+    if (!opened.ok) throw new Error(opened.error);
+    const session = opened.value;
+    expect(session.firstRun).toBe(true);
+    // a slow disk: the watcher reports the first files while the rest are still being written
+    vault.midway = (done) => {
+      if (done === 3) vault.report(vault.paths().filter((path) => path.endsWith('.md')));
+    };
+    const seeded = session.executeAll(sampleCommands(newId, Date.now()));
+    if (!seeded.ok) throw new Error(seeded.error);
+    await session.flush();
+    vault.midway = null;
+    const titles = Object.values(session.getState().pages).map((page) => page.title);
+    expect(titles.length).toBe(new Set(titles).size);
+    await session.close();
+  });
+
+  it('does not take a page caught halfway through a move for an edit made elsewhere', async () => {
+    const vault = new MemoryVault({
+      'Trip.md': 'Look ![](attachments/pic.png)\n',
+      'attachments/pic.png': 'PNG',
+    });
+    const repository = new VaultRepository(vault, newId);
+    const opened = await WorkspaceSession.open(repository, { delayMs: 0 });
+    if (!opened.ok) throw new Error(opened.error);
+    const session = opened.value;
+    const trip = idOf(session, 'Trip');
+    const picture = () => session.getState().docs[trip]!.content!.find((node) => node.type === 'image');
+    await run(session, { type: 'page.trash', id: trip, now: 1 });
+    await run(session, { type: 'page.restore', id: trip });
+    // the watcher read the file right after it was renamed back, before its links were rewritten
+    const stale = {
+      path: 'Trip.md',
+      text: 'Look\n\n![](../attachments/pic.png)\n',
+      mtime: Date.now() - 60_000,
+      birthtime: 0,
+    };
+    expect(repository.readChanges([stale], session.getState())).toBeNull();
+    expect(picture()?.attrs?.fileId).toBe('attachments/pic.png');
+    expect(vault.text('Trip.md')).toBe('Look\n\n![](attachments/pic.png)\n');
+    await session.close();
+  });
+
   it('picks up changed, new and deleted files', async () => {
     const vault = new MemoryVault(OBSIDIAN);
     const session = await open(vault);

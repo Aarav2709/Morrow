@@ -62,12 +62,29 @@ export function readImportedFile(text: string, fallbackTitle: string, options: P
   // the first heading is the title when it says the same, otherwise it stays in the text
   if (heading !== null && heading === title)
     doc.content = doc.content!.length > 1 ? doc.content!.slice(1) : emptyDoc().content!;
+  doc.content = doc.content!.map((node) => (isContentsList(node) ? { type: 'tableOfContents' } : node));
   if (read.error) return { title, doc, fields: {} };
   const fields: Partial<PageMeta> = { tags: read.tags, extra: read.extra };
   if (read.icon) fields.icon = read.icon;
   if (read.kind === 'database' && read.database)
     Object.assign(fields, { kind: 'database', database: read.database });
   return { title, doc, fields };
+}
+
+// notion writes its table of contents as a list of links to the page's own headings, it becomes one again
+function isContentsList(node: DocNode): boolean {
+  if (node.type !== 'bulletList' || !node.content?.length) return false;
+  return node.content.every((item) => {
+    const [first, ...rest] = item.content ?? [];
+    const parts = first?.type === 'paragraph' ? (first.content ?? []) : [];
+    const href =
+      parts.length === 1 ? parts[0]!.marks?.find((mark) => mark.type === 'link')?.attrs?.href : null;
+    return (
+      typeof href === 'string' &&
+      /^(about:blank)?#./.test(href) &&
+      rest.every((child) => isContentsList(child))
+    );
+  });
 }
 
 // rows of an imported database take their values out of their frontmatter, once every page is known

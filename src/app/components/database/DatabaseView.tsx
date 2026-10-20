@@ -20,11 +20,9 @@ import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { dateKey } from '../../../core/daily';
 import {
-  convertValue,
-  filterOpsFor,
   FILTER_LABELS,
+  filterOpsFor,
   groupRows,
-  optionsFromValues,
   PROP_LABELS,
   propType,
   rowsOf,
@@ -32,13 +30,11 @@ import {
   VIEW_LABELS,
   visibleRows,
   newView,
-  formatValue,
-  formulaResult,
   valueOf,
 } from '../../../core/database';
-import { displayTitle, PROP_TYPES, VIEW_TYPES } from '../../../core/model';
+import { displayTitle, VIEW_TYPES } from '../../../core/model';
 import { unclaimedKeys } from '../../../core/properties';
-import type { Command } from '../../../core/commands';
+import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH } from '../../../core/migrations';
 import type {
   DocNode,
   DatabaseDef,
@@ -46,23 +42,21 @@ import type {
   PageId,
   PageMeta,
   PropDef,
-  PropType,
   PropValue,
   ViewDef,
   ViewType,
 } from '../../../core/model';
-import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { fileUrl } from '../../platform/attachments';
 import { newId } from '../../platform/files';
 import { openPage } from '../../router';
-import { toast } from '../../ui';
-import { run, runAll, useWorkspace } from '../../workspace';
+import { run, useWorkspace } from '../../workspace';
 import { Menu } from '../Menu';
 import { Popover } from '../Popover';
 import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
-import { addColumnsFromPages, createRow, setValue, updateDatabase, updateProp, updateView } from './data';
+import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
+import { PropertySettings } from './PropertySettings';
 
 const VIEW_ICONS: Record<ViewType, LucideIcon> = {
   table: Table2,
@@ -690,202 +684,6 @@ function Toolbar({
 }
 
 // rename a property, change its type or options, or delete it
-function PropertySettings({
-  dbId,
-  database,
-  prop,
-  view,
-  anchor,
-  onClose,
-}: {
-  dbId: PageId;
-  database: DatabaseDef;
-  prop: PropDef;
-  view: ViewDef;
-  anchor: HTMLElement;
-  onClose: () => void;
-}) {
-  const state = useWorkspace();
-  const changeType = (type: PropType) => {
-    if (type === prop.type) return;
-    const rows = rowsOf(state, dbId);
-    const options =
-      type === 'select' || type === 'multiSelect'
-        ? prop.type === 'select' || prop.type === 'multiSelect'
-          ? prop.options
-          : optionsFromValues(
-              prop,
-              rows.map((row) => row.properties[prop.id] ?? null),
-              newId,
-            )
-        : [];
-    const next: PropDef = { ...prop, type, options };
-    const commands: Command[] = [
-      {
-        type: 'database.set',
-        id: dbId,
-        now: Date.now(),
-        database: {
-          ...database,
-          properties: database.properties.map((item) => (item.id === prop.id ? next : item)),
-        },
-      },
-      ...rows.map<Command>((row) => ({
-        type: 'page.setProperties',
-        id: row.id,
-        now: Date.now(),
-        values: { [prop.id]: convertValue(prop, next, row.properties[prop.id] ?? null) },
-      })),
-    ];
-    runAll(commands);
-  };
-  return (
-    <Popover anchor={anchor} onClose={onClose} label={`Property ${prop.name}`} className="db-panel">
-      <label className="field">
-        <span>Name</span>
-        <DraftInput
-          type="text"
-          label="Property name"
-          className="text-input small"
-          value={prop.name}
-          editable
-          onCommit={(name) => {
-            const clean = name.trim();
-            if (
-              !clean ||
-              reservedPropertyName(clean) ||
-              database.properties.some(
-                (item) => item.id !== prop.id && item.name.toLowerCase() === clean.toLowerCase(),
-              )
-            ) {
-              toast('That name is empty or already used.', { tone: 'error' });
-              return;
-            }
-            updateProp(dbId, prop.id, (current) => ({ ...current, name: clean }));
-          }}
-        />
-      </label>
-      <label className="field">
-        <span>Type</span>
-        <select
-          className="text-input small"
-          value={prop.type}
-          onChange={(event) => changeType(event.target.value as PropType)}
-        >
-          {PROP_TYPES.map((item) => (
-            <option key={item} value={item}>
-              {PROP_LABELS[item]}
-            </option>
-          ))}
-        </select>
-      </label>
-      {prop.type === 'formula' && <FormulaField dbId={dbId} prop={prop} database={database} />}
-      {(prop.type === 'select' || prop.type === 'multiSelect') && (
-        <ul className="db-prop-list">
-          {prop.options.map((option) => (
-            <li key={option.id}>
-              <DraftInput
-                type="text"
-                label="Option name"
-                className="text-input small"
-                value={option.name}
-                editable
-                onCommit={(name) =>
-                  name.trim() &&
-                  updateProp(dbId, prop.id, (current) => ({
-                    ...current,
-                    options: current.options.map((item) =>
-                      item.id === option.id ? { ...item, name: name.trim() } : item,
-                    ),
-                  }))
-                }
-              />
-              <select
-                className="text-input small color-select"
-                aria-label="Colour"
-                value={option.color}
-                onChange={(event) =>
-                  updateProp(dbId, prop.id, (current) => ({
-                    ...current,
-                    options: current.options.map((item) =>
-                      item.id === option.id
-                        ? { ...item, color: event.target.value as typeof option.color }
-                        : item,
-                    ),
-                  }))
-                }
-              >
-                {(
-                  ['gray', 'brown', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'red'] as const
-                ).map((color) => (
-                  <option key={color} value={color}>
-                    {color}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="icon-button tiny"
-                aria-label={`Delete option ${option.name}`}
-                onClick={() =>
-                  updateProp(dbId, prop.id, (current) => ({
-                    ...current,
-                    options: current.options.filter((item) => item.id !== option.id),
-                  }))
-                }
-              >
-                <X size={13} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="popover-actions">
-        <button
-          type="button"
-          className="button small"
-          onClick={() => {
-            updateView(dbId, view.id, (current) => ({ ...current, sorts: [{ prop: prop.id, dir: 'asc' }] }));
-            onClose();
-          }}
-        >
-          Sort ascending
-        </button>
-        <button
-          type="button"
-          className="button small"
-          onClick={() => {
-            updateView(dbId, view.id, (current) => ({ ...current, hidden: [...current.hidden, prop.id] }));
-            onClose();
-          }}
-        >
-          <EyeOff size={13} /> Hide
-        </button>
-        <button
-          type="button"
-          className="button small danger"
-          onClick={() => {
-            updateDatabase(dbId, (current) => ({
-              properties: current.properties.filter((item) => item.id !== prop.id),
-              views: current.views.map((item) => ({
-                ...item,
-                filters: item.filters.filter((rule) => rule.prop !== prop.id),
-                sorts: item.sorts.filter((sort) => sort.prop !== prop.id),
-                hidden: item.hidden.filter((id) => id !== prop.id),
-                groupBy: item.groupBy === prop.id ? null : item.groupBy,
-                dateProp: item.dateProp === prop.id ? null : item.dateProp,
-              })),
-            }));
-            onClose();
-          }}
-        >
-          <Trash2 size={13} /> Delete
-        </button>
-      </div>
-    </Popover>
-  );
-}
-
 interface ViewProps {
   dbId: PageId;
   database: DatabaseDef;
@@ -933,17 +731,98 @@ function FocusLast() {
   return null;
 }
 
+const TITLE_WIDTH = 260;
+const COLUMN_WIDTH = 180;
+
+// drag a column's right edge to size it, a double click goes back to the usual width
+function ColumnResizer({
+  width,
+  onResize,
+  onDone,
+  onReset,
+}: {
+  width: number;
+  onResize: (width: number) => void;
+  onDone: (width: number) => void;
+  onReset: () => void;
+}) {
+  return (
+    <span
+      className="db-resize"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Drag to resize"
+      onDoubleClick={onReset}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        const handle = event.currentTarget;
+        handle.setPointerCapture(event.pointerId);
+        const start = event.clientX;
+        let next = width;
+        const move = (moved: PointerEvent) => {
+          next = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, width + moved.clientX - start));
+          onResize(next);
+        };
+        const up = () => {
+          handle.removeEventListener('pointermove', move);
+          handle.removeEventListener('pointerup', up);
+          handle.removeEventListener('pointercancel', up);
+          onDone(next);
+        };
+        handle.addEventListener('pointermove', move);
+        handle.addEventListener('pointerup', up);
+        handle.addEventListener('pointercancel', up);
+      }}
+    />
+  );
+}
+
 function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
   const [header, setHeader] = useState<{ prop: PropDef; anchor: HTMLElement } | null>(null);
   const [adding, setAdding] = useState<HTMLElement | null>(null);
   const [focusNew, setFocusNew] = useState<string | null>(null);
+  // the width being dragged, saved to the view once the drag ends
+  const [dragging, setDragging] = useState<{ key: string; width: number } | null>(null);
+  const widthOf = (key: string) =>
+    dragging?.key === key
+      ? dragging.width
+      : (view.widths?.[key] ?? (key === TITLE_PROP ? TITLE_WIDTH : COLUMN_WIDTH));
+  const saveWidth = (key: string, width: number | null) => {
+    setDragging(null);
+    updateView(dbId, view.id, (current) => {
+      const widths = { ...current.widths };
+      if (width === null) delete widths[key];
+      else widths[key] = width;
+      return { ...current, widths };
+    });
+  };
+  const resizer = (key: string) =>
+    editable && (
+      <ColumnResizer
+        width={widthOf(key)}
+        onResize={(width) => setDragging({ key, width })}
+        onDone={(width) => saveWidth(key, width)}
+        onReset={() => saveWidth(key, null)}
+      />
+    );
+  const total =
+    widthOf(TITLE_PROP) + props.reduce((sum, prop) => sum + widthOf(prop.id), 0) + (editable ? 36 : 0);
   return (
     <div className="db-table-wrap">
-      <table className="db-table">
+      <table className={`db-table${editable ? ' is-filled' : ''}`} style={{ width: total }}>
+        <colgroup>
+          <col style={{ width: widthOf(TITLE_PROP) }} />
+          {props.map((prop) => (
+            <col key={prop.id} style={{ width: widthOf(prop.id) }} />
+          ))}
+          {/* the add column takes whatever room is left, so the others keep the width they were given */}
+          {editable && <col />}
+        </colgroup>
         <thead>
           <tr>
             <th scope="col" className="db-col-title">
               Name
+              {resizer(TITLE_PROP)}
             </th>
             {props.map((prop) => (
               <th key={prop.id} scope="col">
@@ -955,6 +834,7 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
                 >
                   {prop.name}
                 </button>
+                {resizer(prop.id)}
               </th>
             ))}
             {editable && (
@@ -1303,70 +1183,6 @@ function GalleryView({
       {rows.map((row) => (
         <Card key={row.id} row={row} props={props} database={database} cover />
       ))}
-    </div>
-  );
-}
-
-const FORMULA_EXAMPLES = [
-  'prop("Price") * prop("Count")',
-  'if(prop("Done"), "✅", "⏳")',
-  'dateBetween(prop("Due"), today(), "days")',
-  'concat(prop("Name"), " · ", prop("Status"))',
-];
-
-// the expression a formula property runs, checked against the first row as you type
-function FormulaField({ dbId, prop, database }: { dbId: PageId; prop: PropDef; database: DatabaseDef }) {
-  const [draft, setDraft] = useState(prop.formula ?? '');
-  const state = useWorkspace();
-  const sample = rowsOf(state, dbId)[0];
-  const preview = sample ? formulaResult(sample, { ...prop, formula: draft }, database) : null;
-  const save = () => {
-    if (draft !== (prop.formula ?? ''))
-      updateProp(dbId, prop.id, (current) => ({ ...current, formula: draft }));
-  };
-  return (
-    <div className="field formula-field">
-      <span>Formula</span>
-      <textarea
-        className="text-input small formula-input"
-        spellCheck={false}
-        value={draft}
-        placeholder='prop("Price") * prop("Count")'
-        aria-label="Formula"
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={save}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            save();
-          }
-        }}
-      />
-      {preview?.error ? (
-        <span className="formula-error">{preview.error}</span>
-      ) : preview && draft.trim() ? (
-        <span className="muted small">
-          First row: <strong>{formatValue(prop, preview.value) || 'empty'}</strong>
-        </span>
-      ) : null}
-      <details className="formula-help">
-        <summary>How formulas work</summary>
-        <p className="muted small">
-          Use <code>prop("Name")</code> for another property, maths like <code>+ - * / ^</code>, comparisons
-          like <code>&gt; == !=</code>, <code>and</code>, <code>or</code>, <code>not</code>, and functions:
-          if, empty, round, floor, ceil, abs, min, max, sum, length, concat, join, upper, lower, contains,
-          replace, slice, today, now, dateAdd, dateBetween, year, month, day.
-        </p>
-        <ul className="formula-examples">
-          {FORMULA_EXAMPLES.map((example) => (
-            <li key={example}>
-              <button type="button" className="link-button" onClick={() => setDraft(example)}>
-                <code>{example}</code>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </details>
     </div>
   );
 }

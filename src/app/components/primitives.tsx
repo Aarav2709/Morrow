@@ -1,8 +1,9 @@
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useEffect, useId, useRef } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { dismissToast, useUi } from '../ui';
+import { dialogOpened } from '../platform/desktop';
 
 // a sun on the horizon, drawn in code so it carries no third party license
 export function Logo({ size = 20 }: { size?: number }) {
@@ -79,7 +80,9 @@ export function Dialog({
       }
     };
     document.addEventListener('keydown', onKey, true);
+    const closed = dialogOpened();
     return () => {
+      closed();
       document.removeEventListener('keydown', onKey, true);
       if (previous?.isConnected) previous.focus();
     };
@@ -190,4 +193,19 @@ export function relativeTime(timestamp: number, now = Date.now()): string {
     month: 'short',
     year: abs > 86400 * 300 ? 'numeric' : undefined,
   });
+}
+
+// long lists start short with the rest a click away, so a big vault never draws thousands of rows at once
+export function useShowMore<T>(items: T[], limit: number): { shown: T[]; more: ReactNode } {
+  const [count, setCount] = useState(limit);
+  const rest = items.length - count;
+  return {
+    shown: rest > 0 ? items.slice(0, count) : items,
+    more:
+      rest > 0 ? (
+        <button type="button" className="link-button show-more" onClick={() => setCount(count + limit * 4)}>
+          Show {Math.min(rest, limit * 4)} more
+        </button>
+      ) : null,
+  };
 }

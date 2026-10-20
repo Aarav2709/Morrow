@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag of the release to add the files to, like v1.1.0
+        description: Tag of the release to add the files to, like v1.2.0
         required: true
 
 permissions:

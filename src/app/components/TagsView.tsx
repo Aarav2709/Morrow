@@ -7,7 +7,7 @@ import { ancestorsOf } from '../../core/tree';
 import { normalizeTag } from '../../core/vault/frontmatter';
 import { navigate, openPage } from '../router';
 import { run, useWorkspace } from '../workspace';
-import { relativeTime } from './primitives';
+import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -57,6 +57,7 @@ export function TagsView() {
 export function TagView({ tag }: { tag: string }) {
   const state = useWorkspace();
   const pages = useMemo(() => pagesWithTag(state, tag), [state, tag]);
+  const { shown, more } = useShowMore(pages, 60);
   return (
     <div className="view">
       <TopBar>
@@ -85,7 +86,7 @@ export function TagView({ tag }: { tag: string }) {
             </p>
           </header>
           <ul className="link-list">
-            {pages.map((page) => (
+            {shown.map((page) => (
               <PageRow
                 key={page.id}
                 page={page}
@@ -93,6 +94,7 @@ export function TagView({ tag }: { tag: string }) {
               />
             ))}
           </ul>
+          {more}
         </div>
       </div>
     </div>

@@ -28,8 +28,23 @@ export function Chip({ option }: { option: Pick<SelectOption, 'name' | 'color'> 
 }
 
 // a value shown on a card or in a list, never editable
+// a number shown as how far along it is, out of the property's maximum
+export function ProgressBar({ value, max = 100 }: { value: number; max?: number | undefined }) {
+  const share = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
+  return (
+    <span className="prop-progress" title={`${value.toLocaleString()} / ${max.toLocaleString()}`}>
+      <span className="prop-progress-track">
+        <span className="prop-progress-fill" style={{ width: `${share * 100}%` }} />
+      </span>
+      <span className="prop-progress-label">{Math.round(share * 100)}%</span>
+    </span>
+  );
+}
+
 export function PropertyDisplay({ prop, value }: { prop: PropDef; value: PropValue }) {
   if (value === null || value === undefined || value === '' || value === false) return null;
+  if (prop.display === 'bar' && typeof value === 'number')
+    return <ProgressBar value={value} max={prop.max} />;
   switch (prop.type) {
     case 'select': {
       const option = prop.options.find((candidate) => candidate.id === value);
@@ -154,8 +169,8 @@ export function PropertyInput({
           onChange={(event) => setValue(row.id, prop.id, event.target.checked)}
         />
       );
-    case 'number':
-      return (
+    case 'number': {
+      const input = (
         <DraftInput
           type="number"
           label={label}
@@ -167,6 +182,14 @@ export function PropertyInput({
           }}
         />
       );
+      if (prop.display !== 'bar') return input;
+      return (
+        <span className="prop-progress-edit">
+          {typeof value === 'number' && <ProgressBar value={value} max={prop.max} />}
+          {input}
+        </span>
+      );
+    }
     case 'date':
       return (
         <input
@@ -469,6 +492,8 @@ function FormulaCell({ dbId, prop, row }: { dbId: PageId; prop: PropDef; row: Pa
         Error
       </span>
     );
+  if (prop.display === 'bar' && typeof result.value === 'number')
+    return <ProgressBar value={result.value} max={prop.max} />;
   return <span className="prop-text formula-value">{formatValue(prop, result.value)}</span>;
 }
 

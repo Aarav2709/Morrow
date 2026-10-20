@@ -32,6 +32,8 @@ import {
   readBytes,
   readSyncBase,
   readText,
+  copyImage,
+  openInDefaultApp,
   revealInFolder,
   scanVault,
   selectVault,
@@ -47,6 +49,7 @@ import {
 import { cloudStatus } from './cloud.cjs';
 import { aiTurn, cancelAiTurn, getAiSettings, listAiModels, setAiSettings } from './ai.cjs';
 import type { TurnRequest } from './ai.cjs';
+import { checkForUpdate, installUpdate } from './updates.cjs';
 import {
   closeSync,
   forgetPeer,
@@ -79,6 +82,30 @@ const THEMES = {
   light: { background: '#fbfaf7', symbols: '#6b665d' },
   dark: { background: '#1b1a18', symbols: '#a49e93' },
 };
+// the scrim the app lays over everything behind a dialog, matching --scrim in tokens.css
+const SCRIMS = {
+  light: { rgb: [24, 22, 19], alpha: 0.32 },
+  dark: { rgb: [0, 0, 0], alpha: 0.5 },
+};
+
+function dimmed(hex: string, name: 'light' | 'dark'): string {
+  const { rgb, alpha } = SCRIMS[name];
+  const channels = [1, 3, 5].map((start, i) =>
+    Math.round(parseInt(hex.slice(start, start + 2), 16) * (1 - alpha) + rgb[i]! * alpha),
+  );
+  return `#${channels.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+// the native window buttons in the theme's colours, darkened like the rest of the window behind a dialog
+function paintTitleBar(window: BrowserWindow, name: 'light' | 'dark', dim: boolean): void {
+  if (IS_MAC) return;
+  const theme = THEMES[name];
+  window.setTitleBarOverlay({
+    color: dim ? dimmed(theme.background, name) : theme.background,
+    symbolColor: dim ? dimmed(theme.symbols, name) : theme.symbols,
+  });
+}
+const windowThemes = new WeakMap<BrowserWindow, 'light' | 'dark'>();
 
 // development and test runs can use a throwaway profile, installed copies never can
 if (!app.isPackaged && process.env.MORROW_USER_DATA) app.setPath('userData', process.env.MORROW_USER_DATA);
@@ -95,6 +122,41 @@ let readyToClose = false;
 
 const backupsDir = () => path.join(app.getPath('userData'), 'Backups');
 const windowStateFile = () => path.join(app.getPath('userData'), 'window-state.json');
+const spellingFile = () => path.join(app.getPath('userData'), 'spelling.json');
+
+// the languages spelling is checked in, chosen in settings or else the ones this computer prefers. macos
+// checks spelling in the language being typed by itself, so there the list is empty and left alone
+async function chosenSpelling(): Promise<string[] | null> {
+  try {
+    const saved = JSON.parse(await readFile(spellingFile(), 'utf8')) as { languages?: unknown };
+    return Array.isArray(saved.languages) ? saved.languages.filter((code) => typeof code === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+
+function systemSpelling(available: string[]): string[] {
+  const picked: string[] = [];
+  for (const wanted of app.getPreferredSystemLanguages()) {
+    const lower = wanted.toLowerCase();
+    const match =
+      available.find((code) => code.toLowerCase() === lower) ??
+      available.find((code) => code.toLowerCase().split('-')[0] === lower.split('-')[0]);
+    if (match && !picked.includes(match)) picked.push(match);
+    if (picked.length === 3) break;
+  }
+  return picked.length ? picked : available.filter((code) => code === 'en-US').slice(0, 1);
+}
+
+async function applySpelling(): Promise<{ available: string[]; chosen: string[] | null; active: string[] }> {
+  const available = session.defaultSession.availableSpellCheckerLanguages;
+  const chosen = await chosenSpelling();
+  if (available.length === 0) return { available, chosen, active: [] };
+  const valid = (chosen ?? []).filter((code) => available.includes(code));
+  const active = valid.length ? valid : systemSpelling(available);
+  session.defaultSession.setSpellCheckerLanguages(active);
+  return { available, chosen, active };
+}
 
 // windows groups the taskbar button and notifications by this id
 if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
@@ -116,6 +178,7 @@ if (!app.requestSingleInstanceLock()) {
       item.setSaveDialogOptions({ defaultPath: path.join(app.getPath('documents'), item.getFilename()) });
     });
     registerIpc();
+    void applySpelling();
     void initSync((event) => toWindow('sync:event', event));
     // macos needs its system menu for copy, paste and quit, other platforms get no menu bar
     Menu.setApplicationMenu(IS_MAC ? buildMacMenu() : null);
@@ -353,9 +416,25 @@ function registerIpc(): void {
   ipcMain.on('morrow:theme', (event, name: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!fromApp(event) || !window || (name !== 'light' && name !== 'dark')) return;
-    const theme = THEMES[name];
-    window.setBackgroundColor(theme.background);
-    if (!IS_MAC) window.setTitleBarOverlay({ color: theme.background, symbolColor: theme.symbols });
+    window.setBackgroundColor(THEMES[name].background);
+    windowThemes.set(window, name);
+    paintTitleBar(window, name, false);
+  });
+  ipcMain.handle('spelling:get', (event) => (fromApp(event) ? applySpelling() : null));
+  // null goes back to the computer's own languages
+  ipcMain.handle('spelling:set', async (event, languages: unknown) => {
+    if (!fromApp(event)) return null;
+    const list = Array.isArray(languages)
+      ? languages.filter((code) => typeof code === 'string').slice(0, 10)
+      : null;
+    await writeFile(spellingFile(), JSON.stringify({ languages: list?.length ? list : null }));
+    return applySpelling();
+  });
+  ipcMain.on('morrow:dim', (event, dim: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!fromApp(event) || !window) return;
+    const name = windowThemes.get(window) ?? (nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
+    paintTitleBar(window, name, dim === true);
   });
   ipcMain.handle('morrow:open-external', (event, url: unknown) => {
     if (fromApp(event) && typeof url === 'string') openExternal(url);
@@ -417,6 +496,15 @@ function registerVaultIpc(): void {
       return fn(...args);
     });
   handle('ai:settings', () => getAiSettings());
+  // errors come back as text, an invoke that throws reaches the page with electron's wording around it
+  const failed = (error: unknown) => ({
+    ok: false,
+    error: error instanceof Error ? error.message : String(error),
+  });
+  handle('update:check', () => checkForUpdate().then((update) => ({ ok: true, update }), failed));
+  handle('update:install', () =>
+    installUpdate((share) => toWindow('update:progress', share)).then(() => ({ ok: true }), failed),
+  );
   handle('ai:configure', (patch) => setAiSettings((patch ?? {}) as Record<string, unknown>));
   handle('ai:models', () => listAiModels());
   handle('ai:turn', (request) => aiTurn(request as TurnRequest));
@@ -443,6 +531,8 @@ function registerVaultIpc(): void {
   handle('vault:exists', (relative) => pathExists(relative));
   handle('vault:list', (relative) => listDir(relative));
   handle('vault:reveal', (relative) => revealInFolder(relative ?? ''));
+  handle('vault:open-file', (relative) => openInDefaultApp(relative));
+  handle('vault:copy-image', (relative) => copyImage(relative));
   handle('vault:current', () => currentVault());
   handle('vault:manifest', () => vaultManifest());
   handle('vault:identity', () => vaultIdentity());

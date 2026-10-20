@@ -597,13 +597,19 @@ textarea.text-input.small {
   gap: 8px;
   min-height: 30px;
 }
+.db-panel .field > .select-button {
+  width: 100%;
+  max-width: none;
+}
+.db-prop-list .select-button {
+  flex: none;
+  width: 108px;
+  min-width: 0;
+}
 .db-prop-list li > .text-input:first-child,
 .db-prop-name {
   flex: 1;
   min-width: 0;
-}
-.color-select {
-  width: 90px;
 }
 .db-hint {
   padding: 24px 0;
@@ -616,6 +622,9 @@ textarea.text-input.small {
 }
 .db-table {
   border-collapse: collapse;
+  table-layout: fixed;
+}
+.db-table.is-filled {
   min-width: 100%;
 }
 .db-table th,
@@ -626,8 +635,36 @@ textarea.text-input.small {
   height: 34px;
   text-align: left;
   vertical-align: middle;
-  min-width: 140px;
-  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.db-table th {
+  position: relative;
+}
+.db-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  z-index: 1;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+}
+.db-resize::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 3px;
+  width: 1px;
+  background: transparent;
+  transition: background 120ms var(--ease);
+}
+.db-resize:hover::after,
+.db-resize:active::after {
+  background: var(--accent);
+  width: 2px;
 }
 .db-table th:last-child,
 .db-table td:last-child {
@@ -639,12 +676,8 @@ textarea.text-input.small {
   font-size: var(--text-sm);
   padding: 0 8px;
 }
-.db-table .db-col-title {
-  min-width: 220px;
-}
 .db-table .db-col-add {
   min-width: 36px;
-  width: 36px;
 }
 .db-header {
   width: 100%;
@@ -732,6 +765,55 @@ td:hover .prop-empty,
 .prop-text {
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+.prop-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 80px;
+  padding: 0 8px;
+}
+.prop-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--hover);
+  overflow: hidden;
+}
+.prop-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 200ms var(--ease);
+}
+.prop-progress-label {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
+.prop-progress-edit {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.prop-progress-edit > input {
+  width: 72px;
+  flex: none;
+}
+.field-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.field-inline > input {
+  width: 96px;
 }
 .prop-check {
   display: inline-flex;
@@ -943,6 +1025,15 @@ td:hover .prop-empty,
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.row-prop-button {
+  text-align: left;
+  border-radius: var(--radius-sm);
+  height: 28px;
+}
+.row-prop-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
 .row-prop-add {
   align-self: flex-start;
   margin-top: 4px;
@@ -1083,7 +1174,7 @@ td:hover .prop-empty,
   cursor: default;
   overflow: visible;
 }
-.canvas-node > :not(.canvas-handle):not(.canvas-resize):not(.canvas-group-label) {
+.canvas-node > :not(.canvas-handle):not(.canvas-resize):not(.canvas-resize-edge):not(.canvas-group-label) {
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -1236,6 +1327,24 @@ td:hover .prop-empty,
   cursor: nwse-resize;
   z-index: 2;
 }
+.canvas-resize-edge {
+  position: absolute;
+  z-index: 1;
+}
+.canvas-resize-edge.is-x {
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+}
+.canvas-resize-edge.is-y {
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 8px;
+  cursor: ns-resize;
+}
 .canvas-toolbar {
   position: absolute;
   left: 50%;
@@ -1312,6 +1421,7 @@ td:hover .prop-empty,
   top: 64px;
   right: 24px;
   width: 210px;
+  padding-left: 18px;
   max-height: calc(100% - 110px);
   overflow-y: auto;
   font: var(--text-sm) var(--font-ui);
@@ -1335,9 +1445,10 @@ td:hover .prop-empty,
   border-left: 1px solid var(--border);
 }
 .page-outline li {
+  position: relative;
   padding-left: calc((var(--level) - 1) * 12px);
 }
-.page-outline button {
+.outline-link {
   display: block;
   width: 100%;
   text-align: left;
@@ -1346,8 +1457,42 @@ td:hover .prop-empty,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-left: 2px solid transparent;
+  margin-left: -1px;
 }
-.page-outline button:hover {
+.outline-link:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.page-outline li.is-active > .outline-link {
+  color: var(--text);
+  font-weight: 550;
+  border-left-color: var(--accent);
+}
+.outline-fold {
+  position: absolute;
+  top: 4px;
+  left: calc((var(--level) - 1) * 12px - 16px);
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition:
+    opacity 120ms var(--ease),
+    transform 120ms var(--ease);
+}
+.outline-fold[aria-expanded='true'] {
+  transform: rotate(90deg);
+}
+.outline-fold[aria-expanded='false'],
+.page-outline:hover .outline-fold,
+.outline-fold:focus-visible {
+  opacity: 1;
+}
+.outline-fold:hover {
   color: var(--text);
   background: var(--hover);
 }
@@ -2031,6 +2176,25 @@ td:hover .prop-empty,
   flex: 1;
   min-width: 0;
 }
+.settings-code {
+  margin: 0;
+  padding: 10px 12px;
+  max-height: 220px;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--code-bg);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+}
+.settings-row.is-stacked .settings-row-control:has(.settings-code) {
+  flex-direction: column;
+  align-items: stretch;
+}
+.settings-copy {
+  align-self: flex-end;
+}
 .settings-actions {
   display: flex;
   justify-content: flex-end;
@@ -2276,4 +2440,57 @@ td:hover .prop-empty,
 /* a conflict copy's note keeps a readable width, its buttons go underneath in a narrow pane */
 .banner.conflict-banner > span {
   flex: 1 1 280px;
+}
+
+/* a repeating template's settings, under its title */
+.repeat-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.repeat-bar .select-button {
+  min-width: 150px;
+}
+.repeat-picker {
+  width: 300px;
+}
+.repeat-picker .move-list {
+  max-height: 320px;
+  margin-top: 8px;
+}
+
+.spelling-picker {
+  width: 300px;
+}
+.spelling-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.spelling-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.spelling-option:hover {
+  background: var(--hover);
+}
+.spelling-option .muted {
+  margin-left: auto;
+}
+.spelling-check {
+  display: grid;
+  place-items: center;
+  width: 14px;
+  color: var(--accent);
 }

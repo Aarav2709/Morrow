@@ -78,6 +78,26 @@ function blockPosition(view: EditorView, element: Element): number | null {
   }
 }
 
+// the middle of a block's first line of text, which sits lower than its top in a callout, quote or
+// code block with padding around it. null for a block with no text, such as a picture
+function firstTextMiddle(block: HTMLElement): number | null {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) =>
+      node.textContent?.trim() && !node.parentElement?.closest('select, button, .katex-mathml')
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_SKIP,
+  });
+  const text = walker.nextNode();
+  if (!text) return null;
+  const range = document.createRange();
+  range.setStart(text, 0);
+  range.setEnd(text, 1);
+  const box = range.getClientRects()[0];
+  const top = block.getBoundingClientRect().top;
+  // text far down the block belongs to something else, like a caption under a picture
+  return box && box.top - top < 80 ? box.top + box.height / 2 : null;
+}
+
 function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
   return new Plugin({
     key: new PluginKey('blockHandle'),
@@ -113,8 +133,8 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
         const hostRect = host.getBoundingClientRect();
         const rect = target.getBoundingClientRect();
         const lineHeight = parseFloat(getComputedStyle(target).lineHeight) || 24;
-        const firstLine = Math.min(rect.height, lineHeight);
-        handle.style.top = `${rect.top - hostRect.top + firstLine / 2 - 11}px`;
+        const middle = firstTextMiddle(target) ?? rect.top + Math.min(rect.height, lineHeight) / 2;
+        handle.style.top = `${middle - hostRect.top - 11}px`;
         handle.classList.add('is-visible');
       };
 

@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Smile,
   Trash2,
+  ChevronRight,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { docToPlainText, findUnknownTypes, inlineText, isDocEmpty } from '../../core/doc';
@@ -16,6 +17,8 @@ import { backlinksTo, unlinkedMentions } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
 import type { DocNode, PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
+import { findTemplatesPage } from '../../core/templates';
+import { RepeatBar } from './RepeatBar';
 import { findDatabaseOf } from '../../core/database';
 import { basename, conflictOriginal, stripExtension } from '../../core/vault/paths';
 import { PageEditor } from '../editor/PageEditor';
@@ -34,7 +37,7 @@ import { getUi, openDialog, setUi, useUi } from '../ui';
 import { getSession, run, useWorkspace } from '../workspace';
 import type { MenuEntry } from './Menu';
 import { pageMenuEntries } from './pageMenu';
-import { relativeTime } from './primitives';
+import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -54,7 +57,19 @@ function focusStart(editor: Editor) {
   view.focus();
 }
 
-export function PageView({ id, find }: { id: PageId; find: string | null }) {
+// enter in the title starts a new line at the top of the page, taking any title text after the cursor
+function openFirstLine(editor: Editor, text: string) {
+  if (editor.isDestroyed) return;
+  const { state, view } = editor;
+  const first = state.doc.firstChild;
+  if (!text && first?.type.name === 'paragraph' && first.content.size === 0) return focusStart(editor);
+  const paragraph = state.schema.nodes.paragraph!.create(null, text ? state.schema.text(text) : null);
+  const tr = state.tr.insert(0, paragraph);
+  view.dispatch(tr.setSelection(TextSelection.create(tr.doc, 1)).scrollIntoView());
+  view.focus();
+}
+
+export function PageView({ id, find, anchor }: { id: PageId; find: string | null; anchor?: string | null }) {
   const state = useWorkspace();
   const page = state.pages[id];
   const [editing, setEditing] = useState(false);
@@ -94,6 +109,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
 
   const trashed = isEffectivelyTrashed(state.pages, id);
   const unreadable = getSession().unreadable.has(id);
+  const isTemplate = page.parentId !== null && page.parentId === findTemplatesPage(state)?.id;
   const doc = state.docs[id] ?? EMPTY_DOC;
 
   const menu = (): MenuEntry[] => {
@@ -223,13 +239,16 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
               page={page}
               readOnly={trashed}
               inputRef={titleRef}
-              onEnter={() => {
-                if (editorRef.current) focusStart(editorRef.current);
-                else focusWhenReady.current = true;
+              onEnter={(rest) => {
+                const editor = editorRef.current;
+                if (!editor) focusWhenReady.current = true;
+                else if (rest === null || !editor.isEditable) focusStart(editor);
+                else openFirstLine(editor, rest);
               }}
             />
           </h1>
           {page.kind !== 'database' && <PageTags page={page} editable={!trashed && !unreadable} />}
+          {isTemplate && <RepeatBar page={page} editable={!trashed && !unreadable} />}
           {!unreadable && (
             <PageProperties
               page={page}
@@ -263,6 +282,7 @@ export function PageView({ id, find }: { id: PageId; find: string | null }) {
                 doc={doc}
                 editable={!trashed}
                 find={find}
+                anchor={anchor ?? null}
                 onDirty={setEditing}
                 onExitTop={() => {
                   const title = titleRef.current;
@@ -341,6 +361,7 @@ function PageBody(props: {
   doc: typeof EMPTY_DOC;
   editable: boolean;
   find: string | null;
+  anchor: string | null;
   onDirty: (dirty: boolean) => void;
   onExitTop: () => void;
   onReady: (editor: Editor) => void;
@@ -363,6 +384,7 @@ function PageBody(props: {
       doc={props.doc}
       editable={props.editable}
       find={props.find}
+      anchor={props.anchor}
       onDirty={props.onDirty}
       onExitTop={props.onExitTop}
       onReady={props.onReady}
@@ -379,7 +401,8 @@ function TitleField({
   page: PageMeta;
   readOnly: boolean;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
-  onEnter: () => void;
+  // the title text after the cursor when enter was pressed, null when the cursor only moves down
+  onEnter: (rest: string | null) => void;
 }) {
   const ui = useUi();
 
@@ -428,9 +451,21 @@ function TitleField({
         const target = event.currentTarget;
         const atEnd =
           target.selectionStart === target.value.length && target.selectionEnd === target.value.length;
-        if (event.key === 'Enter' || (event.key === 'ArrowDown' && atEnd)) {
+        if (event.key === 'ArrowDown' && atEnd) {
           event.preventDefault();
-          onEnter();
+          onEnter(null);
+        } else if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+          event.preventDefault();
+          if (readOnly) return onEnter(null);
+          const rest = target.value.slice(target.selectionEnd).trim();
+          if (rest)
+            run({
+              type: 'page.rename',
+              id: page.id,
+              title: target.value.slice(0, target.selectionStart).trimEnd(),
+              now: Date.now(),
+            });
+          onEnter(rest);
         }
       }}
     />
@@ -466,6 +501,7 @@ function Subpages({ parentId }: { parentId: PageId }) {
 function Backlinks({ id }: { id: PageId }) {
   const state = useWorkspace();
   const backlinks = useMemo(() => backlinksTo(state, id), [state, id]);
+  const linked = useShowMore(backlinks, 30);
   const [showMentions, setShowMentions] = useState(false);
   const mentions = useMemo(
     () => (showMentions ? unlinkedMentions(state, id) : []),
@@ -513,7 +549,7 @@ function Backlinks({ id }: { id: PageId }) {
           Linked from {backlinks.length} page{backlinks.length === 1 ? '' : 's'}
         </h2>
         <ul className="link-list">
-          {backlinks.map(({ source, contexts }) => (
+          {linked.shown.map(({ source, contexts }) => (
             <li key={source.id}>
               <button type="button" className="link-row backlink" onClick={() => openPage(source.id)}>
                 <span className="link-row-title">
@@ -524,6 +560,7 @@ function Backlinks({ id }: { id: PageId }) {
             </li>
           ))}
         </ul>
+        {linked.more}
       </section>
       {mentionsSection}
     </>
@@ -545,12 +582,20 @@ function headingsOf(doc: DocNode): Heading[] {
 // the room a view needs before the outline fits beside the page
 const OUTLINE_ROOM = 1090;
 
-// a list of the page's headings beside long pages, click one to jump to it
+// a list of the page's headings beside long pages, click one to jump to it. it starts below the cover,
+// marks the section being read, and a heading with smaller ones under it can fold them away
 function Outline({ doc }: { doc: DocNode }) {
   const headings = useMemo(() => headingsOf(doc), [doc]);
   const ref = useRef<HTMLElement>(null);
   const [roomy, setRoomy] = useState(false);
+  const [active, setActive] = useState(-1);
+  const [top, setTop] = useState<number | null>(null);
+  const [folded, setFolded] = useState<ReadonlySet<number>>(new Set());
   const enough = headings.length >= 3;
+  const elements = () =>
+    ref.current
+      ?.closest('.view')
+      ?.querySelectorAll<HTMLElement>('.editor-surface .prose > :is(h1, h2, h3, h4, h5, h6)') ?? [];
   // measured on the view it sits in, so a narrow side of a split hides it
   useEffect(() => {
     const view = ref.current?.closest('.view');
@@ -561,26 +606,88 @@ function Outline({ doc }: { doc: DocNode }) {
     observer.observe(view);
     return () => observer.disconnect();
   }, [enough]);
+  useEffect(() => {
+    const view = ref.current?.closest('.view');
+    const scroller = view?.querySelector('.page-scroll');
+    if (!view || !scroller || !enough) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const viewTop = view.getBoundingClientRect().top;
+      const cover = view.querySelector('.page-cover');
+      const below = cover ? cover.getBoundingClientRect().bottom - viewTop + 24 : 0;
+      setTop(below > 64 ? below : null);
+      let current = -1;
+      elements().forEach((element, index) => {
+        if (element.getBoundingClientRect().top - viewTop < 120) current = index;
+      });
+      setActive(current);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    scroller.addEventListener('scroll', schedule, { passive: true });
+    return () => {
+      scroller.removeEventListener('scroll', schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [enough, doc]);
   if (!enough) return null;
-  const jump = (index: number) => {
-    const elements = ref.current
-      ?.closest('.view')
-      ?.querySelectorAll<HTMLElement>(
-        '.editor-surface .prose > h1, .editor-surface .prose > h2, .editor-surface .prose > h3',
-      );
-    elements?.[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+  const jump = (index: number) => elements()[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // a heading owns the smaller headings after it, up to the next one of its size or bigger
+  const hasChildren = (index: number) => (headings[index + 1]?.level ?? 0) > headings[index]!.level;
+  const hidden = new Set<number>();
+  for (const index of folded) {
+    for (
+      let next = index + 1;
+      next < headings.length && headings[next]!.level > headings[index]!.level;
+      next++
+    )
+      hidden.add(next);
+  }
+  // a section folded away shows as reading the heading it is folded under
+  let marked = active;
+  while (marked > 0 && hidden.has(marked)) marked--;
+  const toggle = (index: number) =>
+    setFolded((current) => {
+      const next = new Set(current);
+      if (!next.delete(index)) next.add(index);
+      return next;
+    });
   return (
-    <nav ref={ref} className={`page-outline${roomy ? ' is-roomy' : ''}`} aria-label="Outline">
+    <nav
+      ref={ref}
+      className={`page-outline${roomy ? ' is-roomy' : ''}`}
+      style={top === null ? undefined : { top, maxHeight: `calc(100% - ${top + 46}px)` }}
+      aria-label="Outline"
+    >
       <p className="page-outline-title">On this page</p>
       <ul>
-        {headings.map((heading, index) => (
-          <li key={index} style={{ '--level': heading.level } as React.CSSProperties}>
-            <button type="button" onClick={() => jump(index)}>
-              {heading.text}
-            </button>
-          </li>
-        ))}
+        {headings.map((heading, index) =>
+          hidden.has(index) ? null : (
+            <li
+              key={index}
+              className={index === marked ? 'is-active' : undefined}
+              style={{ '--level': heading.level } as React.CSSProperties}
+            >
+              {hasChildren(index) && (
+                <button
+                  type="button"
+                  className="outline-fold"
+                  aria-expanded={!folded.has(index)}
+                  aria-label={folded.has(index) ? 'Expand' : 'Collapse'}
+                  onClick={() => toggle(index)}
+                >
+                  <ChevronRight size={12} />
+                </button>
+              )}
+              <button type="button" className="outline-link" onClick={() => jump(index)}>
+                {heading.text}
+              </button>
+            </li>
+          ),
+        )}
       </ul>
     </nav>
   );

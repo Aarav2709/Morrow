@@ -21,10 +21,12 @@ import type { PageWidth, StartPage, ThemePreference, WritingFont } from '../plat
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
 import { chooseVaultFolder } from '../vaults';
+import { checkForUpdate, installUpdate, useUpdateState } from '../updates';
 import { getSession } from '../workspace';
 import { Dialog, Logo, Switch } from './primitives';
 import { SettingRow, SettingsGroup } from './SettingsRows';
 import { CloudSettings, NetworkSettings } from './SyncSettings';
+import { SpellingSetting } from './SpellingSetting';
 
 const SECTIONS: Array<{ id: SettingsSection; label: string; icon: LucideIcon }> = [
   { id: 'general', label: 'General', icon: SlidersHorizontal },
@@ -113,6 +115,7 @@ function GeneralSettings() {
   const prefs = usePreferences();
   return (
     <SettingsGroup>
+      <SpellingSetting />
       <SettingRow label="Your name" help="The home page greets you with it.">
         <input
           className="text-input small settings-input"
@@ -375,6 +378,71 @@ function VaultSettings() {
   );
 }
 
+// checking asks github's release list for the latest version and sends nothing about you or your notes
+function UpdateSettings() {
+  const prefs = usePreferences();
+  const update = useUpdateState();
+  if (!desktop?.updates) return null;
+  const found = update.kind === 'available' || update.kind === 'installing' ? update.update : null;
+  const status =
+    update.kind === 'checking'
+      ? 'Checking…'
+      : update.kind === 'current'
+        ? 'You have the latest version.'
+        : update.kind === 'error'
+          ? update.message
+          : found
+            ? `Morrow ${found.version} is out.`
+            : 'Checks GitHub for a new version when Morrow opens and once a day.';
+  return (
+    <SettingsGroup>
+      <SettingRow label="Check for updates" help={status}>
+        <div className="settings-actions">
+          <button
+            type="button"
+            className="button small"
+            disabled={update.kind === 'checking' || update.kind === 'installing'}
+            onClick={() => void checkForUpdate()}
+          >
+            Check now
+          </button>
+          <Switch
+            label="Check for updates automatically"
+            checked={prefs.checkUpdates}
+            onChange={(checkUpdates) => setPreferences({ checkUpdates })}
+          />
+        </div>
+      </SettingRow>
+      {found && (
+        <SettingRow
+          label={`Morrow ${found.version}`}
+          help={
+            update.kind === 'installing'
+              ? `Downloading… ${Math.round(update.share * 100)}%`
+              : found.installable
+                ? 'Morrow restarts into the new version once it is downloaded.'
+                : 'Download it from the release page and install it over this one.'
+          }
+        >
+          <div className="settings-actions">
+            <button type="button" className="button small" onClick={() => openHref(found.url)}>
+              What's new
+            </button>
+            <button
+              type="button"
+              className="button small primary"
+              disabled={update.kind === 'installing'}
+              onClick={() => void installUpdate(found)}
+            >
+              {found.installable ? 'Install and restart' : 'Download'}
+            </button>
+          </div>
+        </SettingRow>
+      )}
+    </SettingsGroup>
+  );
+}
+
 function AboutSettings() {
   return (
     <>
@@ -385,6 +453,7 @@ function AboutSettings() {
           <span>Free and open source under the Apache License 2.0.</span>
         </div>
       </div>
+      <UpdateSettings />
       <SettingsGroup>
         <SettingRow label="Keyboard shortcuts" help={`Or press ${formatShortcut('Mod+/')} anywhere.`}>
           <button type="button" className="button small" onClick={() => openDialog({ kind: 'shortcuts' })}>
@@ -402,8 +471,8 @@ function AboutSettings() {
         </SettingRow>
       </SettingsGroup>
       <p className="settings-group-help">
-        No accounts, no tracking and no ads. Nothing leaves this computer unless you turn on the assistant or
-        sync.
+        No accounts, no tracking and no ads. Nothing leaves this computer unless you turn on the assistant,
+        sync or update checks.
       </p>
     </>
   );

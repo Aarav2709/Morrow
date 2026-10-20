@@ -7,7 +7,7 @@ import { openToday } from '../operations';
 import { openPage } from '../router';
 import { useWorkspace } from '../workspace';
 import { Popover } from './Popover';
-import { relativeTime } from './primitives';
+import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 
 const shortDate = (key: string) =>
@@ -144,6 +144,7 @@ export function DailyCalendar({
 export function MadeThisDay({ dailyDate }: { dailyDate: string }) {
   const state = useWorkspace();
   const pages = useMemo(() => pagesMadeOn(state, dailyDate), [state, dailyDate]);
+  const { shown, more } = useShowMore(pages, 12);
   if (pages.length === 0) return null;
   return (
     <section className="page-section" aria-label="Made this day">
@@ -151,7 +152,7 @@ export function MadeThisDay({ dailyDate }: { dailyDate: string }) {
         Made this day <span className="section-count">{pages.length}</span>
       </h2>
       <ul className="link-list">
-        {pages.map((page) => (
+        {shown.map((page) => (
           <li key={page.id}>
             <button
               type="button"
@@ -168,6 +169,7 @@ export function MadeThisDay({ dailyDate }: { dailyDate: string }) {
           </li>
         ))}
       </ul>
+      {more}
     </section>
   );
 }
