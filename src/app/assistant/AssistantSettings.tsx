@@ -5,6 +5,7 @@ import { Switch } from '../components/primitives';
 import { Select } from '../components/Select';
 import { SettingRow, SettingsGroup } from '../components/SettingsRows';
 import { openHref } from '../editor/EditorMenus';
+import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import type { AssistantProviderId, AssistantSettings as Settings } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
@@ -29,6 +30,7 @@ type Connection =
 
 // the assistant section of settings: off by default, nothing is sent anywhere until you turn it on
 export function AssistantSettings() {
+  const { t } = useTranslation();
   const prefs = usePreferences();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [key, setKey] = useState('');
@@ -95,15 +97,15 @@ export function AssistantSettings() {
         help={
           prefs.assistant
             ? undefined
-            : 'Morrow has no AI of its own. Nothing is sent anywhere until you turn this on.'
+            : t('settings.assistant.help')
         }
       >
         <SettingRow
-          label="Assistant"
-          help="Ask about your notes and have pages written or tidied up, with your own API key."
+          label={t('settings.assistant.row')}
+          help={t('settings.assistant.rowHelp')}
         >
           <Switch
-            label="Turn on the assistant"
+            label={t('settings.assistant.switch')}
             checked={prefs.assistant}
             onChange={(on) => setPreferences({ assistant: on, assistantOpen: on && prefs.assistantOpen })}
           />
@@ -112,14 +114,14 @@ export function AssistantSettings() {
 
       {prefs.assistant && settings && (
         <>
-          <SettingsGroup title="Connection">
-            <SettingRow label="Provider">
+          <SettingsGroup title={t('settings.assistant.connection')}>
+            <SettingRow label={t('settings.assistant.provider')}>
               <Select<AssistantProviderId>
-                label="Provider"
+                label={t('settings.assistant.provider')}
                 value={settings.provider}
                 options={settings.providers.map((item) => ({
                   value: item.id,
-                  label: item.label === 'Other' ? 'On your computer' : item.label,
+                  label: item.label === 'Other' ? t('settings.assistant.otherProvider') : item.label,
                   detail: MAKERS[item.id],
                 }))}
                 onChange={(id) => {
@@ -132,13 +134,13 @@ export function AssistantSettings() {
 
             {settings.provider === 'custom' && (
               <SettingRow
-                label="Server address"
-                help="Any server that speaks the OpenAI API, such as Ollama at http://localhost:11434/v1."
+                label={t('settings.assistant.serverAddress')}
+                help={t('settings.assistant.serverAddressHelp')}
                 stacked
               >
                 <input
                   className="text-input small"
-                  aria-label="Server address"
+                  aria-label={t('settings.assistant.serverAddress')}
                   key={settings.provider}
                   defaultValue={settings.baseUrl}
                   spellCheck={false}
@@ -151,21 +153,21 @@ export function AssistantSettings() {
             )}
 
             <SettingRow
-              label={provider?.needsKey ? 'API key' : 'API key, if your server asks for one'}
+              label={provider?.needsKey ? t('settings.assistant.apiKey') : t('settings.assistant.apiKeyOptional')}
               help={
                 settings.hasKey ? (
                   settings.keyStorage === 'system' ? (
-                    'Saved, encrypted by your system keychain.'
+                    t('settings.assistant.keySavedSystem')
                   ) : (
-                    'Kept only until Morrow closes, this system has no keychain.'
+                    t('settings.assistant.keySavedSession')
                   )
                 ) : provider?.keyUrl ? (
                   <>
-                    Get one at{' '}
+                    {t('settings.assistant.getKeyPrefix')}
                     <button type="button" className="link-button" onClick={() => openHref(provider.keyUrl)}>
                       {new URL(provider.keyUrl).hostname}
                     </button>
-                    . You pay the provider for what you use.
+                    {t('settings.assistant.getKeySuffix')}
                   </>
                 ) : undefined
               }
@@ -181,15 +183,15 @@ export function AssistantSettings() {
                 <input
                   className="text-input small"
                   type="password"
-                  aria-label="API key"
+                  aria-label={t('settings.assistant.apiKey')}
                   autoComplete="off"
                   spellCheck={false}
-                  placeholder={settings.hasKey ? '••••••••  Paste a new key to replace it' : 'Paste your key'}
+                  placeholder={settings.hasKey ? t('settings.assistant.replaceKey') : t('settings.assistant.pasteKey')}
                   value={key}
                   onChange={(event) => setKey(event.target.value)}
                 />
                 <button type="submit" className="button small primary" disabled={!key.trim()}>
-                  Save
+                  {t('settings.assistant.saveKey')}
                 </button>
                 {settings.hasKey && (
                   <button
@@ -197,25 +199,25 @@ export function AssistantSettings() {
                     className="button small"
                     onClick={() => void configure({ key: null })}
                   >
-                    Remove
+                    {t('settings.assistant.removeKey')}
                   </button>
                 )}
               </form>
             </SettingRow>
 
             <SettingRow
-              label="Model"
+              label={t('settings.assistant.model')}
               help={
                 <span className={`connection is-${connection.state}`}>
                   {connection.state === 'checking' && (
                     <>
-                      <Loader2 size={12} className="spin" /> Checking the connection
+                      <Loader2 size={12} className="spin" /> {t('settings.assistant.checkingConnection')}
                     </>
                   )}
                   {connection.state === 'ok' && (
                     <>
-                      <Check size={12} /> Connected
-                      {models.length > 0 ? `, ${models.length} model${models.length === 1 ? '' : 's'}` : ''}
+                      <Check size={12} /> {t('settings.assistant.connected')}
+                      {models.length > 0 ? `, ${t('settings.assistant.modelsCount', { count: models.length })}` : ''}
                     </>
                   )}
                   {connection.state === 'error' && (
@@ -224,26 +226,26 @@ export function AssistantSettings() {
                     </>
                   )}
                   {connection.state === 'idle' &&
-                    (provider?.needsKey ? 'Save a key to see your models.' : '')}
+                    (provider?.needsKey ? t('settings.assistant.saveKeyToSeeModels') : '')}
                 </span>
               }
             >
               {listed ? (
                 <Select<string>
-                  label="Model"
+                  label={t('settings.assistant.model')}
                   value={settings.model || null}
-                  placeholder="Choose a model"
+                  placeholder={t('settings.assistant.chooseModel')}
                   options={modelOptions.map((model) => ({ value: model, label: model }))}
-                  footer={{ label: 'Type a model name…', onSelect: () => setTyping(true) }}
+                  footer={{ label: t('settings.assistant.typeModelName'), onSelect: () => setTyping(true) }}
                   onChange={(model) => void configure({ model })}
                 />
               ) : (
                 <input
                   className="text-input small settings-input"
-                  aria-label="Model"
+                  aria-label={t('settings.assistant.model')}
                   key={`${settings.provider}-${settings.model}`}
                   defaultValue={settings.model}
-                  placeholder="Model name"
+                  placeholder={t('settings.assistant.modelNamePlaceholder')}
                   spellCheck={false}
                   autoFocus={typing}
                   onBlur={(event) => {
@@ -256,8 +258,8 @@ export function AssistantSettings() {
               <button
                 type="button"
                 className="icon-button"
-                aria-label="Check the connection and reload models"
-                title="Check the connection and reload models"
+                aria-label={t('settings.assistant.reloadModels')}
+                title={t('settings.assistant.reloadModels')}
                 disabled={!usable || connection.state === 'checking'}
                 onClick={() => {
                   setTyping(false);
@@ -270,15 +272,18 @@ export function AssistantSettings() {
           </SettingsGroup>
 
           <SettingsGroup
-            title="Changes"
-            help={`What you ask, and the pages it reads, are sent to ${settings.provider === 'custom' ? 'your server' : (provider?.label ?? 'the provider')}. Locked pages never are. Open the assistant with ${formatShortcut('Mod+J')}.`}
+            title={t('settings.assistant.changesTitle')}
+            help={t('settings.assistant.changesHelp', {
+              target: settings.provider === 'custom' ? t('settings.assistant.yourServer') : (provider?.label ?? t('settings.assistant.theProvider')),
+              shortcut: formatShortcut('Mod+J'),
+            })}
           >
             <SettingRow
-              label="Ask before changing pages"
-              help="Every change is kept in page history either way."
+              label={t('settings.assistant.askBeforeChanging')}
+              help={t('settings.assistant.askBeforeChangingHelp')}
             >
               <Switch
-                label="Ask before changing pages"
+                label={t('settings.assistant.askBeforeChanging')}
                 checked={prefs.assistantAsk}
                 onChange={(assistantAsk) => setPreferences({ assistantAsk })}
               />
