@@ -18,6 +18,7 @@ import { foldText } from '../../core/search';
 import { navigate, openPage } from '../router';
 import { useWorkspace } from '../workspace';
 import { TopBar } from './TopBar';
+import { t } from '../i18n';
 
 type SimNode = GraphNode & SimulationNodeDatum;
 type SimLink = SimulationLinkDatum<SimNode> & { kind: GraphLink['kind'] };
@@ -330,20 +331,20 @@ export function GraphView({ focus }: { focus: PageId | null }) {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">{focused ? `Graph around ${displayTitle(focused)}` : 'Graph'}</span>
+        <span className="topbar-title">{focused ? t('graph.graphAround', { title: displayTitle(focused) }) : t('graph.title')}</span>
       </TopBar>
       <div className="graph-wrap" ref={wrapRef}>
         <canvas
           ref={canvasRef}
           className="graph-canvas"
           role="img"
-          aria-label={`Graph of ${graph.nodes.length} pages and ${graph.links.length} links. Click a dot to open its page.`}
+          aria-label={t('graph.canvasAria', { nodes: graph.nodes.length, links: graph.links.length })}
         />
         <div className="graph-controls popover">
           <input
             className="text-input small"
-            placeholder="Find in graph"
-            aria-label="Find in graph"
+            placeholder={t('graph.findPlaceholder')}
+            aria-label={t('graph.findAria')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -353,7 +354,7 @@ export function GraphView({ focus }: { focus: PageId | null }) {
               checked={options.tags}
               onChange={(event) => change({ tags: event.target.checked })}
             />{' '}
-            Tags
+            {t('graph.tags')}
           </label>
           <label className="checkbox-row">
             <input
@@ -361,11 +362,11 @@ export function GraphView({ focus }: { focus: PageId | null }) {
               checked={options.hierarchy}
               onChange={(event) => change({ hierarchy: event.target.checked })}
             />{' '}
-            Subpages
+            {t('graph.subpages')}
           </label>
           {focus ? (
             <label className="checkbox-row">
-              Depth
+              {t('graph.depth')}
               <select
                 className="text-input small"
                 value={options.depth}
@@ -383,7 +384,7 @@ export function GraphView({ focus }: { focus: PageId | null }) {
                 checked={options.orphans}
                 onChange={(event) => change({ orphans: event.target.checked })}
               />{' '}
-              Unlinked pages
+              {t('graph.unlinkedPages')}
             </label>
           )}
           {focus && (
@@ -392,11 +393,11 @@ export function GraphView({ focus }: { focus: PageId | null }) {
               className="link-button"
               onClick={() => navigate({ name: 'graph', focus: null })}
             >
-              <Network size={13} /> Whole graph
+              <Network size={13} /> {t('graph.wholeGraph')}
             </button>
           )}
           <span className="muted small">
-            {graph.nodes.length} pages · {graph.links.length} links
+            {t('graph.stats', { nodes: graph.nodes.length, links: graph.links.length })}
           </span>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { run, useWorkspace } from '../workspace';
 import { relativeTime } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
+import { t } from '../i18n';
 
 function pathOf(state: WorkspaceState, id: PageId): string {
   return ancestorsOf(state.pages, id)
@@ -49,11 +50,11 @@ export function TaskList({
               now: Date.now(),
             })
           }
-          aria-label={task.text || 'Untitled task'}
+          aria-label={task.text || t('tasks.untitledTask')}
         />
       </label>
       <button type="button" className="task-text" onClick={() => openPage(task.pageId, task.text || null)}>
-        {task.text || <span className="muted">Untitled task</span>}
+        {task.text || <span className="muted">{t('tasks.untitledTask')}</span>}
       </button>
       {showPage && <span className="task-page">{displayTitle(state.pages[task.pageId])}</span>}
     </li>
@@ -88,16 +89,16 @@ export function TasksView() {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">Tasks</span>
+        <span className="topbar-title">{t('tasks.title')}</span>
       </TopBar>
       <div className="page-scroll">
         <div className="collection">
           <header className="collection-header">
-            <h1>Tasks</h1>
+            <h1>{t('tasks.title')}</h1>
             <p className="muted">
-              Every checklist item from your pages, in one place. Ticking one here updates its page.
+              {t('tasks.subtitle')}
             </p>
-            <div className="segmented" role="radiogroup" aria-label="Show">
+            <div className="segmented" role="radiogroup" aria-label={t('tasks.showAria')}>
               {(['open', 'done', 'all'] as const).map((value) => (
                 <button
                   key={value}
@@ -108,10 +109,10 @@ export function TasksView() {
                   onClick={() => setFilter(value)}
                 >
                   {value === 'open'
-                    ? `Open (${openCount})`
+                    ? t('tasks.filterOpen', { count: openCount })
                     : value === 'done'
-                      ? `Done (${all.length - openCount})`
-                      : `All (${all.length})`}
+                      ? t('tasks.filterDone', { count: all.length - openCount })
+                      : t('tasks.filterAll', { count: all.length })}
                 </button>
               ))}
             </div>
@@ -121,10 +122,10 @@ export function TasksView() {
               <CheckSquare size={24} strokeWidth={1.5} />
               <p>
                 {all.length === 0
-                  ? 'No tasks yet. Type [ ] at the start of a line, or choose Checklist from the / menu, to add one to any page.'
+                  ? t('tasks.emptyAll')
                   : filter === 'open'
-                    ? 'Nothing left to do. Nicely done.'
-                    : 'Nothing here.'}
+                    ? t('tasks.emptyOpen')
+                    : t('tasks.emptyDone')}
               </p>
             </div>
           ) : (
@@ -143,23 +144,23 @@ export function TrashView() {
   return (
     <div className="view">
       <TopBar>
-        <span className="topbar-title">Trash</span>
+        <span className="topbar-title">{t('trash.title')}</span>
       </TopBar>
       <div className="page-scroll">
         <div className="collection">
           <header className="collection-header">
-            <h1>Trash</h1>
-            <p className="muted">Pages stay here until you delete them. Nothing is removed automatically.</p>
+            <h1>{t('trash.title')}</h1>
+            <p className="muted">{t('trash.subtitle')}</p>
             {trashed.length > 0 && (
               <button type="button" className="button danger" onClick={() => emptyTrash(trashed.length)}>
-                <Trash2 size={15} /> Empty trash
+                <Trash2 size={15} /> {t('trash.emptyTrashButton')}
               </button>
             )}
           </header>
           {trashed.length === 0 ? (
             <div className="empty-state compact">
               <Trash2 size={24} strokeWidth={1.5} />
-              <p>The trash is empty.</p>
+              <p>{t('trash.emptyMessage')}</p>
             </div>
           ) : (
             <ul className="link-list">
@@ -173,20 +174,20 @@ export function TrashView() {
                       </span>
                       <span className="link-row-title">
                         {displayTitle(page)}
-                        {path && <span className="link-row-path">in {path}</span>}
+                        {path && <span className="link-row-path">{t('trash.inPath', { path })}</span>}
                       </span>
-                      <span className="link-row-meta">Trashed {relativeTime(page.trashedAt ?? 0)}</span>
+                      <span className="link-row-meta">{t('trash.trashedAt', { time: relativeTime(page.trashedAt ?? 0) })}</span>
                     </button>
                     <div className="row-actions">
                       <button type="button" className="button small" onClick={() => restorePage(page.id)}>
-                        <RotateCcw size={14} /> Restore
+                        <RotateCcw size={14} /> {t('trash.restore')}
                       </button>
                       <button
                         type="button"
                         className="button small danger"
                         onClick={() => deleteForever(page.id)}
                       >
-                        Delete forever
+                        {t('trash.deleteForever')}
                       </button>
                     </div>
                   </li>
