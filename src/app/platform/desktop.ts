@@ -148,6 +148,8 @@ export interface DesktopMcpApi {
   status(): Promise<McpServerStatus>;
   start(port?: number): Promise<McpServerStatus>;
   stop(): Promise<McpServerStatus>;
+  setEnabled(enabled: boolean): Promise<boolean>;
+  isEnabled(): Promise<boolean>;
 }
 
 export interface DesktopBridge {
@@ -165,7 +167,7 @@ export interface DesktopBridge {
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   showBackupsFolder(): Promise<void>;
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
-  copyText(text: string): void;
+  copyText(text: string): Promise<boolean> | void;
 }
 
 declare global {

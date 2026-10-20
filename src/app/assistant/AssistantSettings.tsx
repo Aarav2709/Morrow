@@ -7,7 +7,7 @@ import { SettingRow, SettingsGroup } from '../components/SettingsRows';
 import { openHref } from '../editor/EditorMenus';
 import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
-import type { AssistantProviderId, AssistantSettings as Settings, McpServerStatus } from '../platform/desktop';
+import type { AssistantProviderId, AssistantSettings as Settings } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 
 // the open panel listens for this to show the provider and model that were just picked
@@ -39,38 +39,13 @@ export function AssistantSettings() {
   const [typing, setTyping] = useState(false);
   const api = desktop?.assistant;
 
-  const [mcpStatus, setMcpStatus] = useState<McpServerStatus | null>(null);
-  const [mcpTab, setMcpTab] = useState<'sse' | 'stdio'>('sse');
   const [mcpCopied, setMcpCopied] = useState(false);
-  const [mcpPortInput, setMcpPortInput] = useState(String(prefs.mcpPort || 3030));
-  const [vaultPath, setVaultPath] = useState<string>('');
 
   useEffect(() => {
-    if (desktop?.vault) {
-      void desktop.vault.state().then((st) => {
-        if (st.current) setVaultPath(st.current);
-      });
+    if (desktop?.mcp?.setEnabled) {
+      void desktop.mcp.setEnabled(prefs.mcpEnabled);
     }
-    if (desktop?.mcp) {
-      void desktop.mcp.status().then(setMcpStatus);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!desktop?.mcp) return;
-    let timer: ReturnType<typeof setInterval>;
-    if (prefs.mcpEnabled) {
-      void desktop.mcp.start(prefs.mcpPort || 3030).then(setMcpStatus);
-      timer = setInterval(() => {
-        void desktop?.mcp?.status().then(setMcpStatus);
-      }, 2000);
-    } else {
-      void desktop.mcp.stop().then(setMcpStatus);
-    }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [prefs.mcpEnabled, prefs.mcpPort]);
+  }, [prefs.mcpEnabled]);
 
   const provider = settings?.providers.find((item) => item.id === settings.provider);
   const usable = Boolean(settings && (settings.hasKey || !provider?.needsKey));
@@ -124,65 +99,52 @@ export function AssistantSettings() {
     ...models,
   ];
 
-  const sseJson = JSON.stringify(
+  const mcpJson = JSON.stringify(
     {
       mcpServers: {
         morrow: {
-          type: 'sse',
-          url: `http://127.0.0.1:${prefs.mcpPort || 3030}/sse`,
+          command: 'npx',
+          args: ['-y', 'morrow-mcp'],
         },
       },
     },
     null,
     2,
   );
-
-  const stdioJson = JSON.stringify(
-    {
-      mcpServers: {
-        morrow: {
-          command: 'node',
-          args: [
-            desktop?.dataPath ? `${desktop.dataPath}/dist-mcp/index.js` : 'dist-mcp/index.js',
-            '--vault',
-            vaultPath || 'C:\\Ruta\\A\\Tu\\Vault',
-          ],
-        },
-      },
-    },
-    null,
-    2,
-  );
-
-  const activeSnippet = mcpTab === 'sse' ? sseJson : stdioJson;
 
   const handleCopy = async () => {
     let success = false;
     if (desktop?.copyText) {
-      desktop.copyText(activeSnippet);
-      success = true;
-    } else {
+      try {
+        await desktop.copyText(mcpJson);
+        success = true;
+      } catch {
+        // Fallback
+      }
+    }
+    if (!success) {
       try {
         if (navigator?.clipboard?.writeText) {
-          await navigator.clipboard.writeText(activeSnippet);
+          await navigator.clipboard.writeText(mcpJson);
           success = true;
         }
       } catch {
         // Fallback
       }
-      if (!success) {
-        try {
-          const textarea = document.createElement('textarea');
-          textarea.value = activeSnippet;
-          textarea.style.position = 'fixed';
-          textarea.style.left = '-9999px';
-          document.body.appendChild(textarea);
-          textarea.select();
-          success = document.execCommand('copy');
-          document.body.removeChild(textarea);
-        } catch {
-          // Ignored
-        }
+    }
+    if (!success) {
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = mcpJson;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        success = document.execCommand('copy');
+        document.body.removeChild(textarea);
+      } catch {
+        // Ignored
       }
     }
     if (success) {
@@ -407,112 +369,71 @@ export function AssistantSettings() {
           />
         </SettingRow>
 
-        <SettingRow
-          label={t('settings.assistant.mcpPort')}
-          help={t('settings.assistant.mcpPortHelp')}
-        >
-          <input
-            className="text-input small"
-            type="number"
-            min={1024}
-            max={65535}
-            aria-label={t('settings.assistant.mcpPort')}
-            style={{ width: 100 }}
-            value={mcpPortInput}
-            onChange={(e) => setMcpPortInput(e.target.value)}
-            onBlur={() => {
-              const val = parseInt(mcpPortInput, 10);
-              if (!isNaN(val) && val >= 1024 && val <= 65535) {
-                setPreferences({ mcpPort: val });
-              } else {
-                setMcpPortInput(String(prefs.mcpPort || 3030));
-              }
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          />
-        </SettingRow>
-
-        <SettingRow
-          label={t('settings.assistant.mcpStatus')}
-          help={
-            mcpStatus?.running ? (
-              <span className="connection is-ok" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <Check size={12} /> {t('settings.assistant.mcpRunning')} — http://127.0.0.1:{mcpStatus.port}/sse
-              </span>
-            ) : mcpStatus?.error ? (
-              <span className="connection is-error" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <CircleAlert size={12} /> {mcpStatus.error}
-              </span>
-            ) : (
-              <span className="connection is-idle">
-                {t('settings.assistant.mcpStopped')}
-              </span>
-            )
-          }
-        />
-
-        <SettingRow
-          label={t('settings.assistant.mcpConfigTitle')}
-          help={t('settings.assistant.mcpConfigHelp')}
-          stacked
-        >
-          <div
-            style={{
-              marginTop: 6,
-              background: 'var(--code-bg)',
-              borderRadius: 6,
-              padding: '10px 12px',
-              border: '1px solid var(--border)',
-            }}
+        {prefs.mcpEnabled && (
+          <SettingRow
+            label={t('settings.assistant.mcpConfigTitle')}
+            help={t('settings.assistant.mcpConfigHelp')}
+            stacked
           >
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 8,
-                gap: 8,
+                width: '100%',
+                boxSizing: 'border-box',
+                marginTop: 6,
+                background: 'var(--code-bg)',
+                borderRadius: 6,
+                padding: '10px 12px',
+                border: '1px solid var(--border)',
               }}
             >
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 8,
+                  gap: 8,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  Stdio (npx)
+                </span>
                 <button
                   type="button"
-                  className={`button small ${mcpTab === 'sse' ? 'primary' : ''}`}
-                  onClick={() => setMcpTab('sse')}
+                  className="button small"
+                  onClick={handleCopy}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    minWidth: 120,
+                  }}
                 >
-                  {t('settings.assistant.mcpTabSse')}
-                </button>
-                <button
-                  type="button"
-                  className={`button small ${mcpTab === 'stdio' ? 'primary' : ''}`}
-                  onClick={() => setMcpTab('stdio')}
-                >
-                  {t('settings.assistant.mcpTabStdio')}
+                  {mcpCopied ? <Check size={13} /> : <Copy size={13} />}
+                  {mcpCopied ? t('settings.assistant.mcpCopied') : t('settings.assistant.mcpCopyButton')}
                 </button>
               </div>
-              <button
-                type="button"
-                className="button small"
-                onClick={handleCopy}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              <pre
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  lineHeight: 1.45,
+                  overflowX: 'auto',
+                  fontFamily: 'var(--font-mono)',
+                }}
               >
-                {mcpCopied ? <Check size={13} /> : <Copy size={13} />}
-                {mcpCopied ? t('settings.assistant.mcpCopied') : t('settings.assistant.mcpCopyButton')}
-              </button>
+                <code>{mcpJson}</code>
+              </pre>
             </div>
-            <pre
-              style={{
-                margin: 0,
-                fontSize: 12,
-                lineHeight: 1.45,
-                overflowX: 'auto',
-                fontFamily: 'var(--font-mono)',
-              }}
-            >
-              <code>{activeSnippet}</code>
-            </pre>
-          </div>
-        </SettingRow>
+          </SettingRow>
+        )}
       </SettingsGroup>
     </>
   );

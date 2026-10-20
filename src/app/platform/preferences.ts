@@ -1,3 +1,4 @@
+import { desktop } from './desktop';
 import { useSyncExternalStore } from 'react';
 import type { SupportedLocale } from '../i18n/types';
 
@@ -148,6 +149,9 @@ export function getPreferences(): Preferences {
 
 export function setPreferences(patch: Partial<Preferences>): void {
   current = { ...current, ...patch };
+  if ('mcpEnabled' in patch && desktop?.mcp?.setEnabled) {
+    void desktop.mcp.setEnabled(Boolean(patch.mcpEnabled));
+  }
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {

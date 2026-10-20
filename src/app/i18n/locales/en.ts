@@ -308,7 +308,7 @@ export const en = {
       mcpGroupTitle: 'Model Context Protocol (MCP) Server',
       mcpGroupHelp: 'Exposes Morrow notes, tags, and tools via the Model Context Protocol for external AI agents and assistants.',
       mcpRow: 'MCP Server',
-      mcpRowHelp: 'Runs a local HTTP/SSE server allowing agents like Cursor, Claude Desktop, or Antigravity to query and manage your vault.',
+      mcpRowHelp: 'Allows external AI agents and assistants like Cursor, Claude Desktop, or Antigravity to browse and manage your vault via the MCP protocol.',
       mcpSwitch: 'Enable MCP Server',
       mcpPort: 'Local Port',
       mcpPortHelp: 'HTTP port where the server listens (defaults to 3030).',

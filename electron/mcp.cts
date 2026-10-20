@@ -2,8 +2,31 @@ import { app } from 'electron';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { currentVault } from './vault.cjs';
+
+const configFile = () => path.join(app.getPath('userData'), 'mcp.json');
+
+export async function isMcpEnabled(): Promise<boolean> {
+  try {
+    const raw = await readFile(configFile(), 'utf8');
+    const parsed = JSON.parse(raw) as { enabled?: boolean };
+    return parsed.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+export async function setMcpEnabled(enabled: boolean): Promise<boolean> {
+  try {
+    await mkdir(app.getPath('userData'), { recursive: true });
+    await writeFile(configFile(), JSON.stringify({ enabled }, null, 2), 'utf8');
+    return enabled;
+  } catch {
+    return false;
+  }
+}
 
 export interface McpStatus {
   running: boolean;

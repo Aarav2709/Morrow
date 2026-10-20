@@ -310,7 +310,7 @@ export const es: TranslationSchema = {
       mcpGroupTitle: 'Servidor MCP (Model Context Protocol)',
       mcpGroupHelp: 'Expone las notas, etiquetas y herramientas de Morrow mediante el protocolo MCP para asistentes y agentes de IA externos.',
       mcpRow: 'Servidor MCP',
-      mcpRowHelp: 'Inicia un servidor local HTTP/SSE para que agentes como Cursor, Claude Desktop o Antigravity consulten y gestionen tus notas.',
+      mcpRowHelp: 'Permite que agentes y asistentes de IA externos como Cursor, Claude Desktop o Antigravity consulten y gestionen tus notas mediante el protocolo MCP.',
       mcpSwitch: 'Habilitar servidor MCP',
       mcpPort: 'Puerto local',
       mcpPortHelp: 'Puerto HTTP donde escucha el servidor (por defecto 3030).',
