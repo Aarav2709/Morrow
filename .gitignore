@@ -1,6 +1,7 @@
 node_modules
 dist
 dist-electron
+dist-mcp
 release
 *.local
 .DS_Store
