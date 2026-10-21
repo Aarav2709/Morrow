@@ -239,7 +239,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
     title: 'Inline formula',
     description: 'Maths inside a sentence',
     icon: Sigma,
-    hint: '$',
+    hint: '$…$',
     keywords: 'math equation latex inline',
     // inserted at the slash itself, then opened for typing like a block formula
     run: (e, r) => {

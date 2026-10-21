@@ -32,6 +32,7 @@ import {
   Quote,
   Strikethrough,
   Trash2,
+  Type,
   Underline,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -646,19 +647,39 @@ export function BlockMenu({
       icon: Info,
       checked: editor.state.doc.nodeAt(request.pos)?.attrs.tone === value,
       onSelect: () => {
+        // the obsidian type follows the colour, so the icon and the file agree with what is shown
         editor
           .chain()
           .focus()
           .setNodeSelection(request.pos)
-          .updateAttributes('callout', { tone: value })
+          .updateAttributes('callout', { tone: value, kind: value })
           .run();
       },
     });
+    const callout = editor.state.doc.nodeAt(request.pos);
     entries.unshift(
       { heading: t('editor.callout') },
       tone('note', t('editor.note')),
       tone('tip', t('editor.tip')),
       tone('warning', t('editor.warning')),
+      tone('danger', t('editor.danger')),
+      ...(callout?.attrs.title
+        ? []
+        : [
+            {
+              label: t('editor.addATitle'),
+              icon: Type,
+              onSelect: () => {
+                editor.chain().setNodeSelection(request.pos).updateAttributes('callout', { title: '' }).run();
+                // the menu hands focus back to the editor as it closes, the new title row takes it after
+                setTimeout(() => {
+                  const dom = editor.view.nodeDOM(request.pos);
+                  if (dom instanceof HTMLElement)
+                    dom.querySelector<HTMLInputElement>('.callout-title')?.focus();
+                }, 50);
+              },
+            },
+          ]),
       {
         separator: true,
       },

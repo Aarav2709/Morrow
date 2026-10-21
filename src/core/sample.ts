@@ -413,7 +413,9 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
         callout(
           'note',
           'A note',
-          p('Click the label of a callout to change its colour, and click its title to rename it.'),
+          p(
+            'Click the icon of a callout to change its colour, and click its title to rename it. The block menu adds a title to one without.',
+          ),
         ),
         callout(
           'tip',
@@ -798,7 +800,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
             'Double-click empty space to add a card, and double-click a card to write in it. Cards understand Markdown.',
           ],
           ['Drag a card to move it. Drag its corner to resize it.'],
-          ['Select a card and drag from one of the dots on its edges to another card to connect them.'],
+          ['Point at a card and drag from one of the dots on its edges to another card to connect them.'],
           [
             'Use the toolbar at the bottom to add a page as a card, make a group, change colours, undo, and zoom.',
           ],
@@ -839,7 +841,7 @@ export function sampleCommands(newId: () => PageId, now: number): Command[] {
           {
             id: 'drag',
             type: 'text',
-            text: 'Select a card, then drag from a dot on its edge to connect it.',
+            text: 'Drag from a dot on the edge of a card to another card to connect them.',
             x: 380,
             y: 0,
             width: 280,

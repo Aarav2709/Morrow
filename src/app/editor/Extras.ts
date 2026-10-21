@@ -167,9 +167,8 @@ export const RawBlock = Node.create({
   },
 });
 
-// a formula left empty is removed, and switching between inline and its own line swaps the node for the other
-// kind in the same place
-const editMath = (view: EditorView, node: PmNode, pos: number, block: boolean) => {
+// a formula left empty is removed
+const editMath = (view: EditorView, node: PmNode, pos: number) => {
   const removeIfEmpty = () => {
     const current = view.state.doc.nodeAt(pos);
     if (current?.type === node.type && !String(current.attrs.latex ?? '').trim())
@@ -178,25 +177,17 @@ const editMath = (view: EditorView, node: PmNode, pos: number, block: boolean) =
   openDialog({
     kind: 'math',
     value: String(node.attrs.latex ?? ''),
-    block,
+    block: node.type.name === 'blockMath',
     onCancel: () => {
       removeIfEmpty();
       view.focus();
     },
-    onSave: (latex, wantBlock) => {
+    onSave: (latex) => {
       const current = view.state.doc.nodeAt(pos);
       if (!current || current.type !== node.type) return;
-      const { schema, tr } = view.state;
-      const end = pos + current.nodeSize;
-      if (!latex.trim()) tr.delete(pos, end);
-      else if (wantBlock === block) tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex });
-      else if (wantBlock) tr.replaceWith(pos, end, schema.nodes.blockMath!.create({ latex }));
-      else
-        tr.replaceWith(
-          pos,
-          end,
-          schema.nodes.paragraph!.create(null, schema.nodes.inlineMath!.create({ latex })),
-        );
+      const { tr } = view.state;
+      if (!latex.trim()) tr.delete(pos, pos + current.nodeSize);
+      else tr.setNodeMarkup(pos, undefined, { ...current.attrs, latex });
       view.dispatch(tr);
       view.focus();
     },
@@ -212,20 +203,41 @@ export function editMathNear(editor: Editor, around: number): void {
     return !found;
   });
   const hit = found as { node: PmNode; pos: number } | null;
-  if (hit) editMath(editor.view, hit.node, hit.pos, hit.node.type.name === 'blockMath');
+  if (hit) editMath(editor.view, hit.node, hit.pos);
 }
 
-// $inline$ formulas as obsidian types them, prices like $5 and $10 stay text
+// typing formulas: $inline$ as obsidian writes them, with prices like $5 and $10 staying text, and $$ to
+// start one: on an empty line it is a formula of its own, inside a sentence an inline one. both open for typing
 const InlineMathDollar = Extension.create({
   name: 'inlineMathDollar',
   addInputRules() {
-    const type = this.editor.schema.nodes.inlineMath;
-    if (!type) return [];
+    const editor = this.editor;
+    const inline = editor.schema.nodes.inlineMath;
+    const block = editor.schema.nodes.blockMath;
+    if (!inline || !block) return [];
+    const openSoon = (pos: number) => setTimeout(() => editMathNear(editor, pos));
     return [
       new InputRule({
         find: /(?<![\\$\w])\$([^\s$](?:[^$\n]*[^\s$])?)\$$/,
         handler: ({ state, range, match }) => {
-          state.tr.replaceWith(range.from, range.to, type.create({ latex: match[1] }));
+          state.tr.replaceWith(range.from, range.to, inline.create({ latex: match[1] }));
+        },
+      }),
+      new InputRule({
+        find: /(?<!\$)\$\$$/,
+        handler: ({ state, range }) => {
+          const $from = state.doc.resolve(range.from);
+          const alone =
+            $from.parent.type.name === 'paragraph' &&
+            range.from === $from.start() &&
+            range.to === $from.end();
+          if (alone && $from.node(-1).canReplaceWith($from.index(-1), $from.indexAfter(-1), block)) {
+            state.tr.replaceWith($from.before(), $from.after(), block.create({ latex: '' }));
+            openSoon($from.before());
+          } else {
+            state.tr.replaceWith(range.from, range.to, inline.create({ latex: '' }));
+            openSoon(range.from);
+          }
         },
       }),
     ];
@@ -238,14 +250,14 @@ export function mathExtensions() {
       katexOptions: { throwOnError: false, strict: false },
       onClick: (node, pos) => {
         const view = currentView(node);
-        if (view) editMath(view, node, pos, false);
+        if (view) editMath(view, node, pos);
       },
     }),
     BlockMath.configure({
       katexOptions: { throwOnError: false, displayMode: true, strict: false },
       onClick: (node, pos) => {
         const view = currentView(node);
-        if (view) editMath(view, node, pos, true);
+        if (view) editMath(view, node, pos);
       },
     }),
     InlineMathDollar,
@@ -526,18 +538,28 @@ const KIND_EMOJI: Record<string, string> = {
   cite: '💬',
 };
 
-// callouts keep their obsidian type, an optional title and whether they start folded
+// the emoji a callout shows: its own obsidian type's while that still matches the colour, else the colour's
+function calloutEmoji(kind: string, tone: CalloutTone): string {
+  const own = KIND_EMOJI[kind.toLowerCase()];
+  return own && calloutTone(kind) === tone ? own : KIND_EMOJI[tone]!;
+}
+
+// callouts keep their obsidian type, an optional title and whether they start folded. the icon sits beside
+// the text like notion's and changes the colour when clicked, the title row only shows when there is one
 export function calloutNodeView(): NodeViewRenderer {
   return ({ node, getPos, editor }) => {
     let current = node;
     const dom = document.createElement('div');
     dom.className = 'callout';
+    const icon = document.createElement('button');
+    icon.type = 'button';
+    icon.className = 'callout-icon';
+    icon.contentEditable = 'false';
+    const main = document.createElement('div');
+    main.className = 'callout-main';
     const header = document.createElement('div');
     header.className = 'callout-header';
     header.contentEditable = 'false';
-    const tone = document.createElement('button');
-    tone.type = 'button';
-    tone.className = 'callout-tone';
     const title = document.createElement('input');
     title.className = 'callout-title';
     title.placeholder = t('editor.addATitle');
@@ -545,30 +567,32 @@ export function calloutNodeView(): NodeViewRenderer {
     const fold = document.createElement('button');
     fold.type = 'button';
     fold.className = 'callout-fold';
-    header.append(tone, title, fold);
+    header.append(title, fold);
     const body = document.createElement('div');
     body.className = 'callout-body';
-    dom.append(header, body);
+    main.append(header, body);
+    dom.append(icon, main);
     const sync = () => {
-      const value = (CALLOUT_TONES as readonly string[]).includes(String(current.attrs.tone))
+      const tone = (CALLOUT_TONES as readonly string[]).includes(String(current.attrs.tone))
         ? (current.attrs.tone as CalloutTone)
         : 'note';
-      dom.dataset.tone = value;
-      const kind = String(current.attrs.kind ?? value);
-      tone.replaceChildren(
-        emojiElement(KIND_EMOJI[kind.toLowerCase()] ?? '📝'),
-        document.createTextNode(` ${kind.charAt(0).toUpperCase() + kind.slice(1)}`),
-      );
-      tone.title = t('editor.clickToChange', { tone: t(TONE_LABELS[value]) });
-      if (document.activeElement !== title) title.value = String(current.attrs.title ?? '');
+      dom.dataset.tone = tone;
+      icon.replaceChildren(emojiElement(calloutEmoji(String(current.attrs.kind ?? tone), tone)));
+      icon.title = t('editor.clickToChange', { tone: t(TONE_LABELS[tone]) });
+      icon.setAttribute('aria-label', icon.title);
+      const text = String(current.attrs.title ?? '');
+      if (document.activeElement !== title) title.value = text;
       title.readOnly = !editor.isEditable;
       const folded = current.attrs.fold === '-';
       dom.classList.toggle('is-folded', folded);
       fold.hidden = !current.attrs.fold;
-      fold.textContent = folded ? 'Show' : 'Hide';
+      fold.setAttribute('aria-label', folded ? t('common.expand') : t('common.collapse'));
+      fold.setAttribute('aria-expanded', String(!folded));
+      // an empty title, rather than none, is one being added: its row shows until it is left empty
+      header.hidden = current.attrs.title == null && !current.attrs.fold;
     };
     sync();
-    tone.addEventListener('click', () => {
+    icon.addEventListener('click', () => {
       if (!editor.isEditable) return;
       const tones = CALLOUT_TONES;
       const next = tones[(tones.indexOf(current.attrs.tone as CalloutTone) + 1) % tones.length]!;
@@ -579,8 +603,11 @@ export function calloutNodeView(): NodeViewRenderer {
     title.addEventListener('change', () =>
       setAttrs(editor.view, getPos, { title: title.value.trim() || null }),
     );
+    title.addEventListener('blur', () => {
+      if (!title.value.trim() && current.attrs.title === '') setAttrs(editor.view, getPos, { title: null });
+    });
     title.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
+      if (event.key === 'Enter' || event.key === 'Escape') {
         event.preventDefault();
         title.blur();
         editor.commands.focus();
@@ -598,8 +625,11 @@ export function calloutNodeView(): NodeViewRenderer {
         sync();
         return true;
       },
-      stopEvent: (event) => header.contains(event.target as globalThis.Node),
-      ignoreMutation: (mutation) => header.contains(mutation.target as globalThis.Node),
+      stopEvent: (event) =>
+        header.contains(event.target as globalThis.Node) || icon.contains(event.target as globalThis.Node),
+      ignoreMutation: (mutation) =>
+        header.contains(mutation.target as globalThis.Node) ||
+        icon.contains(mutation.target as globalThis.Node),
     };
   };
 }

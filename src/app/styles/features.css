@@ -131,58 +131,91 @@
 }
 
 .prose .callout {
-  padding: 10px 16px 12px;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 10px;
+  padding: 14px 16px 14px 14px;
+  border: 1px solid var(--callout-border);
+  border-left: 1px solid var(--callout-border);
+  border-radius: var(--radius-lg);
+  background: var(--callout-bg);
 }
 .prose .callout[data-tone='danger'] {
   --callout-line: #b3261e;
-  --callout-bg: rgba(179, 38, 30, 0.08);
+  --callout-bg: rgba(179, 38, 30, 0.07);
+}
+.callout-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  /* one line of the text tall, so the icon centres on the first line of the title or text */
+  font: inherit;
+  line-height: inherit;
+  height: 1lh;
+  margin-left: -2px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.callout-icon:hover {
+  background: var(--hover);
+}
+.callout-main {
+  min-width: 0;
 }
 .callout-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
-  font-family: var(--font-ui);
-  font-size: var(--text-sm);
+  gap: 6px;
+  margin-bottom: 2px;
 }
-.callout-tone {
-  font-weight: 600;
-  color: var(--callout-line);
-  border-radius: var(--radius-sm);
-  padding: 0 4px;
-  margin-left: -4px;
-}
-.callout-tone:hover {
-  background: var(--hover);
+.callout-header[hidden] {
+  display: none;
 }
 .callout-title {
   flex: 1;
+  height: 1lh;
+  line-height: inherit;
   min-width: 0;
   border: 0;
+  padding: 0;
   background: transparent;
   color: var(--text);
   font: inherit;
   font-weight: 600;
-  padding: 0;
 }
 .callout-title::placeholder {
-  color: transparent;
-}
-.callout:hover .callout-title::placeholder,
-.callout-title:focus::placeholder {
   color: var(--text-faint);
+  font-weight: 500;
 }
 .callout-title:focus {
   outline: none;
 }
 .callout-fold {
-  color: var(--text-faint);
-  font-size: var(--text-xs);
-  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
   border-radius: var(--radius-sm);
+  color: var(--text-faint);
+}
+.callout-fold::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 120ms var(--ease);
+}
+.callout.is-folded .callout-fold::before {
+  transform: translateX(-2px) rotate(-45deg);
+}
+.callout-fold[hidden] {
+  display: none;
 }
 .callout-fold:hover {
   background: var(--hover);
+  color: var(--text);
 }
 .callout.is-folded .callout-body {
   display: none;
@@ -325,87 +358,23 @@
   resize: vertical;
   min-height: 80px;
 }
-/* the formula editor: preview on top, latex below, then the palette */
-.math-preview {
-  display: grid;
-  place-items: center;
-  min-height: 112px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
-  font-size: 1.35em;
-  overflow-x: auto;
-}
-.math-preview > div {
-  max-width: 100%;
-}
-.math-preview.is-empty {
-  font-size: var(--text-sm);
-}
-.math-error {
-  margin: 8px 0 0;
-  color: var(--danger);
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
+/* the formula editor: latex, then how it looks */
 .math-input {
   width: 100%;
-  margin-top: 12px;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   resize: vertical;
-  min-height: 76px;
+  min-height: 80px;
 }
-.math-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.math-preview {
   margin-top: 12px;
-}
-.math-groups {
-  display: flex;
-  gap: 2px;
-}
-.math-groups button {
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.math-groups button:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-.math-groups button.is-active {
-  background: var(--active);
-  color: var(--text);
-}
-.math-palette {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
-  gap: 6px;
-  margin-top: 10px;
-}
-.math-piece {
-  display: grid;
-  place-items: center;
-  min-height: 44px;
-  padding: 4px;
+  padding: 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  overflow: hidden;
-}
-.math-piece:hover {
-  border-color: var(--border-strong);
-  background: var(--hover);
-}
-.math-piece .katex {
-  font-size: 1.2em;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  text-align: center;
+  min-height: 2.5em;
 }
 .math-dialog .dialog-footer {
   align-items: center;
@@ -1377,6 +1346,17 @@ td:hover .prop-empty,
   border: 2px solid var(--accent);
   cursor: crosshair;
   z-index: 2;
+  /* the dots to draw a connection from show on the card under the pointer and on selected ones */
+  opacity: 0;
+  transition: opacity 100ms var(--ease);
+}
+.canvas-node:hover > .canvas-handle,
+.canvas-node.is-selected > .canvas-handle,
+.canvas-view.is-connecting .canvas-handle {
+  opacity: 1;
+}
+.canvas-handle:hover {
+  transform: scale(1.25);
 }
 .canvas-handle-top {
   top: -7px;

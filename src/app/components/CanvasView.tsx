@@ -216,6 +216,25 @@ export function CanvasView({
     [save],
   );
 
+  // a card growing to fit its text, changed from the newest state: it runs while the card is rendering, before
+  // dataRef has caught up with a change made a moment ago, such as the text that made it grow
+  const growNode = (id: string, height: number, persist = false) =>
+    setData((current) => {
+      const next = {
+        ...current,
+        nodes: current.nodes.map((item) =>
+          item.id === id && item.height < height ? { ...item, height } : item,
+        ),
+      };
+      dataRef.current = next;
+      if (persist) {
+        pending.current = next;
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(save, SAVE_DELAY_MS);
+      }
+      return next;
+    });
+
   const undo = () => {
     const previous = history.current.past.pop();
     if (!previous) return;
@@ -238,6 +257,27 @@ export function CanvasView({
     const rect = rootRef.current?.getBoundingClientRect();
     if (!rect) return { x: 0, y: 0 };
     return toWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+
+  // where a card added from the toolbar goes: the middle of the view, stepped down and right off any card there
+  const freeSpot = (width: number, height: number) => {
+    const point = center();
+    const overlaps = (x: number, y: number) =>
+      data.nodes.some(
+        (node) =>
+          node.type !== 'group' &&
+          x < node.x + node.width &&
+          x + width > node.x &&
+          y < node.y + node.height &&
+          y + height > node.y,
+      );
+    let x = Math.round(point.x - width / 2);
+    let y = Math.round(point.y - height / 2);
+    for (let step = 0; step < 30 && overlaps(x, y); step++) {
+      x += 32;
+      y += 32;
+    }
+    return { x, y };
   };
 
   const addNode = (node: Omit<CanvasNode, 'id'>, edit = false) => {
@@ -326,7 +366,10 @@ export function CanvasView({
       const zooming = event.ctrlKey || event.metaKey;
       if (embedded && !zooming && !element.contains(document.activeElement)) return;
       event.preventDefault();
-      if (event.ctrlKey || event.metaKey) zoomAt(Math.exp(-event.deltaY / 300), event.clientX, event.clientY);
+      // a mouse wheel notch is about 100, a trackpad pinch sends many small steps: each is capped so one notch
+      // zooms a little rather than leaping
+      if (event.ctrlKey || event.metaKey)
+        zoomAt(Math.exp(-Math.max(-40, Math.min(40, event.deltaY)) / 250), event.clientX, event.clientY);
       else setView((current) => ({ ...current, x: current.x - event.deltaX, y: current.y - event.deltaY }));
     };
     element.addEventListener('wheel', onWheel, { passive: false });
@@ -687,7 +730,9 @@ export function CanvasView({
 
   const onDoubleClick = (event: React.MouseEvent) => {
     if (!editable) return;
-    const target = event.target as HTMLElement;
+    // the canvas captures the pointer while a card is pressed, so the double click arrives on the canvas itself.
+    // what was under the pointer says which card it was meant for
+    const target = (document.elementFromPoint(event.clientX, event.clientY) ?? event.target) as HTMLElement;
     const nodeElement = target.closest<HTMLElement>('[data-node]');
     if (nodeElement) {
       const node = data.nodes.find((item) => item.id === nodeElement.dataset.node);
@@ -793,7 +838,7 @@ export function CanvasView({
   return (
     <div
       ref={rootRef}
-      className={`canvas-view tool-${tool}`}
+      className={`canvas-view tool-${tool}${link ? ' is-connecting' : ''}`}
       tabIndex={0}
       role="application"
       aria-label={t('canvas.canvasAria')}
@@ -917,9 +962,16 @@ export function CanvasView({
             selected={selected.has(node.id)}
             editing={editing === node.id}
             editable={editable}
+            onFit={(height) => growNode(node.id, height, true)}
+            onGrow={(height) => {
+              // grows as the text does, saved together with the text when writing ends
+              if (node.height < height) growNode(node.id, height);
+            }}
             onText={(text) => {
               updateNode(node.id, { text } as Partial<CanvasNode>);
               setEditing(null);
+              // keys go back to the canvas, so Delete, arrows and undo work on the card just written
+              rootRef.current?.focus({ preventScroll: true });
             }}
           />
         ))}
@@ -981,16 +1033,11 @@ export function CanvasView({
               title={t('canvas.addACard')}
               aria-label={t('canvas.addACard')}
               onClick={() => {
-                const point = center();
                 addNode(
-                  {
-                    type: 'text',
-                    text: '',
-                    x: Math.round(point.x - 125),
-                    y: Math.round(point.y - 30),
-                    width: 250,
-                    height: 60,
-                  } as Omit<CanvasNode, 'id'>,
+                  { type: 'text', text: '', ...freeSpot(250, 60), width: 250, height: 60 } as Omit<
+                    CanvasNode,
+                    'id'
+                  >,
                   true,
                 );
               }}
@@ -1117,15 +1164,10 @@ export function CanvasView({
           exclude={pageId}
           onClose={() => setPageAnchor(null)}
           onPick={(id) => {
-            const point = center();
-            addNode({
-              type: 'page',
-              pageId: id,
-              x: Math.round(point.x - 200),
-              y: Math.round(point.y - 120),
-              width: 400,
-              height: 240,
-            } as Omit<CanvasNode, 'id'>);
+            addNode({ type: 'page', pageId: id, ...freeSpot(400, 240), width: 400, height: 240 } as Omit<
+              CanvasNode,
+              'id'
+            >);
             setPageAnchor(null);
           }}
         />
@@ -1179,13 +1221,28 @@ function CanvasCard({
   editing,
   editable,
   onText,
+  onGrow,
+  onFit,
 }: {
   node: CanvasNode;
   selected: boolean;
   editing: boolean;
   editable: boolean;
   onText: (text: string) => void;
+  onGrow: (height: number) => void;
+  onFit: (height: number) => void;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const wasEditing = useRef(editing);
+  // written text shows headings larger than it was typed, so a card just written gets taller if it needs to.
+  // cards are never resized just by being opened
+  useLayoutEffect(() => {
+    const finished = wasEditing.current && !editing;
+    wasEditing.current = editing;
+    if (!finished || node.type !== 'text') return;
+    const text = ref.current?.querySelector<HTMLElement>('.canvas-text');
+    if (text && text.scrollHeight > text.clientHeight + 1) onFit(Math.ceil(text.scrollHeight + 3));
+  });
   const color =
     node.color && !node.color.startsWith('#')
       ? ` canvas-color-${node.color}`
@@ -1194,13 +1251,18 @@ function CanvasCard({
         : '';
   return (
     <div
+      ref={ref}
       className={`canvas-node canvas-${node.type}${selected ? ' is-selected' : ''}${color}`}
       data-node={node.id}
       style={{ left: node.x, top: node.y, width: node.width, height: node.height, ...colorStyle(node.color) }}
     >
       {node.type === 'group' && <span className="canvas-group-label">{node.label ?? ''}</span>}
       {node.type === 'text' &&
-        (editing ? <TextEditor text={node.text} onDone={onText} /> : <TextCard text={node.text} />)}
+        (editing ? (
+          <TextEditor text={node.text} onDone={onText} onGrow={onGrow} />
+        ) : (
+          <TextCard text={node.text} />
+        ))}
       {node.type === 'page' && <PageCard pageId={node.pageId} />}
       {node.type === 'drawing' && <DrawingCard node={node} />}
       {node.type === 'file' && <FileCard path={node.file} />}
@@ -1210,7 +1272,7 @@ function CanvasCard({
           <span className="muted small">{node.url}</span>
         </div>
       )}
-      {editable && selected && node.type !== 'group' && node.type !== 'drawing' && (
+      {editable && node.type !== 'group' && node.type !== 'drawing' && (
         <>
           {(['top', 'right', 'bottom', 'left'] as const).map((side) => (
             <span
@@ -1267,12 +1329,30 @@ function safeHost(url: string): string {
   }
 }
 
-function TextEditor({ text, onDone }: { text: string; onDone: (text: string) => void }) {
+function TextEditor({
+  text,
+  onDone,
+  onGrow,
+}: {
+  text: string;
+  onDone: (text: string) => void;
+  onGrow: (height: number) => void;
+}) {
   const [value, setValue] = useState(text);
+  const ref = useRef<HTMLTextAreaElement>(null);
+  // text that no longer fits makes the card taller, in canvas units since the view may be zoomed
+  useLayoutEffect(() => {
+    const area = ref.current;
+    if (!area || area.scrollHeight <= area.clientHeight + 1) return;
+    onGrow(Math.ceil(area.scrollHeight + 3));
+  });
   return (
     <textarea
+      ref={ref}
       className="canvas-textarea"
       autoFocus
+      // carries on where the text ends rather than in front of it
+      onFocus={(event) => event.currentTarget.setSelectionRange(value.length, value.length)}
       aria-label={t('canvas.cardText')}
       value={value}
       onChange={(event) => setValue(event.target.value)}
