@@ -575,7 +575,7 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
             style={{ '--depth': depth } as React.CSSProperties}
             onClick={() => setLimits((current) => ({ ...current, [key]: limit + SUBPAGES_SHOWN * 4 }))}
           >
-            Show {Math.min(rest, SUBPAGES_SHOWN * 4)} more
+            {t('common.showMore', { count: Math.min(rest, SUBPAGES_SHOWN * 4) })}
           </button>
         </li>,
       );
@@ -681,7 +681,7 @@ const TreeRow = memo(function TreeRow(props: RowProps) {
         type="button"
         tabIndex={-1}
         className={`tree-toggle${hasChildren ? '' : ' is-empty'}`}
-        aria-label={isOpen ? 'Collapse' : 'Expand'}
+        aria-label={isOpen ? t('common.collapse') : t('common.expand')}
         onClick={(event) => {
           event.stopPropagation();
           if (hasChildren) props.onToggle(page.id);

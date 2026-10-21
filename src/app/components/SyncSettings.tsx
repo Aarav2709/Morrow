@@ -10,7 +10,6 @@ import { getSession } from '../workspace';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import { Dialog, relativeTime, Switch } from './primitives';
 import { SettingRow, SettingsGroup } from './SettingsRows';
-import { t } from '../i18n';
 
 function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -316,7 +315,7 @@ export function PairDialog() {
             disabled={busy || !entered.trim() || (!target && !address.trim())}
             onClick={() => void pair()}
           >
-            {busy ? 'Pairing…' : 'Pair'}
+            {busy ? t('pairing.pairing') : t('settings.sync.pairButton')}
           </button>
         </section>
       </div>

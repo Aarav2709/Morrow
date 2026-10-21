@@ -49,6 +49,7 @@ import { openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
 import { toast } from '../ui';
+import { colorLabel } from '../i18n/labels';
 
 function ToolButton({
   label,
@@ -176,18 +177,6 @@ function useMarks(editor: Editor) {
   });
 }
 
-export const COLOR_LABELS: Record<ColorName, string> = {
-  gray: 'Grey',
-  brown: 'Brown',
-  orange: 'Orange',
-  yellow: 'Yellow',
-  green: 'Green',
-  blue: 'Blue',
-  purple: 'Purple',
-  pink: 'Pink',
-  red: 'Red',
-};
-
 // the nine colours for text and for highlighting, the same set notion, affine and select options use
 function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) {
   const current = useEditorState({
@@ -200,7 +189,11 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
     }),
   });
   const row = (kind: 'text' | 'bg') => (
-    <div className="color-row" role="group" aria-label={kind === 'text' ? 'Text colour' : 'Highlight'}>
+    <div
+      className="color-row"
+      role="group"
+      aria-label={kind === 'text' ? t('editor.textColour') : t('editor.highlight')}
+    >
       <button
         type="button"
         className={`color-dot default${(kind === 'text' ? current.text : current.bg) === null ? ' is-active' : ''}`}
@@ -220,8 +213,14 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
           key={color}
           type="button"
           className={`color-dot ${kind}-${color}${(kind === 'text' ? current.text : current.bg) === color ? ' is-active' : ''}`}
-          title={`${COLOR_LABELS[color]}${kind === 'bg' ? ' highlight' : ''}`}
-          aria-label={`${COLOR_LABELS[color]}${kind === 'bg' ? ' highlight' : ' text'}`}
+          title={
+            kind === 'bg' ? t('editor.colourHighlight', { colour: colorLabel(color) }) : colorLabel(color)
+          }
+          aria-label={
+            kind === 'bg'
+              ? t('editor.colourHighlight', { colour: colorLabel(color) })
+              : t('editor.colourText', { colour: colorLabel(color) })
+          }
           onMouseDown={(event) => event.preventDefault()}
           onClick={() =>
             kind === 'text'
@@ -376,7 +375,7 @@ export function LinkMenu({ editor }: { editor: Editor }) {
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => openHref(href)}
             >
-              {href.replace(/^https?:\/\//, '').replace(/^#\/page\/.*/, 'Morrow page')}
+              {href.replace(/^https?:\/\//, '').replace(/^#\/page\/.*/, t('editor.morrowPage'))}
             </button>
             <ToolButton label={t('editor.openLink')} icon={ExternalLink} onClick={() => openHref(href)} />
             <ToolButton label={t('editor.editLink')} icon={Pencil} onClick={() => setEditing(true)} />

@@ -317,6 +317,13 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
 }
 
 // a copy a sync app kept because this page changed on two computers at once, next to the page it copies
+// the app that kept a conflicted copy, named in the reader's language when it is a description, not a name
+function syncAppName(app: string): string {
+  if (app === 'your sync app') return t('page.yourSyncApp');
+  if (app === 'Morrow sync') return t('page.morrowSync');
+  return app;
+}
+
 function ConflictBanner({ id }: { id: PageId }) {
   const state = useWorkspace();
   const session = getSession();
@@ -330,10 +337,7 @@ function ConflictBanner({ id }: { id: PageId }) {
   const title = original ? displayTitle(state.pages[original]) : basename(stripExtension(conflict.original));
   return (
     <div className="banner conflict-banner" role="note">
-      <span>
-        This is a copy {conflict.app} kept because “{title}” changed on two computers at the same time.
-        Compare them, keep what you need in “{title}”, then move this copy to the trash.
-      </span>
+      <span>{t('page.conflictCopy', { app: syncAppName(conflict.app), title })}</span>
       {original && (
         <button
           type="button"
@@ -374,8 +378,7 @@ function PageBody(props: {
     return (
       <>
         <div className="banner" role="note">
-          This page contains content from a newer version of Morrow ({unknown.join(', ')}). It is shown as
-          plain text and protected from changes so nothing is lost.
+          {t('page.newerVersion', { types: unknown.join(', ') })}
         </div>
         <pre className="readonly-text">{docToPlainText(props.doc)}</pre>
       </>
@@ -681,7 +684,7 @@ function Outline({ doc }: { doc: DocNode }) {
                   type="button"
                   className="outline-fold"
                   aria-expanded={!folded.has(index)}
-                  aria-label={folded.has(index) ? 'Expand' : 'Collapse'}
+                  aria-label={folded.has(index) ? t('common.expand') : t('common.collapse')}
                   onClick={() => toggle(index)}
                 >
                   <ChevronRight size={12} />

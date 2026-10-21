@@ -49,7 +49,7 @@ import { navigate, openPage, parseRoute } from './router';
 import type { Route } from './router';
 import { getTabs } from './tabs';
 import type { PaneId } from './tabs';
-import { t } from './i18n';
+import { dateLocale, t } from './i18n';
 import { confirmAction, setUi, toast } from './ui';
 import { getSession, getState, run, runAll } from './workspace';
 
@@ -180,7 +180,7 @@ export function ensureToday(date = new Date()): PageId | null {
   }
   const id = newId();
   const siblings = childrenOf(getState().pages, journal.id);
-  const title = dailyTitle(date);
+  const title = dailyTitle(date, dateLocale());
   const template = dailyTemplate(getState());
   const templateDoc = template ? getState().docs[template.id] : undefined;
   const result = run({
@@ -214,7 +214,7 @@ export function captureToToday(text: string): boolean {
   const id = ensureToday();
   if (!id) return false;
   const doc = getState().docs[id] ?? { type: 'doc', content: [] };
-  const time = new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = new Date().toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
   const blocks = clean.split(/\n{2,}/).map((part, index) => {
     const task = /^\[( |x)\]\s*/i.exec(part);
     const body = task ? part.slice(task[0].length) : part;
@@ -619,8 +619,7 @@ export async function importMarkdown(parentId: PageId | null = null): Promise<vo
       if (/\.zip$/i.test(file.name)) entries.push(...unzipAll(new Uint8Array(await file.arrayBuffer())));
       else texts.push({ name: file.name, text: await file.text() });
     }
-    if (entries.length === 0 && texts.length === 0)
-      throw new Error('Files larger than 500 MB are not imported.');
+    if (entries.length === 0 && texts.length === 0) throw new Error(t('toasts.importTooLarge'));
     const state = getState();
     const now = Date.now();
     const archive = entries.length ? planArchiveImport(state, entries, parentId, newId, now) : null;
@@ -635,7 +634,7 @@ export async function importMarkdown(parentId: PageId | null = null): Promise<vo
       archive.files.forEach((file, index) => fileIds.set(file.meta.id, stored.value[index]!.id));
     }
     const pages = [...(archive?.pages ?? []), ...(loose?.pages ?? [])];
-    if (pages.length === 0) throw new Error('No Markdown files were found.');
+    if (pages.length === 0) throw new Error(t('toasts.noMarkdownFound'));
     const docs = Object.fromEntries(
       Object.entries({ ...archive?.docs, ...loose?.docs }).map(([id, doc]) => [
         id,
@@ -696,8 +695,8 @@ export async function restoreBackup(): Promise<void> {
       if (!result.ok) return;
     }
     const notes = [
-      plan.skipped ? `${plan.skipped} already present` : '',
-      plan.problems.length ? `${plan.problems.length} could not be read` : '',
+      plan.skipped ? t('toasts.alreadyPresent', { count: plan.skipped }) : '',
+      plan.problems.length ? t('toasts.couldNotRead', { count: plan.problems.length }) : '',
     ].filter(Boolean);
     const notesStr = notes.length ? ` (${notes.join(', ')})` : '';
     toast(

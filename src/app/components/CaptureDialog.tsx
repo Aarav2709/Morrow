@@ -4,7 +4,6 @@ import { captureToToday } from '../operations';
 import { useTranslation } from '../i18n';
 import { closeDialog, toast } from '../ui';
 import { Dialog } from './primitives';
-import { t } from '../i18n';
 
 // jot something down from anywhere, it lands at the end of today's note
 export function CaptureDialog() {
@@ -24,7 +23,9 @@ export function CaptureDialog() {
       onClose={closeDialog}
       footer={
         <>
-          <span className="muted small dialog-hint">{formatShortcut('Mod+Enter')} to save</span>
+          <span className="muted small dialog-hint">
+            {t('common.toSave', { shortcut: formatShortcut('Mod+Enter') })}
+          </span>
           <button type="button" className="button" onClick={closeDialog}>
             {t('common.cancel')}
           </button>

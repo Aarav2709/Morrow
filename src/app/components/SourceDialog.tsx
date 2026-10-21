@@ -40,7 +40,9 @@ export function SourceDialog({
       onClose={closeDialog}
       footer={
         <>
-          <span className="muted small dialog-hint">{formatShortcut('Mod+Enter')} to save</span>
+          <span className="muted small dialog-hint">
+            {t('common.toSave', { shortcut: formatShortcut('Mod+Enter') })}
+          </span>
           <button type="button" className="button" onClick={closeDialog}>
             {t('common.cancel')}
           </button>
@@ -55,7 +57,7 @@ export function SourceDialog({
         data-autofocus
         spellCheck={false}
         rows={language === 'latex' ? 4 : 10}
-        aria-label={language === 'latex' ? 'Formula in LaTeX' : 'Markdown'}
+        aria-label={language === 'latex' ? t('math.latexLabel') : 'Markdown'}
         placeholder={language === 'latex' ? 'e = mc^2' : ''}
         value={text}
         onChange={(event) => setText(event.target.value)}

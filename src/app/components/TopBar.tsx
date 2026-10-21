@@ -25,10 +25,9 @@ import { canGo, closeSide, goBack, goForward, openSide, swapSides, usePane, useT
 import { setUi } from '../ui';
 import { getSession, useSaveStatus, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
-import { useTranslation } from '../i18n';
+import { dateLocale, useTranslation } from '../i18n';
 import type { MenuEntry } from './Menu';
 import { relativeTime } from './primitives';
-import { t } from '../i18n';
 
 export function SidebarToggle() {
   const { t } = useTranslation();
@@ -48,7 +47,7 @@ export function SidebarToggle() {
           type="button"
           className="icon-button desktop-only"
           aria-label={t('topBar.showSidebar')}
-          title={t('topBar.showSidebar', { shortcut: formatShortcut('Mod+\\') })}
+          title={t('topBar.showSidebarWithShortcut', { shortcut: formatShortcut('Mod+\\') })}
           onClick={() => runAction('view.sidebar')}
         >
           <PanelLeftOpen size={16} strokeWidth={1.75} />
@@ -127,7 +126,7 @@ function SplitButtons() {
       type="button"
       className="icon-button desktop-only"
       aria-label={t('topBar.openSplit')}
-      title={t('topBar.openSplit', { shortcut: formatShortcut('Mod+Shift+\\') })}
+      title={t('topBar.openSplitWithShortcut', { shortcut: formatShortcut('Mod+Shift+\\') })}
       onClick={() => openSide()}
     >
       <Columns2 size={16} strokeWidth={1.75} />
@@ -150,7 +149,7 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
         type="button"
         className="save-status is-error"
         role="alert"
-        title={`${status.error ?? 'Unknown error'}. Your changes are kept in memory and will be retried. Click to retry now.`}
+        title={t('topBar.saveError', { error: status.error ?? t('topBar.unknownError') })}
         onClick={() => void getSession().flush()}
       >
         <AlertTriangle size={14} /> <span className="save-label">{t('topBar.saveFailed')}</span>
@@ -169,8 +168,8 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
       className="save-status"
       title={
         status.lastSavedAt
-          ? `Saved ${new Date(status.lastSavedAt).toLocaleTimeString()}`
-          : 'All changes are saved on this device'
+          ? t('topBar.savedAt', { time: new Date(status.lastSavedAt).toLocaleTimeString(dateLocale()) })
+          : t('topBar.allSavedHere')
       }
     >
       <Check size={14} /> <span className="save-label">{t('topBar.saved')}</span>

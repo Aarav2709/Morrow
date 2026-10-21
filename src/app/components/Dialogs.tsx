@@ -100,19 +100,19 @@ export function Dialogs() {
 function ShortcutsDialog() {
   const { t, tAction } = useTranslation();
   const editing: Array<[string, string]> = [
-    ['Bold, italic, underline', 'Mod+B  Mod+I  Mod+U'],
-    ['Strikethrough', 'Mod+Shift+S'],
-    ['Inline code', 'Mod+E'],
-    ['Link selected text', 'Mod+K'],
-    ['Headings', 'Mod+Alt+1  2  3'],
-    ['Insert a block', '/'],
-    ['Link to a page', '[['],
-    ['Move block up or down', 'Alt+Shift+↑  ↓'],
-    ['Indent or outdent list item', 'Tab  Shift+Tab'],
-    ['Undo and redo', 'Mod+Z  Mod+Shift+Z'],
-    ['Save immediately', 'Mod+S'],
-    ['Find and replace', 'Mod+F'],
-    ['Add an image or file', 'paste or drop it'],
+    [t('dialogs.keyFormatting'), 'Mod+B  Mod+I  Mod+U'],
+    [t('dialogs.keyStrike'), 'Mod+Shift+S'],
+    [t('editor.code'), 'Mod+E'],
+    [t('dialogs.keyLink'), 'Mod+K'],
+    [t('dialogs.keyHeadings'), 'Mod+Alt+1  2  3'],
+    [t('dialogs.keyInsertBlock'), '/'],
+    [t('dialogs.keyLinkPage'), '[['],
+    [t('dialogs.keyMoveBlock'), 'Alt+Shift+↑  ↓'],
+    [t('dialogs.keyIndent'), 'Tab  Shift+Tab'],
+    [t('dialogs.keyUndo'), 'Mod+Z  Mod+Shift+Z'],
+    [t('dialogs.keySave'), 'Mod+S'],
+    [t('editor.findAndReplace'), 'Mod+F'],
+    [t('dialogs.keyAddFile'), t('dialogs.pasteOrDrop')],
   ];
   const format = (keys: string) =>
     keys

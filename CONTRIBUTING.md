@@ -61,6 +61,7 @@ the pull request make review much quicker.
   Morrow, and keeps everything it does not understand, such as unknown
   frontmatter, exactly as it was. Please keep it that way, and add a test when
   you touch how files are read or written.
+- **Text people see is translated**, see [Translating](#translating).
 - **Comments explain why, not what**, in lower case without a full stop at the
   end, like the rest of the code. Match the naming and style of the file you
   are in.
@@ -68,6 +69,25 @@ the pull request make review much quicker.
   almost everything bundled and wants to stay small.
 - **Privacy is not optional.** Nothing may contact the network unless the user
   asked for it in that moment, like loading a web image, the assistant or sync.
+
+## Translating
+
+Morrow's interface text lives in [`src/app/i18n/locales`](src/app/i18n/locales):
+`en.ts` is the source, and `es.ts` and `pt.ts` have the same keys in Spanish and
+Portuguese. The type checker fails if a language is missing a key or has one too
+many, so `npm run check` tells you when a translation is out of step.
+
+- **Text people see goes through `t()`**, never plain English in a component:
+  `t('trash.restore')`, or `t('repeat.madeOne', { title })` with values in braces.
+- **Counts use `tp()`**, with the singular form under the same key plus `One`:
+  `tp('history.words', count)` reads `history.wordsOne` when there is exactly one.
+- **A sentence with a link or code inside** uses `tr()` from `i18n/rich`, so it is
+  translated whole: `tr('searchView.tips', { tag: <code>#tag</code> })`.
+- **Dates** use `dateLocale()`, so they follow the chosen language.
+
+To add a language, copy `es.ts`, translate every value keeping anything in
+braces, and add it to `SupportedLocale` and `SUPPORTED_LOCALES` in `src/app/i18n/types.ts`, to the
+list in `src/app/i18n/index.ts`, and to `electronLanguages` in `package.json`.
 
 ## Licence
 

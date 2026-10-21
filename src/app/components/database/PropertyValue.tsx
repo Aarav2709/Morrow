@@ -1,6 +1,6 @@
 import { Check, ExternalLink, Plus, X } from 'lucide-react';
 import { useState } from 'react';
-import { formatValue, formulaResult, PROP_LABELS } from '../../../core/database';
+import { formatValue, formulaResult } from '../../../core/database';
 import { displayTitle } from '../../../core/model';
 import { findPagesByTitle, resolveLinkTarget } from '../../../core/search';
 import { openPage } from '../../router';
@@ -9,7 +9,7 @@ import { PageIcon } from '../Sidebar';
 import { PROP_TYPES } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { newId } from '../../platform/files';
-import { t } from '../../i18n';
+import { dateLocale, t } from '../../i18n';
 import { toast } from '../../ui';
 import type {
   DatabaseDef,
@@ -23,6 +23,7 @@ import type {
 import { openExternal } from '../../platform/desktop';
 import { Popover } from '../Popover';
 import { ensureOption, setValue, updateDatabase } from './data';
+import { propLabel } from '../../i18n/labels';
 
 export function Chip({ option }: { option: Pick<SelectOption, 'name' | 'color'> }) {
   return <span className={`chip color-${option.color}`}>{option.name}</span>;
@@ -90,7 +91,11 @@ export function RelationChips({ targets }: { targets: string[] }) {
             tabIndex={0}
             className={`relation-chip${page ? '' : ' is-missing'}`}
             data-page-id={page?.id}
-            title={page ? `Open ${displayTitle(page)}` : `“${target}” does not exist`}
+            title={
+              page
+                ? t('database.openTitle', { title: displayTitle(page) })
+                : t('database.doesNotExist', { target })
+            }
             onClick={(event) => {
               if (!page) return;
               event.stopPropagation();
@@ -111,7 +116,7 @@ export function formatDay(key: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
   if (!match) return key;
   const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 // the editor for one value of one row, used in table cells and on row pages
@@ -128,7 +133,7 @@ export function PropertyInput({
 }) {
   const value = row.properties[prop.id] ?? null;
   const [picker, setPicker] = useState<HTMLElement | null>(null);
-  const label = `${prop.name} of ${row.title || 'Untitled'}`;
+  const label = t('properties.valueOf', { key: prop.name, title: displayTitle(row) });
 
   switch (prop.type) {
     case 'formula':
@@ -303,7 +308,7 @@ export function DraftInput({
       autoFocus={autoFocus}
       className={className ?? 'prop-input'}
       aria-label={label}
-      placeholder={placeholder ?? (editable ? 'Empty' : '')}
+      placeholder={placeholder ?? (editable ? t('database.empty') : '')}
       value={draft ?? value}
       readOnly={!editable}
       onChange={(event) => setDraft(event.target.value)}
@@ -373,7 +378,7 @@ function OptionPicker({
       <input
         className="text-input small"
         data-autofocus
-        placeholder={prop.options.length ? 'Find or create an option' : 'Create an option'}
+        placeholder={prop.options.length ? t('database.findOrCreateOption') : t('database.createOption')}
         aria-label={t('database.option')}
         value={query}
         onChange={(event) => setQuery(event.target.value)}
@@ -477,7 +482,7 @@ export function NewProperty({
       >
         {PROP_TYPES.map((item) => (
           <option key={item} value={item}>
-            {PROP_LABELS[item]}
+            {propLabel(item)}
           </option>
         ))}
       </select>
@@ -532,7 +537,7 @@ function RelationPicker({
     <Popover
       anchor={anchor}
       onClose={onClose}
-      label={`Relate ${row.title || 'Untitled'}`}
+      label={t('database.relate', { title: displayTitle(row) })}
       className="db-panel relation-picker"
     >
       <input

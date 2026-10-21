@@ -8,4 +8,5 @@
 
 - [ ] `npm run check` passes
 - [ ] I tried it in the running app
+- [ ] New interface text goes through `t()`, in English, Spanish and Portuguese
 - [ ] Files that Morrow did not change are still left untouched

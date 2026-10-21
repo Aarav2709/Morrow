@@ -67,10 +67,7 @@ contextBridge.exposeInMainWorld('morrow', {
     cancel: (id: string) => ipcRenderer.invoke('ai:cancel', id),
   },
   mcp: {
-    status: () => ipcRenderer.invoke('mcp:status'),
     launch: () => ipcRenderer.invoke('mcp:launch'),
-    start: (port: number) => ipcRenderer.invoke('mcp:start', port),
-    stop: () => ipcRenderer.invoke('mcp:stop'),
     setEnabled: (enabled: boolean) => ipcRenderer.invoke('mcp:set-enabled', enabled),
     isEnabled: () => ipcRenderer.invoke('mcp:is-enabled'),
   },

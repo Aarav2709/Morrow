@@ -35,6 +35,13 @@ export function getLocale(): SupportedLocale {
   return getPreferences().locale;
 }
 
+// dates and times follow the chosen language. in english they keep this computer's own way of writing
+// them, so 20/10/2026 stays 20/10/2026 rather than turning american
+export function dateLocale(): string | undefined {
+  const locale = getLocale();
+  return locale === 'en' ? undefined : locale;
+}
+
 export function t(key: TranslationKey, params?: TranslationParams, localeOverride?: SupportedLocale): string {
   const locale = localeOverride ?? getLocale();
   const dict = dictionaries[locale] ?? dictionaries.en;

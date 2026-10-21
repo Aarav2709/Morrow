@@ -11,7 +11,7 @@ import { usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
 import { getSession, useWorkspace } from '../workspace';
 import { useCover } from './Cover';
-import { useTranslation } from '../i18n';
+import { dateLocale, tp, useTranslation } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import { relativeTime } from './primitives';
 import { PageIcon } from './Sidebar';
@@ -93,7 +93,7 @@ function Heatmap({ activity, locale }: { activity: Record<string, number>; local
     const first = week[0]!.key;
     const previous = index > 0 ? weeks[index - 1]![0]!.key : null;
     return !previous || previous.slice(5, 7) !== first.slice(5, 7)
-      ? new Date(`${first}T00:00`).toLocaleDateString(undefined, { month: 'short' })
+      ? new Date(`${first}T00:00`).toLocaleDateString(dateLocale(), { month: 'short' })
       : '';
   });
   return (
@@ -110,11 +110,7 @@ function Heatmap({ activity, locale }: { activity: Record<string, number>; local
               <span
                 key={day.key}
                 className={`heatmap-day level-${day.future ? 'future' : level(day.count)}`}
-                title={
-                  day.future
-                    ? ''
-                    : `${dayLabel(day.key)}: ${t('home.saveCount', { count: day.count, s: day.count === 1 ? t('home.saveSingle') : t('home.savePlural') })}`
-                }
+                title={day.future ? '' : `${dayLabel(day.key)}: ${tp('home.saveCount', day.count)}`}
               />
             ))}
           </div>

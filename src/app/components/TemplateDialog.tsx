@@ -1,13 +1,19 @@
 import { FilePlus2, LayoutTemplate } from 'lucide-react';
 import { displayTitle } from '../../core/model';
 import type { PageId } from '../../core/model';
-import { findTemplatesPage, listTemplates } from '../../core/templates';
+import {
+  DAILY_TEMPLATE_TITLE,
+  findTemplatesPage,
+  listTemplates,
+  TEMPLATES_TITLE,
+} from '../../core/templates';
 import { createFromTemplate, createPage, createTemplatesPage } from '../operations';
 import { closeDialog } from '../ui';
 import { useWorkspace } from '../workspace';
 import { Dialog } from './primitives';
 import { PageIcon } from './Sidebar';
 import { t } from '../i18n';
+import { tr } from '../i18n/rich';
 
 export function TemplateDialog({ parentId }: { parentId: PageId | null }) {
   const state = useWorkspace();
@@ -19,9 +25,13 @@ export function TemplateDialog({ parentId }: { parentId: PageId | null }) {
         <div className="empty-state compact">
           <LayoutTemplate size={24} strokeWidth={1.5} />
           <p>
-            Templates are the pages inside your Templates page. Write {'{{date}}'}, {'{{time}}'} or{' '}
-            {'{{title}}'} and they are filled in when a page is made from the template. A template called
-            “Daily note” is used for every new daily note.
+            {tr('dialogs.templatesHelp', {
+              templates: TEMPLATES_TITLE,
+              date: <code>{'{{date}}'}</code>,
+              time: <code>{'{{time}}'}</code>,
+              title: <code>{'{{title}}'}</code>,
+              daily: `“${DAILY_TEMPLATE_TITLE}”`,
+            })}
           </p>
           <button
             type="button"

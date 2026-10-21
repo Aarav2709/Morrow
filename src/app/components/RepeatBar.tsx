@@ -19,13 +19,14 @@ import { run, useWorkspace } from '../workspace';
 import { Popover } from './Popover';
 import { Select } from './Select';
 import { t } from '../i18n';
+import type { TranslationKey } from '../i18n';
 
-const REPEAT_LABELS: Record<Repeat | 'off', string> = {
-  off: 'Never',
-  daily: 'Every day',
-  weekdays: 'Every weekday',
-  weekly: 'Every week',
-  monthly: 'Every month',
+const REPEAT_LABELS: Record<Repeat | 'off', TranslationKey> = {
+  off: 'repeat.never',
+  daily: 'repeat.everyDay',
+  weekdays: 'repeat.everyWeekday',
+  weekly: 'repeat.everyWeek',
+  monthly: 'repeat.everyMonth',
 };
 
 // on a template: how often it makes a page by itself, and where those pages go
@@ -42,7 +43,7 @@ export function RepeatBar({ page, editable }: { page: PageMeta; editable: boolea
       <Select<Repeat | 'off'>
         label={t('repeat.repeat')}
         value={recurrence?.repeat ?? 'off'}
-        options={(['off', ...REPEATS] as const).map((value) => ({ value, label: REPEAT_LABELS[value] }))}
+        options={(['off', ...REPEATS] as const).map((value) => ({ value, label: t(REPEAT_LABELS[value]) }))}
         disabled={!editable}
         onChange={(value) =>
           save(
@@ -61,7 +62,7 @@ export function RepeatBar({ page, editable }: { page: PageMeta; editable: boolea
             disabled={!editable}
             onClick={(event) => setPicking(event.currentTarget)}
           >
-            {into ? displayTitle(into) : 'Top level'}
+            {into ? displayTitle(into) : t('repeat.topLevel')}
           </button>
         </>
       )}

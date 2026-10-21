@@ -1,18 +1,10 @@
 import { EyeOff, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import type { Command } from '../../../core/commands';
-import {
-  convertValue,
-  formatValue,
-  formulaResult,
-  optionsFromValues,
-  PROP_LABELS,
-  rowsOf,
-} from '../../../core/database';
+import { convertValue, formatValue, formulaResult, optionsFromValues, rowsOf } from '../../../core/database';
 import { COLORS, PROP_TYPES } from '../../../core/model';
 import type { ColorName, DatabaseDef, PageId, PropDef, PropType, ViewDef } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
-import { COLOR_LABELS } from '../../editor/EditorMenus';
 import { newId } from '../../platform/files';
 import { toast } from '../../ui';
 import { runAll, useWorkspace } from '../../workspace';
@@ -21,6 +13,8 @@ import { Select } from '../Select';
 import { updateDatabase, updateProp, updateView } from './data';
 import { DraftInput } from './PropertyValue';
 import { t } from '../../i18n';
+import { tr } from '../../i18n/rich';
+import { colorLabel, propLabel } from '../../i18n/labels';
 
 // rename a property, change its type, options or how it shows. opened from a column, or from a page's
 // properties, where there is no view to sort or hide in
@@ -111,7 +105,7 @@ export function PropertySettings({
         <Select<PropType>
           label={t('database.type')}
           value={prop.type}
-          options={PROP_TYPES.map((item) => ({ value: item, label: PROP_LABELS[item] }))}
+          options={PROP_TYPES.map((item) => ({ value: item, label: propLabel(item) }))}
           onChange={changeType}
         />
       </div>
@@ -121,8 +115,8 @@ export function PropertySettings({
           <div className="segmented" role="radiogroup" aria-label={t('database.showAs')}>
             {(
               [
-                [undefined, 'Number'],
-                ['bar', 'Progress bar'],
+                [undefined, t('database.typeNumber')],
+                ['bar', t('database.progressBar')],
               ] as const
             ).map(([display, label]) => (
               <button
@@ -185,7 +179,7 @@ export function PropertySettings({
               <Select<ColorName>
                 label={t('editor.colour')}
                 value={option.color}
-                options={COLORS.map((color) => ({ value: color, label: COLOR_LABELS[color] }))}
+                options={COLORS.map((color) => ({ value: color, label: colorLabel(color) }))}
                 onChange={(color) =>
                   updateProp(dbId, prop.id, (current) => ({
                     ...current,
@@ -268,6 +262,10 @@ export function PropertySettings({
   );
 }
 
+// the formula language's functions, by their names in formulas, which stay the same in every language
+const FORMULA_FUNCTIONS =
+  'if, empty, round, floor, ceil, abs, min, max, sum, length, concat, join, upper, lower, contains, replace, slice, today, now, dateAdd, dateBetween, year, month, day';
+
 const FORMULA_EXAMPLES = [
   'prop("Price") * prop("Count")',
   'if(prop("Done"), "✅", "⏳")',
@@ -307,16 +305,23 @@ function FormulaField({ dbId, prop, database }: { dbId: PageId; prop: PropDef; d
         <span className="formula-error">{preview.error}</span>
       ) : preview && draft.trim() ? (
         <span className="muted small">
-          First row: <strong>{formatValue(prop, preview.value) || 'empty'}</strong>
+          {tr('database.firstRow', {
+            value: <strong>{formatValue(prop, preview.value) || t('database.emptyValue')}</strong>,
+          })}
         </span>
       ) : null}
       <details className="formula-help">
         <summary>{t('database.howFormulasWork')}</summary>
         <p className="muted small">
-          Use <code>prop("Name")</code> for another property, maths like <code>+ - * / ^</code>, comparisons
-          like <code>&gt; == !=</code>, <code>and</code>, <code>or</code>, <code>not</code>, and functions:
-          if, empty, round, floor, ceil, abs, min, max, sum, length, concat, join, upper, lower, contains,
-          replace, slice, today, now, dateAdd, dateBetween, year, month, day.
+          {tr('database.formulaHelp', {
+            prop: <code>prop("Name")</code>,
+            maths: <code>+ - * / ^</code>,
+            compare: <code>&gt; == !=</code>,
+            and: <code>and</code>,
+            or: <code>or</code>,
+            not: <code>not</code>,
+            functions: FORMULA_FUNCTIONS,
+          })}
         </p>
         <ul className="formula-examples">
           {FORMULA_EXAMPLES.map((example) => (

@@ -94,6 +94,10 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   own Markdown, with Claude, ChatGPT, Gemini, OpenRouter or a local model through
   Ollama or LM Studio. You bring the key, every change is shown for approval,
   kept in page history and can be undone, and locked pages are never sent
+- **An MCP server** so Claude Desktop, Cursor, VS Code and other MCP apps can
+  search, read and write your pages. Turn it on in Settings, Assistant and paste
+  the setup it shows into the app. It runs on your computer, started by that app
+- **In your language**: English, Spanish and Portuguese, chosen in Settings, General
 - **Export as PDF**, and **edit as Markdown** to work on a page's source directly
 - **Updates when you want them**: turn on update checks in Settings, About. Windows
   and Linux AppImage copies download, verify and install the new version themselves

@@ -54,7 +54,9 @@ export const Image = Node.create({
         const box = document.createElement('div');
         box.className = 'image-remote';
         const label = document.createElement('span');
-        label.textContent = remote ? `Image from ${safeHost(src)}` : `Image not found: ${src}`;
+        label.textContent = remote
+          ? t('editor.imageFrom', { host: safeHost(src) })
+          : t('editor.imageNotFound', { src });
         box.append(label);
         if (remote) {
           const load = document.createElement('button');

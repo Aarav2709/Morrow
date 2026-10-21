@@ -8,7 +8,7 @@ import { gradeCard, useReviewLog } from '../review';
 import { openPage } from '../router';
 import { useWorkspace } from '../workspace';
 import { TopBar } from './TopBar';
-import { getLocale, t } from '../i18n';
+import { getLocale, t, tp } from '../i18n';
 
 const getGrades = (): Array<{ grade: Grade; label: string; key: string }> => [
   { grade: 'again', label: t('review.grades.again'), key: '1' },
@@ -146,27 +146,13 @@ export function ReviewView() {
           ) : !current ? (
             <section className="review-empty">
               <PartyPopper size={28} strokeWidth={1.5} />
-              <h2>
-                {done > 0
-                  ? t('review.allDone', {
-                      count: done,
-                      s: done === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'),
-                    })
-                  : t('review.nothingDue')}
-              </h2>
+              <h2>{done > 0 ? tp('review.allDone', done) : t('review.nothingDue')}</h2>
               {next ? (
                 <p className="muted review-next">
                   <CalendarClock size={15} />{' '}
                   {describeDay(next.day) === t('review.intervals.tomorrow').toLowerCase()
-                    ? t('review.cardsDueTomorrow', {
-                        count: next.count,
-                        s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'),
-                      })
-                    : t('review.cardsDueDay', {
-                        count: next.count,
-                        s: next.count === 1 ? t('review.dueCardSingle') : t('review.dueCardPlural'),
-                        day: describeDay(next.day),
-                      })}
+                    ? tp('review.cardsDueTomorrow', next.count)
+                    : tp('review.cardsDueDay', next.count, { day: describeDay(next.day) })}
                 </p>
               ) : (
                 <p className="muted">{t('review.newCardsHelp')}</p>

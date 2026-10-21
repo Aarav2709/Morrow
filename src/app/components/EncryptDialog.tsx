@@ -7,6 +7,7 @@ import { closeDialog, toast } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { Dialog } from './primitives';
 import { t } from '../i18n';
+import { tr } from '../i18n/rich';
 
 const MIN_LENGTH = 8;
 
@@ -48,7 +49,7 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
             disabled={tooShort || password !== repeat || busy}
             onClick={() => void submit()}
           >
-            <Lock size={14} /> {busy ? 'Encrypting…' : 'Encrypt'}
+            <Lock size={14} /> {busy ? t('encrypt.encrypting') : t('encrypt.encrypt')}
           </button>
         </>
       }
@@ -61,8 +62,7 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
         }}
       >
         <p className="muted small">
-          The page's file is encrypted with AES-256. Morrow keeps no copy of the password and no plain version
-          in page history. <strong>{t('encrypt.cannotRecover')}</strong>
+          {tr('encrypt.explain', { warning: <strong>{t('encrypt.cannotRecover')}</strong> })}
         </p>
         <label className="field">
           <span>{t('encrypt.password')}</span>
@@ -86,7 +86,7 @@ export function EncryptDialog({ pageId }: { pageId: PageId }) {
           />
         </label>
         {password.length > 0 && tooShort && (
-          <p className="field-error">Use at least {MIN_LENGTH} characters.</p>
+          <p className="field-error">{t('encrypt.tooShort', { count: MIN_LENGTH })}</p>
         )}
         {mismatch && <p className="field-error">{t('encrypt.mismatch')}</p>}
         <button type="submit" hidden />
@@ -134,7 +134,7 @@ export function LockedPage({ page }: { page: PageMeta }) {
           }}
         />
         <button type="submit" className="button primary" disabled={!password || busy}>
-          {busy ? 'Opening…' : 'Unlock'}
+          {busy ? t('encrypt.opening') : t('encrypt.unlock')}
         </button>
       </div>
       {error && <p className="field-error">{error}</p>}

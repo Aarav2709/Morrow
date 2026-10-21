@@ -595,13 +595,6 @@
 button.home-stat:hover {
   filter: brightness(0.97);
 }
-.quick-action[class*='tint-'] svg {
-  color: var(--tint-text);
-}
-.quick-action[class*='tint-']:hover {
-  background: var(--tint);
-  border-color: transparent;
-}
 .home-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

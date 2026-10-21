@@ -930,10 +930,10 @@ export function CanvasView({
           <>
             {(
               [
-                ['select', MousePointer2, 'Select and move (V)'],
-                ['pen', Pencil, 'Pen (P)'],
-                ['highlighter', Highlighter, 'Highlighter (H)'],
-                ['eraser', Eraser, 'Eraser (E)'],
+                ['select', MousePointer2, t('canvas.toolSelect')],
+                ['pen', Pencil, t('canvas.toolPen')],
+                ['highlighter', Highlighter, t('canvas.toolHighlighter')],
+                ['eraser', Eraser, t('canvas.toolEraser')],
               ] as const
             ).map(([value, Icon, label]) => (
               <button
@@ -957,7 +957,7 @@ export function CanvasView({
                     type="button"
                     className={`canvas-swatch ink-swatch${ink.color === color ? ' is-active' : ''}`}
                     style={{ '--card-color': inkColor(color) } as React.CSSProperties}
-                    aria-label={color ? `Ink colour ${color}` : 'Ink in the text colour'}
+                    aria-label={color ? t('canvas.inkColour', { color }) : t('canvas.inkDefault')}
                     onClick={() => setInk((current) => ({ ...current, color }))}
                   />
                 ))}
@@ -1083,7 +1083,7 @@ export function CanvasView({
                 key={color ?? 'none'}
                 type="button"
                 className={`canvas-swatch${color ? ` canvas-color-${color}` : ''}`}
-                aria-label={color ? `Colour ${color}` : 'No colour'}
+                aria-label={color ? t('canvas.colour', { color }) : t('canvas.noColour')}
                 onClick={() => {
                   if (selectedEdge)
                     commit({
@@ -1110,9 +1110,7 @@ export function CanvasView({
           </>
         )}
       </div>
-      {data.nodes.length === 0 && (
-        <p className="canvas-empty muted">{t('canvas.emptyHint')}</p>
-      )}
+      {data.nodes.length === 0 && <p className="canvas-empty muted">{t('canvas.emptyHint')}</p>}
       {pageAnchor && (
         <PagePicker
           anchor={pageAnchor}

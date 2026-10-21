@@ -22,6 +22,7 @@ import { tagColor } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
 import { openDialog } from '../ui';
 import { t } from '../i18n';
+import type { TranslationKey } from '../i18n';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -348,7 +349,9 @@ export async function renderMermaid(source: string): Promise<{ html: string; err
   } catch (error) {
     document.querySelectorAll('[id^="dmorrow-diagram-"]').forEach((element) => element.remove());
     return {
-      html: `This diagram has a mistake: ${error instanceof Error ? error.message.split('\n')[0] : 'unknown'}`,
+      html: t('editor.diagramMistake', {
+        error: error instanceof Error ? (error.message.split('\n')[0] ?? '') : t('topBar.unknownError'),
+      }),
       error: true,
     };
   }
@@ -485,11 +488,11 @@ export const CodeBlock = CodeBlockLowlight.extend({
   HTMLAttributes: { spellcheck: 'false' },
 });
 
-const TONE_LABELS: Record<CalloutTone, string> = {
-  note: 'Note',
-  tip: 'Tip',
-  warning: 'Warning',
-  danger: 'Danger',
+const TONE_LABELS: Record<CalloutTone, TranslationKey> = {
+  note: 'editor.note',
+  tip: 'editor.tip',
+  warning: 'editor.warning',
+  danger: 'editor.danger',
 };
 
 // the emoji each obsidian callout type is shown with
@@ -556,7 +559,7 @@ export function calloutNodeView(): NodeViewRenderer {
         emojiElement(KIND_EMOJI[kind.toLowerCase()] ?? '📝'),
         document.createTextNode(` ${kind.charAt(0).toUpperCase() + kind.slice(1)}`),
       );
-      tone.title = `${TONE_LABELS[value]}, click to change`;
+      tone.title = t('editor.clickToChange', { tone: t(TONE_LABELS[value]) });
       if (document.activeElement !== title) title.value = String(current.attrs.title ?? '');
       title.readOnly = !editor.isEditable;
       const folded = current.attrs.fold === '-';

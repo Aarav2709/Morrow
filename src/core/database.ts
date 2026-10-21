@@ -25,37 +25,12 @@ export const TITLE_PROP = 'title';
 export const CREATED_PROP = 'created';
 export const UPDATED_PROP = 'updated';
 
-export const PROP_LABELS: Record<PropType, string> = {
-  text: 'Text',
-  number: 'Number',
-  select: 'Select',
-  multiSelect: 'Multi-select',
-  date: 'Date',
-  checkbox: 'Checkbox',
-  url: 'Link',
-  relation: 'Relation',
-  formula: 'Formula',
-};
-
 export const VIEW_LABELS: Record<ViewType, string> = {
   table: 'Table',
   board: 'Board',
   calendar: 'Calendar',
   list: 'List',
   gallery: 'Gallery',
-};
-
-export const FILTER_LABELS: Record<FilterOp, string> = {
-  contains: 'contains',
-  notContains: 'does not contain',
-  is: 'is',
-  isNot: 'is not',
-  empty: 'is empty',
-  notEmpty: 'is not empty',
-  gt: 'is greater than',
-  lt: 'is less than',
-  checked: 'is checked',
-  unchecked: 'is not checked',
 };
 
 export function filterOpsFor(type: PropType | 'title'): FilterOp[] {

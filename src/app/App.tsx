@@ -218,7 +218,7 @@ function Pane({
         data-pane={pane}
         data-size={size}
         style={style}
-        aria-label={pane === 'side' ? 'Second page' : undefined}
+        aria-label={pane === 'side' ? t('tabs.secondPage') : undefined}
         onPointerDownCapture={() => setActivePane(pane)}
         onFocusCapture={() => setActivePane(pane)}
       >

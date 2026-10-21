@@ -9,14 +9,14 @@ import { newId } from './platform/files';
 import { openPage } from './router';
 import { toast } from './ui';
 import { getState, runAll } from './workspace';
-import { t } from './i18n';
+import { dateLocale, t } from './i18n';
 
 // the new page's name says which period it is for, like "Weekly review, week of 19 October"
 export function periodLabel(repeat: Repeat, date: Date): string {
   const start = periodStart(repeat, date);
-  if (repeat === 'monthly') return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const day = start.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-  return repeat === 'weekly' ? `week of ${day}` : day;
+  if (repeat === 'monthly') return start.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' });
+  const day = start.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'long', year: 'numeric' });
+  return repeat === 'weekly' ? t('repeat.weekOf', { day }) : day;
 }
 
 export function makeDuePages(now = new Date()): void {

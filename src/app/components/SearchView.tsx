@@ -10,6 +10,7 @@ import { PageIcon } from './Sidebar';
 import { relativeTime } from './primitives';
 import { useTranslation } from '../i18n';
 import { TopBar } from './TopBar';
+import { tr } from '../i18n/rich';
 
 type Order = 'best' | 'recent' | 'title';
 
@@ -78,8 +79,11 @@ export function SearchView({ query }: { query: string }) {
               />
             </label>
             <p className="muted small search-tips">
-              Use <code>"exact words"</code> for a phrase, <code>-word</code> to leave pages out and{' '}
-              <code>#tag</code> to keep pages with a tag.
+              {tr('searchView.tips', {
+                phrase: <code>{t('searchView.tipPhrase')}</code>,
+                exclude: <code>{t('searchView.tipExclude')}</code>,
+                tag: <code>{t('searchView.tipTag')}</code>,
+              })}
             </p>
             {query.trim() && (
               <div className="search-meta">

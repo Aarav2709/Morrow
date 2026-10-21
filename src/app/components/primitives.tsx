@@ -221,7 +221,7 @@ export function useShowMore<T>(items: T[], limit: number): { shown: T[]; more: R
     more:
       rest > 0 ? (
         <button type="button" className="link-button show-more" onClick={() => setCount(count + limit * 4)}>
-          Show {Math.min(rest, limit * 4)} more
+          {t('common.showMore', { count: Math.min(rest, limit * 4) })}
         </button>
       ) : null,
   };

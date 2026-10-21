@@ -69,7 +69,7 @@ export function CoverPicker({
             key={cover}
             type="button"
             className={`cover-choice cover-${cover}${page.cover === cover ? ' is-active' : ''}`}
-            aria-label={`Gradient ${cover.slice(9)}`}
+            aria-label={t('page.gradient', { number: cover.slice(9) })}
             onClick={() => pick(cover)}
           />
         ))}

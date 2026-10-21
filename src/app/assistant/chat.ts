@@ -9,6 +9,8 @@ import { getState } from '../workspace';
 import { assistantRules } from './rules';
 import { runTool, TOOL_SPECS } from './tools';
 import type { AppliedChange, Proposal, ToolCall } from './tools';
+import { t } from '../i18n';
+import type { TranslationKey } from '../i18n';
 
 // how many rounds of tools one message may take before the assistant has to stop and answer
 const MAX_STEPS = 16;
@@ -96,17 +98,18 @@ export function undoChange(itemId: string): void {
   update(itemId, { status: 'undone' });
 }
 
-const LABELS: Record<string, string> = {
-  search_pages: 'Searched pages',
-  list_pages: 'Looked through pages',
-  read_page: 'Read',
-  current_page: 'Checked the open page',
-  todays_note: "Found today's note",
-  open_page: 'Opened',
+const LABELS: Record<string, TranslationKey> = {
+  search_pages: 'assistant.searchedPages',
+  list_pages: 'assistant.lookedThroughPages',
+  read_page: 'assistant.read',
+  current_page: 'assistant.checkedOpenPage',
+  todays_note: 'assistant.foundToday',
+  open_page: 'assistant.opened',
 };
 
 function labelOf(call: ToolCall): string {
-  const label = LABELS[call.name] ?? call.name;
+  const key = LABELS[call.name];
+  const label = key ? t(key) : call.name;
   const subject = call.input.query ?? call.input.page ?? call.input.parent;
   return typeof subject === 'string' && subject ? `${label} “${titleFor(subject)}”` : label;
 }
@@ -206,7 +209,7 @@ export async function sendMessage(text: string): Promise<void> {
       history = result.history;
       if (result.text.trim()) push({ kind: 'assistant', id: nextId(), text: result.text.trim() });
       if (result.stop === 'refusal') {
-        push({ kind: 'note', id: nextId(), text: 'The model declined to help with this.', tone: 'info' });
+        push({ kind: 'note', id: nextId(), text: t('assistant.refused'), tone: 'info' });
         return;
       }
       if (result.toolCalls.length === 0) {
@@ -214,7 +217,7 @@ export async function sendMessage(text: string): Promise<void> {
           push({
             kind: 'note',
             id: nextId(),
-            text: 'The reply was cut short because it got too long.',
+            text: t('assistant.cutShort'),
             tone: 'info',
           });
         return;
@@ -231,7 +234,7 @@ export async function sendMessage(text: string): Promise<void> {
         push({
           kind: 'note',
           id: nextId(),
-          text: stopped ? 'Stopped.' : 'Stopped after many steps. Send a message to carry on.',
+          text: stopped ? t('assistant.stopped') : t('assistant.tooManySteps'),
           tone: 'info',
         });
         return;

@@ -7,6 +7,7 @@ import { useWorkspace } from '../workspace';
 import { Emoji, emojiSrc } from './Emoji';
 import { Dialog } from './primitives';
 import { t } from '../i18n';
+import type { TranslationKey } from '../i18n';
 
 interface Emoji {
   unicode: string;
@@ -16,16 +17,16 @@ interface Emoji {
   tags: string[];
 }
 
-const GROUPS: Array<{ id: number; label: string; icon: string }> = [
-  { id: 0, label: 'Smileys', icon: '😀' },
-  { id: 1, label: 'People', icon: '👋' },
-  { id: 3, label: 'Nature', icon: '🌿' },
-  { id: 4, label: 'Food', icon: '🍎' },
-  { id: 5, label: 'Travel', icon: '✈️' },
-  { id: 6, label: 'Activities', icon: '⚽' },
-  { id: 7, label: 'Objects', icon: '💡' },
-  { id: 8, label: 'Symbols', icon: '❤️' },
-  { id: 9, label: 'Flags', icon: '🏳️' },
+const GROUPS: Array<{ id: number; label: TranslationKey; icon: string }> = [
+  { id: 0, label: 'emoji.smileys', icon: '😀' },
+  { id: 1, label: 'emoji.people', icon: '👋' },
+  { id: 3, label: 'emoji.nature', icon: '🌿' },
+  { id: 4, label: 'emoji.food', icon: '🍎' },
+  { id: 5, label: 'emoji.travel', icon: '✈️' },
+  { id: 6, label: 'emoji.activities', icon: '⚽' },
+  { id: 7, label: 'emoji.objects', icon: '💡' },
+  { id: 8, label: 'emoji.symbols', icon: '❤️' },
+  { id: 9, label: 'emoji.flags', icon: '🏳️' },
 ];
 
 const RECENT_KEY = 'morrow.recentEmoji';
@@ -152,8 +153,8 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
               type="button"
               role="tab"
               aria-selected={group === item.id}
-              title={item.label}
-              aria-label={item.label}
+              title={t(item.label)}
+              aria-label={t(item.label)}
               className={group === item.id ? 'is-active' : ''}
               onClick={() => setGroup(item.id)}
             >
@@ -190,7 +191,7 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
             <Emoji emoji={item.unicode} />
           </button>
         ))}
-        {emoji && shown.length === 0 && <p className="muted">No emoji match “{query}”.</p>}
+        {emoji && shown.length === 0 && <p className="muted">{t('emoji.noMatch', { query })}</p>}
       </div>
     </Dialog>
   );

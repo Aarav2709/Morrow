@@ -20,10 +20,8 @@ import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { dateKey } from '../../../core/daily';
 import {
-  FILTER_LABELS,
   filterOpsFor,
   groupRows,
-  PROP_LABELS,
   propType,
   rowsOf,
   TITLE_PROP,
@@ -57,7 +55,8 @@ import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
 import { PropertySettings } from './PropertySettings';
-import { t } from '../../i18n';
+import { dateLocale, t, tp } from '../../i18n';
+import { filterLabel, propLabel, viewLabel, viewName } from '../../i18n/labels';
 
 const VIEW_ICONS: Record<ViewType, LucideIcon> = {
   table: Table2,
@@ -131,7 +130,7 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
                   editable && setTabMenu({ view: candidate, anchor: event.currentTarget })
                 }
               >
-                <Icon size={14} /> {candidate.name || VIEW_LABELS[candidate.type]}
+                <Icon size={14} /> {viewName(candidate)}
               </button>
             );
           })}
@@ -182,8 +181,8 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       )}
       <p className="db-count muted small">
         {rows.length === allRows.length
-          ? `${rows.length} ${rows.length === 1 ? 'row' : 'rows'}`
-          : `${rows.length} of ${allRows.length} rows`}
+          ? tp('database.rows', rows.length)
+          : t('database.rowsOf', { count: rows.length, total: allRows.length })}
       </p>
 
       {addMenu && (
@@ -192,7 +191,7 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
           label={t('database.addAView')}
           onClose={() => setAddMenu(null)}
           entries={VIEW_TYPES.map((type) => ({
-            label: VIEW_LABELS[type],
+            label: viewLabel(type),
             icon: VIEW_ICONS[type],
             onSelect: () => {
               const created = newView(type, database, newId);
@@ -271,7 +270,7 @@ function ViewSettings({
         >
           {VIEW_TYPES.map((type) => (
             <option key={type} value={type}>
-              {VIEW_LABELS[type]}
+              {viewLabel(type)}
             </option>
           ))}
         </select>
@@ -333,14 +332,12 @@ function ColumnSuggestion({
   });
   const signature = keys.join('\n');
   if (keys.length === 0 || dismissed === signature) return null;
-  const shown = keys.slice(0, 4).join(', ') + (keys.length > 4 ? ` and ${keys.length - 4} more` : '');
+  const names = keys.slice(0, 4).join(', ');
+  const shown = keys.length > 4 ? t('database.andMore', { names, count: keys.length - 4 }) : names;
   return (
     <div className="db-suggest" role="note">
       <Columns3 size={14} />
-      <span>
-        Your pages have {keys.length === 1 ? 'a property' : `${keys.length} properties`} that{' '}
-        {keys.length === 1 ? 'is not a column' : 'are not columns'} yet: {shown}.
-      </span>
+      <span>{tp('database.suggestColumns', keys.length, { names: shown })}</span>
       <button type="button" className="button small" onClick={() => addColumnsFromPages(dbId, keys)}>
         {t('database.addAsColumns')}
       </button>
@@ -389,7 +386,8 @@ function Toolbar({
         onClick={open('filter')}
         disabled={!editable}
       >
-        <Filter size={13} /> Filter{view.filters.length ? ` ${view.filters.length}` : ''}
+        <Filter size={13} /> {t('database.filter')}
+        {view.filters.length ? ` ${view.filters.length}` : ''}
       </button>
       <button
         type="button"
@@ -397,11 +395,12 @@ function Toolbar({
         onClick={open('sort')}
         disabled={!editable}
       >
-        <ArrowDownUp size={13} /> Sort{view.sorts.length ? ` ${view.sorts.length}` : ''}
+        <ArrowDownUp size={13} /> {t('database.sort')}
+        {view.sorts.length ? ` ${view.sorts.length}` : ''}
       </button>
       {(view.type === 'board' || view.type === 'calendar') && (
         <button type="button" className="text-tool" onClick={open('layout')} disabled={!editable}>
-          <Settings2 size={13} /> {view.type === 'board' ? 'Group' : 'Date'}
+          <Settings2 size={13} /> {view.type === 'board' ? t('database.group') : t('database.date')}
         </button>
       )}
       <button type="button" className="text-tool" onClick={open('properties')}>
@@ -454,7 +453,7 @@ function Toolbar({
                 >
                   {ops.map((op) => (
                     <option key={op} value={op}>
-                      {FILTER_LABELS[op]}
+                      {filterLabel(op)}
                     </option>
                   ))}
                 </select>
@@ -542,13 +541,15 @@ function Toolbar({
                   }))
                 }
               >
-                {[...names, { id: 'created', name: 'Created' }, { id: 'updated', name: 'Edited' }].map(
-                  (item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ),
-                )}
+                {[
+                  ...names,
+                  { id: 'created', name: t('database.created') },
+                  { id: 'updated', name: t('database.edited') },
+                ].map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
               </select>
               <select
                 className="text-input small"
@@ -603,7 +604,7 @@ function Toolbar({
           className="db-panel"
         >
           <label className="field">
-            <span>{view.type === 'board' ? 'Group cards by' : 'Place rows by'}</span>
+            <span>{view.type === 'board' ? t('database.groupCardsBy') : t('database.placeRowsBy')}</span>
             <select
               className="text-input small"
               value={(view.type === 'board' ? view.groupBy : view.dateProp) ?? ''}
@@ -644,11 +645,15 @@ function Toolbar({
               return (
                 <li key={prop.id}>
                   <span className="db-prop-name">{prop.name}</span>
-                  <span className="muted small">{PROP_LABELS[prop.type]}</span>
+                  <span className="muted small">{propLabel(prop.type)}</span>
                   <button
                     type="button"
                     className="icon-button tiny"
-                    aria-label={hidden ? `Show ${prop.name}` : `Hide ${prop.name}`}
+                    aria-label={
+                      hidden
+                        ? t('database.showProp', { name: prop.name })
+                        : t('database.hideProp', { name: prop.name })
+                    }
                     disabled={!editable}
                     onClick={() =>
                       updateView(dbId, view.id, (current) => ({
@@ -840,7 +845,7 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         <thead>
           <tr>
             <th scope="col" className="db-col-title">
-              Name
+              {t('database.name')}
               {resizer(TITLE_PROP)}
             </th>
             {props.map((prop) => (
@@ -1094,7 +1099,7 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
   return (
     <div className="db-calendar">
       <header className="db-calendar-head">
-        <h3>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</h3>
+        <h3>{month.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })}</h3>
         <button
           type="button"
           className="icon-button small"
@@ -1122,7 +1127,7 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
       <div className="db-calendar-grid" role="grid">
         {days.slice(0, 7).map((day) => (
           <div key={day.toISOString()} className="db-weekday" role="columnheader">
-            {day.toLocaleDateString(undefined, { weekday: 'short' })}
+            {day.toLocaleDateString(dateLocale(), { weekday: 'short' })}
           </div>
         ))}
         {days.map((day) => {
@@ -1162,7 +1167,7 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
                 <button
                   type="button"
                   className="db-day-add"
-                  aria-label={`New row on ${day.toLocaleDateString()}`}
+                  aria-label={t('database.newRowOn', { date: day.toLocaleDateString(dateLocale()) })}
                   onClick={() => newRowAndOpen(dbId, { [prop.id]: key })}
                 >
                   <Plus size={12} />

@@ -444,14 +444,14 @@ function UpdateSettings() {
   const found = update.kind === 'available' || update.kind === 'installing' ? update.update : null;
   const status =
     update.kind === 'checking'
-      ? 'Checking…'
+      ? t('updates.checking')
       : update.kind === 'current'
-        ? 'You have the latest version.'
+        ? t('updates.upToDate')
         : update.kind === 'error'
           ? update.message
           : found
-            ? `Morrow ${found.version} is out.`
-            : 'Checks GitHub for a new version when Morrow opens and once a day.';
+            ? t('updates.available', { version: found.version })
+            : t('updates.help');
   return (
     <SettingsGroup>
       <SettingRow label={t('updates.check')} help={status}>
@@ -476,10 +476,10 @@ function UpdateSettings() {
           label={t('settings.about.version', { version: found.version })}
           help={
             update.kind === 'installing'
-              ? `Downloading… ${Math.round(update.share * 100)}%`
+              ? t('updates.downloading', { percent: Math.round(update.share * 100) })
               : found.installable
-                ? 'Morrow restarts into the new version once it is downloaded.'
-                : 'Download it from the release page and install it over this one.'
+                ? t('updates.restartsInto')
+                : t('updates.downloadManually')
           }
         >
           <div className="settings-actions">
@@ -492,7 +492,7 @@ function UpdateSettings() {
               disabled={update.kind === 'installing'}
               onClick={() => void installUpdate(found)}
             >
-              {found.installable ? 'Install and restart' : 'Download'}
+              {found.installable ? t('updates.installAndRestart') : t('updates.download')}
             </button>
           </div>
         </SettingRow>

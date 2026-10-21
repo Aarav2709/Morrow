@@ -3,7 +3,7 @@ import { planPull } from '../core/sync';
 import { commitEditors } from './editor/commits';
 import { desktop } from './platform/desktop';
 import type { SyncStatus } from './platform/desktop';
-import { t } from './i18n';
+import { t, tp } from './i18n';
 import { toast } from './ui';
 import { getSession } from './workspace';
 
@@ -28,7 +28,7 @@ export async function syncWith(peerId: string, options: { askBack?: boolean } = 
 async function pullFrom(peerId: string, askBack: boolean): Promise<SyncResult> {
   const sync = desktop?.sync;
   const vault = desktop?.vault;
-  if (!sync || !vault) return { ok: false, received: 0, conflicts: 0, error: 'Sync needs the desktop app.' };
+  if (!sync || !vault) return { ok: false, received: 0, conflicts: 0, error: t('toasts.syncNeedsDesktop') };
   try {
     const status = await sync.status();
     const here = await vault.identity();
@@ -43,8 +43,8 @@ async function pullFrom(peerId: string, askBack: boolean): Promise<SyncResult> {
         received: 0,
         conflicts: 0,
         error: hello.vaultId
-          ? `${hello.name} has a different vault open (${hello.vaultName}). Open the same vault on both, or copy it over first.`
-          : `${hello.name} has no vault open.`,
+          ? t('toasts.peerDifferentVault', { name: hello.name, vault: hello.vaultName ?? '' })
+          : t('toasts.peerNoVault', { name: hello.name }),
       };
     }
     commitEditors();
@@ -54,7 +54,7 @@ async function pullFrom(peerId: string, askBack: boolean): Promise<SyncResult> {
       manifest?: Record<string, string>;
       error?: string;
     };
-    if (!answer.manifest) throw new Error(answer.error ?? 'No list of files came back.');
+    if (!answer.manifest) throw new Error(answer.error ?? t('toasts.noFileList'));
     const remote = answer.manifest;
     const base = await vault.syncBase(peerId);
     const plan = planPull(local, remote, base, status.name, new Date());
@@ -124,12 +124,9 @@ export async function syncAll(quiet = true): Promise<void> {
   for (const peer of status.peers.filter((item) => item.online || item.reachable)) {
     const result = await syncWith(peer.id);
     if (!result.ok && !quiet)
-      toast(t('toasts.syncFailed', { name: peer.name, error: result.error }), { tone: 'error' });
+      toast(t('toasts.syncFailed', { name: peer.name, error: result.error ?? '' }), { tone: 'error' });
     else if (result.conflicts > 0)
-      toast(
-        `${result.conflicts} page${result.conflicts === 1 ? ' was' : 's were'} changed on both computers. Both versions are kept, look for “conflict” in the name.`,
-        { durationMs: 12_000 },
-      );
+      toast(tp('toasts.syncConflicts', result.conflicts), { durationMs: 12_000 });
   }
 }
 
@@ -162,14 +159,14 @@ export function startAutoSync(): () => void {
 export async function copyVaultFrom(peerId: string, dir: string): Promise<{ ok: boolean; error?: string }> {
   const sync = desktop?.sync;
   const vault = desktop?.vault;
-  if (!sync || !vault) return { ok: false, error: 'Sync needs the desktop app.' };
+  if (!sync || !vault) return { ok: false, error: t('toasts.syncNeedsDesktop') };
   const hello = (await sync.request(peerId, { op: 'hello' })) as { vaultId: string | null; name: string };
-  if (!hello.vaultId) return { ok: false, error: `${hello.name} has no vault open.` };
+  if (!hello.vaultId) return { ok: false, error: t('toasts.peerNoVault', { name: hello.name }) };
   const prepared = await vault.prepareCopy(dir, hello.vaultId);
   if (!prepared.ok) return prepared;
   sessionStorage.setItem('morrow.syncAfterOpen', peerId);
   const selected = await vault.select(dir);
-  if (!selected.ok) return { ok: false, error: selected.error ?? 'That folder could not be opened.' };
+  if (!selected.ok) return { ok: false, error: selected.error ?? t('toasts.folderNotOpened') };
   window.location.reload();
   return { ok: true };
 }

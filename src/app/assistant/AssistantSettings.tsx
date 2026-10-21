@@ -6,6 +6,7 @@ import { Select } from '../components/Select';
 import { SettingRow, SettingsGroup } from '../components/SettingsRows';
 import { openHref } from '../editor/EditorMenus';
 import { useTranslation } from '../i18n';
+import { tr } from '../i18n/rich';
 import { copyText, desktop } from '../platform/desktop';
 import type { AssistantProviderId, AssistantSettings as Settings, McpLaunch } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
@@ -76,7 +77,7 @@ export function AssistantSettings() {
         for: target,
         connection: result.ok
           ? { state: 'ok', models: result.models }
-          : { state: 'error', message: result.error ?? 'Could not connect.' },
+          : { state: 'error', message: result.error ?? '' },
       });
     });
     return () => {
@@ -183,21 +184,23 @@ export function AssistantSettings() {
                 provider?.needsKey ? t('settings.assistant.apiKey') : t('settings.assistant.apiKeyOptional')
               }
               help={
-                settings.hasKey ? (
-                  settings.keyStorage === 'system' ? (
-                    t('settings.assistant.keySavedSystem')
-                  ) : (
-                    t('settings.assistant.keySavedSession')
-                  )
-                ) : provider?.keyUrl ? (
-                  <>
-                    {t('settings.assistant.getKeyPrefix')}
-                    <button type="button" className="link-button" onClick={() => openHref(provider.keyUrl)}>
-                      {new URL(provider.keyUrl).hostname}
-                    </button>
-                    {t('settings.assistant.getKeySuffix')}
-                  </>
-                ) : undefined
+                settings.hasKey
+                  ? settings.keyStorage === 'system'
+                    ? t('settings.assistant.keySavedSystem')
+                    : t('settings.assistant.keySavedSession')
+                  : provider?.keyUrl
+                    ? tr('settings.assistant.getOneAt', {
+                        host: (
+                          <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => openHref(provider.keyUrl)}
+                          >
+                            {new URL(provider.keyUrl).hostname}
+                          </button>
+                        ),
+                      })
+                    : undefined
               }
               stacked
             >
@@ -252,7 +255,7 @@ export function AssistantSettings() {
                   )}
                   {connection.state === 'error' && (
                     <>
-                      <CircleAlert size={12} /> {connection.message}
+                      <CircleAlert size={12} /> {connection.message || t('assistant.couldNotConnect')}
                     </>
                   )}
                   {connection.state === 'idle' &&
@@ -343,60 +346,15 @@ export function AssistantSettings() {
             help={t('settings.assistant.mcpConfigHelp')}
             stacked
           >
-            <div
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                marginTop: 6,
-                background: 'var(--code-bg)',
-                borderRadius: 6,
-                padding: '10px 12px',
-                border: '1px solid var(--border)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 8,
-                  gap: 8,
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 500,
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  Stdio
-                </span>
-                <button
-                  type="button"
-                  className="button small"
-                  onClick={handleCopy}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    minWidth: 120,
-                  }}
-                >
+            <div className="mcp-setup">
+              <div className="mcp-setup-head">
+                <span className="mcp-setup-kind">Stdio</span>
+                <button type="button" className="button small mcp-copy" onClick={handleCopy}>
                   {mcpCopied ? <Check size={13} /> : <Copy size={13} />}
                   {mcpCopied ? t('settings.assistant.mcpCopied') : t('settings.assistant.mcpCopyButton')}
                 </button>
               </div>
-              <pre
-                style={{
-                  margin: 0,
-                  fontSize: 12,
-                  lineHeight: 1.45,
-                  overflowX: 'auto',
-                  fontFamily: 'var(--font-mono)',
-                }}
-              >
+              <pre className="mcp-setup-code">
                 <code>{mcpJson}</code>
               </pre>
             </div>

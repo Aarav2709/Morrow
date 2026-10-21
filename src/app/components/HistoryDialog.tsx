@@ -14,7 +14,7 @@ import { fileUrl } from '../platform/attachments';
 import { closeDialog } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { Dialog, relativeTime } from './primitives';
-import { t } from '../i18n';
+import { dateLocale, t, tp } from '../i18n';
 
 let previewExtensions: ReturnType<typeof createExtensions> | null = null;
 
@@ -111,13 +111,13 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
                     onClick={() => setSelected(index)}
                   >
                     <span>
-                      {new Date(version.createdAt).toLocaleString(undefined, {
+                      {new Date(version.createdAt).toLocaleString(dateLocale(), {
                         dateStyle: 'medium',
                         timeStyle: 'short',
                       })}
                     </span>
                     <span className="muted small">
-                      {relativeTime(version.createdAt)} · {words.toLocaleString()} words
+                      {relativeTime(version.createdAt)} · {tp('history.words', words)}
                     </span>
                   </button>
                 </li>
@@ -135,7 +135,7 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
                   className={mode === value ? 'is-active' : ''}
                   onClick={() => setMode(value)}
                 >
-                  {value === 'changes' ? 'Changes since then' : 'That version'}
+                  {value === 'changes' ? t('history.changesSince') : t('history.thatVersion')}
                 </button>
               ))}
             </div>
@@ -189,7 +189,7 @@ function DiffView({ lines }: { lines: DiffLine[] }) {
       {rows.map((row, index) =>
         row.kind === 'gap' ? (
           <div key={index} className="diff-gap">
-            {row.count} unchanged line{row.count === 1 ? '' : 's'}
+            {tp('history.unchangedLines', row.count)}
           </div>
         ) : (
           <div key={index} className={`diff-line diff-${row.kind}`}>

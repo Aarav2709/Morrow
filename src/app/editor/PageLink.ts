@@ -155,10 +155,10 @@ export const PageLink = Node.create<PageLinkOptions>({
         dom.classList.toggle('is-missing', id === null && !unresolved);
         dom.classList.toggle('is-embed', current.attrs.embed === true);
         dom.title = unresolved
-          ? `“${target()}” does not exist yet, click to create it`
+          ? t('editor.linkCreate', { target: target() })
           : title === null
-            ? 'This page was deleted or moved to the trash'
-            : `Open ${title}`;
+            ? t('editor.linkTrashed')
+            : t('database.openTitle', { title });
         if (body && mounted && mounted.id !== id) {
           mounted.unmount();
           mounted = null;

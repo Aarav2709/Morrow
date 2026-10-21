@@ -5,6 +5,7 @@ import { fail, ok } from '../core/result';
 import type { Result } from '../core/result';
 import { openRepository } from '../storage/repository';
 import type { WorkspaceSession } from '../storage/session';
+import { t } from './i18n';
 
 const LEGACY_DB = 'morrow';
 // set by the vault chooser when pages from an earlier build should be copied into the folder being opened
@@ -64,7 +65,7 @@ export async function copyLegacyInto(session: WorkspaceSession): Promise<Result<
     );
     const result = session.execute({ type: 'pages.insert', pages: incoming, docs: incomingDocs });
     if (!result.ok) return fail(result.error);
-    if (!(await session.flush())) return fail('The pages could not be written to the folder.');
+    if (!(await session.flush())) return fail(t('toasts.legacyWriteFailed'));
     const copied = new Set(incoming.map((page) => page.id));
     const versions = (await repository.allSnapshots())
       .filter((snapshot) => copied.has(snapshot.pageId))

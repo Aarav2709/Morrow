@@ -10,17 +10,6 @@ export type StartPage = 'today' | 'home' | 'last';
 // accent colours, each tuned for light and dark in features.css
 export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
 export type Accent = (typeof ACCENTS)[number];
-export const ACCENT_LABELS: Record<Accent, string> = {
-  ember: 'Ember',
-  ocean: 'Ocean',
-  aqua: 'Aqua',
-  violet: 'Violet',
-  forest: 'Forest',
-  rose: 'Rose',
-  amber: 'Amber',
-  graphite: 'Graphite',
-};
-
 // a canvas shown inside a page, width null fills the page
 export interface CanvasSize {
   width: number | null;
@@ -53,7 +42,6 @@ export interface Preferences {
   // look for a new version when morrow opens and once a day, off until turned on
   checkUpdates: boolean;
   mcpEnabled: boolean;
-  mcpPort: number;
 }
 
 const KEY = 'morrow.preferences';
@@ -86,7 +74,6 @@ const defaults: Preferences = {
   assistantAsk: true,
   checkUpdates: false,
   mcpEnabled: false,
-  mcpPort: 3030,
 };
 
 // view preferences only, losing them never loses work
@@ -137,10 +124,6 @@ function read(): Preferences {
       assistantAsk: parsed.assistantAsk !== false,
       checkUpdates: parsed.checkUpdates === true,
       mcpEnabled: parsed.mcpEnabled === true,
-      mcpPort:
-        typeof parsed.mcpPort === 'number' && parsed.mcpPort > 0 && parsed.mcpPort <= 65535
-          ? parsed.mcpPort
-          : defaults.mcpPort,
     };
   } catch {
     return defaults;

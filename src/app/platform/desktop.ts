@@ -153,13 +153,6 @@ export interface DesktopUpdatesApi {
   onProgress(listener: (share: number) => void): () => void;
 }
 
-export interface McpServerStatus {
-  running: boolean;
-  port: number;
-  error?: string | null;
-  vaultPath?: string | null;
-}
-
 export interface McpLaunch {
   command: string;
   script: string;
@@ -167,10 +160,7 @@ export interface McpLaunch {
 }
 
 export interface DesktopMcpApi {
-  status(): Promise<McpServerStatus>;
   launch(): Promise<McpLaunch>;
-  start(port?: number): Promise<McpServerStatus>;
-  stop(): Promise<McpServerStatus>;
   setEnabled(enabled: boolean): Promise<boolean>;
   isEnabled(): Promise<boolean>;
 }

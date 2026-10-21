@@ -60,7 +60,7 @@ export function SourceEditor({ pageId, doc, editable }: { pageId: PageId; doc: D
     });
     const valid = validateDoc(parsed);
     if (!valid.ok) {
-      setError('This Markdown could not be read, the page keeps its last good version.');
+      setError(t('dialogs.markdownUnreadable'));
       return;
     }
     setError(null);

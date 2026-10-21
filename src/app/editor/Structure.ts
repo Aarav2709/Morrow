@@ -6,7 +6,7 @@ import { CalendarDays, FileText } from 'lucide-react';
 import { dateKey, parseDateKey } from '../../core/daily';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
-import { t } from '../i18n';
+import { dateLocale, t } from '../i18n';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -183,11 +183,11 @@ export function describeDate(key: string, today = new Date()): string {
   if (!date) return key;
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const days = Math.round((date.getTime() - start.getTime()) / 86_400_000);
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days === -1) return 'Yesterday';
+  if (days === 0) return t('daily.today');
+  if (days === 1) return t('daily.tomorrow');
+  if (days === -1) return t('daily.yesterday');
   const sameYear = date.getFullYear() === today.getFullYear();
-  return date.toLocaleDateString(undefined, {
+  return date.toLocaleDateString(dateLocale(), {
     ...(days > 1 && days < 7 ? { weekday: 'long' } : {}),
     day: 'numeric',
     month: 'short',
@@ -270,7 +270,9 @@ export const DateMention = Node.create<DateMentionOptions>({
       const paint = () => {
         const key = String(current.attrs.date ?? '');
         dom.textContent = `@${describeDate(key)}`;
-        dom.title = `Open the note for ${parseDateKey(key)?.toLocaleDateString(undefined, { dateStyle: 'full' }) ?? key}`;
+        dom.title = t('editor.openNoteFor', {
+          date: parseDateKey(key)?.toLocaleDateString(dateLocale(), { dateStyle: 'full' }) ?? key,
+        });
         const date = parseDateKey(key);
         const today = dateKey(new Date());
         dom.classList.toggle('is-past', !!date && key < today);
@@ -308,7 +310,7 @@ export const DateMention = Node.create<DateMentionOptions>({
           const dates: MenuItem[] = dateSuggestions(query).map((date) => ({
             id: `date:${dateKey(date)}`,
             title: describeDate(dateKey(date)),
-            description: date.toLocaleDateString(undefined, {
+            description: date.toLocaleDateString(dateLocale(), {
               weekday: 'short',
               day: 'numeric',
               month: 'short',

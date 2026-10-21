@@ -1,6 +1,7 @@
 import { Columns3, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { stringify } from 'yaml';
+import { displayTitle } from '../../core/model';
 import type { DatabaseDef, PageId, PageMeta, PropDef } from '../../core/model';
 import { inferFrontmatterType } from '../../core/properties';
 import { findKey, MANAGED_KEYS } from '../../core/vault/frontmatter';
@@ -95,7 +96,7 @@ export function PageProperties({
           </span>
           <span className="row-prop-value">
             <ExtraValue
-              label={`${key} of ${page.title || 'Untitled'}`}
+              label={t('properties.valueOf', { key, title: displayTitle(page) })}
               value={page.extra[key]}
               editable={editable}
               autoFocus={focusKey === key}

@@ -151,9 +151,7 @@ function ToolLine({ item }: { item: Extract<ChatItem, { kind: 'tool' }> }) {
         )}
         {item.status === 'declined' && <span className="muted small">{t('assistant.declined')}</span>}
         {item.status === 'undone' && <span className="muted small">{t('assistant.undone')}</span>}
-        {item.status === 'failed' && (
-          <span className="small is-error">{t('assistant.applyFailed')}</span>
-        )}
+        {item.status === 'failed' && <span className="small is-error">{t('assistant.applyFailed')}</span>}
       </div>
     </div>
   );
@@ -283,7 +281,7 @@ export function AssistantPanel() {
           rows={2}
           value={text}
           disabled={!ready}
-          placeholder={ready ? 'Ask anything about your notes' : 'Set up the assistant in settings'}
+          placeholder={ready ? t('assistant.askPlaceholder') : t('assistant.setupPlaceholder')}
           aria-label={t('assistant.messageAria')}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {

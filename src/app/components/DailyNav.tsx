@@ -9,10 +9,10 @@ import { useWorkspace } from '../workspace';
 import { Popover } from './Popover';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
-import { t } from '../i18n';
+import { dateLocale, t } from '../i18n';
 
 const shortDate = (key: string) =>
-  parseDateKey(key)?.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) ?? key;
+  parseDateKey(key)?.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' }) ?? key;
 
 // above a daily note: the notes either side, a calendar of every day, and a way back to today
 export function DailyNav({ page }: { page: PageMeta }) {
@@ -28,7 +28,11 @@ export function DailyNav({ page }: { page: PageMeta }) {
         type="button"
         className="daily-nav-step"
         disabled={!previous}
-        title={previous ? `Previous note, ${shortDate(previous.dailyDate!)}` : 'No earlier note'}
+        title={
+          previous
+            ? t('daily.previousNote', { date: shortDate(previous.dailyDate!) })
+            : t('daily.noEarlierNote')
+        }
         onClick={() => previous && openPage(previous.id)}
       >
         <ChevronLeft size={15} />
@@ -40,13 +44,13 @@ export function DailyNav({ page }: { page: PageMeta }) {
         aria-haspopup="dialog"
         onClick={(event) => setCalendar(calendar ? null : event.currentTarget)}
       >
-        <CalendarDays size={15} /> {key === today ? 'Today' : 'Calendar'}
+        <CalendarDays size={15} /> {key === today ? t('daily.today') : t('daily.calendar')}
       </button>
       <button
         type="button"
         className="daily-nav-step"
         disabled={!next}
-        title={next ? `Next note, ${shortDate(next.dailyDate!)}` : 'No later note'}
+        title={next ? t('daily.nextNote', { date: shortDate(next.dailyDate!) }) : t('daily.noLaterNote')}
         onClick={() => next && openPage(next.id)}
       >
         {next && <span>{shortDate(next.dailyDate!)}</span>}
@@ -73,7 +77,7 @@ export function DailyNav({ page }: { page: PageMeta }) {
 }
 
 const WEEKDAYS = Array.from({ length: 7 }, (_, index) =>
-  new Date(2024, 0, 1 + index).toLocaleDateString(undefined, { weekday: 'narrow' }),
+  new Date(2024, 0, 1 + index).toLocaleDateString(dateLocale(), { weekday: 'narrow' }),
 );
 
 // a month at a time, days with a note are marked, any day opens its note and makes it if needed
@@ -112,7 +116,7 @@ export function DailyCalendar({
         >
           <ChevronLeft size={15} />
         </button>
-        <strong>{month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}</strong>
+        <strong>{month.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })}</strong>
         <button
           type="button"
           className="icon-button"
@@ -136,7 +140,11 @@ export function DailyCalendar({
               key={key}
               type="button"
               className={`daily-calendar-day${days.has(key) ? ' has-note' : ''}${key === today ? ' is-today' : ''}${key === selected ? ' is-selected' : ''}`}
-              aria-label={`${date.toLocaleDateString(undefined, { dateStyle: 'full' })}${days.has(key) ? ', has a note' : ''}`}
+              aria-label={
+                days.has(key)
+                  ? t('daily.hasNote', { date: date.toLocaleDateString(dateLocale(), { dateStyle: 'full' }) })
+                  : date.toLocaleDateString(dateLocale(), { dateStyle: 'full' })
+              }
               onClick={() => onPick(date)}
             >
               {date.getDate()}
@@ -160,7 +168,7 @@ export function MadeThisDay({ dailyDate }: { dailyDate: string }) {
   return (
     <section className="page-section" aria-label={t('daily.madeThisDay')}>
       <h2 className="section-label">
-        Made this day <span className="section-count">{pages.length}</span>
+        {t('daily.madeThisDay')} <span className="section-count">{pages.length}</span>
       </h2>
       <ul className="link-list">
         {shown.map((page) => (
