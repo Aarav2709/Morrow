@@ -85,7 +85,7 @@ export function Dialog({
     return () => {
       closed();
       document.removeEventListener('keydown', onKey, true);
-      if (previous?.isConnected) previous.focus();
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
     };
   }, []);
 

@@ -41,7 +41,7 @@ export function CommandPalette() {
     const closed = dialogOpened();
     return () => {
       closed();
-      if (previousFocus.current?.isConnected) previousFocus.current.focus();
+      if (previousFocus.current?.isConnected) previousFocus.current.focus({ preventScroll: true });
     };
   }, []);
 

@@ -64,7 +64,7 @@ export function Popover({
       if (event.key !== 'Escape') return;
       event.stopPropagation();
       closeRef.current();
-      if (trigger?.isConnected) trigger.focus();
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
     document.addEventListener('pointerdown', onPointer, true);
     document.addEventListener('keydown', onKey, true);
