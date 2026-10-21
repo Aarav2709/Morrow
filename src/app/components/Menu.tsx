@@ -64,7 +64,8 @@ export function Menu({ anchor, entries, onClose, placement = 'bottom-start', lab
       window.removeEventListener('blur', onBlurWindow);
       window.removeEventListener('resize', onBlurWindow);
       // give focus back to whatever opened the menu
-      if (trigger?.isConnected && document.activeElement === document.body) trigger.focus({ preventScroll: true });
+      if (trigger?.isConnected && document.activeElement === document.body)
+        trigger.focus({ preventScroll: true });
     };
   }, [anchor]);
 
