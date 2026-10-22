@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { findParentNode } from '@tiptap/core';
-import { NodeSelection } from '@tiptap/pm/state';
+import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import type { BubbleMenuProps } from '@tiptap/react/menus';
@@ -8,6 +8,7 @@ import {
   ArrowDown,
   ArrowUp,
   Bold,
+  ChevronRight,
   Code,
   Code2,
   Copy,
@@ -17,6 +18,9 @@ import {
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   Highlighter,
   ImageIcon,
   Info,
@@ -173,6 +177,9 @@ function useMarks(editor: Editor) {
       h1: current.isActive('heading', { level: 1 }),
       h2: current.isActive('heading', { level: 2 }),
       h3: current.isActive('heading', { level: 3 }),
+      h4: current.isActive('heading', { level: 4 }),
+      h5: current.isActive('heading', { level: 5 }),
+      h6: current.isActive('heading', { level: 6 }),
       href: String(current.getAttributes('link').href ?? ''),
     }),
   });
@@ -349,6 +356,24 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
               active={marks.h3}
               onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
             />
+            <ToolButton
+              label={t('slash.items.h4.title')}
+              icon={Heading4}
+              active={marks.h4}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
+            />
+            <ToolButton
+              label={t('slash.items.h5.title')}
+              icon={Heading5}
+              active={marks.h5}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}
+            />
+            <ToolButton
+              label={t('slash.items.h6.title')}
+              icon={Heading6}
+              active={marks.h6}
+              onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}
+            />
           </>
         )}
       </div>
@@ -503,6 +528,100 @@ function linkable(editor: Editor, pos: number): boolean {
   );
 }
 
+type TurnTarget =
+  | { kind: 'paragraph' }
+  | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6 }
+  | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' | 'toggle' };
+
+// blocks the handle menu can turn into something else: lines of text, single list items, quotes and toggles
+const TURNABLE = new Set(['listItem', 'taskItem', 'blockquote', 'details']);
+function turnable(editor: Editor, pos: number): boolean {
+  const node = editor.state.doc.nodeAt(pos);
+  return !!node && (node.isTextblock || TURNABLE.has(node.type.name));
+}
+
+// the first place to type inside the block at pos
+function firstTextPosition(editor: Editor, pos: number): number | null {
+  const node = editor.state.doc.nodeAt(pos);
+  if (!node) return null;
+  if (node.isTextblock) return pos + 1;
+  let found: number | null = null;
+  node.descendants((child, offset) => {
+    if (found !== null) return false;
+    if (child.isTextblock) found = pos + 1 + offset + 1;
+    return found === null;
+  });
+  return found;
+}
+
+// turns one block into another the way notion does: the block is first taken out of its list or quote, so a
+// single list item changes on its own and a line inside a toggle stays in the toggle
+function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
+  const node = editor.state.doc.nodeAt(pos);
+  if (!node) return;
+  if (node.type.name === 'details') {
+    // a toggle opens up into its title as a line followed by what was folded inside it
+    const summary = firstTextPosition(editor, pos);
+    if (summary === null) return;
+    const folded = node.lastChild;
+    const empty = folded?.childCount === 1 && folded.firstChild!.isTextblock && !folded.firstChild!.content.size;
+    editor.chain().setTextSelection(summary).unsetDetails().run();
+    // nothing was folded inside, so its empty line goes with it
+    const title = editor.state.doc.nodeAt(pos);
+    if (empty && title) {
+      const after = pos + title.nodeSize;
+      const line = editor.state.doc.nodeAt(after);
+      if (line) editor.commands.deleteRange({ from: after, to: after + line.nodeSize });
+    }
+  }
+  const at = firstTextPosition(editor, pos);
+  if (at === null) return;
+  const chain = editor.chain().focus().setTextSelection(at).clearNodes();
+  switch (target.kind) {
+    case 'paragraph':
+      chain.run();
+      return;
+    case 'heading':
+      chain.setHeading({ level: target.level }).run();
+      return;
+    case 'bulletList':
+      chain.toggleBulletList().run();
+      return;
+    case 'orderedList':
+      chain.toggleOrderedList().run();
+      return;
+    case 'taskList':
+      chain.toggleTaskList().run();
+      return;
+    case 'blockquote':
+      chain.setBlockquote().run();
+      return;
+    case 'codeBlock':
+      chain.setCodeBlock().run();
+      return;
+    case 'toggle':
+      // the line becomes the toggle's title, with an empty line folded under it
+      chain
+        .command(({ tr, state }) => {
+          const { $from } = tr.selection;
+          const line = $from.parent;
+          if (!line.isTextblock || line.type.name === 'codeBlock') return false;
+          const { details, detailsSummary, detailsContent, paragraph } = state.schema.nodes;
+          if (!details || !detailsSummary || !detailsContent || !paragraph) return false;
+          const start = $from.before();
+          const toggle = details.create({ open: true }, [
+            detailsSummary.create(null, line.content),
+            detailsContent.create(null, paragraph.create()),
+          ]);
+          tr.replaceWith(start, start + line.nodeSize, toggle);
+          tr.setSelection(TextSelection.create(tr.doc, start + 2 + line.content.size));
+          return true;
+        })
+        .run();
+      return;
+  }
+}
+
 export function BlockMenu({
   editor,
   request,
@@ -514,58 +633,24 @@ export function BlockMenu({
   pageTitle: string;
   onClose: () => void;
 }) {
-  const turn = (apply: () => void) => () => {
-    editor
-      .chain()
-      .focus()
-      .setTextSelection(request.pos + 1)
-      .run();
-    apply();
-  };
-  const c = () => editor.chain().focus();
+  const turn = (target: TurnTarget) => () => turnInto(editor, request.pos, target);
   const entries: MenuEntry[] = [
     { heading: t('editor.turnInto') },
-    { label: t('slash.items.text.title'), icon: Pilcrow, onSelect: turn(() => c().clearNodes().run()) },
-    {
-      label: t('slash.items.h1.title'),
-      icon: Heading1,
-      onSelect: turn(() => c().clearNodes().setHeading({ level: 1 }).run()),
-    },
-    {
-      label: t('slash.items.h2.title'),
-      icon: Heading2,
-      onSelect: turn(() => c().clearNodes().setHeading({ level: 2 }).run()),
-    },
-    {
-      label: t('slash.items.h3.title'),
-      icon: Heading3,
-      onSelect: turn(() => c().clearNodes().setHeading({ level: 3 }).run()),
-    },
-    {
-      label: t('slash.items.bullet.title'),
-      icon: List,
-      onSelect: turn(() => c().clearNodes().toggleBulletList().run()),
-    },
-    {
-      label: t('slash.items.ordered.title'),
-      icon: ListOrdered,
-      onSelect: turn(() => c().clearNodes().toggleOrderedList().run()),
-    },
-    {
-      label: t('slash.items.task.title'),
-      icon: ListChecks,
-      onSelect: turn(() => c().clearNodes().toggleTaskList().run()),
-    },
-    {
-      label: t('slash.items.quote.title'),
-      icon: Quote,
-      onSelect: turn(() => c().clearNodes().setBlockquote().run()),
-    },
-    {
-      label: t('slash.items.code.title'),
-      icon: Code2,
-      onSelect: turn(() => c().clearNodes().setCodeBlock().run()),
-    },
+    { label: t('slash.items.text.title'), icon: Pilcrow, onSelect: turn({ kind: 'paragraph' }) },
+    ...([Heading1, Heading2, Heading3, Heading4, Heading5, Heading6] as const).map((icon, index) => {
+      const level = (index + 1) as 1 | 2 | 3 | 4 | 5 | 6;
+      return {
+        label: t(`slash.items.h${level}.title`),
+        icon,
+        onSelect: turn({ kind: 'heading', level }),
+      };
+    }),
+    { label: t('slash.items.bullet.title'), icon: List, onSelect: turn({ kind: 'bulletList' }) },
+    { label: t('slash.items.ordered.title'), icon: ListOrdered, onSelect: turn({ kind: 'orderedList' }) },
+    { label: t('slash.items.task.title'), icon: ListChecks, onSelect: turn({ kind: 'taskList' }) },
+    { label: t('slash.items.toggle.title'), icon: ChevronRight, onSelect: turn({ kind: 'toggle' }) },
+    { label: t('slash.items.quote.title'), icon: Quote, onSelect: turn({ kind: 'blockquote' }) },
+    { label: t('slash.items.code.title'), icon: Code2, onSelect: turn({ kind: 'codeBlock' }) },
     { separator: true },
     {
       label: t('editor.moveUp'),
@@ -685,7 +770,7 @@ export function BlockMenu({
       },
     );
   }
-  const textual = editor.state.doc.nodeAt(request.pos)?.isTextblock ?? false;
+  const textual = turnable(editor, request.pos);
   const firstTurnInto = entries.findIndex(
     (entry) => 'heading' in entry && entry.heading === t('editor.turnInto'),
   );
