@@ -287,11 +287,18 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                 find={find}
                 anchor={anchor ?? null}
                 onDirty={setEditing}
-                onExitTop={() => {
+                onExitTop={(text) => {
                   const title = titleRef.current;
                   if (!title) return;
+                  const end = title.value.length;
+                  if (text && !trashed) {
+                    const joined = title.value + text;
+                    run({ type: 'page.rename', id, title: joined, now: Date.now() });
+                    // the textarea is controlled, set it now so the cursor lands between the two parts
+                    title.value = joined;
+                  }
                   title.focus();
-                  title.setSelectionRange(title.value.length, title.value.length);
+                  title.setSelectionRange(end, end);
                 }}
                 onReady={(editor) => {
                   editorRef.current = editor;
@@ -370,7 +377,7 @@ function PageBody(props: {
   find: string | null;
   anchor: string | null;
   onDirty: (dirty: boolean) => void;
-  onExitTop: () => void;
+  onExitTop: (text?: string) => void;
   onReady: (editor: Editor) => void;
 }) {
   const unknown = useMemo(() => findUnknownTypes(props.doc), [props.doc]);

@@ -32,7 +32,8 @@ interface Props {
   find: string | null;
   // a heading or ^block id to scroll to once the page opens
   anchor?: string | null;
-  onExitTop: () => void;
+  // leaves the page's text for its title, with any text the first line hands up to it
+  onExitTop: (text?: string) => void;
   onDirty: (dirty: boolean) => void;
   onReady?: (editor: Editor) => void;
 }
@@ -200,6 +201,24 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           'Mod-s': () => {
             commit();
             void getSession().flush();
+            return true;
+          },
+          // backspace at the start of the first line goes back up into the title, the way enter there
+          // came down. the line goes with it, its words joining the end of the title
+          Backspace: ({ editor: current }) => {
+            const { selection, doc, tr } = current.state;
+            const first = doc.firstChild;
+            if (!selection.empty || selection.from !== 1 || first?.type.name !== 'paragraph') return false;
+            let plain = true;
+            first.forEach((child) => {
+              if (!child.isText) plain = false;
+            });
+            if (!plain) {
+              callbacks.current.onExitTop();
+              return true;
+            }
+            current.view.dispatch(tr.delete(0, first.nodeSize));
+            callbacks.current.onExitTop(first.textContent);
             return true;
           },
           ArrowUp: ({ editor: current }) => {
