@@ -17,9 +17,10 @@ function movableBlock(
   state: EditorState,
 ): { start: number; node: PMNode; parent: PMNode; index: number } | null {
   const { selection } = state;
-  if (selection instanceof NodeSelection && selection.$from.depth === 0) {
-    const index = selection.$from.index(0);
-    return { start: selection.from, node: selection.node, parent: state.doc, index };
+  // a block picked by its handle, which can be one item of a list or a line inside a toggle
+  if (selection instanceof NodeSelection) {
+    const { $from } = selection;
+    return { start: selection.from, node: selection.node, parent: $from.parent, index: $from.index() };
   }
   const { $from } = selection;
   let depth = 0;
@@ -68,20 +69,61 @@ export function moveBlock(
 
 const GRIP = `<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><g fill="currentColor"><circle cx="5" cy="3" r="1.2"/><circle cx="9" cy="3" r="1.2"/><circle cx="5" cy="7" r="1.2"/><circle cx="9" cy="7" r="1.2"/><circle cx="5" cy="11" r="1.2"/><circle cx="9" cy="11" r="1.2"/></g></svg>`;
 
-// top level position of the block rendered by a direct child of the editor dom
-function blockPosition(view: EditorView, element: Element): number | null {
+// position of the block a handle element stands for, at any depth
+function blockPosition(view: EditorView, element: Element, topLevel: boolean): number | null {
   try {
     const pos = view.posAtDOM(element, 0);
+    if (view.nodeDOM(pos) === element) return pos;
     const $pos = view.state.doc.resolve(pos);
+    for (let depth = $pos.depth; depth > 0; depth--)
+      if (view.nodeDOM($pos.before(depth)) === element) return $pos.before(depth);
+    if (!topLevel) return null;
     return $pos.depth === 0 ? pos : $pos.before(1);
   } catch {
     return null;
   }
 }
 
+function contains(element: Element, y: number): boolean {
+  const rect = element.getBoundingClientRect();
+  return y >= rect.top && y < rect.bottom;
+}
+
+// every item of a list and every line inside an open toggle is a block of its own, the way notion has it,
+// so the handle picks the innermost one under the pointer rather than the whole list or toggle
+function innerBlock(element: HTMLElement, y: number): HTMLElement {
+  if (element.tagName === 'UL' || element.tagName === 'OL') {
+    const item = Array.from(element.children).find(
+      (child): child is HTMLElement => child.tagName === 'LI' && contains(child, y),
+    );
+    if (!item) return element;
+    const nested = Array.from(item.querySelectorAll<HTMLElement>('ul, ol')).find(
+      (list) => list.parentElement?.closest('li') === item && contains(list, y),
+    );
+    return nested ? innerBlock(nested, y) : item;
+  }
+  if (element.dataset.type === 'details') {
+    const content = Array.from(element.querySelectorAll<HTMLElement>('[data-type="detailsContent"]')).find(
+      (candidate) => candidate.parentElement?.closest('[data-type="details"]') === element,
+    );
+    if (!content || content.hidden || !contains(content, y)) return element;
+    const child = Array.from(content.children).find(
+      (candidate): candidate is HTMLElement => candidate instanceof HTMLElement && contains(candidate, y),
+    );
+    return child ? innerBlock(child, y) : element;
+  }
+  return element;
+}
+
 // the middle of a block's first line of text, which sits lower than its top in a callout, quote or
 // code block with padding around it. null for a block with no text, such as a picture
 function firstTextMiddle(block: HTMLElement): number | null {
+  // a checklist item lines up with its box
+  const checkbox = block.tagName === 'LI' ? block.querySelector(':scope > label') : null;
+  if (checkbox) {
+    const rect = checkbox.getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  }
   const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT, {
     acceptNode: (node) =>
       node.textContent?.trim() && !node.parentElement?.closest('select, button, .katex-mathml')
@@ -122,13 +164,18 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
       const onMove = (event: MouseEvent) => {
         if (!view.editable || !host) return;
         const children = Array.from(view.dom.children) as HTMLElement[];
-        const target = children.find((child) => {
+        const top = children.find((child) => {
           if (child.classList.contains('ProseMirror-gapcursor')) return false;
           const rect = child.getBoundingClientRect();
           return event.clientY >= rect.top - 4 && event.clientY <= rect.bottom + 4;
         });
-        if (!target) return;
-        const pos = blockPosition(view, target);
+        if (!top) return;
+        let target = innerBlock(top, event.clientY);
+        let pos = blockPosition(view, target, target === top);
+        if (pos === null) {
+          target = top;
+          pos = blockPosition(view, top, true);
+        }
         if (pos === null) return;
         current = { element: target, pos };
         const hostRect = host.getBoundingClientRect();
@@ -136,6 +183,10 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
         const lineHeight = parseFloat(getComputedStyle(target).lineHeight) || 24;
         const middle = firstTextMiddle(target) ?? rect.top + Math.min(rect.height, lineHeight) / 2;
         handle.style.top = `${middle - hostRect.top - 11}px`;
+        // a nested block keeps its handle beside it, left of the bullet for a list item
+        const anchor = target.tagName === 'LI' ? (target.parentElement ?? target) : target;
+        const indent = anchor.getBoundingClientRect().left - top.getBoundingClientRect().left;
+        handle.style.transform = indent > 0 ? `translateX(${indent}px)` : '';
         handle.classList.add('is-visible');
       };
 
