@@ -492,7 +492,12 @@ export async function exportPagePdf(id: PageId): Promise<void> {
   root.classList.add('is-printing');
   // paper is white, so a dark theme prints in the light one, with dark text
   const theme = root.dataset.theme;
+  const scheme = root.style.colorScheme;
   root.dataset.theme = 'light';
+  root.style.colorScheme = 'light';
+  // nothing selected or focused shows up on paper
+  if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  window.getSelection()?.removeAllRanges();
   try {
     const result = await desktop.exportPdf(displayTitle(page));
     if (result.ok) toast(t('toasts.pdfSaved', { filename: result.path.split(/[\\/]/).pop() ?? 'PDF' }));
@@ -501,6 +506,7 @@ export async function exportPagePdf(id: PageId): Promise<void> {
     root.classList.remove('is-printing');
     delete root.dataset.printPane;
     if (theme) root.dataset.theme = theme;
+    root.style.colorScheme = scheme;
   }
 }
 

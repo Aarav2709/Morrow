@@ -281,16 +281,34 @@
 /* pdf export prints the page alone */
 
 @media print {
+  /* paper is plain white, and whatever the pointer or selection was resting on when printing began is
+     not part of the page */
   :root {
     --bg: #fff;
+    --bg-sidebar: #fff;
+    --surface: #fff;
+    --hover: transparent;
+    --selection: transparent;
+    color-scheme: light !important;
+  }
+  .prose .ProseMirror-selectednode,
+  .prose .is-selected {
+    outline: none !important;
+    box-shadow: none !important;
   }
   html,
   body,
   #root,
   .app,
   .main,
+  .panes,
+  .pane,
   .view,
-  .page-scroll {
+  .page-scroll,
+  .page,
+  .editor-host,
+  .editor-surface,
+  .prose {
     height: auto !important;
     overflow: visible !important;
     display: block !important;
@@ -448,6 +466,10 @@ html[data-print-pane='main'] .pane[data-pane='side'],
 html[data-print-pane='side'] .pane[data-pane='main'],
 html.is-printing .split-resizer {
   display: none !important;
+}
+/* the pointer lets go of whatever it was hovering, so no hover highlight is printed */
+html.is-printing body {
+  pointer-events: none;
 }
 @media print {
   .tab-bar {
