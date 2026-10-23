@@ -17,7 +17,7 @@ import { commitEditors, undoRedo } from './editor/commits';
 import { ensureToday, writeAutoBackup } from './operations';
 import { startAutoSync, syncWith } from './sync';
 import { startUpdateChecks } from './updates';
-import { desktop, isMac } from './platform/desktop';
+import { desktop, isMac, watchTitleBar } from './platform/desktop';
 import { getPreferences, resolvedTheme, setPreferences, usePreferences } from './platform/preferences';
 import { navigate, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
@@ -47,6 +47,7 @@ function useTheme(theme: 'system' | 'light' | 'dark') {
       document.documentElement.style.colorScheme = resolved;
       desktop?.setTheme(resolved);
     };
+    watchTitleBar();
     apply();
     const media = matchMedia('(prefers-color-scheme: dark)');
     media.addEventListener('change', apply);

@@ -27,7 +27,7 @@ contextBridge.exposeInMainWorld('morrow', {
     return () => listeners.delete(listener);
   },
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.send('morrow:theme', theme),
-  dimTitleBar: (dim: boolean) => ipcRenderer.send('morrow:dim', dim),
+  paintTitleBar: (color: string, symbolColor: string) => ipcRenderer.send('morrow:title-bar', color, symbolColor),
   openExternal: (url: string) => ipcRenderer.invoke('morrow:open-external', url),
   showDataFolder: () => ipcRenderer.invoke('morrow:show-data-folder'),
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),

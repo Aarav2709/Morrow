@@ -176,7 +176,7 @@ export interface DesktopBridge {
   dataPath: string;
   onCommand(listener: (id: string) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
-  dimTitleBar(dim: boolean): void;
+  paintTitleBar(color: string, symbolColor: string): void;
   openExternal(url: string): Promise<void>;
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
@@ -197,12 +197,92 @@ export const isMac =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/.test(desktop?.platform === 'darwin' ? 'Mac' : navigator.platform);
 
-// the window's own buttons darken with the rest of the window while any dialog is open
+type Rgba = [number, number, number, number];
+
+function parseColor(value: string): Rgba | null {
+  const match = /^rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)$/.exec(value.trim());
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] === undefined ? 1 : Number(match[4])];
+}
+
+function over(top: Rgba, below: Rgba): Rgba {
+  const mix = (index: number) => top[index]! * top[3] + below[index]! * (1 - top[3]);
+  return [mix(0), mix(1), mix(2), 1];
+}
+
+function hex([r, g, b]: Rgba): string {
+  return `#${[r, g, b].map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
+}
+
+// the colour the app shows right under the window's own buttons, with any dialog's scrim left out
+function colorUnderButtons(): Rgba {
+  const root = getComputedStyle(document.documentElement);
+  const layers: Rgba[] = [];
+  for (const element of document.elementsFromPoint(window.innerWidth - 4, 4)) {
+    if (element.closest('.dialog-backdrop, [role="dialog"]')) continue;
+    const color = parseColor(getComputedStyle(element).backgroundColor);
+    if (!color || color[3] === 0) continue;
+    layers.push(color);
+    if (color[3] === 1) break;
+  }
+  const base = parseColor(root.getPropertyValue('--bg')) ?? [255, 255, 255, 1];
+  return layers.reduceRight<Rgba>((below, top) => over(top, below), [base[0], base[1], base[2], 1]);
+}
+
+// the window's own buttons match the bar they sit in, and darken with the rest of the window while a
+// dialog is open. they are only repainted when their colour really changes, windows redraws them each time
+// dialogs whose scrim has finished fading in
 let dialogsOpen = 0;
+let painted = '';
+let frame = 0;
+function paintTitleBar(): void {
+  if (!desktop?.paintTitleBar || desktop.platform === 'darwin' || frame) return;
+  frame = requestAnimationFrame(() => {
+    frame = 0;
+    const root = getComputedStyle(document.documentElement);
+    let color = colorUnderButtons();
+    let symbols = parseColor(root.getPropertyValue('--text-muted')) ?? [107, 102, 93, 1];
+    const scrim = dialogsOpen > 0 ? parseColor(root.getPropertyValue('--scrim')) : null;
+    if (scrim) {
+      color = over(scrim, color);
+      symbols = over(scrim, symbols);
+    }
+    const key = `${hex(color)} ${hex(symbols)}`;
+    if (key === painted) return;
+    painted = key;
+    desktop?.paintTitleBar(hex(color), hex(symbols));
+  });
+}
+
+let watching = false;
+// repaints when the theme changes or the bar under the buttons does, such as tabs appearing
+export function watchTitleBar(): void {
+  if (watching || !desktop?.paintTitleBar || desktop.platform === 'darwin') return;
+  watching = true;
+  new MutationObserver(paintTitleBar).observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'data-theme', 'style'],
+    childList: true,
+    subtree: true,
+  });
+  window.addEventListener('resize', paintTitleBar);
+  paintTitleBar();
+}
+
+// the scrim fades in, so the buttons darken once it has, rather than a moment before the rest of the window
+const SCRIM_FADE_MS = 120;
 export function dialogOpened(): () => void {
-  if (dialogsOpen++ === 0) desktop?.dimTitleBar(true);
+  let state: 'fading' | 'dim' | 'closed' = 'fading';
+  setTimeout(() => {
+    if (state !== 'fading') return;
+    state = 'dim';
+    dialogsOpen++;
+    paintTitleBar();
+  }, SCRIM_FADE_MS);
   return () => {
-    if (--dialogsOpen === 0) desktop?.dimTitleBar(false);
+    if (state === 'dim') dialogsOpen--;
+    state = 'closed';
+    paintTitleBar();
   };
 }
 
