@@ -31,7 +31,8 @@ md.block.ruler.before('fence', 'math_block', mathBlockRule, {
 });
 
 const MAX_INPUT = 5_000_000;
-const TASK_PREFIX = /^\[([ xX])\](?:\s+|$)/;
+// a checkbox is [ ] or [x], and notion's exports also write an empty box as [] or with a non-breaking space
+const TASK_PREFIX = /^\[([ \u00a0xX]?)\](?:\s+|$)/;
 // obsidian callouts and github alerts: > [!type]+ optional title
 const CALLOUT = /^\[!([A-Za-z][\w-]{0,30})\]([+-]?)[ \t]*/;
 const WIKI = /^(!?)\[\[([^[\]\n]{0,400}?)\]\]/;
@@ -717,7 +718,7 @@ function toTaskItem(item: DocNode): DocNode | null {
   const inline = [...(rest ? [{ ...lead, text: rest }] : []), ...(first.content ?? []).slice(1)];
   return {
     type: 'taskItem',
-    attrs: { checked: match[1] !== ' ' },
+    attrs: { checked: /x/i.test(match[1]!) },
     content: [{ ...first, content: inline }, ...(item.content ?? []).slice(1)],
   };
 }
