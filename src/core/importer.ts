@@ -62,7 +62,12 @@ export function readImportedFile(text: string, fallbackTitle: string, options: P
   // the first heading is the title when it says the same, otherwise it stays in the text
   if (heading !== null && heading === title)
     doc.content = doc.content!.length > 1 ? doc.content!.slice(1) : emptyDoc().content!;
-  doc.content = doc.content!.map((node) => (isContentsList(node) ? { type: 'tableOfContents' } : node));
+  const blocks = doc.content!;
+  doc.content = blocks.map((node, index) =>
+    isContentsList(node) || listsHeadingsBelow(node, blocks.slice(index + 1))
+      ? { type: 'tableOfContents' }
+      : node,
+  );
   if (read.error) return { title, doc, fields: {} };
   const fields: Partial<PageMeta> = { tags: read.tags, extra: read.extra };
   if (read.icon) fields.icon = read.icon;
@@ -81,10 +86,29 @@ function isContentsList(node: DocNode): boolean {
       parts.length === 1 ? parts[0]!.marks?.find((mark) => mark.type === 'link')?.attrs?.href : null;
     return (
       typeof href === 'string' &&
-      /^(about:blank)?#./.test(href) &&
+      /^((about:blank)?#.|https?:\/\/(www\.)?notion\.so\/[^#]*#.)/.test(href) &&
       rest.every((child) => isContentsList(child))
     );
   });
+}
+
+// notion can also write its table of contents as plain bullets, each one the text of a heading further down
+function listsHeadingsBelow(node: DocNode, below: DocNode[]): boolean {
+  if (node.type !== 'bulletList') return false;
+  const fold = (text: string) => text.trim().replace(/\s+/g, ' ').toLowerCase();
+  const headings = new Set(
+    below.filter((block) => block.type === 'heading').map((block) => fold(inlineText(block))),
+  );
+  if (headings.size < 2) return false;
+  let count = 0;
+  const matches = (list: DocNode): boolean =>
+    (list.content ?? []).every((item) => {
+      const [first, ...rest] = item.content ?? [];
+      if (first?.type !== 'paragraph' || !headings.has(fold(inlineText(first)))) return false;
+      count++;
+      return rest.every((child) => child.type === 'bulletList' && matches(child));
+    });
+  return matches(node) && count >= 2;
 }
 
 // rows of an imported database take their values out of their frontmatter, once every page is known
