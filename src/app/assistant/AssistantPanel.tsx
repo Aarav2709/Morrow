@@ -83,6 +83,8 @@ function compact(lines: DiffLine[], context = 2): Array<DiffLine | { kind: 'gap'
 
 function Diff({ before, after }: { before: string; after: string }) {
   const lines = useMemo(() => compact(diffLines(before, after)), [before, after]);
+  // nothing to show, such as a new page with no text yet, an empty box would only be a stray line
+  if (lines.length === 0) return null;
   return (
     <div className="diff assistant-diff" aria-label={t('assistant.proposedChange')}>
       {lines.map((line, index) =>
