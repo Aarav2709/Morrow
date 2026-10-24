@@ -1,7 +1,7 @@
 // the optional assistant: off until someone adds their own key. the key stays in this process,
 // encrypted by the system keychain, and the page only ever sees the conversation
 import Anthropic from '@anthropic-ai/sdk';
-import { app, safeStorage } from 'electron';
+import { app, net, safeStorage } from 'electron';
 import { readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -218,7 +218,24 @@ function describeError(error: unknown): string {
   if (error instanceof Anthropic.APIError)
     return `The service returned an error (${error.status}): ${error.message}`;
   if (error instanceof Error && error.name === 'AbortError') return 'Stopped.';
+  // a request that never got an answer says only "fetch failed", the reason is underneath it
+  const reason =
+    error instanceof Error
+      ? `${error.message} ${String((error.cause as Error | undefined)?.message ?? error.cause ?? '')}`
+      : '';
+  if (/ECONNREFUSED|ERR_CONNECTION_REFUSED/.test(reason))
+    return 'Could not reach the model. Check that it is running and the address in Settings is right.';
+  if (/ECONNRESET|ERR_CONNECTION_RESET|ERR_EMPTY_RESPONSE|other side closed|socket hang up/i.test(reason))
+    return 'The model stopped before answering. It may have run out of memory, try a smaller model.';
+  if (/ENOTFOUND|ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED/.test(reason))
+    return 'Could not reach the service. Are you online?';
   return error instanceof Error ? error.message : String(error);
+}
+
+// requests to other services go through chromium's network stack. node's own fetch gives up when no answer
+// starts within five minutes, which a model on this computer reading a long page can easily take
+function send(url: string, init: RequestInit): Promise<Response> {
+  return net.fetch(url, init);
 }
 
 export async function listAiModels(): Promise<{ ok: boolean; models: string[]; error?: string }> {
@@ -233,7 +250,7 @@ export async function listAiModels(): Promise<{ ok: boolean; models: string[]; e
       for await (const model of client.models.list()) models.push(model.id);
       return { ok: true, models };
     }
-    const response = await fetch(`${stored.baseUrl}/models`, {
+    const response = await send(`${stored.baseUrl}/models`, {
       headers: key ? { Authorization: `Bearer ${key}` } : {},
     });
     if (!response.ok) return { ok: false, models: [], error: await httpError(response) };
@@ -390,7 +407,7 @@ async function compatibleTurn(
       });
     if (request.add.text) history.push({ role: 'user', content: request.add.text });
   }
-  const response = await fetch(`${stored.baseUrl}/chat/completions`, {
+  const response = await send(`${stored.baseUrl}/chat/completions`, {
     method: 'POST',
     signal,
     headers: {
