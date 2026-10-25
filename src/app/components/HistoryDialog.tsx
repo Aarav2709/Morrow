@@ -2,12 +2,13 @@ import { generateHTML } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
 import { History } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { findDatabaseOf, formatValue } from '../../core/database';
 import { docToPlainText } from '../../core/doc';
 import { diffLines } from '../../core/diff';
 import type { DiffLine } from '../../core/diff';
 import { docToMarkdown } from '../../core/markdown/serialize';
 import { displayTitle } from '../../core/model';
-import type { PageId, Snapshot } from '../../core/model';
+import type { PageId, PageMeta, PropValue, Snapshot, WorkspaceState } from '../../core/model';
 import { createExtensions } from '../editor/extensions';
 import { restoreVersion } from '../operations';
 import { fileUrl } from '../platform/attachments';
@@ -38,6 +39,23 @@ function extensionsForPreview() {
   return previewExtensions;
 }
 
+// a page's properties as lines above its text, so a version that only changed a property shows what changed
+function propertyText(
+  state: WorkspaceState,
+  page: PageMeta,
+  properties: Record<string, PropValue>,
+  extra: Record<string, unknown>,
+): string {
+  const lines: string[] = [];
+  for (const prop of findDatabaseOf(state, page)?.database?.properties ?? []) {
+    const value = properties[prop.id];
+    if (value !== undefined && value !== null) lines.push(`${prop.name}: ${formatValue(prop, value)}`);
+  }
+  for (const [key, value] of Object.entries(extra))
+    lines.push(`${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
+  return lines.length ? `${lines.join('\n')}\n\n` : '';
+}
+
 export function HistoryDialog({ pageId }: { pageId: PageId }) {
   const state = useWorkspace();
   const page = state.pages[pageId];
@@ -61,9 +79,15 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
   const current = state.docs[pageId];
   // what changed from that version to the page as it is now
   const changes = useMemo(() => {
-    if (!snapshot || !current) return [];
-    return diffLines(docToMarkdown(snapshot.doc), docToMarkdown(current));
-  }, [snapshot, current]);
+    if (!snapshot || !current || !page) return [];
+    const now = propertyText(state, page, page.properties, page.extra);
+    // versions kept before properties were part of history show them as they are now
+    const then =
+      snapshot.properties || snapshot.extra
+        ? propertyText(state, page, snapshot.properties ?? {}, snapshot.extra ?? {})
+        : now;
+    return diffLines(then + docToMarkdown(snapshot.doc), now + docToMarkdown(current));
+  }, [snapshot, current, page, state]);
   const html = useMemo(() => {
     if (!snapshot) return '';
     try {

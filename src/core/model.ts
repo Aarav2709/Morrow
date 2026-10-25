@@ -267,6 +267,9 @@ export interface Snapshot {
   title: string;
   doc: DocNode;
   createdAt: number;
+  // the page's database values and other frontmatter, missing from versions kept before they were
+  properties?: Record<string, PropValue>;
+  extra?: Record<string, unknown>;
 }
 
 export const CALLOUT_TONES = ['note', 'tip', 'warning', 'danger'] as const;

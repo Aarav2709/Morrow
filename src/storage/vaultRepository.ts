@@ -2,13 +2,22 @@
 import { canvasDoc, canvasFromDoc, readCanvas, writeCanvas } from '../core/canvas';
 import { decryptPage, encryptPage, isEncryptedText, newPageKey } from '../core/crypto';
 import type { PageKey } from '../core/crypto';
-import { isDocEmpty, validateDoc, walk } from '../core/doc';
+import { isDocEmpty, isRecord, validateDoc, walk } from '../core/doc';
 import { snapshotsToPrune } from '../core/history';
 import { parseWikiLink } from '../core/markdown/parse';
 import { docToMarkdown } from '../core/markdown/serialize';
 import { markdownToDoc } from '../core/markdown/parse';
 import { displayTitle, emptyDoc, newPageMeta } from '../core/model';
-import type { DocNode, FileId, FileMeta, PageId, PageMeta, Snapshot, WorkspaceState } from '../core/model';
+import type {
+  DocNode,
+  FileId,
+  FileMeta,
+  PageId,
+  PageMeta,
+  PropValue,
+  Snapshot,
+  WorkspaceState,
+} from '../core/model';
 import { errorMessage, fail, ok } from '../core/result';
 import type { Result } from '../core/result';
 import { childrenOf } from '../core/tree';
@@ -547,6 +556,10 @@ export class VaultRepository implements WorkspaceRepository {
             title: String(snapshot.title ?? ''),
             doc: doc.value,
             createdAt: snapshot.createdAt,
+            ...(isRecord(snapshot.properties)
+              ? { properties: snapshot.properties as Record<string, PropValue> }
+              : {}),
+            ...(isRecord(snapshot.extra) ? { extra: snapshot.extra } : {}),
           },
         ];
       });

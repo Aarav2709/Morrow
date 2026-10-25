@@ -16,6 +16,9 @@ export class WorkspaceSession {
   private state: WorkspaceState;
   private readonly listeners = new Set<() => void>();
   private readonly lastSnapshot = new Map<PageId, number>();
+  // what each page held when it was last kept as a version, or when it was opened. a page saved with
+  // nothing really different, such as only its edit time, gets no new version
+  private readonly lastKept = new Map<PageId, string>();
   private readonly externalListeners = new Set<(patch: ExternalPatch, accepted: PageId[]) => void>();
   // runs before edits made elsewhere are applied, the app saves open editors here
   beforeExternal: () => void = () => {};
@@ -42,13 +45,14 @@ export class WorkspaceSession {
               doc &&
               !isDocEmpty(doc) &&
               !state.pages[id]?.encrypted &&
-              snapshotDue(this.lastSnapshot.get(id), now)
+              snapshotDue(this.lastSnapshot.get(id), now) &&
+              this.keptKey(id, state) !== (this.lastKept.get(id) ?? this.keptKey(id, initial))
             );
           })
           .map((id) => this.snapshotOf(id, state, now));
       },
       onSnapshotsWritten: (snapshots) => {
-        for (const snapshot of snapshots) this.lastSnapshot.set(snapshot.pageId, snapshot.createdAt);
+        for (const snapshot of snapshots) this.noteKept(snapshot);
       },
     });
     repository.onExternalChange?.((patch) => this.applyExternal(patch));
@@ -278,11 +282,25 @@ export class WorkspaceSession {
     try {
       const current = this.snapshotOf(snapshot.pageId, this.state, Date.now());
       await this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] });
-      this.lastSnapshot.set(snapshot.pageId, current.createdAt);
+      this.noteKept(current);
     } catch (error) {
       return fail(`The current version could not be kept, so nothing was restored: ${String(error)}`);
     }
-    return this.execute({ type: 'page.setDoc', id: snapshot.pageId, doc: snapshot.doc, now: Date.now() });
+    const restored = this.execute({
+      type: 'page.setDoc',
+      id: snapshot.pageId,
+      doc: snapshot.doc,
+      now: Date.now(),
+    });
+    // a version kept before properties were part of history leaves them as they are
+    if (!restored.ok || (!snapshot.properties && !snapshot.extra)) return restored;
+    return this.execute({
+      type: 'page.setFields',
+      id: snapshot.pageId,
+      ...(snapshot.properties ? { properties: snapshot.properties } : {}),
+      ...(snapshot.extra ? { extra: snapshot.extra } : {}),
+      now: Date.now(),
+    });
   }
 
   // the page as it is now is kept in its history, before the assistant changes it for you
@@ -292,17 +310,39 @@ export class WorkspaceSession {
     await this.queue.flush();
     const current = this.snapshotOf(pageId, this.state, Date.now());
     await this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] });
-    this.lastSnapshot.set(pageId, current.createdAt);
+    this.noteKept(current);
   }
 
   private snapshotOf(pageId: PageId, state: WorkspaceState, now: number): Snapshot {
+    const page = state.pages[pageId];
     return {
       id: crypto.randomUUID(),
       pageId,
-      title: state.pages[pageId]?.title ?? '',
+      title: page?.title ?? '',
       doc: state.docs[pageId] as DocNode,
       createdAt: now,
+      properties: page?.properties ?? {},
+      extra: page?.extra ?? {},
     };
+  }
+
+  // everything a version holds, as one string to compare
+  private keptKey(pageId: PageId, state: WorkspaceState): string {
+    const page = state.pages[pageId];
+    return JSON.stringify([
+      page?.title ?? '',
+      state.docs[pageId] ?? null,
+      page?.properties ?? {},
+      page?.extra ?? {},
+    ]);
+  }
+
+  private noteKept(snapshot: Snapshot): void {
+    this.lastSnapshot.set(snapshot.pageId, snapshot.createdAt);
+    this.lastKept.set(
+      snapshot.pageId,
+      JSON.stringify([snapshot.title, snapshot.doc, snapshot.properties ?? {}, snapshot.extra ?? {}]),
+    );
   }
 
   async close(): Promise<void> {
