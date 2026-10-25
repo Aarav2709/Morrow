@@ -321,6 +321,11 @@ async function createWindow(): Promise<void> {
   });
 
   // the renderer writes pending edits and a backup before the window closes
+  // the back and forward buttons on a mouse reach windows and linux as app commands, not clicks
+  window.on('app-command', (_event, command) => {
+    if (command === 'browser-backward') toWindow('morrow:command', 'go.back');
+    if (command === 'browser-forward') toWindow('morrow:command', 'go.forward');
+  });
   window.on('close', (event) => {
     void saveWindowState(window);
     if (readyToClose || window.webContents.isCrashed()) return;

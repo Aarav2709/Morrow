@@ -23,7 +23,15 @@ import { navigate, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
 import { getUi, setUi, toast, useUi } from './ui';
 import { loadCustomCss } from './customCss';
-import { activateTabAt, goBack, PaneContext, setActivePane, startTabs, useTabs } from './tabs';
+import {
+  activateTabAt,
+  claimNavigation,
+  goBack,
+  PaneContext,
+  setActivePane,
+  startTabs,
+  useTabs,
+} from './tabs';
 import type { PaneId } from './tabs';
 import { getSession } from './workspace';
 
@@ -116,6 +124,7 @@ function useLifecycle() {
         await writeAutoBackup();
         return;
       }
+      if ((id === 'go.back' || id === 'go.forward') && !claimNavigation()) return;
       if (id === 'edit.undo' || id === 'edit.redo') {
         undoRedo(id === 'edit.undo' ? 'undo' : 'redo');
         return;

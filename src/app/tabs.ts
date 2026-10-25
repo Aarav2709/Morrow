@@ -111,6 +111,15 @@ function visit(pane: PaneHistory, hash: string, replace: boolean): PaneHistory {
   return { hash, back: [...pane.back, pane.hash].slice(-MAX_HISTORY), forward: [] };
 }
 
+// a mouse's back button can reach the app both as a button press and as a window app command. whichever
+// comes first moves, the other one for the same press is let go
+let lastNavigation = 0;
+export function claimNavigation(): boolean {
+  if (Date.now() - lastNavigation < 400) return false;
+  lastNavigation = Date.now();
+  return true;
+}
+
 export function startTabs(): () => void {
   current();
   const onHash = () => {
@@ -124,13 +133,6 @@ export function startTabs(): () => void {
   // ctrl or cmd click, or a middle click, on anything that points at a page opens it in a new tab,
   // alt click opens it beside the page you are on
   const onClick = (event: MouseEvent) => {
-    if (event.type === 'auxclick' && (event.button === 3 || event.button === 4)) {
-      event.preventDefault();
-      const pane = paneAt(event.target);
-      if (event.button === 3) goBack(pane);
-      else goForward(pane);
-      return;
-    }
     const newTab =
       event.type === 'auxclick' ? event.button === 1 : event.button === 0 && (event.ctrlKey || event.metaKey);
     const toSide =
@@ -145,6 +147,16 @@ export function startTabs(): () => void {
     if (newTab) openTab(hash);
     else openSide(hash);
   };
+  // a mouse's back and forward buttons. chromium only reports their press and release, never a click, and
+  // windows may also send them to the window as app commands, which arrive as the go back action
+  const onMouseButton = (event: MouseEvent) => {
+    if (event.button !== 3 && event.button !== 4) return;
+    event.preventDefault();
+    if (event.type !== 'mouseup' || !claimNavigation()) return;
+    const pane = paneAt(event.target);
+    if (event.button === 3) goBack(pane);
+    else goForward(pane);
+  };
   const onKey = (event: KeyboardEvent) => {
     if (event.key === 'Tab' && event.ctrlKey && !event.altKey && !event.metaKey) {
       event.preventDefault();
@@ -154,11 +166,15 @@ export function startTabs(): () => void {
   window.addEventListener('hashchange', onHash);
   window.addEventListener('click', onClick, true);
   window.addEventListener('auxclick', onClick, true);
+  window.addEventListener('mousedown', onMouseButton, true);
+  window.addEventListener('mouseup', onMouseButton, true);
   window.addEventListener('keydown', onKey, true);
   return () => {
     window.removeEventListener('hashchange', onHash);
     window.removeEventListener('click', onClick, true);
     window.removeEventListener('auxclick', onClick, true);
+    window.removeEventListener('mousedown', onMouseButton, true);
+    window.removeEventListener('mouseup', onMouseButton, true);
     window.removeEventListener('keydown', onKey, true);
   };
 }
