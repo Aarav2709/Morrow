@@ -127,7 +127,8 @@
   background: var(--mark);
   color: inherit;
   border-radius: 2px;
-  padding: 0 1px;
+  /* no padding, giving words a background never moves them */
+  padding: 0;
 }
 
 .prose .callout {
