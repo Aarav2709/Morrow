@@ -47,8 +47,10 @@
   font-weight: 650;
   line-height: 1.28;
   letter-spacing: -0.012em;
-  margin-top: 1.5em;
-  margin-bottom: 0.15em;
+  /* a little more room above than below, so a heading sits with the text it introduces without the gap
+     above it dwarfing the one under it */
+  margin-top: 1em;
+  margin-bottom: 0.5em;
 }
 
 .font-sans .prose :is(h1, h2, h3, h4, h5, h6) {
