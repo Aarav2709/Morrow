@@ -1,5 +1,6 @@
 import { Extension } from '@tiptap/core';
 import type { AnyExtension } from '@tiptap/core';
+import { Code } from '@tiptap/extension-code';
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table';
@@ -46,6 +47,10 @@ const BlockIds = Extension.create({
   },
 });
 
+// inline code can be bold, italic, struck through or coloured like any other text, as it can in notion and
+// in markdown. tiptap's own code shuts every other mark out
+const InlineCode = Code.extend({ excludes: '' });
+
 export function createExtensions(options: ExtensionOptions): AnyExtension[] {
   return [
     BlockIds,
@@ -61,7 +66,9 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       },
       dropcursor: { color: 'var(--accent)', width: 2 },
       codeBlock: false,
+      code: false,
     }),
+    InlineCode,
     CodeBlock,
     Highlight,
     TextColor,
