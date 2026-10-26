@@ -1311,6 +1311,8 @@ td:hover .prop-empty,
 }
 .canvas-page {
   padding: 12px 14px;
+  /* the page runs on for as far as the card is stretched, and fades out where the card ends */
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
 }
 .canvas-page-title {
   display: block;

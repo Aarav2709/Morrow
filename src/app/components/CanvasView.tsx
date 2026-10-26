@@ -1395,11 +1395,14 @@ function TextCard({ text }: { text: string }) {
   );
 }
 
+// as much of the page as a card could ever show, the card's size decides how much of it is seen
+const PAGE_CARD_CHARS = 20_000;
+
 function PageCard({ pageId }: { pageId: PageId }) {
   const state = useWorkspace();
   const page = state.pages[pageId];
   const snippet = useMemo(
-    () => docToPlainText(state.docs[pageId] ?? { type: 'doc' }).slice(0, 400),
+    () => docToPlainText(state.docs[pageId] ?? { type: 'doc' }).slice(0, PAGE_CARD_CHARS),
     [state.docs, pageId],
   );
   if (!page) return <span className="canvas-placeholder">{t('canvas.pageMissing')}</span>;
