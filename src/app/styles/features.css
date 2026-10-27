@@ -1988,7 +1988,8 @@ td:hover .prop-empty,
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
-  overflow: hidden;
+  /* clipped to its corners but never scrolled, so apply and decline always sit under the change */
+  overflow: clip;
 }
 .assistant-change.is-waiting {
   border-color: var(--accent);
@@ -2005,8 +2006,9 @@ td:hover .prop-empty,
   color: var(--accent);
   flex: none;
 }
-.assistant-diff {
-  max-height: 260px;
+/* the change scrolls inside its own box, short enough that its buttons stay in view */
+.diff.assistant-diff {
+  max-height: min(260px, 40vh);
   border-width: 1px 0;
   border-radius: 0;
   font-size: 12px;
