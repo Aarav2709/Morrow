@@ -6,7 +6,7 @@ import { Dialog } from './primitives';
 import { t } from '../i18n';
 import type { TranslationKey } from '../i18n';
 
-interface Emoji {
+export interface EmojiEntry {
   unicode: string;
   label: string;
   group: number;
@@ -29,10 +29,10 @@ const GROUPS: Array<{ id: number; label: TranslationKey; icon: string }> = [
 const RECENT_KEY = 'morrow.recentEmoji';
 
 // the full list loads the first time the picker opens, it never weighs down the rest of the app
-let cache: Promise<Emoji[]> | null = null;
-function loadEmoji(): Promise<Emoji[]> {
+let cache: Promise<EmojiEntry[]> | null = null;
+export function loadEmoji(): Promise<EmojiEntry[]> {
   cache ??= import('emojibase-data/en/compact.json').then((module) =>
-    (module.default as Array<Partial<Emoji> & { unicode: string; label: string }>)
+    (module.default as Array<Partial<EmojiEntry> & { unicode: string; label: string }>)
       .filter((item) => typeof item.group === 'number' && item.group !== 2 && emojiSrc(item.unicode) !== null)
       .map((item) => ({
         unicode: item.unicode,
@@ -46,7 +46,7 @@ function loadEmoji(): Promise<Emoji[]> {
   return cache;
 }
 
-function readRecent(): string[] {
+export function readRecent(): string[] {
   try {
     const raw = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') as unknown;
     return Array.isArray(raw)
@@ -64,8 +64,19 @@ interface Props {
   onPick: (icon: string | null) => void;
 }
 
+export function rememberEmoji(icon: string): void {
+  try {
+    localStorage.setItem(
+      RECENT_KEY,
+      JSON.stringify([icon, ...readRecent().filter((item) => item !== icon)].slice(0, 24)),
+    );
+  } catch {
+    // remembering recent picks is only a convenience
+  }
+}
+
 export function EmojiPicker({ title, current, onPick }: Props) {
-  const [emoji, setEmoji] = useState<Emoji[] | null>(null);
+  const [emoji, setEmoji] = useState<EmojiEntry[] | null>(null);
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState<number | null>(null);
   const [recent] = useState(readRecent);
@@ -90,16 +101,7 @@ export function EmojiPicker({ title, current, onPick }: Props) {
   }, [emoji, query, group]);
 
   const pick = (icon: string | null) => {
-    if (icon) {
-      try {
-        localStorage.setItem(
-          RECENT_KEY,
-          JSON.stringify([icon, ...recent.filter((item) => item !== icon)].slice(0, 24)),
-        );
-      } catch {
-        // remembering recent picks is only a convenience
-      }
-    }
+    if (icon) rememberEmoji(icon);
     onPick(icon);
     closeDialog();
   };

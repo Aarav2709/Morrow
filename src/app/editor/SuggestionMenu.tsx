@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/core';
 import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import type { LucideIcon } from 'lucide-react';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Emoji } from '../components/Emoji';
 import { t } from '../i18n';
 
 export interface MenuItem {
@@ -11,6 +12,8 @@ export interface MenuItem {
   title: string;
   description?: string;
   icon?: LucideIcon;
+  // drawn in place of the icon
+  emoji?: string;
   hint?: string;
   section?: string;
 }
@@ -75,6 +78,9 @@ export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function S
     },
   }));
 
+  // a menu with nothing to say when nothing matches stays out of the way, like the emoji one
+  if (items.length === 0 && !emptyText) return null;
+
   return (
     <div className="suggestion-menu popover" role="listbox" aria-label={label}>
       <div className="suggestion-list" ref={listRef}>
@@ -97,10 +103,16 @@ export const SuggestionMenu = forwardRef<SuggestionMenuHandle, Props>(function S
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => onSelect(item)}
                 >
-                  {Icon && (
+                  {item.emoji ? (
                     <span className="suggestion-icon">
-                      <Icon size={16} strokeWidth={1.75} />
+                      <Emoji emoji={item.emoji} />
                     </span>
+                  ) : (
+                    Icon && (
+                      <span className="suggestion-icon">
+                        <Icon size={16} strokeWidth={1.75} />
+                      </span>
+                    )
                   )}
                   <span className="suggestion-text">
                     <span className="suggestion-title">{item.title}</span>

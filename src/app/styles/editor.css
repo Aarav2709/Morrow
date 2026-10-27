@@ -507,6 +507,11 @@
   color: var(--text-muted);
 }
 
+.suggestion-icon .emoji-img {
+  width: 18px;
+  height: 18px;
+}
+
 .suggestion-item[aria-selected='true'] .suggestion-icon {
   color: var(--accent);
   border-color: var(--accent-line);

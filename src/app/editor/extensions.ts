@@ -9,6 +9,7 @@ import StarterKit from '@tiptap/starter-kit';
 import { t } from '../i18n';
 import { BlockHandle } from './BlockHandle';
 import { Callout, FindReplace } from './Blocks';
+import { EmojiSuggest } from './EmojiSuggest';
 import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
 import { FileAttachment, FileDrop, Image } from './Media';
 import type { BlockMenuRequest } from './BlockHandle';
@@ -105,6 +106,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       ...(options.mountEmbed ? { mountEmbed: options.mountEmbed } : {}),
     }),
     SlashCommand.configure({ createChild: options.createChild }),
+    EmojiSuggest,
     Image,
     FileAttachment,
     FileDrop,
