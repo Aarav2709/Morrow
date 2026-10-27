@@ -935,6 +935,7 @@ export const pt: TranslationSchema = {
       '{count} páginas mudaram nos dois computadores. As duas versões foram mantidas; procure “conflict” no nome.',
     syncConflictsOne:
       '{count} página mudou nos dois computadores. As duas versões foram mantidas; procure “conflict” no nome.',
+    textCopied: 'Texto copiado para a área de transferência.',
     imageCopied: 'Imagem copiada.',
     couldNotCopyTheImage: 'Não foi possível copiar a imagem.',
     syncFailed: 'A sincronização com {name} falhou: {error}',

@@ -99,6 +99,29 @@ function useGlobalShortcuts() {
   }, []);
 }
 
+// copying text says so at the bottom of the window, the way copying a picture does. a copy that put
+// nothing on the clipboard says nothing
+function useCopyToast() {
+  useEffect(() => {
+    const onCopy = (event: ClipboardEvent) => {
+      const data = event.clipboardData;
+      const field = document.activeElement;
+      const copied = event.defaultPrevented
+        ? Boolean(data && data.types.length > 0)
+        : field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement
+          ? field.selectionStart !== field.selectionEnd
+          : Boolean(document.getSelection()?.toString());
+      if (!copied) return;
+      // one toast however fast it is pressed again
+      const message = t('toasts.textCopied');
+      if (getUi().toasts.some((entry) => entry.message === message)) return;
+      toast(message, { durationMs: 2000 });
+    };
+    document.addEventListener('copy', onCopy);
+    return () => document.removeEventListener('copy', onCopy);
+  }, []);
+}
+
 // pending edits are written before the window goes away
 function useLifecycle() {
   useEffect(() => {
@@ -301,6 +324,7 @@ export function App() {
     document.documentElement.dataset.colorful = prefs.colorful ? 'true' : 'false';
   }, [prefs.accent, prefs.colorful]);
   useGlobalShortcuts();
+  useCopyToast();
   useEffect(() => startTabs(), []);
   useStartPage();
   useLifecycle();

@@ -927,6 +927,7 @@ export const en = {
       '{count} pages were changed on both computers. Both versions are kept, look for “conflict” in the name.',
     syncConflictsOne:
       '{count} page was changed on both computers. Both versions are kept, look for “conflict” in the name.',
+    textCopied: 'Text copied to clipboard.',
     imageCopied: 'Image copied.',
     couldNotCopyTheImage: 'Could not copy the image.',
     syncFailed: 'Sync with {name} failed: {error}',
