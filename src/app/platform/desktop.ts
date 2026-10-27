@@ -199,8 +199,14 @@ export const isMac =
 
 type Rgba = [number, number, number, number];
 
+// colours as css gives them: rgb() from computed styles, and the #hex the theme's variables are written in
 function parseColor(value: string): Rgba | null {
-  const match = /^rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)$/.exec(value.trim());
+  const text = value.trim();
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(text);
+  const long = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(text);
+  if (short) return [...short.slice(1, 4).map((digit) => parseInt(digit + digit, 16)), 1] as Rgba;
+  if (long) return [...long.slice(1, 4).map((pair) => parseInt(pair, 16)), 1] as Rgba;
+  const match = /^rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)$/.exec(text);
   if (!match) return null;
   return [
     Number(match[1]),
