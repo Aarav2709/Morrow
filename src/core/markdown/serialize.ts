@@ -189,6 +189,8 @@ function isList(node: DocNode): boolean {
   return node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList';
 }
 
+export const HEADER_COLUMN = '<!-- header-column -->';
+
 function table(node: DocNode, options: SerializeOptions): string {
   const rows = (node.content ?? []).map((row) =>
     (row.content ?? []).map((cell) =>
@@ -204,7 +206,12 @@ function table(node: DocNode, options: SerializeOptions): string {
   const pad = (row: string[]) => Array.from({ length: width }, (_, i) => row[i] ?? '');
   const line = (row: string[]) => `| ${pad(row).join(' | ')} |`;
   const [header, ...body] = rows;
-  return [line(header!), line(Array.from({ length: width }, () => '---')), ...body.map(line)].join('\n');
+  const lines = [line(header!), line(Array.from({ length: width }, () => '---')), ...body.map(line)];
+  // markdown has no header column, a comment above the table keeps it. every row past the first starts
+  // with a header cell when it is on
+  const later = (node.content ?? []).slice(1);
+  const headerColumn = later.length > 0 && later.every((row) => row.content?.[0]?.type === 'tableHeader');
+  return [...(headerColumn ? [HEADER_COLUMN] : []), ...lines].join('\n');
 }
 
 export function wikiLink(node: DocNode, options: SerializeOptions, inTable = false): string {

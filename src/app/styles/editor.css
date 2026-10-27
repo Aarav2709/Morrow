@@ -258,6 +258,14 @@
   font-weight: 600;
 }
 
+/* a header column stays in view while a wide table scrolls sideways, drawn over the cells it passes */
+.prose tr:not(:first-child) > th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: linear-gradient(var(--hover), var(--hover)), var(--bg);
+}
+
 .prose td > * + *,
 .prose th > * + * {
   margin-top: 0.4em;

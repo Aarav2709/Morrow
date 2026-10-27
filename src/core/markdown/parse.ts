@@ -3,6 +3,7 @@ import type { StateBlock, StateInline, Token } from 'markdown-it';
 import { BACKGROUND_HEX, calloutTone, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
+import { HEADER_COLUMN } from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -189,8 +190,12 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
   const close = () => {
     if (stack.length > 1) stack.pop();
   };
+  // set by the comment morrow writes above a table whose first column is a header
+  let headerColumn = false;
+  let tableHasHeaderColumn = false;
 
   for (const token of tokens) {
+    if (token.type !== 'table_open' && token.type !== 'html_block') headerColumn = false;
     switch (token.type) {
       case 'paragraph_open':
         open({ type: 'paragraph', content: [] });
@@ -213,16 +218,21 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         open({ type: 'listItem', content: [] });
         break;
       case 'table_open':
+        tableHasHeaderColumn = headerColumn;
+        headerColumn = false;
         open({ type: 'table', content: [] });
         break;
       case 'tr_open':
         open({ type: 'tableRow', content: [] });
         break;
       case 'th_open':
-      case 'td_open':
-        open({ type: token.type === 'th_open' ? 'tableHeader' : 'tableCell', content: [] });
+      case 'td_open': {
+        const first = (top().content ?? []).length === 0;
+        const header = token.type === 'th_open' || (tableHasHeaderColumn && first);
+        open({ type: header ? 'tableHeader' : 'tableCell', content: [] });
         open({ type: 'paragraph', content: [] });
         break;
+      }
       case 'th_close':
       case 'td_close':
         close();
@@ -263,6 +273,10 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         push({ type: 'horizontalRule' });
         break;
       case 'html_block':
+        if (token.content.trim() === HEADER_COLUMN) {
+          headerColumn = true;
+          break;
+        }
         htmlBlock(token.content, options, { push, top, close, stack });
         break;
       default:

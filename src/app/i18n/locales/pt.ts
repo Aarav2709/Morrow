@@ -601,6 +601,7 @@ export const pt: TranslationSchema = {
     deleteRow: 'Excluir linha',
     deleteColumn: 'Excluir coluna',
     headerRow: 'Linha de cabeçalho',
+    headerColumn: 'Coluna de cabeçalho',
     deleteTable: 'Excluir tabela',
     turnInto: 'Transformar em',
     formattingAria: 'Formatação',

@@ -77,6 +77,29 @@ describe('markdown import', () => {
     expect(doc.content![7]!.attrs?.language).toBe('ts');
   });
 
+  it('keeps a table header column through a save and load', () => {
+    const cell = (type: string, value: string): DocNode => ({ type, content: [p(text(value))] });
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [cell('tableHeader', 'Name'), cell('tableHeader', 'Age')] },
+            { type: 'tableRow', content: [cell('tableHeader', 'Ada'), cell('tableCell', '36')] },
+          ],
+        },
+      ],
+    };
+    const markdown = docToMarkdown(doc);
+    expect(markdown.startsWith('<!-- header-column -->\n| Name |')).toBe(true);
+    const row = markdownToDoc(markdown).content![0]!.content![1]!;
+    expect(row.content!.map((c) => c.type)).toEqual(['tableHeader', 'tableCell']);
+    expect(
+      markdownToDoc('| a | b |\n| --- | --- |\n| c | d |').content![0]!.content![1]!.content![0]!.type,
+    ).toBe('tableCell');
+  });
+
   it('builds tables with a header row', () => {
     const rows = doc.content![9]!.content!;
     expect(rows).toHaveLength(3);

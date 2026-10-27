@@ -595,6 +595,7 @@ export const en = {
     deleteRow: 'Delete row',
     deleteColumn: 'Delete column',
     headerRow: 'Header row',
+    headerColumn: 'Header column',
     deleteTable: 'Delete table',
     turnInto: 'Turn into',
     formattingAria: 'Formatting',

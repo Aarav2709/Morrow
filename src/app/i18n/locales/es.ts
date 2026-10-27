@@ -601,6 +601,7 @@ export const es: TranslationSchema = {
     deleteRow: 'Eliminar fila',
     deleteColumn: 'Eliminar columna',
     headerRow: 'Fila de encabezado',
+    headerColumn: 'Columna de encabezado',
     deleteTable: 'Eliminar tabla',
     turnInto: 'Convertir en',
     formattingAria: 'Formato',

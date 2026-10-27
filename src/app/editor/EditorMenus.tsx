@@ -476,6 +476,14 @@ export function TableMenu({ editor }: { editor: Editor }) {
         </button>
         <button
           type="button"
+          className="text-tool"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
+        >
+          {t('editor.headerColumn')}
+        </button>
+        <button
+          type="button"
           className="text-tool is-danger"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().deleteTable().run()}
