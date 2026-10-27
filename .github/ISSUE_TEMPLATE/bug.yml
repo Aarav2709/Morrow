@@ -22,7 +22,7 @@ body:
     attributes:
       label: Morrow version
       description: In Settings, About.
-      placeholder: '1.2.0'
+      placeholder: '1.2.1'
     validations:
       required: true
   - type: dropdown
