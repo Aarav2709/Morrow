@@ -37,9 +37,12 @@ export function getLocale(): SupportedLocale {
 
 // dates and times follow the chosen language. in english they keep this computer's own way of writing
 // them, so 20/10/2026 stays 20/10/2026 rather than turning american
-export function dateLocale(): string | undefined {
+// dates follow the app's language, in the computer's own variant of it when it has one, such as british
+// english. never the computer's language alone, which would put dates in another language than the app
+export function dateLocale(): string {
   const locale = getLocale();
-  return locale === 'en' ? undefined : locale;
+  const system = typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language]);
+  return system.find((tag) => tag.toLowerCase().split('-')[0] === locale) ?? locale;
 }
 
 export function t(key: TranslationKey, params?: TranslationParams, localeOverride?: SupportedLocale): string {

@@ -162,7 +162,16 @@ export function ensureToday(date = new Date()): PageId | null {
   const state = getState();
   const key = dateKey(date);
   const existing = findDailyNote(state, key);
-  if (existing) return existing.id;
+  if (existing) {
+    // a note still titled with its date as another language writes it takes the app's language
+    const title = dailyTitle(date, dateLocale());
+    const automatic = [undefined, 'en', 'es', 'pt', ...(navigator.languages ?? [])].map((locale) =>
+      dailyTitle(date, locale),
+    );
+    if (existing.title !== title && automatic.includes(existing.title))
+      run({ type: 'page.rename', id: existing.id, title, now: Date.now() });
+    return existing.id;
+  }
   let journal = findJournal(state);
   const now = Date.now();
   if (!journal) {
