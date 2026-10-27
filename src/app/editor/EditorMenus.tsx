@@ -564,7 +564,8 @@ function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
     const summary = firstTextPosition(editor, pos);
     if (summary === null) return;
     const folded = node.lastChild;
-    const empty = folded?.childCount === 1 && folded.firstChild!.isTextblock && !folded.firstChild!.content.size;
+    const empty =
+      folded?.childCount === 1 && folded.firstChild!.isTextblock && !folded.firstChild!.content.size;
     editor.chain().setTextSelection(summary).unsetDetails().run();
     // nothing was folded inside, so its empty line goes with it
     const title = editor.state.doc.nodeAt(pos);

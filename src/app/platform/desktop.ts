@@ -202,7 +202,12 @@ type Rgba = [number, number, number, number];
 function parseColor(value: string): Rgba | null {
   const match = /^rgba?\(([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\)$/.exec(value.trim());
   if (!match) return null;
-  return [Number(match[1]), Number(match[2]), Number(match[3]), match[4] === undefined ? 1 : Number(match[4])];
+  return [
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+    match[4] === undefined ? 1 : Number(match[4]),
+  ];
 }
 
 function over(top: Rgba, below: Rgba): Rgba {
