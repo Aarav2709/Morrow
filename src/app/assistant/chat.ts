@@ -1,11 +1,12 @@
-// the conversation with the assistant: one at a time, kept while morrow is open, never written to disk
+// the conversation with the assistant: one at a time, kept in this computer's app data between restarts,
+// one for each vault, never in the vault itself
 import { useSyncExternalStore } from 'react';
 import { displayTitle } from '../../core/model';
 import { commitEditors } from '../editor/commits';
 import { desktop } from '../platform/desktop';
 import { getPreferences } from '../platform/preferences';
 import { activeRoute } from '../router';
-import { getState } from '../workspace';
+import { getSession, getState } from '../workspace';
 import { assistantRules } from './rules';
 import { runTool, TOOL_SPECS } from './tools';
 import type { AppliedChange, Proposal, ToolCall } from './tools';
@@ -37,12 +38,88 @@ interface ChatState {
 type ToolResult = { id: string; content: string; isError: boolean };
 type TurnInput = { kind: 'user'; text: string } | { kind: 'tools'; results: ToolResult[]; text?: string };
 
-let state: ChatState = { items: [], busy: false };
+const SAVE_KEY = 'morrow.assistantChat';
+// past this the provider's side of the conversation is let go, the messages still show
+const MAX_SAVED = 2_000_000;
+// what a tool call that never finished answers, when morrow closed while it ran or waited
+const CLOSED_RESULT = 'Morrow was closed before this finished, so it did not happen.';
+
+interface Saved {
+  items: ChatItem[];
+  history: unknown[];
+  owed: ToolResult[];
+  provider: string | null;
+}
+
+// one saved conversation for each vault, pages and their ids belong to it
+function saveKey(): string | null {
+  try {
+    const location = getSession().location;
+    return location ? `${SAVE_KEY}:${location}` : SAVE_KEY;
+  } catch {
+    return null;
+  }
+}
+
+function restore(): Saved {
+  const empty: Saved = { items: [], history: [], owed: [], provider: null };
+  const key = saveKey();
+  if (!key) return empty;
+  try {
+    const raw = JSON.parse(localStorage.getItem(key) ?? 'null') as Partial<Saved> | null;
+    if (!raw || !Array.isArray(raw.items)) return empty;
+    const items = raw.items
+      .filter((item): item is ChatItem => typeof item?.id === 'string' && typeof item.kind === 'string')
+      .map((item): ChatItem => {
+        if (item.kind !== 'tool') return item;
+        // a change can only be applied or undone in the session that proposed it
+        const { applied: _applied, ...rest } = item;
+        const status = rest.status === 'waiting' || rest.status === 'running' ? 'declined' : rest.status;
+        const proposal = rest.proposal
+          ? {
+              ...rest.proposal,
+              apply: () => Promise.reject(new Error(CLOSED_RESULT)),
+            }
+          : undefined;
+        return { ...rest, status, ...(proposal ? { proposal } : {}) };
+      });
+    return {
+      items,
+      history: Array.isArray(raw.history) ? raw.history : [],
+      owed: Array.isArray(raw.owed) ? raw.owed : [],
+      provider: typeof raw.provider === 'string' ? raw.provider : null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function save(): void {
+  const key = saveKey();
+  if (!key) return;
+  try {
+    if (state.items.length === 0 && history.length === 0) {
+      localStorage.removeItem(key);
+      return;
+    }
+    // functions, like a proposal's apply, are left out by json
+    let saved = JSON.stringify({ items: state.items, history, owed, provider } satisfies Saved);
+    if (saved.length > MAX_SAVED)
+      saved = JSON.stringify({ items: state.items, history: [], owed: [], provider: null } satisfies Saved);
+    localStorage.setItem(key, saved);
+  } catch {
+    // a conversation that is not kept only means starting a new one next time
+  }
+}
+
+const saved = restore();
+let state: ChatState = { items: saved.items, busy: false };
 // the conversation as the provider keeps it, sent back unchanged each turn
-let history: unknown[] = [];
-// results owed for tool calls when a turn was stopped, sent before the next message
-let owed: ToolResult[] = [];
-let provider: string | null = null;
+let history: unknown[] = saved.history;
+// results owed for tool calls that have not reached the provider yet, because the turn was stopped,
+// failed or morrow closed. they go out before the next message
+let owed: ToolResult[] = saved.owed;
+let provider: string | null = saved.provider;
 let currentTurn: string | null = null;
 let stopped = false;
 const approvals = new Map<string, (approved: boolean) => void>();
@@ -52,6 +129,7 @@ const nextId = () => `c${Date.now().toString(36)}${(counter++).toString(36)}`;
 
 function set(next: Partial<ChatState>): void {
   state = { ...state, ...next };
+  save();
   for (const listener of listeners) listener();
 }
 
@@ -196,7 +274,6 @@ export async function sendMessage(text: string): Promise<void> {
   let add: TurnInput = owed.length
     ? { kind: 'tools', results: owed, text: withContext(message) }
     : { kind: 'user', text: withContext(message) };
-  owed = [];
   try {
     for (let step = 0; ; step++) {
       currentTurn = nextId();
@@ -207,6 +284,8 @@ export async function sendMessage(text: string): Promise<void> {
         return;
       }
       history = result.history;
+      owed = [];
+      save();
       if (result.text.trim()) push({ kind: 'assistant', id: nextId(), text: result.text.trim() });
       if (result.stop === 'refusal') {
         push({ kind: 'note', id: nextId(), text: t('assistant.refused'), tone: 'info' });
@@ -222,15 +301,18 @@ export async function sendMessage(text: string): Promise<void> {
           });
         return;
       }
-      const results: ToolResult[] = [];
+      // every tool call needs its result. until they reach the provider they are owed, so a stop, a
+      // failure or closing morrow still sends them with the next message
+      owed = result.toolCalls.map((call) => ({ id: call.id, content: CLOSED_RESULT, isError: true }));
+      save();
       for (const call of result.toolCalls) {
-        results.push(
-          stopped ? { id: call.id, content: 'Stopped by the user.', isError: true } : await handleCall(call),
-        );
+        const done = stopped
+          ? { id: call.id, content: 'Stopped by the user.', isError: true }
+          : await handleCall(call);
+        owed = owed.map((entry) => (entry.id === call.id ? done : entry));
+        save();
       }
       if (stopped || step + 1 >= MAX_STEPS) {
-        // every tool call needs its result, they go out with the next message
-        owed = results;
         push({
           kind: 'note',
           id: nextId(),
@@ -239,7 +321,7 @@ export async function sendMessage(text: string): Promise<void> {
         });
         return;
       }
-      add = { kind: 'tools', results };
+      add = { kind: 'tools', results: owed };
     }
   } finally {
     currentTurn = null;
