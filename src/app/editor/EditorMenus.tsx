@@ -56,6 +56,8 @@ import { copyText, desktop, openExternal } from '../platform/desktop';
 import { openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
+import { turnListItem } from './turnInto';
+import type { TurnTarget } from './turnInto';
 import { openDialog, toast } from '../ui';
 import { colorLabel } from '../i18n/labels';
 
@@ -539,11 +541,6 @@ function linkable(editor: Editor, pos: number): boolean {
   );
 }
 
-type TurnTarget =
-  | { kind: 'paragraph' }
-  | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6 }
-  | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' | 'toggle' };
-
 // blocks the handle menu can turn into something else: lines of text, single list items, quotes and toggles
 const TURNABLE = new Set(['listItem', 'taskItem', 'blockquote', 'details']);
 function turnable(editor: Editor, pos: number): boolean {
@@ -570,6 +567,7 @@ function firstTextPosition(editor: Editor, pos: number): number | null {
 function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
   const node = editor.state.doc.nodeAt(pos);
   if (!node) return;
+  if (turnListItem(editor, pos, target)) return;
   if (node.type.name === 'details') {
     // a toggle opens up into its title as a line followed by what was folded inside it
     const summary = firstTextPosition(editor, pos);
