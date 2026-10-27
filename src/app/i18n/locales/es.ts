@@ -77,6 +77,7 @@ export const es: TranslationSchema = {
     saving: 'Guardando…',
     saved: 'Guardado',
     saveFailed: 'No se pudo guardar',
+    created: 'Creado {time}',
     edited: 'Editado {time}',
   },
   home: {

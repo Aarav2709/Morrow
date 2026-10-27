@@ -726,6 +726,7 @@ kbd,
   color: var(--text-faint);
   margin: 0 6px 0 2px;
   white-space: nowrap;
+  cursor: default;
 }
 
 .breadcrumbs {
@@ -1649,6 +1650,7 @@ input[type='checkbox']:checked::after {
 [data-desktop] .topbar button,
 [data-desktop] .topbar a,
 [data-desktop] .topbar input,
+[data-desktop] .topbar-meta,
 [data-desktop] .sidebar-header button,
 [data-desktop] .sidebar-resizer,
 [data-desktop] .dialog-backdrop,

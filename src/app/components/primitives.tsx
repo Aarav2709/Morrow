@@ -212,6 +212,14 @@ export function relativeTime(timestamp: number, now = Date.now(), localeOverride
   });
 }
 
+// the full date and time to the second, for a tooltip over a relative time like "3 days ago"
+export function exactTime(timestamp: number, localeOverride?: string): string {
+  return new Date(timestamp).toLocaleString(localeOverride ?? getLocale(), {
+    dateStyle: 'full',
+    timeStyle: 'medium',
+  });
+}
+
 // long lists start short with the rest a click away, so a big vault never draws thousands of rows at once
 export function useShowMore<T>(items: T[], limit: number): { shown: T[]; more: ReactNode } {
   const [count, setCount] = useState(limit);

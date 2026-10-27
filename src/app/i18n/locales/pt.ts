@@ -77,6 +77,7 @@ export const pt: TranslationSchema = {
     saving: 'Salvando…',
     saved: 'Salvo',
     saveFailed: 'Não foi possível salvar',
+    created: 'Criado {time}',
     edited: 'Editado {time}',
   },
   home: {

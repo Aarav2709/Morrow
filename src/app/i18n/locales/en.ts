@@ -74,6 +74,7 @@ export const en = {
     saving: 'Saving…',
     saved: 'Saved',
     saveFailed: 'Could not save',
+    created: 'Created {time}',
     edited: 'Edited {time}',
   },
   home: {

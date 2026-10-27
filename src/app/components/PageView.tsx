@@ -38,7 +38,7 @@ import { getSession, run, useWorkspace } from '../workspace';
 import type { MenuEntry } from './Menu';
 import { getLocale, t } from '../i18n';
 import { pageMenuEntries } from './pageMenu';
-import { relativeTime, useShowMore } from './primitives';
+import { exactTime, relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
@@ -120,6 +120,10 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
         words: words.toLocaleString(getLocale()),
         time: relativeTime(page.createdAt),
       }),
+      title: [
+        t('topBar.created', { time: exactTime(page.createdAt) }),
+        t('topBar.edited', { time: exactTime(page.updatedAt) }),
+      ].join('\n'),
     };
     if (trashed) return [info];
     return [info, ...pageMenuEntries(id, () => titleRef.current?.focus())];

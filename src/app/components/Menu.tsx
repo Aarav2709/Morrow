@@ -15,7 +15,7 @@ export type MenuEntry =
       onSelect: () => void;
     }
   | { separator: true }
-  | { heading: string };
+  | { heading: string; title?: string };
 
 interface MenuProps {
   anchor: HTMLElement | DOMRect;
@@ -106,7 +106,7 @@ export function Menu({ anchor, entries, onClose, placement = 'bottom-start', lab
         if ('separator' in entry) return <div key={index} className="menu-separator" role="separator" />;
         if ('heading' in entry)
           return (
-            <div key={index} className="menu-section">
+            <div key={index} className="menu-section" title={entry.title}>
               {entry.heading}
             </div>
           );
