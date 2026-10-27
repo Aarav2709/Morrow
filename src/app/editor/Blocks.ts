@@ -40,6 +40,18 @@ export const Callout = Node.create({
         parseHTML: (element) => element.getAttribute('data-title'),
         renderHTML: (attributes) => (attributes.title ? { 'data-title': attributes.title } : {}),
       },
+      // the emoji shown beside it, null for the one its type has and 'none' for no icon at all
+      icon: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-icon'),
+        renderHTML: (attributes) => (attributes.icon ? { 'data-icon': attributes.icon } : {}),
+      },
+      // the rest of the obsidian metadata after a | in [!type|metadata], kept as written
+      meta: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('data-meta'),
+        renderHTML: (attributes) => (attributes.meta ? { 'data-meta': attributes.meta } : {}),
+      },
       // + starts open and - starts folded, null cannot fold
       fold: {
         default: null,

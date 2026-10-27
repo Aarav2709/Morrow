@@ -3,7 +3,7 @@ import type { StateBlock, StateInline, Token } from 'markdown-it';
 import { BACKGROUND_HEX, calloutTone, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
-import { HEADER_COLUMN } from './serialize';
+import { calloutIcon, HEADER_COLUMN } from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -35,7 +35,7 @@ const MAX_INPUT = 5_000_000;
 // a checkbox is [ ] or [x], and notion's exports also write an empty box as [] or with a non-breaking space
 const TASK_PREFIX = /^\[([ \u00a0xX]?)\](?:\s+|$)/;
 // obsidian callouts and github alerts: > [!type]+ optional title
-const CALLOUT = /^\[!([A-Za-z][\w-]{0,30})\]([+-]?)[ \t]*/;
+const CALLOUT = /^\[!([A-Za-z][\w-]{0,30})(?:\|([^\]\n]{0,80}))?\]([+-]?)[ \t]*/;
 const WIKI = /^(!?)\[\[([^[\]\n]{0,400}?)\]\]/;
 
 // [[target#anchor|alias]] and ![[embed]], before markdown links so the brackets are not read as one
@@ -355,12 +355,22 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
     }
   } else if (aside) {
     const closed = /<\/aside>\s*$/i.test(html);
-    const inner = html
+    let inner = html
       .slice(aside[0].length)
       .replace(/<\/aside>\s*$/i, '')
       .trim()
       .replace(NOTION_ICON, '');
-    const node: DocNode = { type: 'callout', attrs: { tone: 'note', kind: 'note' }, content: [] };
+    // notion writes the callout's emoji as the first thing in it
+    const emoji =
+      /^(\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}\p{Emoji_Modifier}]*)\s+/u.exec(
+        inner,
+      );
+    const node: DocNode = {
+      type: 'callout',
+      attrs: { tone: 'note', kind: 'note', ...(emoji ? { icon: emoji[1] } : {}) },
+      content: [],
+    };
+    if (emoji) inner = inner.slice(emoji[0].length);
     if (inner) node.content!.push(...(markdownToDoc(inner, options).content ?? []));
     b.push(node);
     if (!closed) b.stack.push(node);
@@ -699,7 +709,13 @@ function toCallout(quote: DocNode): DocNode {
   const kind = match[1]!.toLowerCase();
   const attrs: Record<string, unknown> = { tone: calloutTone(kind), kind };
   if (title) attrs.title = title;
-  if (match[2]) attrs.fold = match[2];
+  if (match[3]) attrs.fold = match[3];
+  // morrow keeps a callout's icon as icon:🔥 in the metadata, anything else there is kept as it was
+  const meta = (match[2] ?? '').split('|').filter((part) => part.trim());
+  const icon = meta.find((part) => part.startsWith('icon:'));
+  if (icon && calloutIcon(icon.slice(5))) attrs.icon = calloutIcon(icon.slice(5));
+  const others = meta.filter((part) => part !== icon);
+  if (others.length) attrs.meta = others.join('|');
   const content = body.length ? [{ ...first, content: body }, ...rest] : rest;
   return {
     type: 'callout',

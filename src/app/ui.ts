@@ -9,6 +9,8 @@ export type Dialog =
   | { kind: 'move'; pageId: PageId }
   | { kind: 'history'; pageId: PageId }
   | { kind: 'icon'; pageId: PageId }
+  // an emoji for something other than a page, such as a callout
+  | { kind: 'emoji'; title: string; current: string | null; onPick: (icon: string | null) => void }
   // edit a formula or markdown kept as written, with a live preview for formulas
   | {
       kind: 'source';

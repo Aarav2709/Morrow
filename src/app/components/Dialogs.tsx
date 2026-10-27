@@ -19,6 +19,19 @@ import { SourceDialog } from './SourceDialog';
 import { PairDialog } from './SyncSettings';
 import { TemplateDialog } from './TemplateDialog';
 
+function PageIconPicker({ pageId }: { pageId: PageId }) {
+  const { t } = useTranslation();
+  const page = useWorkspace().pages[pageId];
+  if (!page) return null;
+  return (
+    <EmojiPicker
+      title={t('emoji.title', { title: displayTitle(page) })}
+      current={page.icon}
+      onPick={(icon) => run({ type: 'page.setIcon', id: pageId, icon, now: Date.now() })}
+    />
+  );
+}
+
 export function Dialogs() {
   const { t } = useTranslation();
   const { dialog } = useUi();
@@ -33,12 +46,9 @@ export function Dialogs() {
     case 'history':
       return <HistoryDialog pageId={dialog.pageId} />;
     case 'icon':
-      return (
-        <EmojiPicker
-          pageId={dialog.pageId}
-          onPick={(icon) => run({ type: 'page.setIcon', id: dialog.pageId, icon, now: Date.now() })}
-        />
-      );
+      return <PageIconPicker pageId={dialog.pageId} />;
+    case 'emoji':
+      return <EmojiPicker title={dialog.title} current={dialog.current} onPick={dialog.onPick} />;
     case 'source':
       return (
         <SourceDialog

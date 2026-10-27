@@ -56,7 +56,9 @@ describe('callouts and toggles in markdown', () => {
   it('reads notion asides as callouts', () => {
     const doc = markdownToDoc('<aside>\n💡 Water early in the morning.\n\n</aside>\n\nAfter');
     expect(doc.content!.map((node) => node.type)).toEqual(['callout', 'paragraph']);
-    expect(doc.content![0]!.content![0]!.content![0]!.text).toBe('💡 Water early in the morning.');
+    // the emoji notion starts it with becomes the callout's icon
+    expect(doc.content![0]!.attrs?.icon).toBe('💡');
+    expect(doc.content![0]!.content![0]!.content![0]!.text).toBe('Water early in the morning.');
   });
 });
 

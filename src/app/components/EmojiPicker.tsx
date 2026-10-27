@@ -1,9 +1,6 @@
 import { Shuffle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { displayTitle } from '../../core/model';
-import type { PageId } from '../../core/model';
 import { closeDialog } from '../ui';
-import { useWorkspace } from '../workspace';
 import { Emoji, emojiSrc } from './Emoji';
 import { Dialog } from './primitives';
 import { t } from '../i18n';
@@ -60,9 +57,14 @@ function readRecent(): string[] {
   }
 }
 
-export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon: string | null) => void }) {
-  const state = useWorkspace();
-  const page = state.pages[pageId];
+interface Props {
+  title: string;
+  // the emoji in use, which can be taken away
+  current: string | null;
+  onPick: (icon: string | null) => void;
+}
+
+export function EmojiPicker({ title, current, onPick }: Props) {
   const [emoji, setEmoji] = useState<Emoji[] | null>(null);
   const [query, setQuery] = useState('');
   const [group, setGroup] = useState<number | null>(null);
@@ -87,7 +89,6 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
     return group === null ? emoji : emoji.filter((item) => item.group === group);
   }, [emoji, query, group]);
 
-  if (!page) return null;
   const pick = (icon: string | null) => {
     if (icon) {
       try {
@@ -104,11 +105,7 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
   };
 
   return (
-    <Dialog
-      title={t('emoji.title', { title: displayTitle(page) })}
-      onClose={closeDialog}
-      className="emoji-dialog"
-    >
+    <Dialog title={title} onClose={closeDialog} className="emoji-dialog">
       <div className="emoji-top">
         <input
           className="text-input"
@@ -130,7 +127,7 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
         >
           <Shuffle size={14} /> {t('emoji.random')}
         </button>
-        {page.icon && (
+        {current && (
           <button type="button" className="button" onClick={() => pick(null)}>
             {t('common.remove')}
           </button>
@@ -182,10 +179,10 @@ export function EmojiPicker({ pageId, onPick }: { pageId: PageId; onPick: (icon:
             key={item.unicode}
             type="button"
             role="option"
-            aria-selected={page.icon === item.unicode}
+            aria-selected={current === item.unicode}
             title={item.label}
             aria-label={item.label}
-            className={`emoji-choice${page.icon === item.unicode ? ' is-active' : ''}`}
+            className={`emoji-choice${current === item.unicode ? ' is-active' : ''}`}
             onClick={() => pick(item.unicode)}
           >
             <Emoji emoji={item.unicode} />

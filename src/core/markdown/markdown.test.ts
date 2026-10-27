@@ -77,6 +77,21 @@ describe('markdown import', () => {
     expect(doc.content![7]!.attrs?.language).toBe('ts');
   });
 
+  it('keeps a callout icon, or no icon, in its obsidian metadata', () => {
+    const callout = (attrs: Record<string, unknown>): DocNode => ({
+      type: 'doc',
+      content: [{ type: 'callout', attrs: { tone: 'tip', kind: 'tip', ...attrs }, content: [p(text('Hi'))] }],
+    });
+    const fire = docToMarkdown(callout({ icon: '🔥' })).trimEnd();
+    expect(fire).toBe('> [!tip|icon:🔥]\n> Hi');
+    expect(markdownToDoc(fire).content![0]!.attrs).toMatchObject({ kind: 'tip', icon: '🔥' });
+    const none = markdownToDoc(docToMarkdown(callout({ icon: 'none' }))).content![0]!;
+    expect(none.attrs?.icon).toBe('none');
+    const wide = markdownToDoc('> [!note|wide]- Folded\n> Body').content![0]!;
+    expect(wide.attrs).toMatchObject({ meta: 'wide', fold: '-', title: 'Folded' });
+    expect(docToMarkdown({ type: 'doc', content: [wide] }).trimEnd()).toBe('> [!note|wide]- Folded\n> Body');
+  });
+
   it('keeps a table header column through a save and load', () => {
     const cell = (type: string, value: string): DocNode => ({ type, content: [p(text(value))] });
     const doc: DocNode = {

@@ -14,6 +14,8 @@ import {
   Copy,
   Download,
   ExternalLink,
+  Eye,
+  EyeOff,
   FolderOpen,
   Heading1,
   Heading2,
@@ -34,6 +36,7 @@ import {
   Pencil,
   Pilcrow,
   Quote,
+  Smile,
   Strikethrough,
   Trash2,
   Type,
@@ -53,7 +56,7 @@ import { copyText, desktop, openExternal } from '../platform/desktop';
 import { openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
-import { toast } from '../ui';
+import { openDialog, toast } from '../ui';
 import { colorLabel } from '../i18n/labels';
 
 function ToolButton({
@@ -751,12 +754,30 @@ export function BlockMenu({
       },
     });
     const callout = editor.state.doc.nodeAt(request.pos);
+    const setIcon = (icon: string | null) =>
+      editor.chain().focus().setNodeSelection(request.pos).updateAttributes('callout', { icon }).run();
+    const hidden = callout?.attrs.icon === 'none';
     entries.unshift(
       { heading: t('editor.callout') },
       tone('note', t('editor.note')),
       tone('tip', t('editor.tip')),
       tone('warning', t('editor.warning')),
       tone('danger', t('editor.danger')),
+      { separator: true },
+      {
+        label: t('editor.changeIcon'),
+        icon: Smile,
+        onSelect: () =>
+          openDialog({
+            kind: 'emoji',
+            title: t('editor.calloutIcon'),
+            current: hidden ? null : ((callout?.attrs.icon as string | null) ?? null),
+            onPick: (icon) => setIcon(icon ?? 'none'),
+          }),
+      },
+      hidden
+        ? { label: t('editor.showIcon'), icon: Eye, onSelect: () => setIcon(null) }
+        : { label: t('editor.removeIcon'), icon: EyeOff, onSelect: () => setIcon('none') },
       ...(callout?.attrs.title
         ? []
         : [

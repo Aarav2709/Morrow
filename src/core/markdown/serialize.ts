@@ -116,9 +116,16 @@ function block(node: DocNode, options: SerializeOptions): string | null {
           ? node.attrs.kind
           : String(node.attrs?.tone ?? 'note');
       const fold = node.attrs?.fold === '+' || node.attrs?.fold === '-' ? node.attrs.fold : '';
+      // a picked icon, or none, goes in obsidian's metadata after the type, [!note|icon:🔥]
+      const icon = calloutIcon(node.attrs?.icon);
+      const meta = [
+        ...(typeof node.attrs?.meta === 'string' && node.attrs.meta ? [node.attrs.meta] : []),
+        ...(icon ? [`icon:${icon}`] : []),
+      ];
+      const metadata = meta.length ? `|${meta.join('|')}` : '';
       const title = typeof node.attrs?.title === 'string' && node.attrs.title ? ` ${node.attrs.title}` : '';
       const body = blocks(node.content ?? [], options);
-      return prefixLines(`[!${kind}]${fold}${title}\n${body}`, '> ', '>');
+      return prefixLines(`[!${kind}${metadata}]${fold}${title}\n${body}`, '> ', '>');
     }
     case 'tableOfContents':
       return '<!-- toc -->';
@@ -187,6 +194,13 @@ function listItems(
 
 function isList(node: DocNode): boolean {
   return node.type === 'bulletList' || node.type === 'orderedList' || node.type === 'taskList';
+}
+
+// a callout's own icon: an emoji, 'none' for no icon, or null for the one its type comes with
+export function calloutIcon(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const icon = value.trim();
+  return icon && icon.length <= 16 && !/[|\]\n]/.test(icon) ? icon : null;
 }
 
 export const HEADER_COLUMN = '<!-- header-column -->';

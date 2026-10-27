@@ -23,6 +23,7 @@ import { tagColor } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
 import { getPreferences, setPreferences } from '../platform/preferences';
 import { openDialog } from '../ui';
+import { calloutIcon } from '../../core/markdown/serialize';
 import { t } from '../i18n';
 import type { TranslationKey } from '../i18n';
 
@@ -600,14 +601,22 @@ export function calloutNodeView(): NodeViewRenderer {
     body.className = 'callout-body';
     main.append(header, body);
     dom.append(icon, main);
+    let shown = '';
     const sync = () => {
       const tone = (CALLOUT_TONES as readonly string[]).includes(String(current.attrs.tone))
         ? (current.attrs.tone as CalloutTone)
         : 'note';
       dom.dataset.tone = tone;
-      icon.replaceChildren(emojiElement(calloutEmoji(String(current.attrs.kind ?? tone), tone)));
-      icon.title = t('editor.clickToChange', { tone: t(TONE_LABELS[tone]) });
-      icon.setAttribute('aria-label', icon.title);
+      const own = calloutIcon(current.attrs.icon);
+      icon.hidden = own === 'none';
+      dom.classList.toggle('no-icon', icon.hidden);
+      shown =
+        typeof own === 'string' && own !== 'none'
+          ? own
+          : calloutEmoji(String(current.attrs.kind ?? tone), tone);
+      icon.replaceChildren(emojiElement(shown));
+      icon.title = t('editor.changeIcon');
+      icon.setAttribute('aria-label', `${t(TONE_LABELS[tone])}, ${icon.title}`);
       const text = String(current.attrs.title ?? '');
       if (document.activeElement !== title) title.value = text;
       title.readOnly = !editor.isEditable;
@@ -620,13 +629,16 @@ export function calloutNodeView(): NodeViewRenderer {
       header.hidden = current.attrs.title == null && !current.attrs.fold;
     };
     sync();
+    // the icon is picked like a page's, taking it away leaves the callout without one. the colour is in
+    // the block's menu
     icon.addEventListener('click', () => {
       if (!editor.isEditable) return;
-      const tones = CALLOUT_TONES;
-      const next = tones[(tones.indexOf(current.attrs.tone as CalloutTone) + 1) % tones.length]!;
-      const kind = String(current.attrs.kind ?? '');
-      // a custom obsidian type keeps its name while it already looks right
-      setAttrs(editor.view, getPos, { tone: next, kind: kind && calloutTone(kind) === next ? kind : next });
+      openDialog({
+        kind: 'emoji',
+        title: t('editor.calloutIcon'),
+        current: shown,
+        onPick: (emoji) => setAttrs(editor.view, getPos, { icon: emoji ?? 'none' }),
+      });
     });
     title.addEventListener('change', () =>
       setAttrs(editor.view, getPos, { title: title.value.trim() || null }),

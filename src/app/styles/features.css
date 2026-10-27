@@ -157,6 +157,13 @@
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
+.prose .callout.no-icon {
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: 16px;
+}
+.callout-icon[hidden] {
+  display: none;
+}
 .callout-icon:hover {
   background: var(--hover);
 }
