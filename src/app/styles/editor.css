@@ -183,6 +183,13 @@
   margin: 0;
 }
 
+/* a list or a toggle keeps the same room from the text around it as any other block. inside a list item
+   a nested list stays snug under its line */
+:is(.prose, .prose :not(li, li > div)) > p + :is(ul, ol, .toggle),
+:is(.prose, .prose :not(li, li > div)) > :is(ul, ol, .toggle) + p {
+  margin-top: 0.55em;
+}
+
 .prose li + li {
   margin-top: 0.2em;
 }
