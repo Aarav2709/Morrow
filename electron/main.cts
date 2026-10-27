@@ -86,6 +86,7 @@ const THEMES = {
   dark: { background: '#202020', symbols: '#b1b1b1' },
 };
 const HEX = /^#[0-9a-f]{6}$/i;
+const windowThemes = new WeakMap<BrowserWindow, 'light' | 'dark'>();
 
 // development and test runs can use a throwaway profile, installed copies never can
 if (!app.isPackaged && process.env.MORROW_USER_DATA) app.setPath('userData', process.env.MORROW_USER_DATA);
@@ -387,6 +388,7 @@ function registerIpc(): void {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!fromApp(event) || !window || (name !== 'light' && name !== 'dark')) return;
     window.setBackgroundColor(THEMES[name].background);
+    windowThemes.set(window, name);
   });
   // the native window buttons take the colours of the app right under them, dimmed with it behind a dialog
   ipcMain.on('morrow:title-bar', (event, color: unknown, symbolColor: unknown) => {
@@ -431,6 +433,8 @@ function registerIpc(): void {
     });
     if (choice.canceled || !choice.filePath) return { ok: false, error: null };
     try {
+      // chromium paints the page margins in the window's own colour, paper is white whatever the theme
+      window.setBackgroundColor('#ffffff');
       const data = await event.sender.printToPDF({
         printBackground: true,
         pageSize: 'A4',
@@ -441,6 +445,9 @@ function registerIpc(): void {
       return { ok: true, path: choice.filePath };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    } finally {
+      const name = windowThemes.get(window) ?? (nativeTheme.shouldUseDarkColors ? 'dark' : 'light');
+      window.setBackgroundColor(THEMES[name].background);
     }
   });
   ipcMain.handle('morrow:write-backup', async (event, json: unknown) => {
