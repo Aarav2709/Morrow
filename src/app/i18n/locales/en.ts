@@ -432,6 +432,7 @@ export const en = {
     searchPlaceholder: 'Search pages or commands…',
     noResults: 'No matching pages or commands',
     searchEverywhere: 'Search every page for “{query}”',
+    createNamed: 'Create a page called “{query}”',
     paletteAria: 'Search and commands',
     footer: {
       toMove: 'to move',

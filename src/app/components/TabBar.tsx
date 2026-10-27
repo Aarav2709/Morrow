@@ -31,6 +31,7 @@ import {
   useTabs,
 } from '../tabs';
 import type { Tab } from '../tabs';
+import { setUi } from '../ui';
 import { useWorkspace } from '../workspace';
 import { Menu } from './Menu';
 import type { MenuEntry } from './Menu';
@@ -192,7 +193,11 @@ export function TabBar() {
         className="icon-button tab-new"
         title={t('tabs.newTabTitle', { shortcut: formatShortcut('Mod+T') })}
         aria-label={t('tabs.newTab')}
-        onClick={() => openTab()}
+        onClick={() => {
+          // a new tab starts at search, to find a page or make one straight away
+          openTab();
+          setUi({ palette: true });
+        }}
       >
         <Plus size={14} />
       </button>

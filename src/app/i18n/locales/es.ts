@@ -438,6 +438,7 @@ export const es: TranslationSchema = {
     searchPlaceholder: 'Buscar páginas o comandos…',
     noResults: 'No se encontraron páginas ni comandos',
     searchEverywhere: 'Buscar “{query}” en todas las páginas',
+    createNamed: 'Crear una página llamada “{query}”',
     paletteAria: 'Búsqueda y comandos',
     footer: {
       toMove: 'para moverte',

@@ -1,4 +1,4 @@
-import { CornerDownLeft, FileText, Search } from 'lucide-react';
+import { CornerDownLeft, FilePlus, FileText, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { dialogOpened } from '../platform/desktop';
@@ -8,6 +8,7 @@ import type { SearchSnippet } from '../../core/search';
 import { ancestorsOf, livePages } from '../../core/tree';
 import { ACTIONS, currentContext, formatShortcut } from '../actions';
 import { useTranslation } from '../i18n';
+import { createPage } from '../operations';
 import { navigate, openPage } from '../router';
 import { setUi } from '../ui';
 import { useWorkspace } from '../workspace';
@@ -106,7 +107,21 @@ export function CommandPalette() {
       shortcut: formatShortcut('Mod+Enter'),
       run: () => navigate({ name: 'search', query: searched.trim() }),
     };
-    return [...pages, everywhere, ...actions.slice(0, 5)];
+    // a page that is not there yet is made from what was typed, so the palette finds or makes a page
+    const title = searched.trim();
+    const exists = pages.some((entry) => foldText(entry.title) === foldText(title));
+    const create: Entry[] = exists
+      ? []
+      : [
+          {
+            key: 'page:create',
+            group: t('actions.groups.pages'),
+            title: t('actions.createNamed', { query: title }),
+            icon: FilePlus,
+            run: () => createPage({ title }),
+          },
+        ];
+    return [...pages, ...create, everywhere, ...actions.slice(0, 5)];
   }, [searched, state, t, tAction]);
 
   const [lastQuery, setLastQuery] = useState(query);
