@@ -1898,6 +1898,10 @@ td:hover .prop-empty,
   flex-direction: column;
   gap: 10px;
 }
+/* every message keeps its own height, the list scrolls instead of squeezing earlier ones as it grows */
+.assistant-messages > * {
+  flex-shrink: 0;
+}
 .assistant-empty {
   margin: auto 0;
   text-align: center;
