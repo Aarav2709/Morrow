@@ -149,7 +149,8 @@ function plainTextOf(slice: Slice): string {
 export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onDirty, onReady }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
-  const [finding, setFinding] = useState(false);
+  // the find bar opens with the words picked on the page, n changes so pressing it again refills it
+  const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
   const committed = useRef<DocNode>(doc);
   const callbacks = useRef({ onExitTop, onDirty, onReady });
@@ -386,11 +387,16 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   // ctrl or cmd f from anywhere on the page opens the find bar, in the side of a split being used
   useEffect(() => {
     const open = () => {
-      if (pane === targetPane()) setFinding(true);
+      if (pane !== targetPane() || !editor || editor.isDestroyed) return;
+      const { from, to, empty } = editor.state.selection;
+      const picked = empty ? '' : editor.state.doc.textBetween(from, to, '\n');
+      // a picked word or line, never a run of blocks
+      const text = picked.includes('\n') ? '' : picked.slice(0, 200);
+      setFinding((last) => ({ text, n: (last?.n ?? 0) + 1 }));
     };
     window.addEventListener('morrow:find', open);
     return () => window.removeEventListener('morrow:find', open);
-  }, [pane]);
+  }, [pane, editor]);
 
   if (!editor) return <div className="editor-loading" aria-hidden="true" />;
 
@@ -400,7 +406,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     <div className="editor-host">
       {finding &&
         findHost &&
-        createPortal(<FindBar editor={editor} onClose={() => setFinding(false)} />, findHost)}
+        createPortal(<FindBar editor={editor} seed={finding} onClose={() => setFinding(null)} />, findHost)}
       <EditorContent editor={editor} className="editor-surface" />
       {editable && (
         <>

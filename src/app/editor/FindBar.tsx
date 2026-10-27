@@ -6,8 +6,21 @@ import { toast } from '../ui';
 import { t } from '../i18n';
 import { getFindState, replaceAll, replaceCurrent, setFindQuery, stepFind } from './Blocks';
 
-export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => void }) {
-  const [query, setQuery] = useState('');
+interface Props {
+  editor: Editor;
+  // the words picked on the page when ctrl f was pressed, n tells each press apart
+  seed: { text: string; n: number };
+  onClose: () => void;
+}
+
+export function FindBar({ editor, seed, onClose }: Props) {
+  const [query, setQuery] = useState(seed.text);
+  const [seeded, setSeeded] = useState(seed);
+  // every press of ctrl f fills in what is picked on the page, or keeps the last search when nothing is
+  if (seeded !== seed) {
+    setSeeded(seed);
+    if (seed.text) setQuery(seed.text);
+  }
   const [replacement, setReplacement] = useState('');
   const [replacing, setReplacing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -20,13 +33,17 @@ export function FindBar({ editor, onClose }: { editor: Editor; onClose: () => vo
   });
 
   useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
     const dispatch = editor.view.dispatch;
     return () => {
       if (!editor.isDestroyed) setFindQuery(editor.state, dispatch, '');
     };
   }, [editor]);
+
+  useEffect(() => {
+    if (seed.text) setFindQuery(editor.state, editor.view.dispatch, seed.text);
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [editor, seed]);
 
   const update = (value: string) => {
     setQuery(value);
