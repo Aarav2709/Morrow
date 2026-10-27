@@ -7,6 +7,7 @@ import {
   markPasteRule,
   mergeAttributes,
   Node,
+  textblockTypeInputRule,
 } from '@tiptap/core';
 import type { Editor, NodeViewRenderer } from '@tiptap/core';
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
@@ -20,6 +21,7 @@ import { CALLOUT_TONES, calloutTone, COLORS } from '../../core/model';
 import type { CalloutTone, ColorName } from '../../core/model';
 import { tagColor } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
+import { getPreferences, setPreferences } from '../platform/preferences';
 import { openDialog } from '../ui';
 import { t } from '../i18n';
 import type { TranslationKey } from '../i18n';
@@ -369,8 +371,32 @@ export async function renderMermaid(source: string): Promise<{ html: string; err
   }
 }
 
+// a new code block starts in the language the last one was set to, so a page of python stays python
+const lastLanguage = () => getPreferences().codeLanguage || null;
+
 // highlighted code, the language is picked from a list above each block
 export const CodeBlock = CodeBlockLowlight.extend({
+  addCommands() {
+    return {
+      setCodeBlock:
+        (attributes) =>
+        ({ commands }) =>
+          commands.setNode(this.name, attributes ?? { language: lastLanguage() }),
+      toggleCodeBlock:
+        (attributes) =>
+        ({ commands }) =>
+          commands.toggleNode(this.name, 'paragraph', attributes ?? { language: lastLanguage() }),
+    };
+  },
+  addInputRules() {
+    return [/^```([a-z]+)?[\s\n]$/, /^~~~([a-z]+)?[\s\n]$/].map((find) =>
+      textblockTypeInputRule({
+        find,
+        type: this.type,
+        getAttributes: (match) => ({ language: match[1] ?? lastLanguage() }),
+      }),
+    );
+  },
   addNodeView() {
     return ({ node, getPos, editor }) => {
       let current = node;
@@ -406,9 +432,11 @@ export const CodeBlock = CodeBlockLowlight.extend({
         select.disabled = !editor.isEditable;
       };
       sync();
-      select.addEventListener('change', () =>
-        setAttrs(editor.view, getPos, { language: select.value || null }),
-      );
+      select.addEventListener('change', () => {
+        setAttrs(editor.view, getPos, { language: select.value || null });
+        // a diagram is a one off, the next block is still code
+        if (select.value !== 'mermaid') setPreferences({ codeLanguage: select.value });
+      });
       const pre = document.createElement('pre');
       const code = document.createElement('code');
       pre.append(code);

@@ -42,6 +42,8 @@ export interface Preferences {
   // look for a new version when morrow opens and once a day, off until turned on
   checkUpdates: boolean;
   mcpEnabled: boolean;
+  // the language last picked for a code block, a new block starts in it. empty for plain text
+  codeLanguage: string;
 }
 
 const KEY = 'morrow.preferences';
@@ -74,6 +76,7 @@ const defaults: Preferences = {
   assistantAsk: true,
   checkUpdates: false,
   mcpEnabled: false,
+  codeLanguage: '',
 };
 
 // view preferences only, losing them never loses work
@@ -124,6 +127,10 @@ function read(): Preferences {
       assistantAsk: parsed.assistantAsk !== false,
       checkUpdates: parsed.checkUpdates === true,
       mcpEnabled: parsed.mcpEnabled === true,
+      codeLanguage:
+        typeof parsed.codeLanguage === 'string' && /^[\w#+.-]{0,40}$/.test(parsed.codeLanguage)
+          ? parsed.codeLanguage
+          : '',
     };
   } catch {
     return defaults;
