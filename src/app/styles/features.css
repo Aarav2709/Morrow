@@ -1873,9 +1873,6 @@ td:hover .prop-empty,
 [data-desktop] .app.has-assistant .tab-bar {
   padding-right: 8px;
 }
-.assistant-header svg:first-child {
-  color: var(--accent);
-}
 .assistant-model {
   min-width: 0;
   overflow: hidden;

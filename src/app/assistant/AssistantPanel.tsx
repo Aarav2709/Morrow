@@ -200,7 +200,6 @@ export function AssistantPanel() {
   return (
     <aside className="assistant-panel" aria-label={t('settings.sections.assistant')}>
       <header className="assistant-header">
-        <Sparkles size={15} />
         <strong>{t('settings.sections.assistant')}</strong>
         {settings?.model && (
           <span className="assistant-model" title={`${label}, ${settings.model}`}>
