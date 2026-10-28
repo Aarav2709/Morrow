@@ -106,6 +106,12 @@ export function trashedPages(pages: Pages): PageMeta[] {
     .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0));
 }
 
+export function archivedPages(pages: Pages): PageMeta[] {
+  return Object.values(pages)
+    .filter((page) => page.archivedAt !== null && !isEffectivelyTrashed(pages, page.id))
+    .sort((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0));
+}
+
 export function flattenTree(pages: Pages): Array<{ page: PageMeta; depth: number }> {
   const byParent = groupByParent(pages, false);
   const result: Array<{ page: PageMeta; depth: number }> = [];

@@ -34,6 +34,7 @@ export const es: TranslationSchema = {
     graph: 'Gráfico',
     review: 'Repaso',
     trash: 'Papelera',
+    archive: 'Archivo',
     page: 'Página',
     database: 'Base de datos',
     canvas: 'Lienzo',
@@ -356,6 +357,8 @@ export const es: TranslationSchema = {
     publishWebsite: 'Publicar como sitio web',
     importMarkdownHere: 'Importar Markdown aquí',
     moveToTrash: 'Mover a la papelera',
+    archive: 'Archivar',
+    unarchive: 'Desarchivar',
     infoHeading: '{words} palabras · creada {time}',
   },
   tabs: {
@@ -545,6 +548,9 @@ export const es: TranslationSchema = {
     linkedFromSingular: 'Enlazado desde 1 página',
     linkedFromPlural: 'Enlazado desde {count} páginas',
     pageInTrash: 'Esta página está en la papelera.',
+    pageArchived:
+      'Esta página está archivada. No aparece en la barra lateral, pero se puede buscar y enlazar.',
+    unarchive: 'Desarchivar',
     canvasInTrash: 'Este lienzo está en la papelera.',
     restore: 'Restaurar',
     deleteForever: 'Eliminar definitivamente',
@@ -866,6 +872,13 @@ export const es: TranslationSchema = {
     restore: 'Restaurar',
     deleteForever: 'Eliminar definitivamente',
   },
+  archive: {
+    title: 'Archivo',
+    subtitle:
+      'Páginas que ya terminaste pero quieres conservar. No aparecen en la barra lateral y siguen saliendo en la búsqueda y los enlaces.',
+    emptyMessage: 'No hay nada archivado. Archiva una página desde su menú de página.',
+    archivedAt: 'Archivada {time}',
+  },
   tags: {
     title: 'Etiquetas',
     subtitle:
@@ -972,6 +985,7 @@ export const es: TranslationSchema = {
     couldNotCopyTheImage: 'No se pudo copiar la imagen.',
     syncFailed: 'Falló la sincronización con {name}: {error}',
     movedToTrash: 'Se envió “{title}” a la papelera',
+    archived: 'Se archivó “{title}”',
     restoredPage: 'Se restauró “{title}”',
     open: 'Abrir',
     savedAsTemplate: 'Se guardó “{title}” como plantilla.',

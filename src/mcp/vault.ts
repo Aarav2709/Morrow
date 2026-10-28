@@ -463,6 +463,7 @@ export class McpVaultManager {
       if (!page) continue;
       const entry: RegistryEntry = { id, created: page.createdAt, order: page.order };
       if (page.favorite) entry.favorite = true;
+      if (page.archivedAt !== null) entry.archived = page.archivedAt;
       if (page.trashedAt !== null && isInTrash(placement.folder) && dirname(placement.folder) === TRASH_DIR) {
         entry.trashed = page.trashedAt;
         if (page.parentId) entry.parent = page.parentId;

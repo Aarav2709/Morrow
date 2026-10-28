@@ -32,6 +32,7 @@ export const en = {
     graph: 'Graph',
     review: 'Review',
     trash: 'Trash',
+    archive: 'Archive',
     page: 'Page',
     database: 'Database',
     canvas: 'Canvas',
@@ -352,6 +353,8 @@ export const en = {
     publishWebsite: 'Publish as a website',
     importMarkdownHere: 'Import Markdown here',
     moveToTrash: 'Move to trash',
+    archive: 'Archive',
+    unarchive: 'Unarchive',
     infoHeading: '{words} words · created {time}',
   },
   tabs: {
@@ -539,6 +542,8 @@ export const en = {
     linkedFromSingular: 'Linked from 1 page',
     linkedFromPlural: 'Linked from {count} pages',
     pageInTrash: 'This page is in the trash.',
+    pageArchived: 'This page is archived. It stays out of the sidebar but can still be found and linked.',
+    unarchive: 'Unarchive',
     canvasInTrash: 'This canvas is in the trash.',
     restore: 'Restore',
     deleteForever: 'Delete forever',
@@ -860,6 +865,13 @@ export const en = {
     restore: 'Restore',
     deleteForever: 'Delete forever',
   },
+  archive: {
+    title: 'Archive',
+    subtitle:
+      'Pages you are done with but want to keep. They stay out of the sidebar and still show up in search and links.',
+    emptyMessage: 'Nothing is archived. Archive a page from its page menu.',
+    archivedAt: 'Archived {time}',
+  },
   tags: {
     title: 'Tags',
     subtitle:
@@ -964,6 +976,7 @@ export const en = {
     couldNotCopyTheImage: 'Could not copy the image.',
     syncFailed: 'Sync with {name} failed: {error}',
     movedToTrash: 'Moved “{title}” to the trash',
+    archived: 'Archived “{title}”',
     restoredPage: 'Restored “{title}”',
     open: 'Open',
     savedAsTemplate: 'Saved “{title}” as a template.',

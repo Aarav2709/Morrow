@@ -3,7 +3,7 @@ import { applyCommand } from './commands';
 import type { Command } from './commands';
 import { emptyWorkspace } from './model';
 import type { DocNode, WorkspaceState } from './model';
-import { childrenOf, isEffectivelyTrashed, livePages } from './tree';
+import { archivedPages, childrenOf, isEffectivelyTrashed, livePages } from './tree';
 
 function run(state: WorkspaceState, ...commands: Command[]): WorkspaceState {
   return commands.reduce((current, command) => {
@@ -65,6 +65,27 @@ describe('page creation and hierarchy', () => {
     });
     expect(state.pages.a!.title).toBe('Line one');
     expect(state.pages.a!.updatedAt).toBe(2);
+  });
+});
+
+describe('archive', () => {
+  const base = () => run(emptyWorkspace(), create('a'), create('b', 'a'));
+
+  it('archives a page and brings it back', () => {
+    const archived = run(base(), { type: 'page.setArchived', id: 'b', now: 5 });
+    expect(archivedPages(archived.pages).map((page) => page.id)).toEqual(['b']);
+    expect(livePages(archived.pages)).toHaveLength(2);
+    const back = run(archived, { type: 'page.setArchived', id: 'b', now: null });
+    expect(archivedPages(back.pages)).toHaveLength(0);
+  });
+
+  it('leaves archived pages inside the trash out of the archive', () => {
+    const state = run(
+      base(),
+      { type: 'page.setArchived', id: 'b', now: 5 },
+      { type: 'page.trash', id: 'a', now: 6 },
+    );
+    expect(archivedPages(state.pages)).toHaveLength(0);
   });
 });
 

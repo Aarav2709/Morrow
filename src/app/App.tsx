@@ -12,7 +12,7 @@ import { TabBar } from './components/TabBar';
 import { SearchView } from './components/SearchView';
 import { Sidebar } from './components/Sidebar';
 import { HomeView } from './components/Home';
-import { TasksView, TrashView } from './components/Views';
+import { ArchiveView, TasksView, TrashView } from './components/Views';
 import { commitEditors, undoRedo } from './editor/commits';
 import { ensureToday, writeAutoBackup } from './operations';
 import { startAutoSync, syncWith } from './sync';
@@ -198,6 +198,8 @@ function viewFor(route: Route) {
       return <TasksView />;
     case 'trash':
       return <TrashView />;
+    case 'archive':
+      return <ArchiveView />;
     case 'tags':
       return <TagsView />;
     case 'tag':

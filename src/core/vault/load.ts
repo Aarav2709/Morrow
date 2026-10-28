@@ -56,6 +56,7 @@ export interface RegistryEntry {
   created?: number;
   order?: number;
   favorite?: boolean;
+  archived?: number;
   trashed?: number;
   // where a trashed page came from, so restoring puts it back
   parent?: PageId | null;
@@ -97,6 +98,7 @@ export function readRegistry(raw: unknown): Map<string, RegistryEntry> {
     if (num(value.created) !== undefined) entry.created = num(value.created)!;
     if (num(value.order) !== undefined) entry.order = num(value.order)!;
     if (value.favorite === true) entry.favorite = true;
+    if (num(value.archived) !== undefined) entry.archived = num(value.archived)!;
     if (num(value.trashed) !== undefined) entry.trashed = num(value.trashed)!;
     if (typeof value.parent === 'string' && ID_PATTERN.test(value.parent)) entry.parent = value.parent;
     if (typeof value.icon === 'string' && value.icon.length <= 32) entry.icon = value.icon;
@@ -216,6 +218,7 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
       updatedAt: candidate.mtime || now,
       trashedAt: trashRoot ? (entry?.trashed ?? (candidate.mtime || now)) : null,
       favorite: entry?.favorite === true,
+      archivedAt: entry?.archived ?? null,
       lastOpenedAt: recent.get(id) ?? null,
       icon: entry?.icon ?? null,
       order: entry?.order ?? Number.MAX_SAFE_INTEGER,

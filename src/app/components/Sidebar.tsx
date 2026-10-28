@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  Archive,
   CalendarDays,
   CheckSquare,
   ChevronDown,
@@ -37,6 +38,7 @@ import {
   effectiveParent,
   isDescendantOf,
   livePages,
+  archivedPages,
   trashedPages,
 } from '../../core/tree';
 import { collectCards, dueCards } from '../../core/flashcards';
@@ -149,6 +151,7 @@ export function Sidebar() {
     [live],
   );
   const trashCount = useMemo(() => trashedPages(state.pages).length, [state.pages]);
+  const archiveCount = useMemo(() => archivedPages(state.pages).length, [state.pages]);
   const openTasks = useMemo(() => collectTasks(state).filter((task) => !task.checked).length, [state]);
   const tagCount = useMemo(() => collectTags(state).length, [state]);
   const reviewLog = useReviewLog();
@@ -353,6 +356,15 @@ export function Sidebar() {
 
       <div className="sidebar-footer">
         <NavItem icon={FileUp} label={t('sidebar.import')} onClick={() => void importMarkdown()} />
+        {(archiveCount > 0 || route.name === 'archive') && (
+          <NavItem
+            icon={Archive}
+            label={t('sidebar.archive')}
+            active={route.name === 'archive'}
+            count={archiveCount}
+            onClick={go(() => navigate({ name: 'archive' }))}
+          />
+        )}
         <NavItem
           icon={Trash2}
           label={t('sidebar.trash')}
@@ -531,7 +543,7 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
   const renderLevel = (parentId: PageId | null, depth: number): React.ReactNode => {
     // the journal stays in the vault with daily notes off, it just leaves the tree
     const all = childrenOf(state.pages, parentId).filter(
-      (page) => parentId !== null || page.kind !== 'journal' || !hideJournal,
+      (page) => page.archivedAt === null && (parentId !== null || page.kind !== 'journal' || !hideJournal),
     );
     if (all.length === 0) return null;
     const key = parentId ?? '';

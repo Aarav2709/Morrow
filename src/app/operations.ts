@@ -433,6 +433,17 @@ export function duplicatePage(id: PageId): void {
   if (result.ok) openPage(copyId);
 }
 
+// archived pages leave the sidebar, the page itself stays open where it is
+export function setArchived(id: PageId, archived: boolean): void {
+  const page = getState().pages[id];
+  if (!page) return;
+  const result = run({ type: 'page.setArchived', id, now: archived ? Date.now() : null });
+  if (!result.ok || !archived) return;
+  toast(t('toasts.archived', { title: displayTitle(page) }), {
+    action: { label: t('toasts.undo'), run: () => run({ type: 'page.setArchived', id, now: null }) },
+  });
+}
+
 export function toggleFavorite(id: PageId): void {
   const page = getState().pages[id];
   if (page) run({ type: 'page.setFavorite', id, favorite: !page.favorite });

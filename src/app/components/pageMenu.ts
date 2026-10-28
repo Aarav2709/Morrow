@@ -1,4 +1,6 @@
 import {
+  Archive,
+  ArchiveRestore,
   ArrowRightLeft,
   Copy,
   Database,
@@ -30,6 +32,7 @@ import {
   publishSite,
   revealPage,
   saveAsTemplate,
+  setArchived,
   toggleFavorite,
   trashPage,
   turnIntoDatabase,
@@ -148,6 +151,9 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     { label: t('pageMenu.publishWebsite'), icon: Globe, onSelect: () => void publishSite(pageId) },
     { label: t('pageMenu.importMarkdownHere'), icon: FileUp, onSelect: () => void importMarkdown(pageId) },
     { separator: true },
+    page.archivedAt === null
+      ? { label: t('pageMenu.archive'), icon: Archive, onSelect: () => setArchived(pageId, true) }
+      : { label: t('pageMenu.unarchive'), icon: ArchiveRestore, onSelect: () => setArchived(pageId, false) },
     {
       label: t('pageMenu.moveToTrash'),
       icon: Trash2,

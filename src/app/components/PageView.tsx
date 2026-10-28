@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { TextSelection } from '@tiptap/pm/state';
 import {
+  ArchiveRestore,
   ArrowUpRight,
   Columns2,
   FileWarning,
@@ -29,7 +30,7 @@ import { Emoji } from './Emoji';
 import { LockedPage } from './EncryptDialog';
 import { PageProperties } from './PageProperties';
 import { PageTags } from './TagsView';
-import { deleteForever, restorePage, trashPage } from '../operations';
+import { deleteForever, restorePage, setArchived, trashPage } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { navigate, openPage, routeHash } from '../router';
 import { openSide } from '../tabs';
@@ -191,6 +192,14 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
               onClick={() => deleteForever(findTrashedAncestor(state.pages, id) ?? id)}
             >
               <Trash2 size={14} /> {t('page.deleteForever')}
+            </button>
+          </div>
+        )}
+        {!trashed && page.archivedAt !== null && (
+          <div className="banner" role="note">
+            <span>{t('page.pageArchived')}</span>
+            <button type="button" className="button small" onClick={() => setArchived(id, false)}>
+              <ArchiveRestore size={14} /> {t('page.unarchive')}
             </button>
           </div>
         )}

@@ -31,6 +31,8 @@ export type Command =
   | { type: 'page.duplicate'; id: PageId; newId: PageId; now: number }
   | { type: 'page.setDoc'; id: PageId; doc: DocNode; now: number }
   | { type: 'page.setFavorite'; id: PageId; favorite: boolean }
+  // now archives the page, null brings it back to the sidebar
+  | { type: 'page.setArchived'; id: PageId; now: number | null }
   | { type: 'page.markOpened'; id: PageId; now: number }
   | { type: 'page.trash'; id: PageId; now: number }
   | { type: 'page.restore'; id: PageId }
@@ -122,6 +124,12 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
       if (!page.ok) return page;
       if (page.value.favorite === command.favorite) return unchanged(state);
       return updatePage(state, { ...page.value, favorite: command.favorite === true });
+    }
+    case 'page.setArchived': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      if ((page.value.archivedAt === null) === (command.now === null)) return unchanged(state);
+      return updatePage(state, { ...page.value, archivedAt: command.now });
     }
     case 'page.markOpened': {
       const page = requirePage(state, command.id);

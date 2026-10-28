@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Archive,
   ArrowLeft,
   ArrowRight,
   ArrowRightLeft,
@@ -53,6 +54,7 @@ import {
   openToday,
   publishSite,
   restoreBackup,
+  setArchived,
   toggleFavorite,
   trashPage,
 } from './operations';
@@ -377,6 +379,26 @@ export const ACTIONS: Action[] = [
     keywords: 'favorite star pin',
     enabled: onLivePage,
     run: ({ pageId }) => pageId && toggleFavorite(pageId),
+  },
+  {
+    id: 'page.archive',
+    label: 'Archive or unarchive page',
+    group: 'Page',
+    icon: Archive,
+    keywords: 'archive hide old reference',
+    enabled: onLivePage,
+    run: ({ pageId }) => {
+      const page = pageId ? getState().pages[pageId] : undefined;
+      if (page) setArchived(page.id, page.archivedAt === null);
+    },
+  },
+  {
+    id: 'go.archive',
+    label: 'Go to archive',
+    group: 'General',
+    icon: Archive,
+    keywords: 'archived old pages',
+    run: () => navigate({ name: 'archive' }),
   },
   {
     id: 'page.find',

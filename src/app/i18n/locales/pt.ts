@@ -34,6 +34,7 @@ export const pt: TranslationSchema = {
     graph: 'Gráfico',
     review: 'Revisão',
     trash: 'Lixeira',
+    archive: 'Arquivo',
     page: 'Página',
     database: 'Banco de dados',
     canvas: 'Quadro',
@@ -356,6 +357,8 @@ export const pt: TranslationSchema = {
     publishWebsite: 'Publicar como site',
     importMarkdownHere: 'Importar Markdown aqui',
     moveToTrash: 'Mover para a lixeira',
+    archive: 'Arquivar',
+    unarchive: 'Desarquivar',
     infoHeading: '{words} palavras · criada {time}',
   },
   tabs: {
@@ -545,6 +548,9 @@ export const pt: TranslationSchema = {
     linkedFromSingular: 'Vinculado a partir de 1 página',
     linkedFromPlural: 'Vinculado a partir de {count} páginas',
     pageInTrash: 'Esta página está na lixeira.',
+    pageArchived:
+      'Esta página está arquivada. Ela não aparece na barra lateral, mas ainda pode ser buscada e vinculada.',
+    unarchive: 'Desarquivar',
     canvasInTrash: 'Este quadro está na lixeira.',
     restore: 'Restaurar',
     deleteForever: 'Excluir definitivamente',
@@ -867,6 +873,13 @@ export const pt: TranslationSchema = {
     restore: 'Restaurar',
     deleteForever: 'Excluir definitivamente',
   },
+  archive: {
+    title: 'Arquivo',
+    subtitle:
+      'Páginas que você terminou mas quer guardar. Elas ficam fora da barra lateral e continuam aparecendo na busca e nos links.',
+    emptyMessage: 'Nada arquivado. Arquive uma página pelo menu da página.',
+    archivedAt: 'Arquivada {time}',
+  },
   tags: {
     title: 'Tags',
     subtitle:
@@ -972,6 +985,7 @@ export const pt: TranslationSchema = {
     couldNotCopyTheImage: 'Não foi possível copiar a imagem.',
     syncFailed: 'A sincronização com {name} falhou: {error}',
     movedToTrash: '“{title}” foi movida para a lixeira',
+    archived: '“{title}” foi arquivada',
     restoredPage: '“{title}” foi restaurada',
     open: 'Abrir',
     savedAsTemplate: '“{title}” salva como modelo.',

@@ -1,11 +1,11 @@
-import { CheckSquare, RotateCcw, Trash2 } from 'lucide-react';
+import { Archive, ArchiveRestore, CheckSquare, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageId, WorkspaceState } from '../../core/model';
 import { collectTasks } from '../../core/tasks';
 import type { TaskRef } from '../../core/tasks';
-import { ancestorsOf, trashedPages } from '../../core/tree';
-import { deleteForever, emptyTrash, restorePage } from '../operations';
+import { ancestorsOf, archivedPages, trashedPages } from '../../core/tree';
+import { deleteForever, emptyTrash, restorePage, setArchived } from '../operations';
 import { openPage } from '../router';
 import { run, useWorkspace } from '../workspace';
 import { relativeTime, useShowMore } from './primitives';
@@ -141,6 +141,68 @@ export function TasksView() {
             </div>
           ) : (
             <TaskList tasks={shown} state={state} grouped />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ArchiveView() {
+  const state = useWorkspace();
+  const archived = useMemo(() => archivedPages(state.pages), [state.pages]);
+  const listed = useShowMore(archived, 60);
+
+  return (
+    <div className="view">
+      <TopBar>
+        <span className="topbar-title">{t('archive.title')}</span>
+      </TopBar>
+      <div className="page-scroll">
+        <div className="collection">
+          <header className="collection-header">
+            <h1>{t('archive.title')}</h1>
+            <p className="muted">{t('archive.subtitle')}</p>
+          </header>
+          {archived.length === 0 ? (
+            <div className="empty-state compact">
+              <Archive size={24} strokeWidth={1.5} />
+              <p>{t('archive.emptyMessage')}</p>
+            </div>
+          ) : (
+            <>
+              <ul className="link-list">
+                {listed.shown.map((page) => {
+                  const path = pathOf(state, page.id);
+                  return (
+                    <li key={page.id} className="trash-row">
+                      <button type="button" className="link-row" onClick={() => openPage(page.id)}>
+                        <span className="tree-icon">
+                          <PageIcon page={page} />
+                        </span>
+                        <span className="link-row-title">
+                          {displayTitle(page)}
+                          {path && <span className="link-row-path">{t('trash.inPath', { path })}</span>}
+                        </span>
+                        <span className="link-row-meta">
+                          {t('archive.archivedAt', { time: relativeTime(page.archivedAt ?? 0) })}
+                        </span>
+                      </button>
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="button small"
+                          onClick={() => setArchived(page.id, false)}
+                        >
+                          <ArchiveRestore size={14} /> {t('pageMenu.unarchive')}
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {listed.more}
+            </>
           )}
         </div>
       </div>
