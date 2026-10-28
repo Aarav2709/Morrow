@@ -340,7 +340,7 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
     const node: DocNode = {
       type: 'details',
       attrs: { open: false },
-      content: [{ type: 'detailsSummary', content: title ? [{ type: 'text', text: title }] : [] }, body],
+      content: [{ type: 'detailsSummary', content: summaryContent(title, options) }, body],
     };
     b.push(node);
     const after = html.slice(summary ? summary.index + summary[0].length : details[0].length);
@@ -377,6 +377,19 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
   } else if (/^<\/aside>/i.test(html)) {
     if (b.top().type === 'callout') b.close();
   } else if (html) b.push({ type: 'rawBlock', attrs: { text: source.replace(/\n+$/, '') } });
+}
+
+// a toggle's title is written as markdown, so links and bold in it come back as they were. it only holds
+// text, anything else in it, like a [[link]], is kept as its words
+function summaryContent(title: string, options: ParseOptions): DocNode[] {
+  if (!title) return [];
+  const tokens = md.parseInline(title, {})[0]?.children ?? [];
+  const nodes = inlineNodes(tokens, options).map((child): DocNode => {
+    if (child.type === 'text') return child;
+    const text = child.type === 'hardBreak' || child.type === 'softBreak' ? ' ' : inlineText(child);
+    return { type: 'text', text, ...(child.marks?.length ? { marks: child.marks } : {}) };
+  });
+  return mergeText(nodes.filter((child) => child.text));
 }
 
 // first level one heading becomes the page title

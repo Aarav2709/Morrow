@@ -77,6 +77,45 @@ describe('markdown import', () => {
     expect(doc.content![7]!.attrs?.language).toBe('ts');
   });
 
+  it('keeps links and bold in a toggle title through a save and load', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'details',
+          attrs: { open: false },
+          content: [
+            {
+              type: 'detailsSummary',
+              content: [
+                text('See '),
+                {
+                  type: 'text',
+                  text: 'the docs',
+                  marks: [{ type: 'link', attrs: { href: 'https://example.org/a?b=1&c=2' } }],
+                },
+                text(' '),
+                text('now', ['bold']),
+              ],
+            },
+            { type: 'detailsContent', content: [p(text('Inside'))] },
+          ],
+        },
+      ],
+    };
+    const summary = markdownToDoc(docToMarkdown(doc)).content![0]!.content![0]!;
+    expect(summary.content).toEqual([
+      text('See '),
+      {
+        type: 'text',
+        text: 'the docs',
+        marks: [{ type: 'link', attrs: { href: 'https://example.org/a?b=1&c=2' } }],
+      },
+      text(' '),
+      text('now', ['bold']),
+    ]);
+  });
+
   it('keeps a callout icon, or no icon, in its obsidian metadata', () => {
     const callout = (attrs: Record<string, unknown>): DocNode => ({
       type: 'doc',
