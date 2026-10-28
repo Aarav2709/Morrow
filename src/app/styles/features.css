@@ -1316,7 +1316,8 @@ td:hover .prop-empty,
   outline: none;
   cursor: text;
 }
-.canvas-page {
+/* the card's text only, the card itself carries the same class and keeps its edges and handles */
+.canvas-node > .canvas-page {
   padding: 12px 14px;
   /* the page runs on for as far as the card is stretched, and fades out where the card ends */
   mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent);
