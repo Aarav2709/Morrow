@@ -50,11 +50,89 @@ export interface ImportedFile {
   fields: Partial<PageMeta>;
 }
 
+// notion's markdown keeps its own blocks as tags, <details>, <callout>, <columns>, <table_of_contents/> and
+// <empty-block/>, with what is inside them indented by a tab, and block colours as {color="…"} after a line.
+// they become the markdown morrow reads: the tabs come off, callouts become asides with their emoji, a
+// heading marked {toggle="true"} becomes a toggle heading over the lines indented under it
+const NOTION_MARKS = /<(details|callout|columns|table_of_contents|empty-block)\b|\{(color|toggle)="/;
+const ATTRIBUTES = /\s*\{(?:\s*[a-z-]+="[^"]*")+\s*\}\s*$/i;
+
+export function fromNotionMarkdown(text: string): string {
+  if (!NOTION_MARKS.test(text)) return text;
+  const out: string[] = [];
+  // open containers: tags whose insides are indented one more tab, and toggle headings, which close
+  // when a line is no deeper than the heading was
+  const open: Array<{ kind: 'tag' } | { kind: 'heading'; tabs: number }> = [];
+  let icon: string | null = null;
+  for (const raw of text.replace(/\r\n?/g, '\n').split('\n')) {
+    const tabs = /^\t*/.exec(raw)![0].length;
+    // a toggle heading ends at the first line that is not indented under it
+    while (raw.trim()) {
+      const last = open[open.length - 1];
+      if (last?.kind !== 'heading' || tabs > last.tabs) break;
+      open.pop();
+      out.push('', '</details>', '');
+    }
+    let line = raw;
+    for (let i = 0; i < open.length && line.startsWith('\t'); i++) line = line.slice(1);
+    const body = line.trim();
+    const heading = /^(#{1,6})\s+(.*?)\s*\{[^}]*toggle="true"[^}]*\}\s*$/.exec(body);
+    if (heading) {
+      const level = Math.min(3, heading[1]!.length);
+      out.push('', '<details>', `<summary><h${level}>${heading[2]}</h${level}></summary>`, '');
+      open.push({ kind: 'heading', tabs });
+      continue;
+    }
+    const tag = /^<(\/?)(details|callout|columns|column)\b([^>]*)>/i.exec(body);
+    if (tag && !new RegExp(`</${tag[2]}>\\s*$`, 'i').test(body.slice(tag[0].length))) {
+      const closing = tag[1] === '/';
+      const name = tag[2]!.toLowerCase();
+      if (closing) open.pop();
+      else open.push({ kind: 'tag' });
+      if (name === 'details') out.push('', closing ? '</details>' : '<details>');
+      else if (name === 'callout') {
+        if (closing) out.push('', '</aside>', '');
+        else {
+          out.push('', '<aside>');
+          // the emoji goes in front of the first line, where the aside reads it from
+          const emoji = /icon="([^"]+)"/.exec(tag[3] ?? '')?.[1] ?? null;
+          icon = emoji && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : null;
+        }
+      } else
+        out.push(
+          '',
+          closing ? '</div>' : name === 'columns' ? '<div data-columns>' : '<div data-column>',
+          '',
+        );
+      // a summary written on the same line as its tag
+      const after = body.slice(tag[0].length).trim();
+      if (after) out.push(after);
+      continue;
+    }
+    if (/^<table_of_contents\b[^>]*\/?>(<\/table_of_contents>)?$/i.test(body)) {
+      out.push('', '<!-- toc -->', '');
+      continue;
+    }
+    if (/^<empty-block\s*\/?>$/i.test(body)) {
+      out.push('', '<br>', '');
+      continue;
+    }
+    line = line.replace(ATTRIBUTES, '').replace(/<\/?span\b[^>]*>/gi, '');
+    if (icon && line.trim()) {
+      line = `${icon} ${line.trimStart()}`;
+      icon = null;
+    }
+    out.push(line);
+  }
+  for (const left of open.reverse()) if (left.kind === 'heading') out.push('', '</details>');
+  return out.join('\n');
+}
+
 // an imported note's frontmatter becomes its title, icon, tags and properties rather than text on the page
 export function readImportedFile(text: string, fallbackTitle: string, options: ParseOptions): ImportedFile {
   const read = readPageText(text);
   // frontmatter that is not valid yaml stays on the page as text, so nothing is lost
-  const doc = markdownToDoc(read.error ? text : read.body, options);
+  const doc = markdownToDoc(fromNotionMarkdown(read.error ? text : read.body), options);
   const first = doc.content?.[0];
   const heading =
     first?.type === 'heading' && first.attrs?.level === 1 ? inlineText(first).trim() || null : null;

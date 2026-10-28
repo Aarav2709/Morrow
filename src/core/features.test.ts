@@ -4,6 +4,7 @@ import { applyCommand } from './commands';
 import type { Command } from './commands';
 import { fileIdsInDoc } from './doc';
 import { MAX_SNAPSHOTS_PER_PAGE, snapshotDue, snapshotsToPrune, SNAPSHOT_INTERVAL_MS } from './history';
+import { inlineText } from './doc';
 import { parseCsv, planArchiveImport, readImportedFile } from './importer';
 import { markdownToDoc } from './markdown/parse';
 import { docToMarkdown } from './markdown/serialize';
@@ -114,6 +115,51 @@ describe('notion and folder imports', () => {
       expect(JSON.stringify(callout)).not.toContain('img');
       expect(JSON.stringify(callout)).toContain('Read this');
     }
+  });
+
+  it('reads notion’s own blocks: toggles, toggle headings, callouts, to-dos and its table of contents', () => {
+    const notion = [
+      '<table_of_contents color="gray"/>',
+      '- [ ] Buy milk {color="red"}',
+      '- [x] Call mum',
+      '<details color="blue">',
+      '<summary>Packing list</summary>',
+      '\t- [ ] Socks',
+      '\t- Passport',
+      '</details>',
+      '## Week one {toggle="true" color="gray"}',
+      '\tMonday plans',
+      '\t',
+      '\t- [ ] Train',
+      'After the toggle',
+      '<callout icon="💡" color="yellow_bg">',
+      '\tWater early',
+      '</callout>',
+      '<empty-block/>',
+      'End',
+    ].join('\n');
+    const { doc } = readImportedFile(notion, 'Trip', {});
+    const types = doc.content!.map((node) => node.type);
+    expect(types).toEqual([
+      'tableOfContents',
+      'taskList',
+      'details',
+      'details',
+      'paragraph',
+      'callout',
+      'paragraph',
+      'paragraph',
+    ]);
+    expect(doc.content![1]!.content!.map((item) => item.attrs?.checked)).toEqual([false, true]);
+    expect(inlineText(doc.content![1]!.content![0]!.content![0]!)).toBe('Buy milk');
+    const toggle = doc.content![2]!;
+    expect(inlineText(toggle.content![0]!)).toBe('Packing list');
+    expect(toggle.content![1]!.content!.map((node) => node.type)).toEqual(['taskList', 'bulletList']);
+    const week = doc.content![3]!;
+    expect(week.content![0]!.attrs).toEqual({ level: 2 });
+    expect(week.content![1]!.content!.map((node) => node.type)).toEqual(['paragraph', 'taskList']);
+    expect(doc.content![5]!.attrs?.icon).toBe('💡');
+    expect(inlineText(doc.content![5]!)).toBe('Water early');
   });
 
   it('turns notion’s table of contents back into one', () => {
