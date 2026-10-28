@@ -409,6 +409,17 @@ export function LinkMenu({ editor }: { editor: Editor }) {
               {href.replace(/^https?:\/\//, '').replace(/^#\/page\/.*/, t('editor.morrowPage'))}
             </button>
             <ToolButton label={t('editor.openLink')} icon={ExternalLink} onClick={() => openHref(href)} />
+            <ToolButton
+              label={t('editor.copyLink')}
+              icon={Copy}
+              onClick={() =>
+                void copyText(href).then((copied) =>
+                  copied
+                    ? toast(t('editor.linkCopied'), { durationMs: 2000 })
+                    : toast(t('editor.couldNotCopy'), { tone: 'error' }),
+                )
+              }
+            />
             <ToolButton label={t('editor.editLink')} icon={Pencil} onClick={() => setEditing(true)} />
             <ToolButton
               label={t('editor.removeLink')}

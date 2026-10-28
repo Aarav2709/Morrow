@@ -591,6 +591,8 @@ export const es: TranslationSchema = {
     highlight: 'Resaltado',
     colour: 'Color',
     link: 'Enlace',
+    copyLink: 'Copiar enlace',
+    linkCopied: 'Enlace copiado.',
     openLink: 'Abrir enlace',
     editLink: 'Editar enlace',
     removeLink: 'Quitar enlace',

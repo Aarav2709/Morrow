@@ -585,6 +585,8 @@ export const en = {
     highlight: 'Highlight',
     colour: 'Colour',
     link: 'Link',
+    copyLink: 'Copy link',
+    linkCopied: 'Link copied.',
     openLink: 'Open link',
     editLink: 'Edit link',
     removeLink: 'Remove link',
