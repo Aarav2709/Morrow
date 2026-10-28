@@ -1538,7 +1538,10 @@ td:hover .prop-empty,
 }
 .outline-fold {
   position: absolute;
-  top: 5px;
+  /* centred on its row whatever the row's height, the arrow turns in place */
+  top: 0;
+  bottom: 0;
+  margin-block: auto;
   left: calc((var(--level) - 1) * 12px + 4px);
   display: grid;
   place-items: center;
