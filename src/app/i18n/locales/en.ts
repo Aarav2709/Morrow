@@ -138,6 +138,10 @@ export const en = {
         last: 'Where I left off',
       },
     },
+    sidebar: {
+      title: 'Sidebar',
+      show: 'Show {name}',
+    },
     appearance: {
       theme: 'Theme',
       themes: {

@@ -7,6 +7,9 @@ export type WritingFont = 'serif' | 'sans' | 'mono';
 export type PageWidth = 'comfortable' | 'wide';
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
+// the views the sidebar lists, each one can be left out
+export const SIDEBAR_MODULES = ['tasks', 'tags', 'review', 'graph'] as const;
+export type SidebarModule = (typeof SIDEBAR_MODULES)[number];
 // accent colours, each tuned for light and dark in features.css
 export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
 export type Accent = (typeof ACCENTS)[number];
@@ -44,6 +47,8 @@ export interface Preferences {
   mcpEnabled: boolean;
   // the language last picked for a code block, a new block starts in it. empty for plain text
   codeLanguage: string;
+  // views left out of the sidebar, they still open from search and their shortcuts
+  hiddenModules: SidebarModule[];
 }
 
 const KEY = 'morrow.preferences';
@@ -77,6 +82,7 @@ const defaults: Preferences = {
   checkUpdates: false,
   mcpEnabled: false,
   codeLanguage: '',
+  hiddenModules: [],
 };
 
 // view preferences only, losing them never loses work
@@ -131,6 +137,9 @@ function read(): Preferences {
         typeof parsed.codeLanguage === 'string' && /^[\w#+.-]{0,40}$/.test(parsed.codeLanguage)
           ? parsed.codeLanguage
           : '',
+      hiddenModules: Array.isArray(parsed.hiddenModules)
+        ? SIDEBAR_MODULES.filter((module) => parsed.hiddenModules!.includes(module))
+        : [],
     };
   } catch {
     return defaults;

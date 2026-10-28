@@ -142,6 +142,10 @@ export const pt: TranslationSchema = {
         last: 'Onde parei',
       },
     },
+    sidebar: {
+      title: 'Barra lateral',
+      show: 'Mostrar {name}',
+    },
     appearance: {
       theme: 'Tema',
       themes: {

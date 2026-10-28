@@ -18,7 +18,7 @@ import {
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
-import { ACCENTS, setPreferences, usePreferences } from '../platform/preferences';
+import { ACCENTS, SIDEBAR_MODULES, setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -259,8 +259,37 @@ function AppearanceSettings() {
           />
         </SettingRow>
       </SettingsGroup>
+      <SidebarSettings />
       <CustomCss />
     </>
+  );
+}
+
+// which views the sidebar lists
+function SidebarSettings() {
+  const { t } = useTranslation();
+  const prefs = usePreferences();
+  return (
+    <SettingsGroup title={t('settings.sidebar.title')}>
+      {SIDEBAR_MODULES.map((module) => {
+        const label = t(`sidebar.${module}` as TranslationKey);
+        return (
+          <SettingRow key={module} label={t('settings.sidebar.show', { name: label })}>
+            <Switch
+              label={t('settings.sidebar.show', { name: label })}
+              checked={!prefs.hiddenModules.includes(module)}
+              onChange={(show) =>
+                setPreferences({
+                  hiddenModules: show
+                    ? prefs.hiddenModules.filter((item) => item !== module)
+                    : [...prefs.hiddenModules, module],
+                })
+              }
+            />
+          </SettingRow>
+        );
+      })}
+    </SettingsGroup>
   );
 }
 

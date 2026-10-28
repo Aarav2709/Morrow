@@ -142,6 +142,10 @@ export const es: TranslationSchema = {
         last: 'Donde lo dejé',
       },
     },
+    sidebar: {
+      title: 'Barra lateral',
+      show: 'Mostrar {name}',
+    },
     appearance: {
       theme: 'Tema',
       themes: {

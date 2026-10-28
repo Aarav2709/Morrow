@@ -50,6 +50,7 @@ import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
 import { createPage, expandPage, importMarkdown, movePage, openToday, trashPage } from '../operations';
 import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
+import type { SidebarModule } from '../platform/preferences';
 import { navigate, openPage, useActiveRoute } from '../router';
 import { openDialog, setUi, useUi } from '../ui';
 import { run, useWorkspace } from '../workspace';
@@ -180,6 +181,8 @@ export function Sidebar() {
     window.addEventListener('pointerup', onUp);
   };
 
+  const shown = (module: SidebarModule) => !prefs.hiddenModules.includes(module);
+
   const go = (fn: () => void) => () => {
     fn();
     setUi({ mobileSidebar: false });
@@ -248,33 +251,41 @@ export function Sidebar() {
           active={route.name === 'home'}
           onClick={go(() => navigate({ name: 'home' }))}
         />
-        <NavItem
-          icon={CheckSquare}
-          label={t('sidebar.tasks')}
-          active={route.name === 'tasks'}
-          count={openTasks}
-          onClick={go(() => navigate({ name: 'tasks' }))}
-        />
-        <NavItem
-          icon={Hash}
-          label={t('sidebar.tags')}
-          active={route.name === 'tags' || route.name === 'tag'}
-          count={tagCount}
-          onClick={go(() => navigate({ name: 'tags' }))}
-        />
-        <NavItem
-          icon={GraduationCap}
-          label={t('sidebar.review')}
-          active={route.name === 'review'}
-          count={dueCount}
-          onClick={go(() => navigate({ name: 'review' }))}
-        />
-        <NavItem
-          icon={Network}
-          label={t('sidebar.graph')}
-          active={route.name === 'graph'}
-          onClick={go(() => navigate({ name: 'graph', focus: null }))}
-        />
+        {shown('tasks') && (
+          <NavItem
+            icon={CheckSquare}
+            label={t('sidebar.tasks')}
+            active={route.name === 'tasks'}
+            count={openTasks}
+            onClick={go(() => navigate({ name: 'tasks' }))}
+          />
+        )}
+        {shown('tags') && (
+          <NavItem
+            icon={Hash}
+            label={t('sidebar.tags')}
+            active={route.name === 'tags' || route.name === 'tag'}
+            count={tagCount}
+            onClick={go(() => navigate({ name: 'tags' }))}
+          />
+        )}
+        {shown('review') && (
+          <NavItem
+            icon={GraduationCap}
+            label={t('sidebar.review')}
+            active={route.name === 'review'}
+            count={dueCount}
+            onClick={go(() => navigate({ name: 'review' }))}
+          />
+        )}
+        {shown('graph') && (
+          <NavItem
+            icon={Network}
+            label={t('sidebar.graph')}
+            active={route.name === 'graph'}
+            onClick={go(() => navigate({ name: 'graph', focus: null }))}
+          />
+        )}
         {prefs.assistant && desktop?.assistant && (
           <NavItem
             icon={Sparkles}
