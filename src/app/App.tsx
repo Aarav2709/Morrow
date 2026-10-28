@@ -13,7 +13,7 @@ import { SearchView } from './components/SearchView';
 import { Sidebar } from './components/Sidebar';
 import { HomeView } from './components/Home';
 import { ArchiveView, TasksView, TrashView } from './components/Views';
-import { commitEditors, undoRedo } from './editor/commits';
+import { commitEditors, ownsUndo, undoRedo } from './editor/commits';
 import { ensureToday, writeAutoBackup } from './operations';
 import { startAutoSync, syncWith } from './sync';
 import { startUpdateChecks } from './updates';
@@ -33,7 +33,7 @@ import {
   useTabs,
 } from './tabs';
 import type { PaneId } from './tabs';
-import { getSession } from './workspace';
+import { clearPropertyHistory, getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
 
@@ -72,6 +72,14 @@ function useGlobalShortcuts() {
       if (event.key === 'Escape' && ui.focusMode && !ui.palette) {
         setUi({ focusMode: false });
         return;
+      }
+      if (!ownsUndo(event.target)) {
+        const redo = matchesShortcut(event, 'Mod+Shift+Z') || matchesShortcut(event, 'Mod+Y');
+        if (redo || matchesShortcut(event, 'Mod+Z')) {
+          event.preventDefault();
+          undoRedo(redo ? 'redo' : 'undo');
+          return;
+        }
       }
       // ctrl or cmd and a number picks a tab, nine is always the last one
       const digit = /^Digit([1-9])$/.exec(event.code);
@@ -354,6 +362,8 @@ export function App() {
 
   useEffect(() => {
     setUi({ mobileSidebar: false, sidebarPeek: false });
+    // undoing a property change on a page no longer in view would happen out of sight
+    clearPropertyHistory();
   }, [route]);
   useSidebarPeek(!prefs.sidebarOpen && prefs.sidebarPeek && ui.sidebarPeek);
 

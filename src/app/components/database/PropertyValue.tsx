@@ -4,7 +4,7 @@ import { formatValue, formulaResult } from '../../../core/database';
 import { displayTitle } from '../../../core/model';
 import { findPagesByTitle, resolveLinkTarget } from '../../../core/search';
 import { openPage } from '../../router';
-import { useWorkspace } from '../../workspace';
+import { propertyChangeCount, stepProperties, useWorkspace } from '../../workspace';
 import { PageIcon } from '../Sidebar';
 import { PROP_TYPES } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
@@ -302,11 +302,17 @@ export function DraftInput({
   // nothing of values set from outside the field and can empty it instead
   const undone = useRef<Array<{ before: string; after: string }>>([]);
   const redone = useRef<Array<{ before: string; after: string }>>([]);
+  // enter and escape already dealt with the draft, the blur they cause still sees the old one
+  const settled = useRef(false);
   const commit = () => {
     if (draft !== null && draft !== value) {
-      undone.current.push({ before: value, after: draft });
-      redone.current = [];
+      const count = propertyChangeCount();
       onCommit(draft);
+      // property changes join the shared history, anything else, such as a row's title, is kept here
+      if (propertyChangeCount() === count) {
+        undone.current.push({ before: value, after: draft });
+        redone.current = [];
+      }
     }
     setDraft(null);
     onDone?.();
@@ -314,9 +320,14 @@ export function DraftInput({
   const step = (direction: 'undo' | 'redo') => {
     // typing that is not saved yet goes first
     if (direction === 'undo' && draft !== null && draft !== value) return setDraft(null);
+    if (!editable) return;
     const [from, to] = direction === 'undo' ? [undone, redone] : [redone, undone];
     const change = from.current.pop();
-    if (!change || !editable) return;
+    if (!change) {
+      setDraft(null);
+      stepProperties(direction);
+      return;
+    }
     to.current.push(change);
     setDraft(null);
     onCommit(direction === 'undo' ? change.before : change.after);
@@ -348,15 +359,21 @@ export function DraftInput({
       value={draft ?? value}
       readOnly={!editable}
       onChange={(event) => setDraft(event.target.value)}
-      onBlur={commit}
+      onBlur={() => {
+        if (!settled.current) return commit();
+        settled.current = false;
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
           commit();
+          settled.current = true;
           event.currentTarget.blur();
         }
         if (event.key === 'Escape') {
           setDraft(null);
+          onDone?.();
+          settled.current = true;
           event.currentTarget.blur();
         }
         const key = event.key.toLowerCase();

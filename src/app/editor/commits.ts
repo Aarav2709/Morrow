@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { isMac } from '../platform/desktop';
+import { stepProperties } from '../workspace';
 
 // open editors register here so exports and shutdown can save the latest keystrokes first
 const pending = new Set<() => void>();
@@ -41,5 +42,17 @@ export function undoRedo(direction: 'undo' | 'redo'): void {
   if (focused && !focused.isDestroyed && focused.view.dom.contains(active)) {
     if (direction === 'undo') focused.commands.undo();
     else focused.commands.redo();
+    return;
   }
+  // anywhere else, such as a property's menu, it steps back through property changes
+  stepProperties(direction);
+}
+
+// true when ctrl+z belongs to whatever has focus, text being typed, the page editor or a canvas
+export function ownsUndo(target: EventTarget | null): boolean {
+  if (target instanceof HTMLInputElement) return !['checkbox', 'radio', 'button'].includes(target.type);
+  if (target instanceof HTMLTextAreaElement) return true;
+  return (
+    target instanceof HTMLElement && (target.isContentEditable || target.closest('.canvas-view') !== null)
+  );
 }
