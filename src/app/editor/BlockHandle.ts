@@ -115,6 +115,9 @@ function innerBlock(element: HTMLElement, y: number): HTMLElement {
   return element;
 }
 
+const BOXED = '.callout, .code-block';
+const BOXED_INSET = 6;
+
 // the middle of a block's first line of text, which sits lower than its top in a callout, quote or
 // code block with padding around it. null for a block with no text, such as a picture
 function firstTextMiddle(block: HTMLElement): number | null {
@@ -181,7 +184,11 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
         const hostRect = host.getBoundingClientRect();
         const rect = target.getBoundingClientRect();
         const lineHeight = parseFloat(getComputedStyle(target).lineHeight) || 24;
-        const middle = firstTextMiddle(target) ?? rect.top + Math.min(rect.height, lineHeight) / 2;
+        // a boxed block, a callout or code, has its handle at the top of the box, where the block begins,
+        // whatever the text inside it starts with
+        const middle = target.matches(BOXED)
+          ? rect.top + BOXED_INSET + 11
+          : (firstTextMiddle(target) ?? rect.top + Math.min(rect.height, lineHeight) / 2);
         handle.style.top = `${middle - hostRect.top - 11}px`;
         // a nested block keeps its handle beside it, left of the bullet for a list item
         const anchor = target.tagName === 'LI' ? (target.parentElement ?? target) : target;
