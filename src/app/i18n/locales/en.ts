@@ -142,6 +142,9 @@ export const en = {
     sidebar: {
       title: 'Sidebar',
       show: 'Show {name}',
+      peek: 'Show when pointing at the left edge',
+      peekHelp:
+        'With the sidebar hidden, it slides in while the pointer rests at the left edge of the window.',
     },
     appearance: {
       theme: 'Theme',

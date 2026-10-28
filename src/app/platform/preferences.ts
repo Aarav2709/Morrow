@@ -25,6 +25,8 @@ export interface Preferences {
   font: WritingFont;
   width: PageWidth;
   sidebarOpen: boolean;
+  // a hidden sidebar slides in while the pointer is at the window's left edge
+  sidebarPeek: boolean;
   sidebarWidth: number;
   expanded: string[];
   accent: Accent;
@@ -68,6 +70,7 @@ const defaults: Preferences = {
   font: 'sans',
   width: 'comfortable',
   sidebarOpen: true,
+  sidebarPeek: false,
   sidebarWidth: 264,
   expanded: [],
   accent: 'ocean',
@@ -112,6 +115,7 @@ function read(): Preferences {
       font: ['serif', 'sans', 'mono'].includes(parsed.font as string) ? parsed.font! : defaults.font,
       width: parsed.width === 'wide' ? 'wide' : 'comfortable',
       sidebarOpen: parsed.sidebarOpen !== false,
+      sidebarPeek: parsed.sidebarPeek === true,
       accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
       colorful: parsed.colorful !== false,
       name: typeof parsed.name === 'string' ? parsed.name.trim().slice(0, 60) : '',

@@ -297,6 +297,27 @@ function SplitResizer() {
 }
 
 // the first view after opening, once per window
+// the peeking sidebar goes once the pointer moves well clear of it, but not while one of its menus is open
+function useSidebarPeek(peeking: boolean) {
+  useEffect(() => {
+    if (!peeking) return;
+    const onMove = (event: PointerEvent) => {
+      const sidebar = document.querySelector('.sidebar');
+      if (!sidebar || document.querySelector('.floating-layer')) return;
+      if (event.clientX > sidebar.getBoundingClientRect().right + 24) setUi({ sidebarPeek: false });
+    };
+    const onLeave = () => {
+      if (!document.querySelector('.floating-layer')) setUi({ sidebarPeek: false });
+    };
+    window.addEventListener('pointermove', onMove);
+    document.documentElement.addEventListener('pointerleave', onLeave);
+    return () => {
+      window.removeEventListener('pointermove', onMove);
+      document.documentElement.removeEventListener('pointerleave', onLeave);
+    };
+  }, [peeking]);
+}
+
 let started = false;
 function useStartPage() {
   useEffect(() => {
@@ -330,17 +351,25 @@ export function App() {
   useLifecycle();
 
   useEffect(() => {
-    setUi({ mobileSidebar: false });
+    setUi({ mobileSidebar: false, sidebarPeek: false });
   }, [route]);
+  useSidebarPeek(!prefs.sidebarOpen && prefs.sidebarPeek && ui.sidebarPeek);
 
   const side = tabs.tabs.find((tab) => tab.id === tabs.active)?.side ?? null;
   const sideRoute = useMemo(() => (side ? parseRoute(side.hash) : null), [side]);
 
   return (
     <div
-      className={`app${prefs.sidebarOpen ? '' : ' sidebar-collapsed'}${prefs.assistant && prefs.assistantOpen ? ' has-assistant' : ''}${ui.mobileSidebar ? ' mobile-sidebar-open' : ''}${ui.focusMode ? ' focus-mode' : ''}`}
+      className={`app${prefs.sidebarOpen ? '' : ' sidebar-collapsed'}${!prefs.sidebarOpen && prefs.sidebarPeek && ui.sidebarPeek ? ' sidebar-peeking' : ''}${prefs.assistant && prefs.assistantOpen ? ' has-assistant' : ''}${ui.mobileSidebar ? ' mobile-sidebar-open' : ''}${ui.focusMode ? ' focus-mode' : ''}`}
     >
       <Sidebar />
+      {!prefs.sidebarOpen && prefs.sidebarPeek && (
+        <div
+          className="sidebar-edge"
+          aria-hidden="true"
+          onPointerEnter={() => setUi({ sidebarPeek: true })}
+        />
+      )}
       <div className="scrim" aria-hidden="true" onClick={() => setUi({ mobileSidebar: false })} />
       <main className="main">
         <TabBar />

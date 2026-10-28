@@ -146,6 +146,9 @@ export const pt: TranslationSchema = {
     sidebar: {
       title: 'Barra lateral',
       show: 'Mostrar {name}',
+      peek: 'Mostrar ao apontar para a borda esquerda',
+      peekHelp:
+        'Com a barra lateral oculta, ela aparece enquanto o ponteiro está na borda esquerda da janela.',
     },
     appearance: {
       theme: 'Tema',

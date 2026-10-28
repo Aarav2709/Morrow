@@ -293,6 +293,13 @@ function SidebarSettings() {
           </SettingRow>
         );
       })}
+      <SettingRow label={t('settings.sidebar.peek')} help={t('settings.sidebar.peekHelp')}>
+        <Switch
+          label={t('settings.sidebar.peek')}
+          checked={prefs.sidebarPeek}
+          onChange={(sidebarPeek) => setPreferences({ sidebarPeek })}
+        />
+      </SettingRow>
     </SettingsGroup>
   );
 }

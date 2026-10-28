@@ -54,6 +54,8 @@ export interface UiState {
   dialog: Dialog | null;
   toasts: Toast[];
   mobileSidebar: boolean;
+  // the hidden sidebar shown over the page while the pointer is on it
+  sidebarPeek: boolean;
   renaming: PageId | null;
   // page whose title should take focus once it opens
   focusTitle: PageId | null;
@@ -68,6 +70,7 @@ let state: UiState = {
   dialog: null,
   toasts: [],
   mobileSidebar: false,
+  sidebarPeek: false,
   renaming: null,
   focusTitle: null,
   focusMode: false,

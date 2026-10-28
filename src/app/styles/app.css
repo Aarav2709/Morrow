@@ -255,6 +255,35 @@ kbd,
   display: none;
 }
 
+/* the strip along the left edge that brings a hidden sidebar back while the pointer is on it */
+.sidebar-edge {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 6px;
+  z-index: 30;
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-collapsed.sidebar-peeking .sidebar {
+  display: flex;
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 35;
+  box-shadow: var(--shadow-dialog);
+  animation: sidebar-peek 160ms var(--ease);
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-peeking .sidebar-resizer {
+  display: none;
+}
+
+@keyframes sidebar-peek {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
 .sidebar-header {
   display: flex;
   align-items: center;
@@ -1726,6 +1755,7 @@ input[type='checkbox']:checked::after {
     background: var(--scrim);
   }
 
+  .sidebar-edge,
   .sidebar-resizer {
     display: none;
   }
