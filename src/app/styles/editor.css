@@ -731,6 +731,31 @@
   font-weight: 600;
 }
 
+/* toggle headings, sized like the headings they stand for, with the arrow centred on the larger line */
+.prose .toggle summary[data-level] {
+  font-weight: 650;
+  line-height: 1.28;
+  letter-spacing: -0.012em;
+}
+.prose .toggle summary[data-level='1'] {
+  font-size: 1.72em;
+}
+.prose .toggle summary[data-level='2'] {
+  font-size: 1.36em;
+}
+.prose .toggle summary[data-level='3'] {
+  font-size: 1.13em;
+}
+.prose .toggle:has(> div > summary[data-level='1']) > button {
+  height: 2.2em;
+}
+.prose .toggle:has(> div > summary[data-level='2']) > button {
+  height: 1.74em;
+}
+.prose .toggle:has(> div > summary[data-level]) {
+  margin-top: 1em;
+}
+
 .prose .toggle summary::-webkit-details-marker {
   display: none;
 }

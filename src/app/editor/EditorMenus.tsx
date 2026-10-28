@@ -620,7 +620,7 @@ function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
           if (!details || !detailsSummary || !detailsContent || !paragraph) return false;
           const start = $from.before();
           const toggle = details.create({ open: true }, [
-            detailsSummary.create(null, line.content),
+            detailsSummary.create(target.level ? { level: target.level } : null, line.content),
             detailsContent.create(null, paragraph.create()),
           ]);
           tr.replaceWith(start, start + line.nodeSize, toggle);
@@ -659,6 +659,11 @@ export function BlockMenu({
     { label: t('slash.items.ordered.title'), icon: ListOrdered, onSelect: turn({ kind: 'orderedList' }) },
     { label: t('slash.items.task.title'), icon: ListChecks, onSelect: turn({ kind: 'taskList' }) },
     { label: t('slash.items.toggle.title'), icon: ChevronRight, onSelect: turn({ kind: 'toggle' }) },
+    ...([1, 2, 3] as const).map((level) => ({
+      label: t(`slash.items.toggleH${level}.title`),
+      icon: ChevronRight,
+      onSelect: turn({ kind: 'toggle', level }),
+    })),
     { label: t('slash.items.quote.title'), icon: Quote, onSelect: turn({ kind: 'blockquote' }) },
     { label: t('slash.items.code.title'), icon: Code2, onSelect: turn({ kind: 'codeBlock' }) },
     { separator: true },

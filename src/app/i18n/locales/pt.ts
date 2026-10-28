@@ -729,6 +729,21 @@ export const pt: TranslationSchema = {
         description: 'Conteúdo recolhível',
         keywords: 'alternador detalhes recolher dobrar acordeao toggle',
       },
+      toggleH1: {
+        title: 'Título recolhível 1',
+        description: 'Um título que recolhe a sua seção',
+        keywords: 'recolhível título recolher seção h1',
+      },
+      toggleH2: {
+        title: 'Título recolhível 2',
+        description: 'Um título que recolhe a sua seção',
+        keywords: 'recolhível título recolher seção h2',
+      },
+      toggleH3: {
+        title: 'Título recolhível 3',
+        description: 'Um título que recolhe a sua seção',
+        keywords: 'recolhível título recolher seção h3',
+      },
       image: {
         title: 'Imagem',
         description: 'Foto do seu computador',

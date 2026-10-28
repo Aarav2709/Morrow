@@ -8,7 +8,9 @@ import { getPreferences } from '../platform/preferences';
 export type TurnTarget =
   | { kind: 'paragraph' }
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6 }
-  | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' | 'toggle' };
+  | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' }
+  // a toggle, with a heading for its title when it has a level
+  | { kind: 'toggle'; level?: 1 | 2 | 3 };
 
 const LIST_ITEMS = new Set(['listItem', 'taskItem']);
 const LISTS = new Set(['bulletList', 'orderedList', 'taskList']);
@@ -70,7 +72,10 @@ function convertItem(schema: Schema, item: PMNode, target: TurnTarget): PMNode[]
       if (!details || !detailsSummary || !detailsContent || !paragraph) return null;
       return [
         details.create({ open: true }, [
-          detailsSummary.create(null, lineContent(detailsSummary, first)),
+          detailsSummary.create(
+            target.level ? { level: target.level } : null,
+            lineContent(detailsSummary, first),
+          ),
           detailsContent.create(null, rest.size ? rest : paragraph.create()),
         ]),
       ];

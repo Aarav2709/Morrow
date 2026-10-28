@@ -207,6 +207,29 @@ export const BLOCK_ITEMS: BlockItem[] = [
     keywords: 'details collapse fold accordion',
     run: (e, r) => turnItem(e, r, { kind: 'toggle' }) || chain(e, r).setDetails().run(),
   },
+  ...([1, 2, 3] as const).map((level) => ({
+    id: `toggleH${level}`,
+    title: `Toggle heading ${level}`,
+    description: 'A heading that folds its section away',
+    icon: ChevronRight,
+    keywords: `toggle heading h${level} collapse fold section`,
+    run: (e: Editor, r: Range) => {
+      if (turnItem(e, r, { kind: 'toggle', level })) return;
+      chain(e, r)
+        .setDetails()
+        .command(({ tr }) => {
+          // the title is the line the cursor is now on
+          const { $from } = tr.selection;
+          if ($from.parent.type.name !== 'detailsSummary') return false;
+          tr.setNodeMarkup($from.before(), undefined, { ...$from.parent.attrs, level });
+          // open, so enter after the title goes into the section
+          const details = $from.node(-1);
+          tr.setNodeMarkup($from.before(-1), undefined, { ...details.attrs, open: true });
+          return true;
+        })
+        .run();
+    },
+  })),
   {
     id: 'image',
     title: 'Image',
@@ -411,6 +434,9 @@ const SECTIONS: Array<[string, string[], TranslationKey]> = [
       'ordered',
       'task',
       'toggle',
+      'toggleH1',
+      'toggleH2',
+      'toggleH3',
       'quote',
       'callout',
       'divider',

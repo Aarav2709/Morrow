@@ -729,6 +729,21 @@ export const es: TranslationSchema = {
         description: 'Contenido que se pliega',
         keywords: 'desplegable detalles colapsar plegar acordeon toggle',
       },
+      toggleH1: {
+        title: 'Encabezado desplegable 1',
+        description: 'Un encabezado que pliega su sección',
+        keywords: 'desplegable encabezado plegar sección h1',
+      },
+      toggleH2: {
+        title: 'Encabezado desplegable 2',
+        description: 'Un encabezado que pliega su sección',
+        keywords: 'desplegable encabezado plegar sección h2',
+      },
+      toggleH3: {
+        title: 'Encabezado desplegable 3',
+        description: 'Un encabezado que pliega su sección',
+        keywords: 'desplegable encabezado plegar sección h3',
+      },
       image: {
         title: 'Imagen',
         description: 'Imagen desde tu ordenador',

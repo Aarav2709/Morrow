@@ -49,6 +49,23 @@ const BlockIds = Extension.create({
   },
 });
 
+// a toggle's title can be a heading, the way notion's toggle headings fold a whole section away. the level
+// lives on the title, so opening and closing the toggle never touches it
+const ToggleSummary = DetailsSummary.extend({
+  addAttributes() {
+    return {
+      level: {
+        default: null,
+        parseHTML: (element) => {
+          const level = Number(element.getAttribute('data-level'));
+          return level >= 1 && level <= 3 ? level : null;
+        },
+        renderHTML: (attributes) => (attributes.level ? { 'data-level': String(attributes.level) } : {}),
+      },
+    };
+  },
+});
+
 // inline code can be bold, italic, struck through or coloured like any other text, as it can in notion and
 // in markdown. tiptap's own code shuts every other mark out
 const InlineCode = Code.extend({ excludes: '' });
@@ -90,7 +107,10 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       includeChildren: false,
       placeholder: ({ node, editor }) => {
         if (node.type.name === 'heading') return t('editor.headingPlaceholder', { level: node.attrs.level });
-        if (node.type.name === 'detailsSummary') return t('editor.toggleTitlePlaceholder');
+        if (node.type.name === 'detailsSummary')
+          return node.attrs.level
+            ? t('editor.headingPlaceholder', { level: node.attrs.level })
+            : t('editor.toggleTitlePlaceholder');
         if (editor.isEmpty) return t('editor.placeholderEmpty');
         return t('editor.placeholder');
       },
@@ -118,7 +138,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     TableOfContents,
     DateMention.configure({ openDate: options.openDate, findPages: options.findPages }),
     Details.configure({ persist: true, HTMLAttributes: { class: 'toggle' } }),
-    DetailsSummary,
+    ToggleSummary,
     DetailsContent,
     FindReplace,
     BlockHandle.configure({ onMenu: options.onBlockMenu }),

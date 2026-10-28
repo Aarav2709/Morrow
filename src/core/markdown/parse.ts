@@ -3,7 +3,7 @@ import type { StateBlock, StateInline, Token } from 'markdown-it';
 import { BACKGROUND_HEX, calloutTone, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
-import { calloutIcon, HEADER_COLUMN } from './serialize';
+import { calloutIcon, HEADER_COLUMN, toggleLevel } from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -336,11 +336,20 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
   if (details) {
     const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/i.exec(html);
     const title = decodeEntities((summary?.[1] ?? '').replace(/<[^>]+>/g, '')).trim();
+    // <summary><h2>…</h2></summary> is a toggle heading
+    const level = toggleLevel(Number(/^\s*<h([1-3])\b/i.exec(summary?.[1] ?? '')?.[1]));
     const body: DocNode = { type: 'detailsContent', content: [] };
     const node: DocNode = {
       type: 'details',
       attrs: { open: false },
-      content: [{ type: 'detailsSummary', content: summaryContent(title, options) }, body],
+      content: [
+        {
+          type: 'detailsSummary',
+          ...(level ? { attrs: { level } } : {}),
+          content: summaryContent(title, options),
+        },
+        body,
+      ],
     };
     b.push(node);
     const after = html.slice(summary ? summary.index + summary[0].length : details[0].length);

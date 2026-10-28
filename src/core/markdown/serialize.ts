@@ -138,7 +138,10 @@ function block(node: DocNode, options: SerializeOptions): string | null {
     }
     case 'details': {
       const [summary, content] = node.content ?? [];
-      const title = summary ? escapeHtml(inline(summary.content ?? [], options)) : '';
+      const text = summary ? escapeHtml(inline(summary.content ?? [], options)) : '';
+      // a toggle heading wraps its title in a heading tag, which browsers and other apps show as one
+      const level = toggleLevel(summary?.attrs?.level);
+      const title = level ? `<h${level}>${text}</h${level}>` : text;
       const body = content ? blocks(content.content ?? [], options) : '';
       return `<details>
 <summary>${title}</summary>
@@ -201,6 +204,10 @@ export function calloutIcon(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const icon = value.trim();
   return icon && icon.length <= 16 && !/[|\]\n]/.test(icon) ? icon : null;
+}
+
+export function toggleLevel(value: unknown): 1 | 2 | 3 | null {
+  return value === 1 || value === 2 || value === 3 ? value : null;
 }
 
 export const HEADER_COLUMN = '<!-- header-column -->';

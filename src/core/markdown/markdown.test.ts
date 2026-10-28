@@ -77,6 +77,26 @@ describe('markdown import', () => {
     expect(doc.content![7]!.attrs?.language).toBe('ts');
   });
 
+  it('keeps a toggle heading through a save and load', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'details',
+          attrs: { open: false },
+          content: [
+            { type: 'detailsSummary', attrs: { level: 2 }, content: [text('Section')] },
+            { type: 'detailsContent', content: [p(text('Inside'))] },
+          ],
+        },
+      ],
+    };
+    const markdown = docToMarkdown(doc);
+    expect(markdown).toContain('<summary><h2>Section</h2></summary>');
+    const summary = markdownToDoc(markdown).content![0]!.content![0]!;
+    expect(summary).toEqual({ type: 'detailsSummary', attrs: { level: 2 }, content: [text('Section')] });
+  });
+
   it('keeps links and bold in a toggle title through a save and load', () => {
     const doc: DocNode = {
       type: 'doc',
