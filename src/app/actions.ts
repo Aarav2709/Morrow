@@ -314,6 +314,7 @@ export const ACTIONS: Action[] = [
     icon: CalendarDays,
     shortcut: 'Alt+D',
     keywords: 'daily journal',
+    enabled: () => !getPreferences().hiddenModules.includes('daily'),
     run: () => openToday(),
   },
   {

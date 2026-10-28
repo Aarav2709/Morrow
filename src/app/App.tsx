@@ -304,9 +304,9 @@ function useStartPage() {
     started = true;
     // a window opened at a particular place, or a brand new vault showing its guide, stays as it is
     if ((window.location.hash && window.location.hash !== '#/') || getSession().firstRun) return;
-    const start = getPreferences().startPage;
+    const { startPage: start, hiddenModules } = getPreferences();
     if (start === 'last') goBack('main');
-    else if (start === 'today') {
+    else if (start === 'today' && !hiddenModules.includes('daily')) {
       const id = ensureToday();
       if (id) navigate({ name: 'page', id, find: null }, { replace: true, pane: 'main' });
     }

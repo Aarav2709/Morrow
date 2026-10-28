@@ -169,9 +169,13 @@ function GeneralSettings() {
       >
         <Segmented<StartPage>
           label={t('settings.general.whenOpens')}
-          value={prefs.startPage}
+          value={
+            prefs.startPage === 'today' && prefs.hiddenModules.includes('daily') ? 'home' : prefs.startPage
+          }
           options={[
-            ['today', t('settings.general.startPages.today')],
+            ...(prefs.hiddenModules.includes('daily')
+              ? []
+              : [['today', t('settings.general.startPages.today')] as [StartPage, string]]),
             ['home', t('settings.general.startPages.home')],
             ['last', t('settings.general.startPages.last')],
           ]}

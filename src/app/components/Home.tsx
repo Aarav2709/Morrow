@@ -176,9 +176,11 @@ export function HomeView() {
               {greeting(now, t)}
               {prefs.name ? `, ${prefs.name}` : ''}.
             </h1>
-            <button type="button" className="button primary home-today" onClick={() => openToday()}>
-              <CalendarDays size={15} /> {t('home.todayNote')}
-            </button>
+            {!prefs.hiddenModules.includes('daily') && (
+              <button type="button" className="button primary home-today" onClick={() => openToday()}>
+                <CalendarDays size={15} /> {t('home.todayNote')}
+              </button>
+            )}
           </header>
 
           <div className="home-stats">

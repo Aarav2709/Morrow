@@ -239,12 +239,14 @@ export function Sidebar() {
           hint={formatShortcut('Mod+K')}
           onClick={() => setUi({ palette: true, mobileSidebar: false })}
         />
-        <NavItem
-          icon={CalendarDays}
-          label={t('sidebar.today')}
-          active={isToday}
-          onClick={go(() => openToday())}
-        />
+        {shown('daily') && (
+          <NavItem
+            icon={CalendarDays}
+            label={t('sidebar.today')}
+            active={isToday}
+            onClick={go(() => openToday())}
+          />
+        )}
         <NavItem
           icon={Home}
           label={t('settings.general.startPages.home')}
@@ -430,6 +432,7 @@ const SUBPAGES_SHOWN = 50;
 
 function PageTree({ state, activeId, expanded }: TreeProps) {
   const ui = useUi();
+  const hideJournal = usePreferences().hiddenModules.includes('daily');
   const [drop, setDrop] = useState<{ id: PageId; zone: DropZone } | null>(null);
   const [menu, setMenu] = useState<{ id: PageId; anchor: HTMLElement } | null>(null);
   const dragging = useRef<PageId | null>(null);
@@ -526,7 +529,10 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
   };
 
   const renderLevel = (parentId: PageId | null, depth: number): React.ReactNode => {
-    const all = childrenOf(state.pages, parentId);
+    // the journal stays in the vault with daily notes off, it just leaves the tree
+    const all = childrenOf(state.pages, parentId).filter(
+      (page) => parentId !== null || page.kind !== 'journal' || !hideJournal,
+    );
     if (all.length === 0) return null;
     const key = parentId ?? '';
     let limit = limits[key] ?? SUBPAGES_SHOWN;

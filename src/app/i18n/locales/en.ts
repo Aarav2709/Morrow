@@ -21,6 +21,7 @@ export const en = {
     remove: 'Remove',
   },
   sidebar: {
+    daily: 'Daily notes',
     sidebar: 'Sidebar',
     morrowHome: 'Morrow home',
     main: 'Main',

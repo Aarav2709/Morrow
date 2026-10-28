@@ -23,6 +23,7 @@ export const pt: TranslationSchema = {
     remove: 'Remover',
   },
   sidebar: {
+    daily: 'Notas diárias',
     sidebar: 'Barra lateral',
     morrowHome: 'Início do Morrow',
     main: 'Principal',
