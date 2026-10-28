@@ -6,6 +6,8 @@ import {
   Hash,
   Home,
   Network,
+  Pin,
+  PinOff,
   Plus,
   RotateCcw,
   Search,
@@ -28,6 +30,7 @@ import {
   openSide,
   openTab,
   reopenClosedTab,
+  setTabPinned,
   useTabs,
 } from '../tabs';
 import type { Tab } from '../tabs';
@@ -98,6 +101,9 @@ export function TabBar() {
     const index = tabs.findIndex((item) => item.id === tab.id);
     return [
       { label: t('tabs.newTab'), icon: Plus, shortcut: formatShortcut('Mod+T'), onSelect: () => openTab() },
+      tab.pinned
+        ? { label: t('tabs.unpinTab'), icon: PinOff, onSelect: () => setTabPinned(tab.id, false) }
+        : { label: t('tabs.pinTab'), icon: Pin, onSelect: () => setTabPinned(tab.id, true) },
       { label: t('tabs.duplicateTab'), icon: Copy, onSelect: () => openTab(tab.hash) },
       {
         label: t('tabs.openSplit'),
@@ -112,7 +118,7 @@ export function TabBar() {
         label: t('tabs.closeTab'),
         icon: X,
         shortcut: formatShortcut('Mod+W'),
-        disabled: tabs.length < 2,
+        disabled: tabs.length < 2 || tab.pinned,
         onSelect: () => closeTab(tab.id),
       },
       { label: t('tabs.closeOtherTabs'), disabled: tabs.length < 2, onSelect: () => closeOtherTabs(tab.id) },
@@ -145,7 +151,7 @@ export function TabBar() {
               role="tab"
               tabIndex={0}
               aria-selected={tab.id === active}
-              className={`tab${tab.id === active ? ' is-active' : ''}`}
+              className={`tab${tab.id === active ? ' is-active' : ''}${tab.pinned ? ' is-pinned' : ''}`}
               title={title}
               draggable
               onDragStart={(event) => event.dataTransfer.setData('text/x-morrow-tab', tab.id)}
@@ -157,7 +163,7 @@ export function TabBar() {
                 if (id) moveTab(id, index);
               }}
               onClick={() => activateTab(tab.id)}
-              onAuxClick={(event) => event.button === 1 && closeTab(tab.id)}
+              onAuxClick={(event) => event.button === 1 && !tab.pinned && closeTab(tab.id)}
               onContextMenu={(event) => {
                 event.preventDefault();
                 setMenu({ tab, at: new DOMRect(event.clientX, event.clientY, 0, 0) });
@@ -165,13 +171,13 @@ export function TabBar() {
               onKeyDown={(event) => (event.key === 'Enter' || event.key === ' ') && activateTab(tab.id)}
             >
               <span className="tab-icon">{main.icon}</span>
-              <span className="tab-title">{main.title}</span>
-              {side && (
+              {!tab.pinned && <span className="tab-title">{main.title}</span>}
+              {side && !tab.pinned && (
                 <span className="tab-split" title={t('tabs.splitWith', { title: side.title })}>
                   <Columns2 size={12} />
                 </span>
               )}
-              {tabs.length > 1 && (
+              {tabs.length > 1 && !tab.pinned && (
                 <button
                   type="button"
                   className="tab-close"

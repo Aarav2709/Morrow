@@ -357,6 +357,8 @@ export const pt: TranslationSchema = {
     openTabsAria: 'Abas abertas',
     newTab: 'Nova aba',
     newTabTitle: 'Nova aba ({shortcut})',
+    pinTab: 'Fixar aba',
+    unpinTab: 'Desafixar aba',
     duplicateTab: 'Duplicar aba',
     openSplit: 'Abrir ao lado, em divisão',
     closeTab: 'Fechar aba',

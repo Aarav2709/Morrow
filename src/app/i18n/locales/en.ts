@@ -353,6 +353,8 @@ export const en = {
     openTabsAria: 'Open tabs',
     newTab: 'New tab',
     newTabTitle: 'New tab ({shortcut})',
+    pinTab: 'Pin tab',
+    unpinTab: 'Unpin tab',
     duplicateTab: 'Duplicate tab',
     openSplit: 'Open beside, in a split',
     closeTab: 'Close tab',

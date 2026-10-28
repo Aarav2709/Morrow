@@ -410,6 +410,13 @@
 .tab:hover {
   background: var(--hover);
 }
+/* a pinned tab is just its icon */
+.tab.is-pinned {
+  min-width: 0;
+  flex: none;
+  justify-content: center;
+  padding-inline: 10px;
+}
 .tab.is-active {
   background: var(--bg);
   color: var(--text);

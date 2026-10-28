@@ -14,6 +14,8 @@ export interface Tab extends PaneHistory {
   id: string;
   // the second page shown beside the first, null when the tab is not split
   side: PaneHistory | null;
+  // a pinned tab sits at the start, shows only its icon and is never closed by accident
+  pinned?: boolean;
 }
 
 interface TabState {
@@ -50,7 +52,12 @@ function load(): TabState {
       ? raw.tabs
           .filter((tab): tab is Tab => typeof tab?.id === 'string' && typeof tab.hash === 'string')
           .slice(0, MAX_TABS)
-          .map((tab) => ({ ...readPane(tab)!, id: tab.id, side: readPane(tab.side) }))
+          .map((tab) => ({
+            ...readPane(tab)!,
+            id: tab.id,
+            side: readPane(tab.side),
+            ...(tab.pinned === true ? { pinned: true } : {}),
+          }))
       : [];
     const active = tabs.find((tab) => tab.id === raw?.active) ?? tabs[0];
     if (active) {
@@ -295,11 +302,32 @@ export function activateTab(id: string): void {
   go(tab.hash);
 }
 
+// pinned tabs come first, in the order they were pinned
+function pinnedFirst(tabs: Tab[]): Tab[] {
+  return [...tabs.filter((tab) => tab.pinned), ...tabs.filter((tab) => !tab.pinned)];
+}
+
+export function setTabPinned(id: string, pinned: boolean): void {
+  const now = current();
+  if (!now.tabs.some((tab) => tab.id === id)) return;
+  const tabs = now.tabs.map((tab): Tab => {
+    if (tab.id !== id) return tab;
+    const { pinned: _was, ...rest } = tab;
+    return pinned ? { ...rest, pinned: true } : rest;
+  });
+  // a newly pinned tab goes after the others, an unpinned one right after the last pinned
+  const moved = tabs.find((tab) => tab.id === id)!;
+  const others = tabs.filter((tab) => tab.id !== id);
+  const at = others.filter((tab) => tab.pinned).length;
+  others.splice(at, 0, moved);
+  set({ ...now, tabs: pinnedFirst(others) });
+}
+
 export function closeTab(id = current().active): void {
   const now = current();
   if (now.tabs.length <= 1) return;
   const index = now.tabs.findIndex((tab) => tab.id === id);
-  if (index === -1) return;
+  if (index === -1 || now.tabs[index]!.pinned) return;
   const tabs = now.tabs.filter((tab) => tab.id !== id);
   const closed = [...now.closed, now.tabs[index]!.hash].slice(-MAX_CLOSED);
   if (id !== now.active) {
@@ -315,8 +343,11 @@ export function closeOtherTabs(id = current().active): void {
   const now = current();
   const keep = now.tabs.find((tab) => tab.id === id);
   if (!keep) return;
-  const closed = [...now.closed, ...now.tabs.filter((tab) => tab.id !== id).map((tab) => tab.hash)];
-  set({ ...now, tabs: [keep], active: id, pane: 'main', closed: closed.slice(-MAX_CLOSED) });
+  // pinned tabs stay open
+  const gone = now.tabs.filter((tab) => tab.id !== id && !tab.pinned);
+  const tabs = now.tabs.filter((tab) => tab.id === id || tab.pinned);
+  const closed = [...now.closed, ...gone.map((tab) => tab.hash)];
+  set({ ...now, tabs, active: id, pane: 'main', closed: closed.slice(-MAX_CLOSED) });
   go(keep.hash);
 }
 
@@ -324,13 +355,13 @@ export function closeTabsToRight(id = current().active): void {
   const now = current();
   const index = now.tabs.findIndex((tab) => tab.id === id);
   if (index === -1) return;
-  const gone = now.tabs.slice(index + 1);
+  const gone = now.tabs.slice(index + 1).filter((tab) => !tab.pinned);
   if (gone.length === 0) return;
-  const tabs = now.tabs.slice(0, index + 1);
+  const tabs = now.tabs.filter((tab) => !gone.includes(tab));
   const closed = [...now.closed, ...gone.map((tab) => tab.hash)].slice(-MAX_CLOSED);
   const stays = tabs.some((tab) => tab.id === now.active);
   set({ ...now, tabs, closed, active: stays ? now.active : id, pane: stays ? now.pane : 'main' });
-  if (!stays) go(tabs[index]!.hash);
+  if (!stays) go(tabs.find((tab) => tab.id === id)!.hash);
 }
 
 export function reopenClosedTab(): void {
@@ -361,7 +392,8 @@ export function moveTab(id: string, to: number): void {
   if (!tab) return;
   const tabs = now.tabs.filter((item) => item.id !== id);
   tabs.splice(Math.max(0, Math.min(tabs.length, to)), 0, tab);
-  set({ ...now, tabs });
+  // a tab can be dragged among its own kind, pinned ones stay ahead of the rest
+  set({ ...now, tabs: pinnedFirst(tabs) });
 }
 
 export function useTabs(): TabState {

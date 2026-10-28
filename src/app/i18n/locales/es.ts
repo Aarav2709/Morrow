@@ -357,6 +357,8 @@ export const es: TranslationSchema = {
     openTabsAria: 'Pestañas abiertas',
     newTab: 'Nueva pestaña',
     newTabTitle: 'Nueva pestaña ({shortcut})',
+    pinTab: 'Fijar pestaña',
+    unpinTab: 'Desfijar pestaña',
     duplicateTab: 'Duplicar pestaña',
     openSplit: 'Abrir al lado, en división',
     closeTab: 'Cerrar pestaña',
