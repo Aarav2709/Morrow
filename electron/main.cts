@@ -439,7 +439,9 @@ function registerIpc(): void {
         printBackground: true,
         pageSize: 'A4',
         margins: { top: 0.6, bottom: 0.6, left: 0.6, right: 0.6 },
+        // chromium builds the bookmarks pdf readers show beside the page from a tagged pdf's headings
         generateDocumentOutline: true,
+        generateTaggedPDF: true,
       });
       await writeFile(choice.filePath, data);
       return { ok: true, path: choice.filePath };
