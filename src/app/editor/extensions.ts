@@ -17,6 +17,7 @@ import { MarkdownPaste } from './MarkdownPaste';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
+import { IndentedLines } from './turnInto';
 import { Column, Columns, DateMention, TableOfContents } from './Structure';
 
 export interface ExtensionOptions extends PageLinkOptions {
@@ -79,6 +80,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     Tags(options.openTag),
     TaskList,
     TaskItem.configure({ nested: true }),
+    IndentedLines,
     Table.configure({ resizable: false }),
     TableRow,
     TableHeader,

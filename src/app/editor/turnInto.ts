@@ -1,3 +1,4 @@
+import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import type { Node as PMNode, Schema } from '@tiptap/pm/model';
@@ -127,3 +128,44 @@ export function listItemAtCursor(editor: Editor): number | null {
   if (!LIST_ITEMS.has(item.type.name) || $from.index($from.depth - 1) !== 0) return null;
   return $from.before($from.depth - 1);
 }
+
+// plain lines indented under a list item, the way notion has text blocks under a bullet. enter on one
+// writes another at the same depth rather than a new bullet, and enter on an empty last one steps out of
+// the list. backspace at the start of a nested item clears its bullet and keeps it where it is
+export const IndentedLines = Extension.create({
+  name: 'indentedLines',
+  // ahead of the list's own keys
+  priority: 1000,
+  addKeyboardShortcuts() {
+    return {
+      Enter: ({ editor }) => {
+        const { $from, empty } = editor.state.selection;
+        if (!empty || $from.depth < 3 || $from.parent.type.name !== 'paragraph') return false;
+        const item = $from.node(-1);
+        if (!LIST_ITEMS.has(item.type.name) || $from.index(-1) === 0) return false;
+        const list = $from.node(-2);
+        const lastLine = $from.indexAfter(-1) === item.childCount;
+        const lastItem = $from.indexAfter(-2) === list.childCount;
+        if ($from.parent.content.size === 0 && lastLine && lastItem) {
+          const { tr } = editor.state;
+          const end = $from.after(-2);
+          tr.delete($from.before(), $from.after());
+          const at = tr.mapping.map(end);
+          tr.insert(at, editor.schema.nodes.paragraph!.create());
+          tr.setSelection(TextSelection.create(tr.doc, at + 1));
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
+        }
+        return editor.commands.splitBlock();
+      },
+      Backspace: ({ editor }) => {
+        const { $from, empty } = editor.state.selection;
+        if (!empty || $from.parentOffset !== 0 || $from.depth < 4 || !$from.parent.isTextblock) return false;
+        const item = $from.node(-1);
+        if (!LIST_ITEMS.has(item.type.name) || $from.index(-1) !== 0) return false;
+        if (!LIST_ITEMS.has($from.node(-3).type.name)) return false;
+        return turnListItem(editor, $from.before(-1), { kind: 'paragraph' });
+      },
+    };
+  },
+});
