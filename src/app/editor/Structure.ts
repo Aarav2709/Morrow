@@ -1,6 +1,8 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
-import { PluginKey, TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import type { Node as PMNode } from '@tiptap/pm/model';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import Suggestion from '@tiptap/suggestion';
 import { CalendarDays, FileText } from 'lucide-react';
 import { dateKey, parseDateKey } from '../../core/daily';
@@ -91,7 +93,22 @@ export const Column = Node.create({
 });
 
 // a live list of the page's headings, each one jumps to its section
-export const TableOfContents = Node.create({
+// every heading gets an id, unique to its editor, so a table of contents can link to it. links inside the
+// page are kept when it is saved as a pdf, there they jump to the heading
+function headingIds(doc: PMNode, prefix: string): DecorationSet {
+  const decorations: Decoration[] = [];
+  let index = 0;
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'heading') return true;
+    decorations.push(Decoration.node(pos, pos + node.nodeSize, { id: `${prefix}-${index++}` }));
+    return false;
+  });
+  return DecorationSet.create(doc, decorations);
+}
+
+let editors = 0;
+
+export const TableOfContents = Node.create<object, { prefix: string }>({
   name: 'tableOfContents',
   group: 'block',
   atom: true,
@@ -106,8 +123,32 @@ export const TableOfContents = Node.create({
     return ['nav', mergeAttributes(HTMLAttributes, { 'data-toc': '', class: 'toc' })];
   },
 
+  addStorage() {
+    return { prefix: `heading-${(editors++).toString(36)}` };
+  },
+
+  addProseMirrorPlugins() {
+    const prefix = this.storage.prefix;
+    return [
+      new Plugin<DecorationSet>({
+        key: new PluginKey('headingIds'),
+        state: {
+          init: (_config, state) => headingIds(state.doc, prefix),
+          apply: (tr, value) => (tr.docChanged ? headingIds(tr.doc, prefix) : value),
+        },
+        props: {
+          decorations(state) {
+            return this.getState(state);
+          },
+        },
+      }),
+    ];
+  },
+
   addNodeView() {
     return ({ editor }) => {
+      const prefix = (editor.storage as unknown as Record<string, { prefix: string }>).tableOfContents!
+        .prefix;
       const dom = document.createElement('nav');
       dom.className = 'toc';
       dom.contentEditable = 'false';
@@ -132,8 +173,8 @@ export const TableOfContents = Node.create({
           return;
         }
         headings.forEach((heading, index) => {
-          const item = document.createElement('button');
-          item.type = 'button';
+          const item = document.createElement('a');
+          item.href = `#${prefix}-${index}`;
           item.className = `toc-item toc-${Math.min(3, heading.level)}`;
           item.textContent = heading.text || 'Untitled heading';
           item.addEventListener('click', (event) => {

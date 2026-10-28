@@ -296,6 +296,15 @@
     outline: none !important;
     box-shadow: none !important;
   }
+  /* the hover tint is gone on paper, header cells keep a fill of their own */
+  .prose th {
+    background: #f1f1ef !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .prose tr:not(:first-child) > th:first-child {
+    background: #f1f1ef !important;
+  }
   html,
   body,
   #root,
