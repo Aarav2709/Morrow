@@ -32,6 +32,7 @@ import { PageProperties } from './PageProperties';
 import { PageTags } from './TagsView';
 import { deleteForever, restorePage, setArchived, trashPage } from '../operations';
 import { usePreferences } from '../platform/preferences';
+import { readingPlace, rememberPlace } from '../readingPlace';
 import { navigate, openPage, routeHash } from '../router';
 import { openSide } from '../tabs';
 import { getUi, openDialog, setUi, useUi } from '../ui';
@@ -71,6 +72,31 @@ function openFirstLine(editor: Editor, text: string) {
   view.focus();
 }
 
+// the first page shown after morrow opens also gets its cursor back, the way a document reopens
+let firstPage = true;
+
+// puts the page back where it was left: scrolled as far down, the cursor where it was. the page can still be
+// growing as images load, so the scroll is set again for a moment until it holds
+function restorePlace(editor: Editor, scroller: HTMLElement | null, id: PageId, focus: boolean): void {
+  const place = readingPlace(id);
+  if (!place || editor.isDestroyed) return;
+  const { doc, tr } = editor.state;
+  const size = doc.content.size;
+  editor.view.dispatch(
+    tr.setSelection(
+      TextSelection.between(doc.resolve(Math.min(place.from, size)), doc.resolve(Math.min(place.to, size))),
+    ),
+  );
+  if (focus) editor.view.dom.focus({ preventScroll: true });
+  let frames = 0;
+  const apply = () => {
+    if (!scroller?.isConnected) return;
+    scroller.scrollTop = place.scroll;
+    if (Math.abs(scroller.scrollTop - place.scroll) > 2 && ++frames < 60) requestAnimationFrame(apply);
+  };
+  apply();
+}
+
 export function PageView({ id, find, anchor }: { id: PageId; find: string | null; anchor?: string | null }) {
   const state = useWorkspace();
   const page = state.pages[id];
@@ -84,6 +110,9 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
   const editorRef = useRef<Editor | null>(null);
   // enter in the title can arrive before the editor exists, focus it once it does
   const focusWhenReady = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // the place is only written down once it has been put back, the empty page loading first is not it
+  const placed = useRef(false);
   const prefs = usePreferences();
   const ui = useUi();
 
@@ -175,7 +204,11 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
   return (
     <div className="view">
       <TopBar page={page} editing={editing} menu={menu} />
-      <div className="page-scroll">
+      <div
+        className="page-scroll"
+        ref={scrollRef}
+        onScroll={(event) => placed.current && rememberPlace(id, { scroll: event.currentTarget.scrollTop })}
+      >
         {trashed && (
           <div className="banner" role="note">
             <span>{t('page.pageInTrash')}</span>
@@ -315,7 +348,21 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                 }}
                 onReady={(editor) => {
                   editorRef.current = editor;
-                  if (!focusWhenReady.current) return;
+                  editor.on('selectionUpdate', ({ editor: current }) => {
+                    if (!placed.current) return;
+                    const { from, to } = current.state.selection;
+                    rememberPlace(id, { from, to });
+                  });
+                  const startup = firstPage;
+                  firstPage = false;
+                  if (!focusWhenReady.current) {
+                    requestAnimationFrame(() => {
+                      if (!find && !anchor) restorePlace(editor, scrollRef.current, id, startup);
+                      placed.current = true;
+                    });
+                    return;
+                  }
+                  placed.current = true;
                   focusWhenReady.current = false;
                   requestAnimationFrame(() => focusStart(editor));
                 }}

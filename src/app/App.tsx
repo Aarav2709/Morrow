@@ -33,6 +33,7 @@ import {
   useTabs,
 } from './tabs';
 import type { PaneId } from './tabs';
+import { flushPlaces } from './readingPlace';
 import { clearPropertyHistory, getSession } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
@@ -151,6 +152,7 @@ function useLifecycle() {
     const unsubscribe = desktop?.onCommand(async (id) => {
       if (id === 'app.prepareToClose') {
         commitEditors();
+        flushPlaces();
         await session.flush();
         await writeAutoBackup();
         return;
