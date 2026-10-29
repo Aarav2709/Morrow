@@ -183,6 +183,8 @@ export interface DesktopBridge {
   showBackupsFolder(): Promise<void>;
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
   copyText(text: string): Promise<boolean> | void;
+  copyRich?(text: string, html: string): Promise<boolean>;
+  fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
 }
 
 declare global {

@@ -1,9 +1,12 @@
 import { Extension, mergeAttributes, Node } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
+import type { Node as ProseNode, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { FileMeta } from '../../core/model';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
+import { desktop } from '../platform/desktop';
+import { getSession } from '../workspace';
 import { t } from '../i18n';
 
 export const Image = Node.create({
@@ -23,7 +26,18 @@ export const Image = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'img[data-file-id]' }, { tag: 'img[data-src]' }];
+    return [
+      { tag: 'img[data-file-id]' },
+      { tag: 'img[data-src]' },
+      // a picture pasted from the web or another app, such as notion, saved into the vault once it lands
+      {
+        tag: 'img[src]',
+        getAttrs: (element) => {
+          const src = element.getAttribute('src') ?? '';
+          return PASTED_IMAGE.test(src) ? { src, alt: element.getAttribute('alt') ?? '' } : false;
+        },
+      },
+    ];
   },
 
   renderHTML({ node, HTMLAttributes }) {
@@ -212,6 +226,94 @@ function filesFrom(data: DataTransfer | null): File[] {
   return data ? Array.from(data.files) : [];
 }
 
+const PASTED_IMAGE = /^(https?:\/\/|data:image\/)/i;
+
+// the bytes of a picture pasted by its address, or held in the address itself
+async function pastedImage(src: string): Promise<File | null> {
+  try {
+    const inline = /^data:(image\/[\w.+-]+);base64,(.*)$/is.exec(src);
+    if (inline) {
+      const binary = atob(inline[2]!.replace(/\s+/g, ''));
+      const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+      const type = inline[1]!.toLowerCase();
+      return new File([bytes], `image.${type.split('/')[1]!.replace('svg+xml', 'svg')}`, { type });
+    }
+    if (src.startsWith('data:')) return null;
+    const fetched = desktop?.fetchImage ? await desktop.fetchImage(src) : null;
+    if (!fetched) return null;
+    const name = decodeURIComponent(new URL(src).pathname.split('/').pop() ?? '') || 'image';
+    return new File([fetched.data], name, { type: fetched.type });
+  } catch {
+    return null;
+  }
+}
+
+// pictures that came in by address are saved into the vault and pointed at there. one that cannot be
+// fetched stays as a link to the web, with its button to load it
+async function adoptPastedImages(editor: Editor, sources: string[]): Promise<void> {
+  for (const src of sources) {
+    const file = await pastedImage(src);
+    const stored = file ? await storeFiles([file]) : [];
+    if (!stored[0] || editor.isDestroyed) continue;
+    const { tr } = editor.state;
+    tr.doc.descendants((node, pos) => {
+      if (node.type.name === 'image' && !node.attrs.fileId && node.attrs.src === src)
+        tr.setNodeMarkup(pos, undefined, { ...node.attrs, fileId: stored[0]!.id, src: null });
+    });
+    if (tr.docChanged) editor.view.dispatch(tr);
+  }
+  // a picture that stayed as a data address would fill the page's markdown with it
+  if (editor.isDestroyed) return;
+  const { tr } = editor.state;
+  tr.doc.descendants((node, pos) => {
+    if (node.type.name === 'image' && !node.attrs.fileId && String(node.attrs.src ?? '').startsWith('data:'))
+      tr.delete(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize));
+  });
+  if (tr.docChanged) editor.view.dispatch(tr);
+}
+
+function pastedSources(slice: Slice): string[] {
+  const sources = new Set<string>();
+  slice.content.descendants((node) => {
+    if (node.type.name === 'image' && !node.attrs.fileId && PASTED_IMAGE.test(String(node.attrs.src ?? '')))
+      sources.add(String(node.attrs.src));
+  });
+  return [...sources];
+}
+
+function bytesToBase64(data: ArrayBuffer): string {
+  const bytes = new Uint8Array(data);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(binary);
+}
+
+// the browser copies pictures as references only morrow understands. once the copy is done the clipboard is
+// written again with the pictures inside it, so pasting into another app brings them along with the words
+async function copyWithImages(view: EditorView, slice: Slice): Promise<void> {
+  const images: ProseNode[] = [];
+  slice.content.descendants((node) => {
+    if (node.type.name === 'image' && node.attrs.fileId) images.push(node);
+  });
+  const lone = slice.content.childCount === 1 && slice.content.firstChild?.type.name === 'image';
+  if (images.length === 0 || lone) return;
+  // the same html and text the browser was given, so pasting back into morrow still works as before
+  const { dom: container, text } = view.serializeForClipboard(slice);
+  for (const img of container.querySelectorAll<HTMLImageElement>('img[data-file-id]')) {
+    const file = await getSession().getFile(img.dataset.fileId ?? '');
+    if (file) img.src = `data:${file.meta.type};base64,${bytesToBase64(file.data)}`;
+  }
+  if (desktop?.copyRich) await desktop.copyRich(text, container.innerHTML);
+  else
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+        'text/html': new Blob([container.innerHTML], { type: 'text/html' }),
+      }),
+    ]);
+}
+
 export const FileDrop = Extension.create({
   name: 'fileDrop',
   addProseMirrorPlugins() {
@@ -220,9 +322,31 @@ export const FileDrop = Extension.create({
       new Plugin({
         key: new PluginKey('fileDrop'),
         props: {
+          // pictures in what was pasted are saved once the paste is in
+          transformPasted(slice: Slice) {
+            const sources = pastedSources(slice);
+            if (sources.length) setTimeout(() => void adoptPastedImages(editor, sources), 0);
+            return slice;
+          },
+          handleDOMEvents: {
+            copy: (view: EditorView) => {
+              if (!view.state.selection.empty)
+                void copyWithImages(view, view.state.selection.content()).catch(() => {});
+              return false;
+            },
+            cut: (view: EditorView) => {
+              if (!view.state.selection.empty)
+                void copyWithImages(view, view.state.selection.content()).catch(() => {});
+              return false;
+            },
+          },
           handlePaste(_view: EditorView, event: ClipboardEvent) {
             const files = filesFrom(event.clipboardData);
             if (files.length === 0) return false;
+            // words and pictures copied together come as html, files alongside it are only copies of the pictures
+            const html = event.clipboardData?.getData('text/html') ?? '';
+            if (html && new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim())
+              return false;
             event.preventDefault();
             void insertFiles(editor, files);
             return true;

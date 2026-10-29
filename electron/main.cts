@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  ClipboardItem,
   dialog,
   globalShortcut,
   ipcMain,
@@ -366,6 +367,8 @@ function toWindow(channel: string, payload: unknown): void {
     mainWindow.webContents.send(channel, payload);
 }
 
+const MAX_PASTED_IMAGE_BYTES = 25 * 1024 * 1024;
+
 function fromApp(event: IpcMainEvent | IpcMainInvokeEvent): boolean {
   const url = event.senderFrame?.url ?? '';
   return isAppUrl(url);
@@ -407,6 +410,27 @@ function registerIpc(): void {
       return true;
     }
     return false;
+  });
+  // text and html together, so pictures copied with the words reach other apps too
+  ipcMain.handle('morrow:copy-rich', async (event, text: unknown, html: unknown) => {
+    if (!fromApp(event) || typeof text !== 'string' || typeof html !== 'string') return false;
+    await clipboard.write([new ClipboardItem({ 'text/plain': text, 'text/html': html })]);
+    return true;
+  });
+  // a picture pasted from the web or another app is saved into the vault, so it stays when its link expires.
+  // fetched here rather than in the page, which most image hosts would refuse
+  ipcMain.handle('morrow:fetch-image', async (event, url: unknown) => {
+    if (!fromApp(event) || typeof url !== 'string' || !/^https?:\/\//i.test(url)) return null;
+    try {
+      const response = await net.fetch(url, { redirect: 'follow' });
+      const type = (response.headers.get('content-type') ?? '').split(';')[0]!.trim().toLowerCase();
+      if (!response.ok || !type.startsWith('image/')) return null;
+      if (Number(response.headers.get('content-length') ?? 0) > MAX_PASTED_IMAGE_BYTES) return null;
+      const data = await response.arrayBuffer();
+      return data.byteLength <= MAX_PASTED_IMAGE_BYTES ? { type, data } : null;
+    } catch {
+      return null;
+    }
   });
   ipcMain.handle('morrow:show-data-folder', async (event) => {
     if (fromApp(event)) await shell.openPath(app.getPath('userData'));
