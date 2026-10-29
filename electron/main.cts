@@ -403,6 +403,10 @@ function registerIpc(): void {
     if (!HEX.test(color) || !HEX.test(symbolColor)) return;
     window.setTitleBarOverlay({ color, symbolColor });
   });
+  ipcMain.on('morrow:spellcheck', (event, enabled: unknown) => {
+    if (fromApp(event) && typeof enabled === 'boolean')
+      session.defaultSession.setSpellCheckerEnabled(enabled);
+  });
   ipcMain.handle('morrow:open-external', (event, url: unknown) => {
     if (fromApp(event) && typeof url === 'string') openExternal(url);
   });

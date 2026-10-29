@@ -134,6 +134,8 @@ export const en = {
       yourNamePlaceholder: 'Optional',
       whenOpens: 'When Morrow opens',
       whenOpensHelp: "{shortcutDaily} opens today's note, {shortcutCapture} jots into it from any app.",
+      spellcheck: 'Check spelling',
+      spellcheckHelp: 'Underlines words the spellchecker does not know as you type.',
       startPages: {
         today: "Today's note",
         home: 'Home',

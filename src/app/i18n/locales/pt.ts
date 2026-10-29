@@ -138,6 +138,8 @@ export const pt: TranslationSchema = {
       whenOpens: 'Ao abrir o Morrow',
       whenOpensHelp:
         '{shortcutDaily} abre a nota de hoje, {shortcutCapture} anota nela de qualquer aplicativo.',
+      spellcheck: 'Verificar ortografia',
+      spellcheckHelp: 'Sublinha as palavras que o corretor não conhece enquanto você escreve.',
       startPages: {
         today: 'Nota de hoje',
         home: 'Início',

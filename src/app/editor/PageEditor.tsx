@@ -272,7 +272,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
       content: doc as JSONContent,
       editable,
       editorProps: {
-        attributes: { class: 'prose', 'aria-label': 'Page content', spellcheck: 'true' },
+        attributes: { class: 'prose', 'aria-label': 'Page content' },
         clipboardTextSerializer: (slice) => plainTextOf(slice),
         handleDOMEvents: {
           // right click on a picture shows the same options as its handle, with copy and open

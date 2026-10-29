@@ -49,6 +49,8 @@ export interface Preferences {
   mcpEnabled: boolean;
   // the language last picked for a code block, a new block starts in it. empty for plain text
   codeLanguage: string;
+  // red underlines under words the spellchecker does not know
+  spellcheck: boolean;
   // views left out of the sidebar, they still open from search and their shortcuts
   hiddenModules: SidebarModule[];
 }
@@ -85,6 +87,7 @@ const defaults: Preferences = {
   checkUpdates: false,
   mcpEnabled: false,
   codeLanguage: '',
+  spellcheck: true,
   hiddenModules: [],
 };
 
@@ -141,6 +144,7 @@ function read(): Preferences {
         typeof parsed.codeLanguage === 'string' && /^[\w#+.-]{0,40}$/.test(parsed.codeLanguage)
           ? parsed.codeLanguage
           : '',
+      spellcheck: parsed.spellcheck !== false,
       hiddenModules: Array.isArray(parsed.hiddenModules)
         ? SIDEBAR_MODULES.filter((module) => parsed.hiddenModules!.includes(module))
         : [],
@@ -148,6 +152,12 @@ function read(): Preferences {
   } catch {
     return defaults;
   }
+}
+
+// every text field takes it from the page, the desktop app also turns the spellchecker itself off
+export function applySpellcheck(enabled: boolean): void {
+  if (typeof document !== 'undefined') document.documentElement.spellcheck = enabled;
+  desktop?.setSpellcheck?.(enabled);
 }
 
 export function getPreferences(): Preferences {
@@ -159,6 +169,7 @@ export function setPreferences(patch: Partial<Preferences>): void {
   if ('mcpEnabled' in patch && desktop?.mcp?.setEnabled) {
     void desktop.mcp.setEnabled(Boolean(patch.mcpEnabled));
   }
+  if ('spellcheck' in patch) applySpellcheck(current.spellcheck);
   try {
     localStorage.setItem(KEY, JSON.stringify(current));
   } catch {

@@ -184,6 +184,7 @@ export interface DesktopBridge {
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
   copyText(text: string): Promise<boolean> | void;
   copyRich?(text: string, html: string): Promise<boolean>;
+  setSpellcheck?(enabled: boolean): void;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
 }
 

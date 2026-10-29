@@ -182,6 +182,13 @@ function GeneralSettings() {
           onChange={(startPage) => setPreferences({ startPage })}
         />
       </SettingRow>
+      <SettingRow label={t('settings.general.spellcheck')} help={t('settings.general.spellcheckHelp')}>
+        <Switch
+          label={t('settings.general.spellcheck')}
+          checked={prefs.spellcheck}
+          onChange={(spellcheck) => setPreferences({ spellcheck })}
+        />
+      </SettingRow>
     </SettingsGroup>
   );
 }

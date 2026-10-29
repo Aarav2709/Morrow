@@ -18,7 +18,13 @@ import { ensureToday, writeAutoBackup } from './operations';
 import { startAutoSync, syncWith } from './sync';
 import { startUpdateChecks } from './updates';
 import { desktop, isMac, watchTitleBar } from './platform/desktop';
-import { getPreferences, resolvedTheme, setPreferences, usePreferences } from './platform/preferences';
+import {
+  applySpellcheck,
+  getPreferences,
+  resolvedTheme,
+  setPreferences,
+  usePreferences,
+} from './platform/preferences';
 import { navigate, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
 import { getUi, setUi, toast, useUi } from './ui';
@@ -358,6 +364,7 @@ export function App() {
   }, [prefs.accent, prefs.colorful]);
   useGlobalShortcuts();
   useCopyToast();
+  useEffect(() => applySpellcheck(prefs.spellcheck), [prefs.spellcheck]);
   useEffect(() => startTabs(), []);
   useStartPage();
   useLifecycle();

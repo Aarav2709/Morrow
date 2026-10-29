@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('morrow', {
   exportPdf: (name: string) => ipcRenderer.invoke('morrow:export-pdf', name),
   copyText: (text: string) => ipcRenderer.invoke('morrow:copy-text', text),
   copyRich: (text: string, html: string) => ipcRenderer.invoke('morrow:copy-rich', text, html),
+  setSpellcheck: (enabled: boolean) => ipcRenderer.send('morrow:spellcheck', enabled),
   fetchImage: (url: string) => ipcRenderer.invoke('morrow:fetch-image', url),
   sync: {
     status: () => ipcRenderer.invoke('sync:status'),
