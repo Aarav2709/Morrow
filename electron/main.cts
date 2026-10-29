@@ -269,7 +269,9 @@ async function createWindow(): Promise<void> {
   mainWindow = window;
   readyToClose = false;
   if (state.maximized) window.maximize();
-  if (!HIDDEN) window.once('ready-to-show', () => window.show());
+  // the window shows at once in the colour of the app rather than after the page's first paint, so opening
+  // morrow never looks like nothing happened
+  if (!HIDDEN) window.show();
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
