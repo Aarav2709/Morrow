@@ -1,8 +1,11 @@
 // flashcards from your notes: any line written as question :: answer, reviewed with spaced repetition
 import { dateKey, parseDateKey } from './daily';
 import { inlineText } from './doc';
+import { displayTitle } from './model';
 import type { DocNode, PageId, WorkspaceState } from './model';
-import { livePages } from './tree';
+import { ancestorsOf, descendantsOf, livePages } from './tree';
+
+type Pages = WorkspaceState['pages'];
 
 export interface Card {
   id: string;
@@ -69,6 +72,36 @@ export function collectCards(state: WorkspaceState): Card[] {
     }
   }
   return cards;
+}
+
+// the cards of one page and every page inside it, studied on their own the way a deck is in anki
+export function cardsInDeck(cards: Card[], pages: Pages, deck: PageId): Card[] {
+  const ids = new Set([deck, ...descendantsOf(pages, deck).map((page) => page.id)]);
+  return cards.filter((card) => ids.has(card.pageId));
+}
+
+export interface Deck {
+  id: PageId;
+  // the page's place in the tree, such as Biology / Cells
+  path: string;
+  cards: number;
+}
+
+// every page with cards on it or inside it, in the order of their paths
+export function decksOf(cards: Card[], pages: Pages): Deck[] {
+  const counts = new Map<PageId, number>();
+  for (const card of cards) {
+    for (const id of [card.pageId, ...ancestorsOf(pages, card.pageId).map((page) => page.id)])
+      counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return [...counts]
+    .filter(([id]) => pages[id])
+    .map(([id, count]) => ({
+      id,
+      path: [...ancestorsOf(pages, id).reverse(), pages[id]!].map((page) => displayTitle(page)).join(' / '),
+      cards: count,
+    }))
+    .sort((a, b) => a.path.localeCompare(b.path));
 }
 
 export function isDue(card: Card, log: ReviewLog, today: Date): boolean {

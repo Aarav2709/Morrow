@@ -13,7 +13,15 @@ import {
   inferType,
   visibleRows,
 } from './database';
-import { collectCards, dueCards, readReviewLog, schedule, writeReviewLog } from './flashcards';
+import {
+  cardsInDeck,
+  collectCards,
+  decksOf,
+  dueCards,
+  readReviewLog,
+  schedule,
+  writeReviewLog,
+} from './flashcards';
 import { buildGraph, DEFAULT_GRAPH_OPTIONS } from './graph';
 import { activityWeeks, onThisDay, streak } from './insights';
 import { emptyWorkspace, newPageMeta } from './model';
@@ -480,6 +488,43 @@ describe('flashcards', () => {
     const log = { [cards[0]!.id]: first };
     expect(dueCards(cards, log, today).map((card) => card.front)).toEqual(['dog']);
     expect(readReviewLog(JSON.parse(writeReviewLog(log)))).toEqual(log);
+  });
+
+  it('studies a page and the pages inside it as a deck of their own', () => {
+    const languages = run(
+      state,
+      { type: 'page.create', id: 'lang', parentId: null, now: 1, title: 'Languages' },
+      { type: 'page.move', id: 'fr', parentId: 'lang' },
+      {
+        type: 'page.create',
+        id: 'de',
+        parentId: 'lang',
+        now: 1,
+        title: 'German',
+        doc: doc(p('cat :: die Katze')),
+      },
+      {
+        type: 'page.create',
+        id: 'bio',
+        parentId: null,
+        now: 1,
+        title: 'Biology',
+        doc: doc(p('cell :: smallest unit')),
+      },
+    );
+    const cards = collectCards(languages);
+    expect(cardsInDeck(cards, languages.pages, 'lang').map((card) => card.back)).toEqual([
+      'le chat',
+      'le chien',
+      'die Katze',
+    ]);
+    expect(cardsInDeck(cards, languages.pages, 'de')).toHaveLength(1);
+    expect(decksOf(cards, languages.pages).map((deck) => [deck.path, deck.cards])).toEqual([
+      ['Biology', 1],
+      ['Languages', 3],
+      ['Languages / French', 2],
+      ['Languages / German', 1],
+    ]);
   });
 });
 

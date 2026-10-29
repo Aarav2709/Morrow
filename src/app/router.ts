@@ -13,7 +13,8 @@ export type Route =
   | { name: 'tags' }
   | { name: 'tag'; tag: string }
   | { name: 'graph'; focus: PageId | null }
-  | { name: 'review' }
+  // deck is a page whose cards, with those of the pages inside it, are studied on their own
+  | { name: 'review'; deck?: PageId | null }
   | { name: 'search'; query: string };
 
 export function parseRoute(hash: string): Route {
@@ -31,7 +32,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'tags' && parts[1])
     return { name: 'tag', tag: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'tags') return { name: 'tags' };
-  if (parts[0] === 'review') return { name: 'review' };
+  if (parts[0] === 'review') return { name: 'review', deck: parts[1] ? decodeURIComponent(parts[1]) : null };
   if (parts[0] === 'search') return { name: 'search', query: new URLSearchParams(query).get('q') ?? '' };
   if (parts[0] === 'graph') return { name: 'graph', focus: parts[1] ? decodeURIComponent(parts[1]) : null };
   return { name: 'home' };
@@ -57,7 +58,7 @@ export function routeHash(route: Route): string {
     case 'tag':
       return `#/tags/${route.tag.split('/').map(encodeURIComponent).join('/')}`;
     case 'review':
-      return '#/review';
+      return route.deck ? `#/review/${encodeURIComponent(route.deck)}` : '#/review';
     case 'search':
       return route.query ? `#/search?q=${encodeURIComponent(route.query)}` : '#/search';
     case 'graph':

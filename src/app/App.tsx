@@ -215,7 +215,7 @@ function viewFor(route: Route) {
     case 'tag':
       return <TagView tag={route.tag} />;
     case 'review':
-      return <ReviewView />;
+      return <ReviewView key={route.deck ?? ''} deck={route.deck ?? null} />;
     case 'graph':
       return <GraphView key={route.focus ?? 'all'} focus={route.focus} />;
     case 'search':

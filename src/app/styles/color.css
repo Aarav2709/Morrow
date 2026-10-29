@@ -878,6 +878,10 @@ button.home-stat:hover {
   letter-spacing: -0.015em;
   margin: 0 0 4px;
 }
+.review-deck {
+  margin-top: 10px;
+  max-width: 320px;
+}
 .review-progress {
   flex: none;
   display: flex;

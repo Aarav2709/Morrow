@@ -14,6 +14,7 @@ import {
   FileDown,
   FileText,
   FileUp,
+  GraduationCap,
   History,
   Pencil,
   Plus,
@@ -22,6 +23,7 @@ import {
   StarOff,
   Trash2,
 } from 'lucide-react';
+import { cardsInDeck, collectCards } from '../../core/flashcards';
 import type { PageId } from '../../core/model';
 import {
   createPage,
@@ -63,6 +65,16 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       icon: History,
       onSelect: () => openDialog({ kind: 'history', pageId }),
     },
+    // a page with flashcards on it or inside it can be studied on its own
+    ...(cardsInDeck(collectCards(getState()), getState().pages, pageId).length > 0
+      ? [
+          {
+            label: t('pageMenu.studyFlashcards'),
+            icon: GraduationCap,
+            onSelect: () => navigate({ name: 'review', deck: pageId }),
+          },
+        ]
+      : []),
     page.favorite
       ? { label: t('pageMenu.removeFromFavorites'), icon: StarOff, onSelect: () => toggleFavorite(pageId) }
       : { label: t('pageMenu.addToFavorites'), icon: Star, onSelect: () => toggleFavorite(pageId) },

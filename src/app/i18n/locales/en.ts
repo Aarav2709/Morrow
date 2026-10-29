@@ -333,6 +333,7 @@ export const en = {
     changeIcon: 'Change icon',
     addIcon: 'Add icon',
     pageHistory: 'Page history',
+    studyFlashcards: 'Study flashcards',
     removeFromFavorites: 'Remove from favourites',
     addToFavorites: 'Add to favourites',
     duplicate: 'Duplicate',
@@ -885,6 +886,7 @@ export const en = {
     tagPlaceholder: 'tag',
   },
   review: {
+    deckCardsOne: '{count} card',
     allDoneOne: 'All done, {count} card reviewed',
     cardsDueTomorrowOne: '{count} card due tomorrow',
     cardsDueDayOne: '{count} card due {day}',
@@ -908,6 +910,9 @@ export const en = {
     cardsDueDay: '{count} cards due {day}',
     newCardsHelp: 'New cards show up here as soon as you write them.',
     openCardPage: 'Open the page this card is on',
+    deck: 'Cards from',
+    allPages: 'All pages',
+    deckCards: '{count} cards',
     showAnswer: 'Show answer',
     gradesAria: 'How well did you remember it?',
     grades: {

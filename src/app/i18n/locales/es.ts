@@ -337,6 +337,7 @@ export const es: TranslationSchema = {
     changeIcon: 'Cambiar icono',
     addIcon: 'Añadir icono',
     pageHistory: 'Historial de página',
+    studyFlashcards: 'Estudiar tarjetas',
     removeFromFavorites: 'Quitar de favoritos',
     addToFavorites: 'Añadir a favoritos',
     duplicate: 'Duplicar',
@@ -893,6 +894,7 @@ export const es: TranslationSchema = {
     tagPlaceholder: 'etiqueta',
   },
   review: {
+    deckCardsOne: '{count} tarjeta',
     allDoneOne: '¡Todo listo! {count} tarjeta repasada',
     cardsDueTomorrowOne: '{count} tarjeta pendiente mañana',
     cardsDueDayOne: '{count} tarjeta pendiente el {day}',
@@ -917,6 +919,9 @@ export const es: TranslationSchema = {
     cardsDueDay: '{count} tarjetas pendientes el {day}',
     newCardsHelp: 'Las nuevas tarjetas aparecerán aquí tan pronto como las escribas.',
     openCardPage: 'Abrir la página de esta tarjeta',
+    deck: 'Tarjetas de',
+    allPages: 'Todas las páginas',
+    deckCards: '{count} tarjetas',
     showAnswer: 'Mostrar respuesta',
     gradesAria: '¿Qué tan bien lo recordaste?',
     grades: {

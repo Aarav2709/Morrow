@@ -1,11 +1,13 @@
 import { ArrowUpRight, CalendarClock, GraduationCap, PartyPopper } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { dateKey, parseDateKey } from '../../core/daily';
-import { collectCards, dueCards, schedule } from '../../core/flashcards';
+import { cardsInDeck, collectCards, decksOf, dueCards, schedule } from '../../core/flashcards';
 import type { Card, Grade, ReviewLog } from '../../core/flashcards';
 import { displayTitle } from '../../core/model';
 import { gradeCard, useReviewLog } from '../review';
-import { openPage } from '../router';
+import type { PageId } from '../../core/model';
+import { navigate, openPage } from '../router';
+import { Select } from './Select';
 import { useWorkspace } from '../workspace';
 import { TopBar } from './TopBar';
 import { getLocale, t, tp } from '../i18n';
@@ -52,10 +54,15 @@ function describeDay(key: string): string {
   return date.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-export function ReviewView() {
+export function ReviewView({ deck }: { deck: PageId | null }) {
   const state = useWorkspace();
   const log = useReviewLog();
-  const cards = useMemo(() => collectCards(state), [state]);
+  const everyCard = useMemo(() => collectCards(state), [state]);
+  const decks = useMemo(() => decksOf(everyCard, state.pages), [everyCard, state.pages]);
+  const cards = useMemo(
+    () => (deck ? cardsInDeck(everyCard, state.pages, deck) : everyCard),
+    [everyCard, state.pages, deck],
+  );
   // the queue is fixed when the session starts, so grading a card does not reshuffle the rest
   const [queue, setQueue] = useState<string[] | null>(null);
   const [shown, setShown] = useState(false);
@@ -121,6 +128,27 @@ export function ReviewView() {
                         pages === 1 ? t('review.pagesPluralSingle') : t('review.pagesPluralMultiple'),
                     })}
               </p>
+              {decks.length > 1 && (
+                <div className="review-deck">
+                  <Select<string>
+                    label={t('review.deck')}
+                    value={deck ?? ''}
+                    options={[
+                      {
+                        value: '',
+                        label: t('review.allPages'),
+                        detail: tp('review.deckCards', everyCard.length),
+                      },
+                      ...decks.map((item) => ({
+                        value: item.id,
+                        label: item.path,
+                        detail: tp('review.deckCards', item.cards),
+                      })),
+                    ]}
+                    onChange={(value) => navigate({ name: 'review', deck: value || null }, { replace: true })}
+                  />
+                </div>
+              )}
             </div>
             {current && (
               <div
