@@ -290,7 +290,10 @@ export class VaultRepository implements WorkspaceRepository {
       if (parentFolder && parentFolder !== TRASH_DIR) emptied.add(parentFolder);
     }
 
-    for (const snapshot of batch.snapshots ?? []) ops.push(await this.historyOp(snapshot));
+    for (const snapshot of batch.snapshots ?? []) {
+      const op = await this.historyOp(snapshot);
+      if (op) ops.push(op);
+    }
 
     const edited = batch.docs.length;
     if (edited > 0) {
@@ -611,8 +614,17 @@ export class VaultRepository implements WorkspaceRepository {
     return ok({ page: { ...read.page, encrypted: true }, doc: read.doc });
   }
 
-  private async historyOp(snapshot: Snapshot): Promise<VaultOp> {
-    const list = [...(await this.historyOf(snapshot.pageId)), snapshot];
+  // null when the page's newest version already holds exactly this
+  private async historyOp(snapshot: Snapshot): Promise<VaultOp | null> {
+    const existing = await this.historyOf(snapshot.pageId);
+    const content = (item: Snapshot) =>
+      JSON.stringify([item.title, item.doc, item.properties ?? {}, item.extra ?? {}]);
+    const newest = existing.reduce<Snapshot | null>(
+      (latest, item) => (!latest || item.createdAt > latest.createdAt ? item : latest),
+      null,
+    );
+    if (newest && content(newest) === content(snapshot)) return null;
+    const list = [...existing, snapshot];
     const prune = new Set(snapshotsToPrune(list));
     const kept = list.filter((item) => !prune.has(item.id)).sort((a, b) => a.createdAt - b.createdAt);
     this.history.set(snapshot.pageId, kept);
@@ -634,7 +646,7 @@ export class VaultRepository implements WorkspaceRepository {
       createdAt: Date.now(),
     };
     const op = await this.historyOp(snapshot);
-    await this.bridge.apply([op]);
+    if (op) await this.bridge.apply([op]);
   }
 
   async listSnapshots(pageId: PageId): Promise<Snapshot[]> {

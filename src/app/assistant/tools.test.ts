@@ -71,6 +71,34 @@ describe('assistant tools', () => {
     expect(vault.text('Garden.md')).not.toContain('Set traps');
   });
 
+  it('keeps each version before every change, without copies of the same one', async () => {
+    for (const line of ['First', 'Second', 'Third']) {
+      // typing still waiting to be saved goes into the version kept before the change
+      session.execute({
+        type: 'page.setDoc',
+        id: idOf('Garden'),
+        doc: {
+          ...session.getState().docs[idOf('Garden')]!,
+          content: [
+            ...session.getState().docs[idOf('Garden')]!.content!,
+            { type: 'paragraph', content: [{ type: 'text', text: `typed ${line}` }] },
+          ],
+        },
+        now: Date.now(),
+      });
+      await proposal(call('append_to_page', { page: 'Garden', markdown: `${line} added` })).apply();
+    }
+    await session.flush();
+    const versions = (await session.listSnapshots(idOf('Garden'))).map((version) =>
+      JSON.stringify(version.doc),
+    );
+    expect(new Set(versions).size).toBe(versions.length);
+    for (const line of ['First', 'Second', 'Third'])
+      expect(versions.some((text) => text.includes(`typed ${line}`) && !text.includes(`${line} added`))).toBe(
+        true,
+      );
+  });
+
   it('refuses edits that do not match exactly once', () => {
     expect(call('edit_page', { page: 'Garden', find: 'not there', replace: 'x' })).toMatchObject({
       isError: true,

@@ -23,6 +23,9 @@ export class WorkspaceSession {
   // runs before edits made elsewhere are applied, the app saves open editors here
   beforeExternal: () => void = () => {};
   readonly queue: SaveQueue;
+  // one write to the vault at a time. a version kept for the assistant while the queue was still saving
+  // could otherwise read a page's history before the other write added to it
+  private writing: Promise<unknown> = Promise.resolve();
 
   private constructor(
     private readonly repository: WorkspaceRepository,
@@ -33,28 +36,32 @@ export class WorkspaceSession {
     options: SaveQueueOptions,
   ) {
     this.state = initial;
-    this.queue = new SaveQueue(repository, () => this.state, {
-      ...options,
-      snapshotsFor: (ids, state) => {
-        const now = Date.now();
-        return ids
-          .filter((id) => {
-            const doc = state.docs[id];
-            // an empty page has nothing worth going back to, an encrypted one never keeps a plain copy
-            return (
-              doc &&
-              !isDocEmpty(doc) &&
-              !state.pages[id]?.encrypted &&
-              snapshotDue(this.lastSnapshot.get(id), now) &&
-              this.keptKey(id, state) !== (this.lastKept.get(id) ?? this.keptKey(id, initial))
-            );
-          })
-          .map((id) => this.snapshotOf(id, state, now));
+    this.queue = new SaveQueue(
+      { write: (batch) => this.exclusive(() => repository.write(batch)) },
+      () => this.state,
+      {
+        ...options,
+        snapshotsFor: (ids, state) => {
+          const now = Date.now();
+          return ids
+            .filter((id) => {
+              const doc = state.docs[id];
+              // an empty page has nothing worth going back to, an encrypted one never keeps a plain copy
+              return (
+                doc &&
+                !isDocEmpty(doc) &&
+                !state.pages[id]?.encrypted &&
+                snapshotDue(this.lastSnapshot.get(id), now) &&
+                this.keptKey(id, state) !== (this.lastKept.get(id) ?? this.keptKey(id, initial))
+              );
+            })
+            .map((id) => this.snapshotOf(id, state, now));
+        },
+        onSnapshotsWritten: (snapshots) => {
+          for (const snapshot of snapshots) this.noteKept(snapshot);
+        },
       },
-      onSnapshotsWritten: (snapshots) => {
-        for (const snapshot of snapshots) this.noteKept(snapshot);
-      },
-    });
+    );
     repository.onExternalChange?.((patch) => this.applyExternal(patch));
   }
 
@@ -272,7 +279,9 @@ export class WorkspaceSession {
   async importSnapshots(snapshots: Snapshot[]): Promise<void> {
     if (snapshots.length === 0) return;
     await this.queue.flush();
-    await this.repository.write({ pages: [], docs: [], removed: [], snapshots, state: this.state });
+    await this.exclusive(() =>
+      this.repository.write({ pages: [], docs: [], removed: [], snapshots, state: this.state }),
+    );
   }
 
   // the current content is kept as a version first, so restoring can always be undone
@@ -281,7 +290,9 @@ export class WorkspaceSession {
     await this.queue.flush();
     try {
       const current = this.snapshotOf(snapshot.pageId, this.state, Date.now());
-      await this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] });
+      await this.exclusive(() =>
+        this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] }),
+      );
       this.noteKept(current);
     } catch (error) {
       return fail(`The current version could not be kept, so nothing was restored: ${String(error)}`);
@@ -308,14 +319,25 @@ export class WorkspaceSession {
     const doc = this.state.docs[pageId];
     if (!doc || isDocEmpty(doc) || this.state.pages[pageId]?.encrypted) return;
     await this.queue.flush();
+    // the page as it is was already kept, a second copy of it would only push older versions out
+    if (this.lastKept.get(pageId) === this.keptKey(pageId, this.state)) return;
     const current = this.snapshotOf(pageId, this.state, Date.now());
-    await this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] });
+    await this.exclusive(() =>
+      this.repository.write({ pages: [], docs: [], removed: [], snapshots: [current] }),
+    );
     this.noteKept(current);
   }
 
+  private exclusive<T>(write: () => Promise<T>): Promise<T> {
+    const next = this.writing.then(write, write);
+    this.writing = next.catch(() => {});
+    return next;
+  }
+
+  // a version is a copy, nothing done to the page afterwards can reach into it
   private snapshotOf(pageId: PageId, state: WorkspaceState, now: number): Snapshot {
     const page = state.pages[pageId];
-    return {
+    return structuredClone({
       id: crypto.randomUUID(),
       pageId,
       title: page?.title ?? '',
@@ -323,7 +345,7 @@ export class WorkspaceSession {
       createdAt: now,
       properties: page?.properties ?? {},
       extra: page?.extra ?? {},
-    };
+    });
   }
 
   // everything a version holds, as one string to compare
