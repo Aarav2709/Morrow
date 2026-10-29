@@ -112,7 +112,7 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 
 ## Status
 
-Version **1.2.1**. Pages are files in a folder you choose. Earlier builds kept
+Version **1.3.0**. Pages are files in a folder you choose. Earlier builds kept
 them inside the app; the first time this version opens it offers to copy those
 pages into the folder and leaves the original copy untouched. Releases are built
 for Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64).
