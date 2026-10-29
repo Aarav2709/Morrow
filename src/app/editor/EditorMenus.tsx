@@ -56,6 +56,8 @@ import { copyText, desktop, openExternal } from '../platform/desktop';
 import { openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
+import { clearBlockSelection, selectedBlocks } from './BlockSelect';
+import type { BlockRange } from './BlockSelect';
 import { turnListItem } from './turnInto';
 import type { TurnTarget } from './turnInto';
 import { openDialog, toast } from '../ui';
@@ -160,7 +162,8 @@ function LinkInput({ editor, onDone }: { editor: Editor; onDone: () => void }) {
 // bubble menu props must keep their identity, new objects make tiptap dispatch and rerender in a loop
 const showFormatting: BubbleMenuProps['shouldShow'] = ({ editor, state, from, to }) => {
   if (!editor.isEditable || from === to || state.selection instanceof NodeSelection) return false;
-  return !editor.isActive('codeBlock');
+  // whole blocks picked in the margin have the block menu instead
+  return !editor.isActive('codeBlock') && !selectedBlocks(state);
 };
 const showLink: BubbleMenuProps['shouldShow'] = ({ editor, from, to }) =>
   from === to && editor.isActive('link');
@@ -643,6 +646,30 @@ function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
   }
 }
 
+// several blocks picked in the margin turn one by one from the last, so the ones before keep their place.
+// a list stands for its items, each of them turns the way one item on its own would
+function turnBlocks(editor: Editor, range: BlockRange, target: TurnTarget): void {
+  const positions: number[] = [];
+  editor.state.doc.nodesBetween(range.from, range.to, (node, pos) => {
+    if (['bulletList', 'orderedList', 'taskList'].includes(node.type.name)) return true;
+    positions.push(pos);
+    return false;
+  });
+  // lines becoming a list join into one list rather than a list each
+  const list = target.kind === 'bulletList' || target.kind === 'orderedList' || target.kind === 'taskList';
+  for (const pos of positions.reverse()) {
+    turnInto(editor, pos, target);
+    if (!list) continue;
+    const { state } = editor;
+    const $at = state.doc.resolve(Math.min(pos, state.doc.content.size));
+    const index = $at.index(0);
+    const here = state.doc.maybeChild(index);
+    const next = state.doc.maybeChild(index + 1);
+    if (here && next && here.type === next.type && here.type.name === target.kind)
+      editor.view.dispatch(state.tr.join($at.posAtIndex(index + 1, 0)));
+  }
+}
+
 export function BlockMenu({
   editor,
   request,
@@ -654,7 +681,10 @@ export function BlockMenu({
   pageTitle: string;
   onClose: () => void;
 }) {
-  const turn = (target: TurnTarget) => () => turnInto(editor, request.pos, target);
+  const picked = selectedBlocks(editor.state);
+  const range = picked && request.pos >= picked.from && request.pos < picked.to ? picked : null;
+  const turn = (target: TurnTarget) => () =>
+    range ? turnBlocks(editor, range, target) : turnInto(editor, request.pos, target);
   const entries: MenuEntry[] = [
     { heading: t('editor.turnInto') },
     { label: t('slash.items.text.title'), icon: Pilcrow, onSelect: turn({ kind: 'paragraph' }) },
@@ -703,6 +733,12 @@ export function BlockMenu({
       label: t('editor.duplicate'),
       icon: Copy,
       onSelect: () => {
+        if (range) {
+          const blocks = editor.state.doc.slice(range.from, range.to).content;
+          editor.view.dispatch(editor.state.tr.insert(range.to, blocks));
+          clearBlockSelection(editor);
+          return;
+        }
         const node = editor.state.doc.nodeAt(request.pos);
         if (node)
           editor
@@ -717,6 +753,10 @@ export function BlockMenu({
       icon: Trash2,
       danger: true,
       onSelect: () => {
+        if (range) {
+          editor.chain().focus().deleteRange(range).run();
+          return;
+        }
         const node = editor.state.doc.nodeAt(request.pos);
         if (node)
           editor

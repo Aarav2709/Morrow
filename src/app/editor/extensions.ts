@@ -8,6 +8,7 @@ import { Placeholder } from '@tiptap/extensions';
 import StarterKit from '@tiptap/starter-kit';
 import { t } from '../i18n';
 import { BlockHandle } from './BlockHandle';
+import { BlockSelect } from './BlockSelect';
 import { Callout, FindReplace } from './Blocks';
 import { EmojiSuggest } from './EmojiSuggest';
 import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
@@ -142,6 +143,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     DetailsContent,
     FindReplace,
     BlockHandle.configure({ onMenu: options.onBlockMenu }),
+    BlockSelect,
     MarkdownPaste.configure({ resolvePage: options.resolvePage }),
   ];
 }

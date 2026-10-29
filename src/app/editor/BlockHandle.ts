@@ -4,6 +4,7 @@ import type { Node as PMNode } from '@tiptap/pm/model';
 import { NodeSelection, Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import type { EditorState, Transaction } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
+import { selectedBlocks } from './BlockSelect';
 
 const MOVABLE_ITEMS = new Set(['listItem', 'taskItem']);
 
@@ -222,7 +223,10 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
 
       const onClick = () => {
         if (!current) return;
-        view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, current.pos)));
+        // a block among several picked in the margin opens the menu for all of them
+        const picked = selectedBlocks(view.state);
+        if (!picked || current.pos < picked.from || current.pos >= picked.to)
+          view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, current.pos)));
         view.focus();
         onMenu({ pos: current.pos, rect: handle.getBoundingClientRect() });
       };

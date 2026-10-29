@@ -286,6 +286,17 @@
   pointer-events: none;
 }
 
+/* whole blocks picked by dragging in the margin */
+.prose .is-block-selected {
+  background: var(--selection);
+  border-radius: 4px;
+}
+
+.prose .is-block-selected ::selection,
+.prose .is-block-selected::selection {
+  background: transparent;
+}
+
 .prose .ProseMirror-selectednode {
   outline: 2px solid var(--accent-line);
   outline-offset: 2px;
