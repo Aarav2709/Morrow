@@ -138,7 +138,8 @@ export function listItemAtCursor(editor: Editor): number | null {
 // plain lines indented under a list item, the way notion has text blocks under a bullet. enter on one
 // writes another at the same depth rather than a new bullet, and enter on an empty last one steps out of
 // the list. backspace at the start of a nested item clears its bullet and keeps it where it is, and at the
-// start of an indented line moves the line out a level, so tab puts it back
+// start of an indented line moves the line out a level, so tab puts it back. delete at the end of a line
+// just above a list takes the first item's text up into it and leaves the rest of the list as it was
 export const IndentedLines = Extension.create({
   name: 'indentedLines',
   // ahead of the list's own keys
@@ -180,6 +181,27 @@ export const IndentedLines = Extension.create({
         }
         if ($from.depth < 4 || !LIST_ITEMS.has($from.node(-3).type.name)) return false;
         return turnListItem(editor, $from.before(-1), { kind: 'paragraph' });
+      },
+      Delete: ({ editor }) => {
+        const { $from, empty } = editor.state.selection;
+        if (!empty || !$from.parent.isTextblock || $from.parentOffset !== $from.parent.content.size)
+          return false;
+        if ($from.depth > 0 && LIST_ITEMS.has($from.node(-1).type.name)) return false;
+        const list = editor.state.doc.resolve($from.after()).nodeAfter;
+        if (!list || !LISTS.has(list.type.name)) return false;
+        const linePos = $from.before();
+        if ($from.parent.content.size === 0) {
+          const tr = editor.state.tr.delete(linePos, $from.after());
+          tr.setSelection(TextSelection.near(tr.doc.resolve(linePos + 2)));
+          editor.view.dispatch(tr.scrollIntoView());
+          return true;
+        }
+        const cursor = $from.pos;
+        if (!turnListItem(editor, $from.after() + 1, { kind: 'paragraph' })) return false;
+        const { state } = editor;
+        const tr = state.tr.setSelection(TextSelection.create(state.doc, cursor));
+        editor.view.dispatch(tr);
+        return editor.commands.joinForward();
       },
     };
   },
