@@ -13,7 +13,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { docToPlainText, findUnknownTypes, inlineText, isDocEmpty } from '../../core/doc';
+import { docToPlainText, findUnknownTypes, isDocEmpty } from '../../core/doc';
 import { backlinksTo, unlinkedMentions } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
 import type { DocNode, PageId, PageMeta } from '../../core/model';
@@ -647,11 +647,22 @@ interface Heading {
   text: string;
 }
 
-function headingsOf(doc: DocNode): Heading[] {
-  return (doc.content ?? [])
-    .filter((node) => node.type === 'heading')
-    .map((node) => ({ level: Number(node.attrs?.level ?? 1), text: inlineText(node).trim() }))
-    .filter((heading) => heading.text);
+// a heading the outline lists: one on the page itself, in a column, or a toggle heading and what is open
+// inside a toggle. headings inside lists, quotes, callouts and tables are left out, as notion does
+const HEADING = ':is(h1, h2, h3, h4, h5, h6, summary[data-level])';
+function outlined(element: HTMLElement, prose: Element): boolean {
+  if (!element.textContent?.trim() || element.getClientRects().length === 0) return false;
+  for (let parent = element.parentElement; parent && parent !== prose; parent = parent.parentElement) {
+    const kept =
+      parent.matches('[data-columns], [data-column], [data-type="details"], [data-type="detailsContent"]') ||
+      parent.parentElement?.matches('[data-type="details"]');
+    if (!kept) return false;
+  }
+  return true;
+}
+
+function headingLevel(element: HTMLElement): number {
+  return Number(element.dataset.level ?? element.tagName.slice(1)) || 1;
 }
 
 // the room a view needs before the outline fits beside the page
@@ -660,17 +671,32 @@ const OUTLINE_ROOM = 1090;
 // a list of the page's headings beside long pages, click one to jump to it. it starts below the cover,
 // marks the section being read, and a heading with smaller ones under it can fold them away
 function Outline({ doc }: { doc: DocNode }) {
-  const headings = useMemo(() => headingsOf(doc), [doc]);
+  const [headings, setHeadings] = useState<Heading[]>([]);
   const ref = useRef<HTMLElement>(null);
   const [roomy, setRoomy] = useState(false);
   const [active, setActive] = useState(-1);
   const [top, setTop] = useState<number | null>(null);
   const [folded, setFolded] = useState<ReadonlySet<number>>(new Set());
   const enough = headings.length >= 3;
-  const elements = () =>
-    ref.current
-      ?.closest('.view')
-      ?.querySelectorAll<HTMLElement>('.editor-surface .prose > :is(h1, h2, h3, h4, h5, h6)') ?? [];
+  const elements = (): HTMLElement[] => {
+    const prose = ref.current?.closest('.view')?.querySelector('.editor-surface .prose');
+    if (!prose) return [];
+    return Array.from(prose.querySelectorAll<HTMLElement>(HEADING)).filter((element) =>
+      outlined(element, prose),
+    );
+  };
+  // read from the page as it is drawn, so the list follows columns left to right and only shows what an
+  // open toggle shows
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const next = elements().map((element) => ({
+        level: headingLevel(element),
+        text: element.textContent!.trim(),
+      }));
+      setHeadings((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [doc]);
   // measured on the view it sits in, so a narrow side of a split hides it
   useEffect(() => {
     const view = ref.current?.closest('.view');
@@ -708,7 +734,8 @@ function Outline({ doc }: { doc: DocNode }) {
       if (frame) cancelAnimationFrame(frame);
     };
   }, [enough, doc]);
-  if (!enough) return null;
+  // kept in the page while there are too few headings, so it can find them as they are written
+  if (!enough) return <nav ref={ref} hidden />;
   const jump = (index: number) => elements()[index]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   // a heading owns the smaller headings after it, up to the next one of its size or bigger
   const hasChildren = (index: number) => (headings[index + 1]?.level ?? 0) > headings[index]!.level;
