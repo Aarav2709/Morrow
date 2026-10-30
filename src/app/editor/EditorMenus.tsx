@@ -582,6 +582,16 @@ function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
   const node = editor.state.doc.nodeAt(pos);
   if (!node) return;
   if (turnListItem(editor, pos, target)) return;
+  if (node.type.name === 'details' && target.kind === 'toggle') {
+    // a toggle stays a toggle with what it folds inside it, only its title's level changes
+    const summary = node.firstChild;
+    if (summary?.type.name !== 'detailsSummary') return;
+    editor.view.dispatch(
+      editor.state.tr.setNodeMarkup(pos + 1, undefined, { ...summary.attrs, level: target.level ?? null }),
+    );
+    editor.commands.focus();
+    return;
+  }
   if (node.type.name === 'details') {
     // a toggle opens up into its title as a line followed by what was folded inside it
     const summary = firstTextPosition(editor, pos);
