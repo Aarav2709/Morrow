@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import type { Node as PMNode, Schema } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
+import { liftTarget } from '@tiptap/pm/transform';
 import { getPreferences } from '../platform/preferences';
 
 export type TurnTarget =
@@ -136,7 +137,8 @@ export function listItemAtCursor(editor: Editor): number | null {
 
 // plain lines indented under a list item, the way notion has text blocks under a bullet. enter on one
 // writes another at the same depth rather than a new bullet, and enter on an empty last one steps out of
-// the list. backspace at the start of a nested item clears its bullet and keeps it where it is
+// the list. backspace at the start of a nested item clears its bullet and keeps it where it is, and at the
+// start of an indented line moves the line out a level, so tab puts it back
 export const IndentedLines = Extension.create({
   name: 'indentedLines',
   // ahead of the list's own keys
@@ -165,10 +167,18 @@ export const IndentedLines = Extension.create({
       },
       Backspace: ({ editor }) => {
         const { $from, empty } = editor.state.selection;
-        if (!empty || $from.parentOffset !== 0 || $from.depth < 4 || !$from.parent.isTextblock) return false;
+        if (!empty || $from.parentOffset !== 0 || $from.depth < 3 || !$from.parent.isTextblock) return false;
         const item = $from.node(-1);
-        if (!LIST_ITEMS.has(item.type.name) || $from.index(-1) !== 0) return false;
-        if (!LIST_ITEMS.has($from.node(-3).type.name)) return false;
+        if (!LIST_ITEMS.has(item.type.name)) return false;
+        if ($from.index(-1) > 0) {
+          if ($from.parent.type.name !== 'paragraph') return false;
+          const range = $from.blockRange();
+          const target = range && liftTarget(range);
+          if (!range || target == null) return false;
+          editor.view.dispatch(editor.state.tr.lift(range, target).scrollIntoView());
+          return true;
+        }
+        if ($from.depth < 4 || !LIST_ITEMS.has($from.node(-3).type.name)) return false;
         return turnListItem(editor, $from.before(-1), { kind: 'paragraph' });
       },
     };
