@@ -341,7 +341,7 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
     const body: DocNode = { type: 'detailsContent', content: [] };
     const node: DocNode = {
       type: 'details',
-      attrs: { open: false },
+      attrs: { open: /^<details\b[^>]*\sopen\b/i.test(details[0]) },
       content: [
         {
           type: 'detailsSummary',

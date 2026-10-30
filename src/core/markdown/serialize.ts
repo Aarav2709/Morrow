@@ -143,7 +143,8 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       const level = toggleLevel(summary?.attrs?.level);
       const title = level ? `<h${level}>${text}</h${level}>` : text;
       const body = content ? blocks(content.content ?? [], options) : '';
-      return `<details>
+      // an open toggle is written open, so it is still open when the page comes back
+      return `<details${node.attrs?.open === true ? ' open' : ''}>
 <summary>${title}</summary>
 
 ${body}

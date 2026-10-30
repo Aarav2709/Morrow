@@ -97,6 +97,24 @@ describe('markdown import', () => {
     expect(summary).toEqual({ type: 'detailsSummary', attrs: { level: 2 }, content: [text('Section')] });
   });
 
+  it('keeps a toggle open or closed through a save and load', () => {
+    const toggle = (open: boolean): DocNode => ({
+      type: 'doc',
+      content: [
+        {
+          type: 'details',
+          attrs: { open },
+          content: [
+            { type: 'detailsSummary', content: [text('Section')] },
+            { type: 'detailsContent', content: [p(text('Inside'))] },
+          ],
+        },
+      ],
+    });
+    expect(markdownToDoc(docToMarkdown(toggle(true))).content![0]!.attrs).toEqual({ open: true });
+    expect(markdownToDoc(docToMarkdown(toggle(false))).content![0]!.attrs).toEqual({ open: false });
+  });
+
   it('keeps links and bold in a toggle title through a save and load', () => {
     const doc: DocNode = {
       type: 'doc',
