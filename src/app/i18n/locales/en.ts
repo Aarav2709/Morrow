@@ -644,6 +644,7 @@ export const en = {
     replaceWith: 'Replace with',
     previousMatch: 'Previous match',
     nextMatch: 'Next match',
+    useRegex: 'Regular expression',
     closeFind: 'Close find',
     suggestion: {
       toChoose: 'to choose',

@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
-import { ChevronDown, ChevronUp, Replace, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Regex, Replace, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '../ui';
 import { t } from '../i18n';
@@ -28,7 +28,7 @@ export function FindBar({ editor, seed, onClose }: Props) {
     editor,
     selector: ({ editor: current }) => {
       const state = getFindState(current.state);
-      return { count: state.matches.length, current: state.current };
+      return { count: state.matches.length, current: state.current, regex: state.regex };
     },
   });
 
@@ -57,9 +57,9 @@ export function FindBar({ editor, seed, onClose }: Props) {
         .querySelector('.find-match.is-current')
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     );
-  const update = (value: string) => {
+  const update = (value: string, regex = find.regex) => {
     setQuery(value);
-    setFindQuery(editor.state, editor.view.dispatch, value);
+    setFindQuery(editor.state, editor.view.dispatch, value, regex);
     reveal();
   };
   const step = (direction: 1 | -1) => {
@@ -95,6 +95,16 @@ export function FindBar({ editor, seed, onClose }: Props) {
         <span className="find-count" aria-live="polite">
           {query ? (find.count ? `${find.current + 1} of ${find.count}` : t('editor.noResults')) : ''}
         </span>
+        <button
+          type="button"
+          className={`icon-button small${find.regex ? ' is-active' : ''}`}
+          aria-label={t('editor.useRegex')}
+          title={t('editor.useRegex')}
+          aria-pressed={find.regex}
+          onClick={() => update(query, !find.regex)}
+        >
+          <Regex size={15} />
+        </button>
         <button
           type="button"
           className="icon-button small"

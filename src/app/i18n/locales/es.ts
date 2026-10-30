@@ -651,6 +651,7 @@ export const es: TranslationSchema = {
     replaceWith: 'Reemplazar con',
     previousMatch: 'Coincidencia anterior',
     nextMatch: 'Coincidencia siguiente',
+    useRegex: 'Expresión regular',
     closeFind: 'Cerrar búsqueda',
     suggestion: {
       toChoose: 'para elegir',

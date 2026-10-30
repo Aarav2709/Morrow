@@ -85,44 +85,74 @@ export const Callout = Node.create({
 
 export interface FindState {
   query: string;
+  // the query is a regular expression, and a replacement can use its groups as $1, $2 and so on
+  regex: boolean;
   matches: Array<{ from: number; to: number }>;
   current: number;
 }
 
 const findKey = new PluginKey<FindState>('findReplace');
 
-function findMatches(state: EditorState, query: string): FindState['matches'] {
-  const term = query.toLowerCase();
-  if (!term) return [];
+// null when a regular expression is still being typed and isn't valid yet
+function findPattern(query: string, regex: boolean): RegExp | null {
+  if (!query) return null;
+  if (!regex) return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  try {
+    return new RegExp(query, 'gi');
+  } catch {
+    return null;
+  }
+}
+
+function findMatches(state: EditorState, query: string, regex: boolean): FindState['matches'] {
+  const pattern = findPattern(query, regex);
+  if (!pattern) return [];
   const matches: FindState['matches'] = [];
   state.doc.descendants((node, pos) => {
-    if (!node.isTextblock) return true;
+    if (!node.isTextblock || matches.length >= 10_000) return false;
     // atoms count as one character so positions stay aligned with the document
-    const text = node.textBetween(0, node.content.size, undefined, '￼').toLowerCase();
-    for (
-      let index = text.indexOf(term);
-      index !== -1 && matches.length < 10_000;
-      index = text.indexOf(term, index + term.length)
-    ) {
-      matches.push({ from: pos + 1 + index, to: pos + 1 + index + term.length });
+    const text = node.textBetween(0, node.content.size, undefined, '\ufffc');
+    for (const match of text.matchAll(pattern)) {
+      // a pattern that can match nothing, like a*, only counts where it matched something
+      if (!match[0]) continue;
+      matches.push({ from: pos + 1 + match.index, to: pos + 1 + match.index + match[0].length });
+      if (matches.length >= 10_000) break;
     }
     return false;
   });
   return matches;
 }
 
-export function getFindState(state: EditorState): FindState {
-  return findKey.getState(state) ?? { query: '', matches: [], current: 0 };
+// what a match is replaced with. a regular expression fills in its groups
+function replacementFor(
+  state: EditorState,
+  find: FindState,
+  match: FindState['matches'][number],
+  text: string,
+) {
+  if (!find.regex) return text;
+  const pattern = findPattern(find.query, true);
+  const found = state.doc.textBetween(match.from, match.to, undefined, '\ufffc');
+  return pattern ? found.replace(new RegExp(pattern.source, 'i'), text) : text;
 }
 
-export function setFindQuery(state: EditorState, dispatch: (tr: Transaction) => void, query: string): void {
-  const matches = findMatches(state, query);
+export function getFindState(state: EditorState): FindState {
+  return findKey.getState(state) ?? { query: '', regex: false, matches: [], current: 0 };
+}
+
+export function setFindQuery(
+  state: EditorState,
+  dispatch: (tr: Transaction) => void,
+  query: string,
+  regex = getFindState(state).regex,
+): void {
+  const matches = findMatches(state, query, regex);
   const from = state.selection.from;
   const current = Math.max(
     0,
     matches.findIndex((match) => match.from >= from),
   );
-  dispatch(state.tr.setMeta(findKey, { query, matches, current }));
+  dispatch(state.tr.setMeta(findKey, { query, regex, matches, current }));
 }
 
 export function stepFind(state: EditorState, dispatch: (tr: Transaction) => void, direction: 1 | -1): void {
@@ -146,8 +176,8 @@ export function replaceCurrent(
   const find = getFindState(state);
   const match = find.matches[find.current];
   if (!match) return;
-  const tr = state.tr.insertText(replacement, match.from, match.to);
-  const matches = findMatches(state.apply(tr), find.query);
+  const tr = state.tr.insertText(replacementFor(state, find, match, replacement), match.from, match.to);
+  const matches = findMatches(state.apply(tr), find.query, find.regex);
   dispatch(
     tr.setMeta(findKey, {
       ...find,
@@ -166,8 +196,15 @@ export function replaceAll(
   const find = getFindState(state);
   if (find.matches.length === 0) return 0;
   const tr = state.tr;
-  for (const match of [...find.matches].reverse()) tr.insertText(replacement, match.from, match.to);
-  dispatch(tr.setMeta(findKey, { ...find, matches: findMatches(state.apply(tr), find.query), current: 0 }));
+  for (const match of [...find.matches].reverse())
+    tr.insertText(replacementFor(state, find, match, replacement), match.from, match.to);
+  dispatch(
+    tr.setMeta(findKey, {
+      ...find,
+      matches: findMatches(state.apply(tr), find.query, find.regex),
+      current: 0,
+    }),
+  );
   return find.matches.length;
 }
 
@@ -178,12 +215,12 @@ export const FindReplace = Extension.create({
       new Plugin<FindState>({
         key: findKey,
         state: {
-          init: () => ({ query: '', matches: [], current: 0 }),
+          init: () => ({ query: '', regex: false, matches: [], current: 0 }),
           apply(tr, value, _old, next) {
             const meta = tr.getMeta(findKey) as FindState | undefined;
             if (meta) return meta;
             if (!tr.docChanged || !value.query) return value;
-            const matches = findMatches(next, value.query);
+            const matches = findMatches(next, value.query, value.regex);
             return { ...value, matches, current: Math.min(value.current, Math.max(0, matches.length - 1)) };
           },
         },
