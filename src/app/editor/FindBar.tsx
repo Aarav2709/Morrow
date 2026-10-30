@@ -40,16 +40,32 @@ export function FindBar({ editor, seed, onClose }: Props) {
   }, [editor]);
 
   useEffect(() => {
-    if (seed.text) setFindQuery(editor.state, editor.view.dispatch, seed.text);
+    if (seed.text) {
+      setFindQuery(editor.state, editor.view.dispatch, seed.text);
+      requestAnimationFrame(() =>
+        editor.view.dom.querySelector('.find-match.is-current')?.scrollIntoView({ block: 'center' }),
+      );
+    }
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [editor, seed]);
 
+  // the match being looked at is brought into view, also while the cursor stays in the find bar
+  const reveal = () =>
+    requestAnimationFrame(() =>
+      editor.view.dom
+        .querySelector('.find-match.is-current')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+    );
   const update = (value: string) => {
     setQuery(value);
     setFindQuery(editor.state, editor.view.dispatch, value);
+    reveal();
   };
-  const step = (direction: 1 | -1) => stepFind(editor.state, editor.view.dispatch, direction);
+  const step = (direction: 1 | -1) => {
+    stepFind(editor.state, editor.view.dispatch, direction);
+    reveal();
+  };
   const close = () => {
     onClose();
     editor.commands.focus();
@@ -59,7 +75,7 @@ export function FindBar({ editor, seed, onClose }: Props) {
     if (event.key === 'Escape') {
       event.preventDefault();
       close();
-    } else if (event.key === 'Enter' && event.currentTarget === inputRef.current) {
+    } else if (event.key === 'Enter' && event.target === inputRef.current) {
       event.preventDefault();
       step(event.shiftKey ? -1 : 1);
     }
