@@ -207,7 +207,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
     keywords: 'details collapse fold accordion',
     run: (e, r) => turnItem(e, r, { kind: 'toggle' }) || chain(e, r).setDetails().run(),
   },
-  ...([1, 2, 3] as const).map((level) => ({
+  ...([1, 2, 3, 4, 5, 6] as const).map((level) => ({
     id: `toggleH${level}`,
     title: `Toggle heading ${level}`,
     description: 'A heading that folds its section away',
@@ -437,6 +437,9 @@ const SECTIONS: Array<[string, string[], TranslationKey]> = [
       'toggleH1',
       'toggleH2',
       'toggleH3',
+      'toggleH4',
+      'toggleH5',
+      'toggleH6',
       'quote',
       'callout',
       'divider',

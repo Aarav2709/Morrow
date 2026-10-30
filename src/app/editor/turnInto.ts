@@ -11,7 +11,7 @@ export type TurnTarget =
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6 }
   | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' }
   // a toggle, with a heading for its title when it has a level
-  | { kind: 'toggle'; level?: 1 | 2 | 3 };
+  | { kind: 'toggle'; level?: 1 | 2 | 3 | 4 | 5 | 6 };
 
 const LIST_ITEMS = new Set(['listItem', 'taskItem']);
 const LISTS = new Set(['bulletList', 'orderedList', 'taskList']);

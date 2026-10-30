@@ -758,6 +758,21 @@ export const en = {
         description: 'A heading that folds its section away',
         keywords: 'toggle heading collapse section h3',
       },
+      toggleH4: {
+        title: 'Toggle heading 4',
+        description: 'A heading that folds its section away',
+        keywords: 'toggle heading collapse section h4',
+      },
+      toggleH5: {
+        title: 'Toggle heading 5',
+        description: 'A heading that folds its section away',
+        keywords: 'toggle heading collapse section h5',
+      },
+      toggleH6: {
+        title: 'Toggle heading 6',
+        description: 'A heading that folds its section away',
+        keywords: 'toggle heading collapse section h6',
+      },
       image: {
         title: 'Image',
         description: 'Picture from your computer',

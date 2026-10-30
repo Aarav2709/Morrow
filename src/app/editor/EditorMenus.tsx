@@ -710,7 +710,7 @@ export function BlockMenu({
     { label: t('slash.items.ordered.title'), icon: ListOrdered, onSelect: turn({ kind: 'orderedList' }) },
     { label: t('slash.items.task.title'), icon: ListChecks, onSelect: turn({ kind: 'taskList' }) },
     { label: t('slash.items.toggle.title'), icon: ChevronRight, onSelect: turn({ kind: 'toggle' }) },
-    ...([1, 2, 3] as const).map((level) => ({
+    ...([1, 2, 3, 4, 5, 6] as const).map((level) => ({
       label: t(`slash.items.toggleH${level}.title`),
       icon: ChevronRight,
       onSelect: turn({ kind: 'toggle', level }),

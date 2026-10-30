@@ -296,7 +296,7 @@ export function docToHtml(doc: DocNode, context: RenderContext): string {
         const [summary, content] = node.content ?? [];
         const level = Number(summary?.attrs?.level);
         const title = inline(summary?.content, context);
-        return `<details><summary>${level >= 1 && level <= 3 ? `<h${level}>${title}</h${level}>` : title}</summary>${(content?.content ?? []).map(block).join('\n')}</details>`;
+        return `<details><summary>${level >= 1 && level <= 6 ? `<h${level}>${title}</h${level}>` : title}</summary>${(content?.content ?? []).map(block).join('\n')}</details>`;
       }
       case 'codeBlock': {
         const language =

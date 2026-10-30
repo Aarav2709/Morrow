@@ -765,6 +765,21 @@ export const es: TranslationSchema = {
         description: 'Un encabezado que pliega su sección',
         keywords: 'desplegable encabezado plegar sección h3',
       },
+      toggleH4: {
+        title: 'Encabezado desplegable 4',
+        description: 'Un encabezado que pliega su sección',
+        keywords: 'desplegable encabezado plegar sección h4',
+      },
+      toggleH5: {
+        title: 'Encabezado desplegable 5',
+        description: 'Un encabezado que pliega su sección',
+        keywords: 'desplegable encabezado plegar sección h5',
+      },
+      toggleH6: {
+        title: 'Encabezado desplegable 6',
+        description: 'Un encabezado que pliega su sección',
+        keywords: 'desplegable encabezado plegar sección h6',
+      },
       image: {
         title: 'Imagen',
         description: 'Imagen desde tu ordenador',

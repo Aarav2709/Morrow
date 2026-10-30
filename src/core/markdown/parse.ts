@@ -337,7 +337,7 @@ function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
     const summary = /<summary[^>]*>([\s\S]*?)<\/summary>/i.exec(html);
     const title = decodeEntities((summary?.[1] ?? '').replace(/<[^>]+>/g, '')).trim();
     // <summary><h2>…</h2></summary> is a toggle heading
-    const level = toggleLevel(Number(/^\s*<h([1-3])\b/i.exec(summary?.[1] ?? '')?.[1]));
+    const level = toggleLevel(Number(/^\s*<h([1-6])\b/i.exec(summary?.[1] ?? '')?.[1]));
     const body: DocNode = { type: 'detailsContent', content: [] };
     const node: DocNode = {
       type: 'details',

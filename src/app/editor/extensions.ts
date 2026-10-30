@@ -59,7 +59,7 @@ const ToggleSummary = DetailsSummary.extend({
         default: null,
         parseHTML: (element) => {
           const level = Number(element.getAttribute('data-level'));
-          return level >= 1 && level <= 3 ? level : null;
+          return level >= 1 && level <= 6 ? level : null;
         },
         renderHTML: (attributes) => (attributes.level ? { 'data-level': String(attributes.level) } : {}),
       },

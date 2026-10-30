@@ -206,8 +206,10 @@ export function calloutIcon(value: unknown): string | null {
   return icon && icon.length <= 16 && !/[|\]\n]/.test(icon) ? icon : null;
 }
 
-export function toggleLevel(value: unknown): 1 | 2 | 3 | null {
-  return value === 1 || value === 2 || value === 3 ? value : null;
+export function toggleLevel(value: unknown): 1 | 2 | 3 | 4 | 5 | 6 | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 6
+    ? (value as 1 | 2 | 3 | 4 | 5 | 6)
+    : null;
 }
 
 export const HEADER_COLUMN = '<!-- header-column -->';

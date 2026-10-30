@@ -78,7 +78,7 @@ export function fromNotionMarkdown(text: string): string {
     const body = line.trim();
     const heading = /^(#{1,6})\s+(.*?)\s*\{[^}]*toggle="true"[^}]*\}\s*$/.exec(body);
     if (heading) {
-      const level = Math.min(3, heading[1]!.length);
+      const level = Math.min(6, heading[1]!.length);
       out.push('', '<details>', `<summary><h${level}>${heading[2]}</h${level}></summary>`, '');
       open.push({ kind: 'heading', tabs });
       continue;

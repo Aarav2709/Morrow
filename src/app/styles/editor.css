@@ -757,6 +757,16 @@
 .prose .toggle summary[data-level='3'] {
   font-size: 1.13em;
 }
+.prose .toggle summary[data-level='4'] {
+  font-size: 1em;
+}
+.prose .toggle summary[data-level='5'] {
+  font-size: 0.92em;
+}
+.prose .toggle summary[data-level='6'] {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
 .prose .toggle:has(> div > summary[data-level='1']) > button {
   height: 2.2em;
 }
