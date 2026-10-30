@@ -174,3 +174,13 @@ export const IndentedLines = Extension.create({
     };
   },
 });
+
+// tab never leaves the page. where a line can't be indented or outdented any further it stays put, rather
+// than the browser moving focus to the next button on the page
+export const KeepTab = Extension.create({
+  name: 'keepTab',
+  priority: 1,
+  addKeyboardShortcuts() {
+    return { Tab: () => true, 'Shift-Tab': () => true };
+  },
+});
