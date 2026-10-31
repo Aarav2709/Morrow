@@ -204,6 +204,12 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
         : null,
     }),
   });
+  // a colour is picked, then the menu goes back to bold, italic and the rest for the same words
+  const pick = (kind: 'text' | 'bg', color: ColorName | null) => {
+    if (kind === 'text') editor.chain().focus().setTextColor(color).run();
+    else editor.chain().focus().setHighlightColor(color).run();
+    onDone();
+  };
   const row = (kind: 'text' | 'bg') => (
     <div
       className="color-row"
@@ -216,11 +222,7 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
         title={kind === 'text' ? t('editor.defaultTextColor') : t('editor.noHighlight')}
         aria-label={kind === 'text' ? t('editor.defaultTextColor') : t('editor.noHighlight')}
         onMouseDown={(event) => event.preventDefault()}
-        onClick={() =>
-          kind === 'text'
-            ? editor.chain().focus().setTextColor(null).run()
-            : editor.chain().focus().setHighlightColor(null).run()
-        }
+        onClick={() => pick(kind, null)}
       >
         {kind === 'text' ? 'A' : ''}
       </button>
@@ -238,11 +240,7 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
               : t('editor.colourText', { colour: colorLabel(color) })
           }
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() =>
-            kind === 'text'
-              ? editor.chain().focus().setTextColor(color).run()
-              : editor.chain().focus().setHighlightColor(color).run()
-          }
+          onClick={() => pick(kind, color)}
         >
           {kind === 'text' ? 'A' : ''}
         </button>
