@@ -134,15 +134,18 @@ function firstTextMiddle(block: HTMLElement): number | null {
         ? NodeFilter.FILTER_ACCEPT
         : NodeFilter.FILTER_SKIP,
   });
-  const text = walker.nextNode();
-  if (!text) return null;
-  const range = document.createRange();
-  range.setStart(text, 0);
-  range.setEnd(text, 1);
-  const box = range.getClientRects()[0];
   const top = block.getBoundingClientRect().top;
-  // text far down the block belongs to something else, like a caption under a picture
-  return box && box.top - top < 80 ? box.top + box.height / 2 : null;
+  const range = document.createRange();
+  // text that isn't drawn, like the hidden link above a database shown in the page, is passed over
+  for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+    range.setStart(text, 0);
+    range.setEnd(text, 1);
+    const box = range.getClientRects()[0];
+    if (!box) continue;
+    // text far down the block belongs to something else, like a caption under a picture
+    return box.top - top < 80 ? box.top + box.height / 2 : null;
+  }
+  return null;
 }
 
 function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
