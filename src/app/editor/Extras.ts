@@ -78,7 +78,15 @@ export const Highlight = Mark.create({
     };
   },
   addKeyboardShortcuts() {
-    return { 'Mod-Shift-h': () => this.editor.commands.toggleHighlight() };
+    // on words that are highlighted or coloured it takes both off, otherwise it highlights them
+    return {
+      'Mod-Shift-h': () => {
+        const { editor } = this;
+        if (editor.isActive('highlight') || editor.isActive('textColor'))
+          return editor.chain().unsetMark('highlight').unsetMark('textColor').run();
+        return editor.commands.toggleHighlight();
+      },
+    };
   },
   addInputRules() {
     return [markInputRule({ find: /(?:^|\s)(==(?!\s+==)((?:[^=]+))==(?!\s+==))$/, type: this.type })];
