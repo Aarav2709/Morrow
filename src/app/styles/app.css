@@ -545,7 +545,18 @@ kbd,
 }
 
 .favorite-mark {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 4px;
   color: var(--text-faint);
+  cursor: pointer;
+}
+.favorite-mark:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+.favorite-mark:hover svg {
+  fill: currentColor;
 }
 
 .tree-actions {

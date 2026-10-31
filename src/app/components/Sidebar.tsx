@@ -50,7 +50,15 @@ import { desktop } from '../platform/desktop';
 import { vaultName } from '../platform/vault';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
-import { createPage, expandPage, importMarkdown, movePage, openToday, trashPage } from '../operations';
+import {
+  createPage,
+  expandPage,
+  importMarkdown,
+  movePage,
+  openToday,
+  toggleFavorite,
+  trashPage,
+} from '../operations';
 import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
 import type { SidebarModule } from '../platform/preferences';
 import { navigate, openPage, useActiveRoute } from '../router';
@@ -318,7 +326,20 @@ export function Sidebar() {
                         <PageIcon page={page} />
                       </span>
                       <span className="tree-title">{displayTitle(page)}</span>
-                      <Star size={12} className="favorite-mark" aria-label={t('sidebar.favorites')} />
+                      {/* the star takes the page out of favourites right here */}
+                      <span
+                        role="button"
+                        tabIndex={-1}
+                        className="favorite-mark"
+                        title={t('pageMenu.removeFromFavorites')}
+                        aria-label={t('pageMenu.removeFromFavorites')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleFavorite(page.id);
+                        }}
+                      >
+                        <Star size={12} />
+                      </span>
                     </button>
                   </li>
                 );
