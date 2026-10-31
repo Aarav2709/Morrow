@@ -40,7 +40,7 @@ import {
   workspaceMarkdownFiles,
 } from '../core/portability';
 import type { BackupFile } from '../core/portability';
-import { childrenOf, descendantsOf, isEffectivelyTrashed } from '../core/tree';
+import { childrenOf, descendantsOf, isEffectivelyTrashed, livePages } from '../core/tree';
 import { commitEditors } from './editor/commits';
 import { desktop } from './platform/desktop';
 import { newId, pickFiles, saveFile, stamp } from './platform/files';
@@ -407,7 +407,9 @@ export function deleteForever(id: PageId): void {
     confirmLabel: t('dialogs.confirmDelete.confirmButton'),
     danger: true,
     onConfirm: () => {
+      const files = filesOf([id, ...descendantsOf(state.pages, id).map((page) => page.id)]);
       const result = run({ type: 'page.deleteForever', id });
+      if (result.ok) void removeFilesLeftBehind(files);
       if (result.ok)
         for (const pane of panesShowing((route) => route.name === 'page' && !result.value.pages[route.id]))
           navigate({ name: 'trash' }, { pane });
@@ -422,9 +424,42 @@ export function emptyTrash(count: number): void {
     confirmLabel: t('dialogs.emptyTrash.confirmButton'),
     danger: true,
     onConfirm: () => {
-      run({ type: 'trash.empty' });
+      const live = new Set(livePages(getState().pages).map((page) => page.id));
+      const files = filesOf(Object.keys(getState().pages).filter((id) => !live.has(id)));
+      if (run({ type: 'trash.empty' }).ok) void removeFilesLeftBehind(files);
     },
   });
+}
+
+// the images and files the pages hold
+function filesOf(ids: PageId[]): Set<FileId> {
+  const docs = getState().docs;
+  return new Set(ids.flatMap((id) => (docs[id] ? fileIdsInDoc(docs[id]) : [])));
+}
+
+// once pages are deleted for good, the files only they used are deleted from the attachments folder too.
+// a file another page, the trash or a page version still uses stays
+async function removeFilesLeftBehind(files: Set<FileId>): Promise<void> {
+  if (files.size === 0) return;
+  // a locked page's content isn't known, it might use the same files
+  const { pages, docs } = getState();
+  if (Object.values(pages).some((page) => page.encrypted && !docs[page.id])) return;
+  try {
+    await getSession().flush();
+    const used = await usedFileIds();
+    const unused = [...files].filter((id) => !used.has(id));
+    if (unused.length) await getSession().deleteFiles(unused);
+  } catch (error) {
+    console.warn('Morrow could not remove the files of deleted pages:', error);
+  }
+}
+
+async function usedFileIds(): Promise<Set<FileId>> {
+  const used = referencedFileIds(getState());
+  for (const snapshot of await getSession().allSnapshots()) {
+    for (const id of fileIdsInDoc(snapshot.doc)) used.add(id);
+  }
+  return used;
 }
 
 export function duplicatePage(id: PageId): void {
@@ -737,10 +772,7 @@ export async function restoreBackup(): Promise<void> {
 
 // files nothing points at any more, not pages, not the trash, not page history
 export async function unusedFiles(): Promise<FileMeta[]> {
-  const used = referencedFileIds(getState());
-  for (const snapshot of await getSession().allSnapshots()) {
-    for (const id of fileIdsInDoc(snapshot.doc)) used.add(id);
-  }
+  const used = await usedFileIds();
   return (await getSession().listFiles()).filter((file) => !used.has(file.id));
 }
 
