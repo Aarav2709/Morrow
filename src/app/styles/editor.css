@@ -97,7 +97,8 @@
   text-decoration-color: var(--accent-line);
   text-decoration-thickness: 1.5px;
   text-underline-offset: 3px;
-  cursor: text;
+  /* a click opens the link's menu, with ctrl or cmd it follows the link */
+  cursor: pointer;
 }
 
 .prose a:hover {

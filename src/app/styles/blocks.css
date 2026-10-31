@@ -38,6 +38,9 @@
   margin: 10px 0;
   padding: 8px 0;
 }
+.prose .toc-item {
+  cursor: pointer;
+}
 .toc-item {
   text-align: left;
   color: var(--text-muted);
