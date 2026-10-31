@@ -1,5 +1,6 @@
-import { Extension } from '@tiptap/core';
+import { Extension, InputRule, wrappingInputRule } from '@tiptap/core';
 import type { AnyExtension } from '@tiptap/core';
+import { Blockquote } from '@tiptap/extension-blockquote';
 import { Code } from '@tiptap/extension-code';
 import { Details, DetailsContent, DetailsSummary } from '@tiptap/extension-details';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
@@ -67,6 +68,27 @@ const ToggleSummary = DetailsSummary.extend({
   },
 });
 
+// typing " and a space starts a quote and > and a space starts a toggle, the way notion does
+const Quote = Blockquote.extend({
+  addInputRules() {
+    return [wrappingInputRule({ find: /^\s*["“]\s$/, type: this.type })];
+  },
+});
+
+const ToggleShortcut = Extension.create({
+  name: 'toggleShortcut',
+  addInputRules() {
+    return [
+      new InputRule({
+        find: /^\s*>\s$/,
+        handler: ({ range, chain }) => {
+          chain().deleteRange(range).setDetails().run();
+        },
+      }),
+    ];
+  },
+});
+
 // inline code can be bold, italic, struck through or coloured like any other text, as it can in notion and
 // in markdown. tiptap's own code shuts every other mark out
 const InlineCode = Code.extend({ excludes: '' });
@@ -87,7 +109,10 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       dropcursor: { color: 'var(--accent)', width: 2 },
       codeBlock: false,
       code: false,
+      blockquote: false,
     }),
+    Quote,
+    ToggleShortcut,
     InlineCode,
     CodeBlock,
     Highlight,
