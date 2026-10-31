@@ -4,7 +4,7 @@ import { linksInDoc } from './links';
 import { displayTitle } from './model';
 import type { PageId, WorkspaceState } from './model';
 import { tagsOf } from './tags';
-import { ancestorsOf, livePages } from './tree';
+import { activePages, ancestorsOf } from './tree';
 
 export interface GraphNode {
   id: string;
@@ -43,7 +43,7 @@ export function buildGraph(
   state: WorkspaceState,
   options: GraphOptions,
 ): { nodes: GraphNode[]; links: GraphLink[] } {
-  const pages = livePages(state.pages);
+  const pages = activePages(state.pages);
   const live = new Set(pages.map((page) => page.id));
   const nodes = new Map<string, GraphNode>();
   const links: GraphLink[] = [];

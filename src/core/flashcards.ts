@@ -3,7 +3,7 @@ import { dateKey, parseDateKey } from './daily';
 import { inlineText } from './doc';
 import { displayTitle } from './model';
 import type { DocNode, PageId, WorkspaceState } from './model';
-import { ancestorsOf, descendantsOf, livePages } from './tree';
+import { activePages, ancestorsOf, descendantsOf } from './tree';
 
 type Pages = WorkspaceState['pages'];
 
@@ -62,7 +62,7 @@ export function cardsInDoc(pageId: PageId, doc: DocNode): Card[] {
 export function collectCards(state: WorkspaceState): Card[] {
   const cards: Card[] = [];
   const seen = new Set<string>();
-  for (const page of livePages(state.pages)) {
+  for (const page of activePages(state.pages)) {
     const doc = state.docs[page.id];
     if (!doc || page.encrypted) continue;
     for (const card of cardsInDoc(page.id, doc)) {

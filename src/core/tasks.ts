@@ -1,6 +1,6 @@
 import { inlineText } from './doc';
 import type { DocNode, PageId, WorkspaceState } from './model';
-import { livePages } from './tree';
+import { activePages } from './tree';
 
 export interface TaskRef {
   pageId: PageId;
@@ -30,7 +30,7 @@ export function tasksInDoc(pageId: PageId, doc: DocNode): TaskRef[] {
 
 export function collectTasks(state: WorkspaceState): TaskRef[] {
   const result: TaskRef[] = [];
-  for (const page of livePages(state.pages)) {
+  for (const page of activePages(state.pages)) {
     const doc = state.docs[page.id];
     if (doc) result.push(...tasksInDoc(page.id, doc));
   }

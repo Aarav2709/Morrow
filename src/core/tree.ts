@@ -100,6 +100,22 @@ export function livePages(pages: Pages): PageMeta[] {
   return result;
 }
 
+const activeCache = new WeakMap<Pages, PageMeta[]>();
+
+// pages in use: not in the trash and not archived, nor inside an archived page. tasks, tags, review and the
+// graph show these, the way the sidebar does
+export function activePages(pages: Pages): PageMeta[] {
+  const cached = activeCache.get(pages);
+  if (cached) return cached;
+  const result = livePages(pages).filter(
+    (page) =>
+      page.archivedAt === null &&
+      !ancestorsOf(pages, page.id).some((ancestor) => ancestor.archivedAt !== null),
+  );
+  activeCache.set(pages, Object.freeze(result) as PageMeta[]);
+  return result;
+}
+
 export function trashedPages(pages: Pages): PageMeta[] {
   return Object.values(pages)
     .filter((page) => page.trashedAt !== null)

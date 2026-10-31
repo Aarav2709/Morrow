@@ -19,7 +19,7 @@ import {
   workspaceMarkdownFiles,
 } from './portability';
 import { searchWorkspace } from './search';
-import { childrenOf, flattenTree, livePages } from './tree';
+import { activePages, childrenOf, flattenTree, livePages } from './tree';
 
 const encode = (text: string) => new TextEncoder().encode(text);
 
@@ -251,6 +251,20 @@ describe('notion and folder imports', () => {
       ['a', 'b "c"', 'd'],
       ['1', '2', '3'],
     ]);
+  });
+});
+
+describe('archived pages', () => {
+  it('leaves archived pages and what is inside them out of the pages in use', () => {
+    let state = emptyWorkspace();
+    for (const [id, parentId] of [
+      ['a', null],
+      ['b', 'a'],
+      ['c', null],
+    ] as const)
+      state = run(state, { type: 'page.create', id, parentId, now: 1 });
+    state = run(state, { type: 'page.setArchived', id: 'a', now: 2 });
+    expect(activePages(state.pages).map((page) => page.id)).toEqual(['c']);
   });
 });
 

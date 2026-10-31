@@ -2,7 +2,7 @@
 import { walk } from './doc';
 import { COLORS } from './model';
 import type { ColorName, DocNode, PageId, PageMeta, WorkspaceState } from './model';
-import { livePages } from './tree';
+import { activePages } from './tree';
 import { normalizeTag } from './vault/frontmatter';
 
 const INLINE_TAG = /(?:^|[\s(])#([\p{L}\p{N}_\-/]*[\p{L}_\-/][\p{L}\p{N}_\-/]*)/gu;
@@ -46,7 +46,7 @@ export interface TagSummary {
 
 export function collectTags(state: WorkspaceState): TagSummary[] {
   const byTag = new Map<string, { tag: string; pages: Set<PageId> }>();
-  for (const page of livePages(state.pages)) {
+  for (const page of activePages(state.pages)) {
     for (const tag of tagsOf(page, state.docs[page.id])) {
       const key = tag.toLowerCase();
       const entry = byTag.get(key) ?? { tag, pages: new Set<PageId>() };
@@ -60,7 +60,7 @@ export function collectTags(state: WorkspaceState): TagSummary[] {
 }
 
 export function pagesWithTag(state: WorkspaceState, wanted: string): PageMeta[] {
-  return livePages(state.pages)
+  return activePages(state.pages)
     .filter((page) => tagsOf(page, state.docs[page.id]).some((tag) => tagMatches(tag, wanted)))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
