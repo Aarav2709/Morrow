@@ -1,3 +1,4 @@
+import { canvasFromDoc } from './canvas';
 import { cloneDoc, fileIdsInDoc, isRecord } from './doc';
 import { findDailyNote, findJournal } from './daily';
 import { readImportedFile } from './importer';
@@ -55,9 +56,14 @@ export function createBackup(state: WorkspaceState, now: Date, files: BackupFile
 }
 
 // every file referenced by any page, including pages in the trash
+// the files pages use: images and attachments in them, their covers, and pictures placed on a canvas
 export function referencedFileIds(state: WorkspaceState): Set<FileId> {
   const ids = new Set<FileId>();
-  for (const doc of Object.values(state.docs)) for (const id of fileIdsInDoc(doc)) ids.add(id);
+  for (const doc of Object.values(state.docs)) {
+    for (const id of fileIdsInDoc(doc)) ids.add(id);
+    for (const node of canvasFromDoc(doc).nodes) if (node.type === 'file') ids.add(node.file);
+  }
+  for (const page of Object.values(state.pages)) if (page.cover) ids.add(page.cover);
   return ids;
 }
 

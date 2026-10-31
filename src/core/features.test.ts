@@ -255,6 +255,31 @@ describe('notion and folder imports', () => {
 });
 
 describe('backups with files', () => {
+  it('counts covers and pictures on a canvas as used files', () => {
+    let state = run(emptyWorkspace(), {
+      type: 'page.create',
+      id: 'c',
+      parentId: null,
+      now: 1,
+      doc: {
+        type: 'doc',
+        content: [
+          {
+            type: 'canvas',
+            attrs: {
+              nodes: [
+                { id: 'n', type: 'file', file: 'attachments/b.png', x: 0, y: 0, width: 10, height: 10 },
+              ],
+              edges: [],
+            },
+          },
+        ],
+      },
+    });
+    state = { ...state, pages: { ...state.pages, c: { ...state.pages.c!, cover: 'attachments/a.png' } } };
+    expect([...referencedFileIds(state)].sort()).toEqual(['attachments/a.png', 'attachments/b.png']);
+  });
+
   it('round trips attachments and still reads version 1 backups', () => {
     const state = run(emptyWorkspace(), {
       type: 'page.create',
