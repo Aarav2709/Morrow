@@ -13,8 +13,11 @@ import { run } from '../workspace';
 import { addColumnsFromPages } from './database/data';
 import { DraftInput, NewProperty, PropertyInput, RelationChips } from './database/PropertyValue';
 import { PropertySettings } from './database/PropertySettings';
+import { Menu } from './Menu';
+import type { MenuEntry } from './Menu';
 import { Popover } from './Popover';
 import { t } from '../i18n';
+import { propLabel } from '../i18n/labels';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -38,6 +41,7 @@ export function PageProperties({
   const [naming, setNaming] = useState(false);
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const [settings, setSettings] = useState<{ prop: PropDef; anchor: HTMLElement } | null>(null);
+  const [extraMenu, setExtraMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null);
   // a template's repeat settings have their own bar under its title
   const extraKeys = Object.keys(page.extra).filter(
     (key) => !(isTemplate(page) && RECURRENCE_KEYS.includes(key.toLowerCase())),
@@ -91,9 +95,20 @@ export function PageProperties({
         ))}
       {extraKeys.map((key) => (
         <div key={key} className="row-prop is-extra">
-          <span className="row-prop-name" title={key}>
-            {key}
-          </span>
+          {editable ? (
+            <button
+              type="button"
+              className="row-prop-name row-prop-button"
+              title={key}
+              onClick={(event) => setExtraMenu({ key, anchor: event.currentTarget })}
+            >
+              {key}
+            </button>
+          ) : (
+            <span className="row-prop-name" title={key}>
+              {key}
+            </span>
+          )}
           <span className="row-prop-value">
             <ExtraValue
               label={t('properties.valueOf', { key, title: displayTitle(page) })}
@@ -185,6 +200,20 @@ export function PageProperties({
           )}
         </>
       )}
+      {extraMenu && extraMenu.key in page.extra && (
+        <Menu
+          anchor={extraMenu.anchor}
+          label={t('properties.editProperty')}
+          onClose={() => setExtraMenu(null)}
+          entries={extraMenuEntries(page.extra[extraMenu.key], (value) => {
+            const { key } = extraMenu;
+            if (value === undefined) {
+              const { [key]: _removed, ...rest } = page.extra;
+              setExtra(rest);
+            } else setExtra({ ...page.extra, [key]: value });
+          })}
+        />
+      )}
       {database && settings && (
         <PropertySettings
           dbId={database.id}
@@ -200,6 +229,66 @@ export function PageProperties({
 
 const isTemplate = (page: PageMeta) =>
   page.parentId !== null && page.parentId === findTemplatesPage(getState())?.id;
+
+// the kinds of value a property outside a database can hold. its type is the shape of its value
+type ExtraType = 'text' | 'number' | 'checkbox' | 'date' | 'multiSelect';
+const EXTRA_TYPES: ExtraType[] = ['text', 'number', 'checkbox', 'date', 'multiSelect'];
+
+function extraType(value: unknown): ExtraType | null {
+  if (typeof value === 'boolean') return 'checkbox';
+  if (typeof value === 'number') return 'number';
+  if (typeof value === 'string') return DAY.test(value) ? 'date' : 'text';
+  if (Array.isArray(value)) return 'multiSelect';
+  return null;
+}
+
+// a value turned into another type, keeping what it can of what it held
+function convertExtra(value: unknown, type: ExtraType): unknown {
+  const text = Array.isArray(value)
+    ? value.map(String).join(', ')
+    : value === null || value === undefined
+      ? ''
+      : String(value);
+  switch (type) {
+    case 'text':
+      return text;
+    case 'number': {
+      const number = typeof value === 'boolean' ? Number(value) : Number(text.replace(/,/g, ''));
+      return text.trim() && Number.isFinite(number) ? number : 0;
+    }
+    case 'checkbox':
+      return value === true || /^(true|yes|1|x|✓)$/i.test(text.trim());
+    case 'date': {
+      if (DAY.test(text)) return text;
+      const parsed = text.trim() ? new Date(text) : new Date(NaN);
+      const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+    case 'multiSelect':
+      return Array.isArray(value)
+        ? value
+        : text
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+  }
+}
+
+// undefined removes the property
+function extraMenuEntries(value: unknown, change: (value: unknown) => void): MenuEntry[] {
+  const current = extraType(value);
+  return [
+    { heading: t('properties.type') },
+    ...EXTRA_TYPES.map((type) => ({
+      label: propLabel(type),
+      checked: type === current,
+      onSelect: () => type !== current && change(convertExtra(value, type)),
+    })),
+    { separator: true },
+    { label: t('properties.remove'), danger: true, onSelect: () => change(undefined) },
+  ];
+}
 
 function saveExtra(id: PageId, extra: Record<string, unknown>): boolean {
   return run({ type: 'page.setFields', id, extra, now: Date.now() }).ok;

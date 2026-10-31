@@ -1211,6 +1211,7 @@ export const pt: TranslationSchema = {
     sameAsNow: 'Esta versão é igual à página atual.',
   },
   properties: {
+    type: 'Tipo',
     valueOf: '{key} de {title}',
     properties: 'Propriedades',
     editProperty: 'Editar propriedade',

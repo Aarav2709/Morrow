@@ -1198,6 +1198,7 @@ export const en = {
     sameAsNow: 'This version is the same as the page now.',
   },
   properties: {
+    type: 'Type',
     valueOf: '{key} of {title}',
     properties: 'Properties',
     editProperty: 'Edit property',

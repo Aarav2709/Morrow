@@ -1212,6 +1212,7 @@ export const es: TranslationSchema = {
     sameAsNow: 'Esta versión es igual que la página actual.',
   },
   properties: {
+    type: 'Tipo',
     valueOf: '{key} de {title}',
     properties: 'Propiedades',
     editProperty: 'Editar propiedad',
