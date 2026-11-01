@@ -26,6 +26,11 @@ contextBridge.exposeInMainWorld('morrow', {
     listeners.add(listener);
     return () => listeners.delete(listener);
   },
+  onZoom(listener: (percent: number) => void) {
+    const forward = (_event: unknown, percent: unknown) => typeof percent === 'number' && listener(percent);
+    ipcRenderer.on('morrow:zoom', forward);
+    return () => ipcRenderer.off('morrow:zoom', forward);
+  },
   setTheme: (theme: 'light' | 'dark') => ipcRenderer.send('morrow:theme', theme),
   paintTitleBar: (color: string, symbolColor: string) =>
     ipcRenderer.send('morrow:title-bar', color, symbolColor),

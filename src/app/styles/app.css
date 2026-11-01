@@ -1639,6 +1639,21 @@ input[type='checkbox']:checked::after {
   max-width: calc(100vw - 32px);
 }
 
+.zoom-level {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: var(--toast-bg);
+  color: var(--toast-text);
+  box-shadow: var(--shadow-popover);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
 .toast {
   pointer-events: auto;
   display: flex;

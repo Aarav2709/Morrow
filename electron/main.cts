@@ -285,16 +285,18 @@ async function createWindow(): Promise<void> {
   window.webContents.on('before-input-event', (event, input) => {
     if (input.type !== 'keyDown') return;
     const mod = IS_MAC ? input.meta : input.control;
-    // zoom used to live in the menu bar, keep the usual keys working without it
+    // zoom used to live in the menu bar, keep the usual keys working without it. the app shows the new size
+    const zoom = (level: number) => {
+      window.webContents.setZoomLevel(level);
+      window.webContents.send('morrow:zoom', Math.round(window.webContents.getZoomFactor() * 100));
+      event.preventDefault();
+    };
     if (mod && (input.key === '=' || input.key === '+')) {
-      window.webContents.setZoomLevel(Math.min(5, window.webContents.getZoomLevel() + 0.5));
-      event.preventDefault();
+      zoom(Math.min(5, window.webContents.getZoomLevel() + 0.5));
     } else if (mod && input.key === '-') {
-      window.webContents.setZoomLevel(Math.max(-3, window.webContents.getZoomLevel() - 0.5));
-      event.preventDefault();
+      zoom(Math.max(-3, window.webContents.getZoomLevel() - 0.5));
     } else if (mod && input.key === '0') {
-      window.webContents.setZoomLevel(0);
-      event.preventDefault();
+      zoom(0);
     } else if (DEV_URL && input.key === 'F12') {
       window.webContents.toggleDevTools();
       event.preventDefault();

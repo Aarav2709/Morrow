@@ -175,6 +175,7 @@ export interface DesktopBridge {
   version: string;
   dataPath: string;
   onCommand(listener: (id: string) => void): () => void;
+  onZoom?(listener: (percent: number) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
   paintTitleBar(color: string, symbolColor: string): void;
   openExternal(url: string): Promise<void>;

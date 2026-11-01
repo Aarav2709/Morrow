@@ -355,6 +355,29 @@ function useSidebarPeek(peeking: boolean) {
   }, [peeking]);
 }
 
+// ctrl plus and minus show the size the window is zoomed to for a moment
+function ZoomLevel() {
+  const [percent, setPercent] = useState<number | null>(null);
+  useEffect(() => {
+    let timer = 0;
+    const stop = desktop?.onZoom?.((next) => {
+      setPercent(next);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setPercent(null), 1200);
+    });
+    return () => {
+      stop?.();
+      window.clearTimeout(timer);
+    };
+  }, []);
+  if (percent === null) return null;
+  return (
+    <div className="zoom-level" role="status">
+      {percent}%
+    </div>
+  );
+}
+
 let started = false;
 function useStartPage() {
   useEffect(() => {
@@ -441,6 +464,7 @@ export function App() {
       {ui.palette && <CommandPalette />}
       <Dialogs />
       <Toasts />
+      <ZoomLevel />
     </div>
   );
 }
