@@ -131,13 +131,26 @@ function sameContent(editor: Editor, saved: DocNode): boolean {
 
 // what other apps get as plain text. words from inside one block copy as they read, more than one block
 // copies as markdown, so a list pastes as a list rather than lines with gaps between them
+// colours, highlights and underlines have no markdown of their own and are written as html tags, which
+// would show as they are in the plain text pasted into another app, so the copy leaves them out
+const HTML_MARKS = new Set(['highlight', 'textColor', 'underline']);
+function withoutHtmlMarks(node: DocNode): DocNode {
+  const marks = node.marks?.filter((mark) => !HTML_MARKS.has(mark.type));
+  const { marks: _marks, content, ...rest } = node;
+  return {
+    ...rest,
+    ...(marks?.length ? { marks } : {}),
+    ...(content ? { content: content.map(withoutHtmlMarks) } : {}),
+  };
+}
+
 function plainTextOf(slice: Slice): string {
   let node: ProseNode | Fragment = slice.content;
   while (node.childCount === 1 && !node.firstChild!.isTextblock) node = node.firstChild!;
   if (node.childCount === 1 && node.firstChild!.isTextblock) return node.firstChild!.textContent;
   const state = getState();
   return docToMarkdown(
-    { type: 'doc', content: (slice.content.toJSON() ?? []) as DocNode[] },
+    { type: 'doc', content: ((slice.content.toJSON() ?? []) as DocNode[]).map(withoutHtmlMarks) },
     {
       titleOf: (id) => (state.pages[id] ? displayTitle(state.pages[id]) : null),
       filePath: (fileId) => fileId,
