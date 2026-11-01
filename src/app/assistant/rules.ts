@@ -15,6 +15,8 @@ export function assistantRules(today: Date): string {
 How to work
 - When a question is about the user's notes, look first: search or read the pages instead of guessing what they say. Say so when nothing relevant exists.
 - When you mention a page, write it as a wiki link, [[Page title]], so the user can click it.
+- When asked to continue, finish or complete what is written, use continue_text so the new words go after the old ones; never rewrite the text that is already there.
+- To delete a page use trash_page; it goes to the trash, where the user can restore it.
 - For small changes use edit_page. Use replace_page only when most of a page should be rewritten, and append_to_page to add to the end. The user sees every change you propose and approves or declines it; if they decline, don't retry the same change, ask what they would like instead.
 - Keep what the user wrote unless they ask you to change it, and match the style of the page you are editing.
 - Locked (encrypted) pages are private and out of reach; don't try to work around that.

@@ -8,7 +8,7 @@ import { docToMarkdown } from '../../core/markdown/serialize';
 import { displayTitle, emptyDoc } from '../../core/model';
 import type { DocNode, PageId, PageMeta, WorkspaceState } from '../../core/model';
 import { pageIdByTitle, resolveLinkTarget, searchWorkspace } from '../../core/search';
-import { ancestorsOf, childrenOf, isEffectivelyTrashed } from '../../core/tree';
+import { ancestorsOf, childrenOf, descendantsOf, isEffectivelyTrashed } from '../../core/tree';
 import { ensureToday, expandPage } from '../operations';
 import type { AssistantToolSpec } from '../platform/desktop';
 import { newId } from '../platform/files';
@@ -141,6 +141,34 @@ export const TOOL_SPECS: AssistantToolSpec[] = [
         markdown: { type: 'string', description: 'What to add, in Morrow Markdown.' },
       },
       required: ['page', 'markdown'],
+    },
+  },
+  {
+    name: 'continue_text',
+    description:
+      'Carry on writing from a place in a page, keeping everything already there. The new text goes right after the exact text in after, on the same line unless it starts with a new line. Use it when asked to continue, finish or complete something. The user approves it first.',
+    parameters: {
+      type: 'object',
+      properties: {
+        page: page('Id or exact title of the page.'),
+        after: {
+          type: 'string',
+          description:
+            'The text to continue from, exactly as read_page returned it, usually the end of the line being finished. It must appear exactly once.',
+        },
+        markdown: { type: 'string', description: 'Only the new text, in Morrow Markdown.' },
+      },
+      required: ['page', 'after', 'markdown'],
+    },
+  },
+  {
+    name: 'trash_page',
+    description:
+      'Move a page, with the pages inside it, to the trash, where the user can still restore it. Works for text pages, databases and canvases. The user approves it first.',
+    parameters: {
+      type: 'object',
+      properties: { page: page('Id or exact title of the page.') },
+      required: ['page'],
     },
   },
   {
@@ -349,7 +377,10 @@ export function runTool(call: ToolCall): ToolOutcome {
       }
       case 'create_page':
         return { kind: 'proposal', proposal: proposeCreate(state, input) };
+      case 'trash_page':
+        return { kind: 'proposal', proposal: proposeTrash(state, input) };
       case 'edit_page':
+      case 'continue_text':
       case 'append_to_page':
       case 'replace_page':
         return { kind: 'proposal', proposal: proposeChange(state, call.name, input) };
@@ -398,14 +429,35 @@ function proposeCreate(state: WorkspaceState, input: Record<string, unknown>): P
   };
 }
 
+function proposeTrash(state: WorkspaceState, input: Record<string, unknown>): Proposal {
+  const found = guarded(findPage(state, text(input, 'page')));
+  const inside = descendantsOf(state.pages, found.id).length;
+  return {
+    title: `Move “${displayTitle(found)}”${inside ? ` and the ${inside} page${inside === 1 ? '' : 's'} inside it` : ''} to the trash`,
+    pageId: found.id,
+    before: found.kind === 'page' ? pageMarkdown(state, state.docs[found.id]) : '',
+    after: '',
+    apply: async () => {
+      const result = run({ type: 'page.trash', id: found.id, now: Date.now() });
+      if (!result.ok) throw new Error(result.error);
+      return {
+        pageId: found.id,
+        message: `Moved "${displayTitle(found)}" to the trash. It can be restored from there.`,
+        undo: () => run({ type: 'page.restore', id: found.id }),
+      };
+    },
+  };
+}
+
 function proposeChange(state: WorkspaceState, tool: string, input: Record<string, unknown>): Proposal {
   const found = writable(findPage(state, text(input, 'page')));
   const original = state.docs[found.id];
   const before = pageMarkdown(state, original);
   let after: string;
-  if (tool === 'edit_page') {
-    const find = text(input, 'find');
-    if (!find) throw new ToolError('"find" is empty, say which text to change.');
+  if (tool === 'edit_page' || tool === 'continue_text') {
+    const continuing = tool === 'continue_text';
+    const find = text(input, continuing ? 'after' : 'find');
+    if (!find) throw new ToolError(`"${continuing ? 'after' : 'find'}" is empty, say where in the page.`);
     const count = before.split(find).length - 1;
     if (count === 0)
       throw new ToolError('That text is not in the page. Read the page again and copy the text exactly.');
@@ -413,7 +465,9 @@ function proposeChange(state: WorkspaceState, tool: string, input: Record<string
       throw new ToolError(
         `That text appears ${count} times. Include more of the text around it so it is unique.`,
       );
-    after = before.replace(find, () => text(input, 'replace'));
+    // continuing keeps every word that was there and only adds after it
+    const replacement = continuing ? find + text(input, 'markdown') : text(input, 'replace');
+    after = before.replace(find, () => replacement);
   } else if (tool === 'append_to_page') {
     after = `${before.trimEnd()}${before.trim() ? '\n\n' : ''}${text(input, 'markdown').trim()}`;
   } else after = text(input, 'markdown');

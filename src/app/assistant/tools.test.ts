@@ -42,6 +42,19 @@ describe('assistant tools', () => {
     expect(read.kind === 'result' && read.content).toContain('# Garden\n\nPlant tomatoes in May.');
   });
 
+  it('continues a line without rewriting it', async () => {
+    const edit = proposal(
+      call('continue_text', { page: 'Garden', after: 'Slugs love', markdown: ' lettuce even more' }),
+    );
+    expect(edit.after).toContain('Slugs love lettuce even more tomatoes.');
+    expect(edit.after).toContain('Plant tomatoes in May.');
+  });
+
+  it('moves a page to the trash once approved', async () => {
+    await proposal(call('trash_page', { page: 'Garden' })).apply();
+    expect(getState().pages[idOf('Garden')]!.trashedAt).not.toBeNull();
+  });
+
   it('edits only after approval, keeps the old version, and undoes', async () => {
     const edit = proposal(
       call('edit_page', {
