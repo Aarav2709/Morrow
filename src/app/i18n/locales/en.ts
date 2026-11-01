@@ -602,6 +602,8 @@ export const en = {
     strikethrough: 'Strikethrough',
     code: 'Inline code',
     highlight: 'Highlight',
+    uppercase: 'Uppercase',
+    lowercase: 'Lowercase',
     colour: 'Colour',
     link: 'Link',
     copyLink: 'Copy link',

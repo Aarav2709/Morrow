@@ -609,6 +609,8 @@ export const pt: TranslationSchema = {
     strikethrough: 'Tachado',
     code: 'Código embutido',
     highlight: 'Destaque',
+    uppercase: 'Maiúsculas',
+    lowercase: 'Minúsculas',
     colour: 'Cor',
     link: 'Link',
     copyLink: 'Copiar link',

@@ -41,6 +41,8 @@ import {
   Trash2,
   Type,
   Underline,
+  CaseLower,
+  CaseUpper,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -257,6 +259,26 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
   );
 }
 
+// the picked words in capitals or small letters, keeping their formatting. each run of text is changed on
+// its own so bold, links and colours stay where they were
+function changeCase(editor: Editor, change: (text: string) => string): void {
+  const { from, to } = editor.state.selection;
+  const { tr } = editor.state;
+  editor.state.doc.nodesBetween(from, to, (node, pos) => {
+    if (!node.isText || !node.text) return;
+    const start = Math.max(from, pos);
+    const end = Math.min(to, pos + node.nodeSize);
+    const text = node.text.slice(start - pos, end - pos);
+    const changed = change(text);
+    // a letter that grows into two, like ß into SS, would move what follows, so those keep their case
+    if (changed !== text && changed.length === text.length) tr.insertText(changed, start, end);
+  });
+  if (!tr.docChanged) return;
+  tr.setSelection(TextSelection.create(tr.doc, from, to));
+  editor.view.dispatch(tr);
+  editor.commands.focus();
+}
+
 export function FormattingMenu({ editor }: { editor: Editor }) {
   const [editingLink, setEditingLink] = useState(false);
   const [coloring, setColoring] = useState(false);
@@ -335,6 +357,16 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
               onClick={() => editor.chain().focus().toggleHighlight().run()}
             />
             <ToolButton label={t('editor.colour')} icon={Palette} onClick={() => setColoring(true)} />
+            <ToolButton
+              label={t('editor.uppercase')}
+              icon={CaseUpper}
+              onClick={() => changeCase(editor, (text) => text.toLocaleUpperCase())}
+            />
+            <ToolButton
+              label={t('editor.lowercase')}
+              icon={CaseLower}
+              onClick={() => changeCase(editor, (text) => text.toLocaleLowerCase())}
+            />
             <span className="toolbar-divider" />
             <ToolButton
               label={t('editor.link')}
