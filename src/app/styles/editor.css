@@ -293,6 +293,24 @@
   border-radius: 4px;
 }
 
+/* blocks with a background of their own show the pick over it, a divider around its line */
+.prose :is(.callout, .code-block, .tableWrapper, pre).is-block-selected {
+  box-shadow: inset 0 0 0 999px var(--selection);
+}
+.prose hr.is-block-selected {
+  box-shadow: 0 0 0 5px var(--selection);
+}
+
+/* the box drawn while dragging in the margin */
+.block-select-box {
+  position: fixed;
+  z-index: 40;
+  border: 1px solid var(--accent-line);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
 .prose .is-block-selected ::selection,
 .prose .is-block-selected::selection {
   background: transparent;

@@ -32,19 +32,73 @@ export function clearBlockSelection(editor: Editor): void {
   if (selectedBlocks(editor.state)) select(editor.view, null);
 }
 
-// the top level blocks a stretch of the page from one height to another passes over
-function blocksBetween(view: EditorView, top: number, bottom: number): BlockRange | null {
-  let from = -1;
-  let to = -1;
-  view.state.doc.forEach((node, offset) => {
-    const dom = view.nodeDOM(offset);
-    if (!(dom instanceof HTMLElement)) return;
-    const rect = dom.getBoundingClientRect();
-    if (rect.bottom < top || rect.top > bottom) return;
-    if (from < 0) from = offset;
-    to = offset + node.nodeSize;
-  });
-  return from < 0 ? null : { from, to };
+interface Band {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+// blocks that hold other blocks, which a drag can reach inside to pick some of them
+const CONTAINERS = new Set([
+  'bulletList',
+  'orderedList',
+  'taskList',
+  'listItem',
+  'taskItem',
+  'details',
+  'detailsContent',
+  'columns',
+  'column',
+  'blockquote',
+  'callout',
+]);
+// a callout or quote is picked whole once the drag takes in all of it
+const BOXES = new Set(['blockquote', 'callout']);
+// a list item or toggle is picked whole once the drag takes in its first line, its title
+const LED_BY_FIRST = new Set(['listItem', 'taskItem', 'details']);
+
+function crosses(view: EditorView, pos: number, band: Band): boolean {
+  const dom = view.nodeDOM(pos);
+  if (!(dom instanceof HTMLElement)) return false;
+  const rect = dom.getBoundingClientRect();
+  // thin blocks like dividers get a few pixels of slack so they can be caught, others have to be crossed
+  const slack = rect.height < 8 ? 6 : -2;
+  return (
+    rect.bottom + slack >= band.top &&
+    rect.top - slack <= band.bottom &&
+    rect.right >= band.left &&
+    rect.left <= band.right
+  );
+}
+
+// the blocks a box drawn from the margin passes over. while it passes over one block that holds others it
+// reaches inside, so items of a list, lines in a toggle and blocks in a column can be picked on their own
+function blocksIn(view: EditorView, band: Band): BlockRange | null {
+  const { doc } = view.state;
+  let parent = doc;
+  let parentPos = -1;
+  for (;;) {
+    const hits: Array<{ pos: number; size: number; index: number; node: typeof parent }> = [];
+    parent.forEach((child, offset, index) => {
+      const pos = parentPos + 1 + offset;
+      if (crosses(view, pos, band)) hits.push({ pos, size: child.nodeSize, index, node: child });
+    });
+    const first = hits[0];
+    const last = hits[hits.length - 1];
+    if (!first || !last) return null;
+    const whole =
+      parent !== doc &&
+      ((LED_BY_FIRST.has(parent.type.name) && first.index === 0) ||
+        (BOXES.has(parent.type.name) && hits.length === parent.childCount));
+    if (whole) return { from: parentPos, to: parentPos + parent.nodeSize };
+    if (hits.length === 1 && CONTAINERS.has(first.node.type.name)) {
+      parent = first.node;
+      parentPos = first.pos;
+      continue;
+    }
+    return { from: first.pos, to: last.pos + last.size };
+  }
 }
 
 // things in the margin that keep their own clicks
@@ -62,15 +116,35 @@ function marginDrag(view: EditorView) {
     if (event.clientY < content.top || event.clientY > content.bottom) return;
     event.preventDefault();
     const startY = event.clientY + scroller.scrollTop;
+    const startX = event.clientX;
     let lastY = event.clientY;
+    let lastX = event.clientX;
     let frame = 0;
+    // the box being drawn, so it is clear what the drag takes in
+    const box = document.createElement('div');
+    box.className = 'block-select-box';
     const update = () => {
-      const y = lastY + scroller.scrollTop;
-      const range = blocksBetween(
-        view,
-        Math.min(startY, y) - scroller.scrollTop,
-        Math.max(startY, y) - scroller.scrollTop,
-      );
+      const top = Math.min(startY, lastY + scroller.scrollTop) - scroller.scrollTop;
+      const bottom = Math.max(startY, lastY + scroller.scrollTop) - scroller.scrollTop;
+      const left = Math.min(startX, lastX);
+      const right = Math.max(startX, lastX);
+      Object.assign(box.style, {
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${right - left}px`,
+        height: `${bottom - top}px`,
+      });
+      if (!box.isConnected) document.body.append(box);
+      const content = view.dom.getBoundingClientRect();
+      // a box kept in the margin takes in the whole width of the page, one reaching into the text only
+      // what it covers, so it can pick blocks in one column
+      const across = right < content.left || left > content.right;
+      const range = blocksIn(view, {
+        top,
+        bottom,
+        left: across ? content.left : left,
+        right: across ? content.right : right,
+      });
       const now = selectedBlocks(view.state);
       if (range && (now?.from !== range.from || now?.to !== range.to)) select(view, range);
     };
@@ -86,10 +160,12 @@ function marginDrag(view: EditorView) {
     };
     const onMove = (move: MouseEvent) => {
       lastY = move.clientY;
+      lastX = move.clientX;
       if (Math.abs(lastY + scroller.scrollTop - startY) > 4 || selectedBlocks(view.state)) update();
     };
     const onUp = () => {
       cancelAnimationFrame(frame);
+      box.remove();
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
       if (selectedBlocks(view.state)) view.focus();
@@ -144,11 +220,11 @@ export const BlockSelect = Extension.create({
             const range = key.getState(state);
             if (!range) return null;
             const decorations: Decoration[] = [];
-            state.doc.forEach((node, offset) => {
-              if (offset >= range.from && offset + node.nodeSize <= range.to)
-                decorations.push(
-                  Decoration.node(offset, offset + node.nodeSize, { class: 'is-block-selected' }),
-                );
+            // the outermost blocks inside the range, a picked list item marks the item and not its lines
+            state.doc.nodesBetween(range.from, range.to, (node, pos) => {
+              if (pos < range.from || pos + node.nodeSize > range.to) return true;
+              decorations.push(Decoration.node(pos, pos + node.nodeSize, { class: 'is-block-selected' }));
+              return false;
             });
             return DecorationSet.create(state.doc, decorations);
           },
