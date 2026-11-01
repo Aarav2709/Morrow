@@ -1847,6 +1847,7 @@ td:hover .prop-empty,
 /* the optional assistant, a panel at the right edge */
 
 .assistant-panel {
+  position: relative;
   flex: none;
   width: 380px;
   display: flex;
@@ -1855,6 +1856,26 @@ td:hover .prop-empty,
   border-left: 1px solid var(--border);
   background: var(--bg-sidebar);
   font: var(--text-sm) var(--font-ui);
+}
+
+.assistant-resizer {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+.assistant-resizer:hover {
+  background: linear-gradient(
+    to right,
+    transparent 2px,
+    var(--border-strong) 2px,
+    var(--border-strong) 4px,
+    transparent 4px
+  );
 }
 .assistant-header {
   flex: none;
@@ -2084,8 +2105,12 @@ td:hover .prop-empty,
   .assistant-panel {
     position: fixed;
     inset: 0;
-    width: auto;
+    /* over the width it was dragged to, which is set on the panel itself */
+    width: auto !important;
     z-index: 45;
+  }
+  .assistant-resizer {
+    display: none;
   }
 }
 

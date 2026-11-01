@@ -1060,6 +1060,7 @@ export const en = {
     learnMore: 'LaTeX help',
   },
   assistant: {
+    resize: 'Resize the assistant',
     searchedPages: 'Searched pages',
     lookedThroughPages: 'Looked through pages',
     read: 'Read',

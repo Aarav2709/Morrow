@@ -24,7 +24,7 @@ import { formatShortcut } from '../actions';
 import { openHref } from '../editor/EditorMenus';
 import { desktop } from '../platform/desktop';
 import type { AssistantSettings } from '../platform/desktop';
-import { setPreferences } from '../platform/preferences';
+import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
 import { openDialog } from '../ui';
 import { getState } from '../workspace';
 import { SETTINGS_CHANGED } from './AssistantSettings';
@@ -168,6 +168,7 @@ function ToolLine({ item }: { item: Extract<ChatItem, { kind: 'tool' }> }) {
 
 export function AssistantPanel() {
   const chat = useChat();
+  const { assistantWidth } = usePreferences();
   const [settings, setSettings] = useState<AssistantSettings | null>(null);
   const [text, setText] = useState('');
   const list = useRef<HTMLDivElement>(null);
@@ -197,8 +198,35 @@ export function AssistantPanel() {
     setText('');
   };
 
+  // the panel's left edge drags to make it wider or narrower
+  const startResize = (event: React.PointerEvent) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = getPreferences().assistantWidth;
+    const onMove = (move: PointerEvent) =>
+      setPreferences({ assistantWidth: Math.min(720, Math.max(300, startWidth + startX - move.clientX)) });
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
   return (
-    <aside className="assistant-panel" aria-label={t('settings.sections.assistant')}>
+    <aside
+      className="assistant-panel"
+      aria-label={t('settings.sections.assistant')}
+      style={{ width: assistantWidth }}
+    >
+      <div
+        className="assistant-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('assistant.resize')}
+        onPointerDown={startResize}
+        onDoubleClick={() => setPreferences({ assistantWidth: 380 })}
+      />
       <header className="assistant-header">
         <strong>{t('settings.sections.assistant')}</strong>
         {settings?.model && (

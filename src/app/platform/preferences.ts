@@ -28,6 +28,7 @@ export interface Preferences {
   // a hidden sidebar slides in while the pointer is at the window's left edge
   sidebarPeek: boolean;
   sidebarWidth: number;
+  assistantWidth: number;
   expanded: string[];
   accent: Accent;
   // colourful headings, lists, icons and tags, off for a quieter page
@@ -74,6 +75,7 @@ const defaults: Preferences = {
   sidebarOpen: true,
   sidebarPeek: false,
   sidebarWidth: 264,
+  assistantWidth: 380,
   expanded: [],
   accent: 'ocean',
   colorful: true,
@@ -126,6 +128,10 @@ function read(): Preferences {
         typeof parsed.sidebarWidth === 'number'
           ? Math.min(420, Math.max(208, parsed.sidebarWidth))
           : defaults.sidebarWidth,
+      assistantWidth:
+        typeof parsed.assistantWidth === 'number'
+          ? Math.min(720, Math.max(300, parsed.assistantWidth))
+          : defaults.assistantWidth,
       expanded: Array.isArray(parsed.expanded)
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],

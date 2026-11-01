@@ -1071,6 +1071,7 @@ export const pt: TranslationSchema = {
     learnMore: 'Ajuda de LaTeX',
   },
   assistant: {
+    resize: 'Redimensionar o assistente',
     searchedPages: 'Buscou nas páginas',
     lookedThroughPages: 'Percorreu as páginas',
     read: 'Leu',

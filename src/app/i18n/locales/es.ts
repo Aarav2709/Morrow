@@ -1072,6 +1072,7 @@ export const es: TranslationSchema = {
     learnMore: 'Ayuda de LaTeX',
   },
   assistant: {
+    resize: 'Cambiar el tamaño del asistente',
     searchedPages: 'Buscó en las páginas',
     lookedThroughPages: 'Revisó las páginas',
     read: 'Leyó',
