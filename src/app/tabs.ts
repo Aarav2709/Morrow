@@ -209,9 +209,15 @@ export function setActivePane(pane: PaneId): void {
   if (now.pane !== next) set({ ...now, pane: next });
 }
 
-// shows a place in the main side, replacing keeps back and forward as they are
+// shows a place in the main side, replacing keeps back and forward as they are. a pinned tab keeps its
+// place, anywhere else it goes opens in a new tab beside it
 export function showInMain(hash: string, replace = false): void {
   if (window.location.hash === hash) return;
+  const place = (value: string) => (value || '#/').split('?')[0];
+  if (!replace && activeTab().pinned && place(hash) !== place(activeTab().hash)) {
+    openTab(hash);
+    return;
+  }
   if (!replace) {
     window.location.hash = hash;
     return;
