@@ -315,21 +315,40 @@ function SplitResizer() {
 }
 
 // the first view after opening, once per window
-// the peeking sidebar goes once the pointer moves well clear of it, but not while one of its menus is open
+// the peeking sidebar goes once the pointer moves well clear of it, but not while one of its menus is open.
+// it waits a moment first, so a pointer that slips past its edge or over the window's title bar on the way
+// to search doesn't send it away
+const PEEK_GRACE_MS = 400;
 function useSidebarPeek(peeking: boolean) {
   useEffect(() => {
     if (!peeking) return;
-    const onMove = (event: PointerEvent) => {
-      const sidebar = document.querySelector('.sidebar');
-      if (!sidebar || document.querySelector('.floating-layer')) return;
-      if (event.clientX > sidebar.getBoundingClientRect().right + 24) setUi({ sidebarPeek: false });
+    let timer = 0;
+    let lastX = 0;
+    const clear = () => {
+      window.clearTimeout(timer);
+      timer = 0;
     };
+    const later = () => {
+      if (!timer) timer = window.setTimeout(() => setUi({ sidebarPeek: false }), PEEK_GRACE_MS);
+    };
+    const away = (x: number) => {
+      const sidebar = document.querySelector('.sidebar');
+      return !!sidebar && x > sidebar.getBoundingClientRect().right + 24;
+    };
+    const onMove = (event: PointerEvent) => {
+      lastX = event.clientX;
+      if (document.querySelector('.floating-layer') || !away(event.clientX)) clear();
+      else later();
+    };
+    // the title bar is a drag area the page gets no pointer events over, so leaving the page above the
+    // sidebar is still being over it
     const onLeave = () => {
-      if (!document.querySelector('.floating-layer')) setUi({ sidebarPeek: false });
+      if (!document.querySelector('.floating-layer') && away(lastX)) later();
     };
     window.addEventListener('pointermove', onMove);
     document.documentElement.addEventListener('pointerleave', onLeave);
     return () => {
+      clear();
       window.removeEventListener('pointermove', onMove);
       document.documentElement.removeEventListener('pointerleave', onLeave);
     };
