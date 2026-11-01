@@ -443,6 +443,7 @@ export const en = {
   },
   actions: {
     groups: {
+      create: 'Create',
       recent: 'Recent',
       pages: 'Pages',
     },

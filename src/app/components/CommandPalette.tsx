@@ -72,6 +72,10 @@ export function CommandPalette() {
         run: () => action.run(context),
       }));
 
+    // making a page is what the palette is most often opened for, so it comes first among the actions
+    const newPage = actions.findIndex((entry) => entry.key === 'action:page.new');
+    if (newPage > 0) actions.unshift(...actions.splice(newPage, 1));
+
     if (searched.trim().startsWith('>')) return actions;
 
     if (!searched.trim()) {
@@ -87,7 +91,11 @@ export function CommandPalette() {
           detail: ancestorsOf(state.pages, page.id).reverse().map(displayTitle).join(' / '),
           run: () => openPage(page.id),
         }));
-      return [...recent, ...actions];
+      // and above the recent pages before anything is typed
+      const [first, ...rest] = actions;
+      return first?.key === 'action:page.new'
+        ? [{ ...first, group: t('actions.groups.create') }, ...recent, ...rest]
+        : [...recent, ...actions];
     }
 
     const pages = searchWorkspace(state, searched, 30).map<Entry>((result) => ({

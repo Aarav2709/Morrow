@@ -449,6 +449,7 @@ export const pt: TranslationSchema = {
   },
   actions: {
     groups: {
+      create: 'Criar',
       recent: 'Recentes',
       pages: 'Páginas',
     },
