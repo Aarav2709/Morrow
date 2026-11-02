@@ -19,6 +19,7 @@ import {
   workspaceMarkdownFiles,
 } from './portability';
 import { searchWorkspace } from './search';
+import { collectTasks } from './tasks';
 import { activePages, childrenOf, flattenTree, livePages } from './tree';
 
 const encode = (text: string) => new TextEncoder().encode(text);
@@ -265,6 +266,32 @@ describe('archived pages', () => {
       state = run(state, { type: 'page.create', id, parentId, now: 1 });
     state = run(state, { type: 'page.setArchived', id: 'a', now: 2 });
     expect(activePages(state.pages).map((page) => page.id)).toEqual(['c']);
+  });
+});
+
+describe('checklists left out of Tasks', () => {
+  it('leaves out a page and the pages inside it', () => {
+    const list = (text: string): DocNode => ({
+      type: 'doc',
+      content: [
+        {
+          type: 'taskList',
+          content: [
+            {
+              type: 'taskItem',
+              attrs: { checked: false },
+              content: [{ type: 'paragraph', content: [{ type: 'text', text }] }],
+            },
+          ],
+        },
+      ],
+    });
+    let state = emptyWorkspace();
+    state = run(state, { type: 'page.create', id: 'recipes', parentId: null, now: 1, doc: list('salt') });
+    state = run(state, { type: 'page.create', id: 'cake', parentId: 'recipes', now: 1, doc: list('flour') });
+    state = run(state, { type: 'page.create', id: 'work', parentId: null, now: 1, doc: list('ship it') });
+    state = run(state, { type: 'page.setHideTasks', id: 'recipes', hide: true });
+    expect(collectTasks(state).map((task) => task.text)).toEqual(['ship it']);
   });
 });
 

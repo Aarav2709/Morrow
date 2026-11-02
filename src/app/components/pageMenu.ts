@@ -16,6 +16,8 @@ import {
   FileUp,
   GraduationCap,
   History,
+  ListChecks,
+  ListX,
   Pencil,
   Plus,
   Smile,
@@ -44,7 +46,7 @@ import { desktop } from '../platform/desktop';
 import { navigate } from '../router';
 import { getUi, openDialog, setUi } from '../ui';
 import { childrenOf } from '../../core/tree';
-import { getSession, getState } from '../workspace';
+import { getSession, getState, run } from '../workspace';
 import { t } from '../i18n';
 import type { MenuEntry } from './Menu';
 
@@ -162,6 +164,18 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       : []),
     { label: t('pageMenu.publishWebsite'), icon: Globe, onSelect: () => void publishSite(pageId) },
     { label: t('pageMenu.importMarkdownHere'), icon: FileUp, onSelect: () => void importMarkdown(pageId) },
+    // checklists that only matter on the page, like a recipe's ingredients, can stay out of Tasks
+    page.hideTasks
+      ? {
+          label: t('pageMenu.showInTasks'),
+          icon: ListChecks,
+          onSelect: () => run({ type: 'page.setHideTasks', id: pageId, hide: false }),
+        }
+      : {
+          label: t('pageMenu.hideFromTasks'),
+          icon: ListX,
+          onSelect: () => run({ type: 'page.setHideTasks', id: pageId, hide: true }),
+        },
     { separator: true },
     page.archivedAt === null
       ? { label: t('pageMenu.archive'), icon: Archive, onSelect: () => setArchived(pageId, true) }

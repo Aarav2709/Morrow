@@ -329,6 +329,8 @@ export const en = {
     },
   },
   pageMenu: {
+    hideFromTasks: 'Leave checklists out of Tasks',
+    showInTasks: 'Show checklists in Tasks',
     pageOptions: 'Page options',
     addSubpage: 'Add subpage',
     rename: 'Rename',

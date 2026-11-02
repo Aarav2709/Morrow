@@ -1,6 +1,6 @@
 import { inlineText } from './doc';
 import type { DocNode, PageId, WorkspaceState } from './model';
-import { activePages } from './tree';
+import { activePages, ancestorsOf } from './tree';
 
 export interface TaskRef {
   pageId: PageId;
@@ -28,9 +28,16 @@ export function tasksInDoc(pageId: PageId, doc: DocNode): TaskRef[] {
   return tasks;
 }
 
+// a page left out of Tasks leaves out the pages inside it too
+export function tasksHidden(pages: WorkspaceState['pages'], id: PageId): boolean {
+  const page = pages[id];
+  return !!page && (page.hideTasks || ancestorsOf(pages, id).some((ancestor) => ancestor.hideTasks));
+}
+
 export function collectTasks(state: WorkspaceState): TaskRef[] {
   const result: TaskRef[] = [];
   for (const page of activePages(state.pages)) {
+    if (tasksHidden(state.pages, page.id)) continue;
     const doc = state.docs[page.id];
     if (doc) result.push(...tasksInDoc(page.id, doc));
   }

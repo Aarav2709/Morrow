@@ -33,6 +33,7 @@ export type Command =
   | { type: 'page.setFavorite'; id: PageId; favorite: boolean }
   // now archives the page, null brings it back to the sidebar
   | { type: 'page.setArchived'; id: PageId; now: number | null }
+  | { type: 'page.setHideTasks'; id: PageId; hide: boolean }
   | { type: 'page.markOpened'; id: PageId; now: number }
   | { type: 'page.trash'; id: PageId; now: number }
   | { type: 'page.restore'; id: PageId }
@@ -130,6 +131,12 @@ function dispatch(state: WorkspaceState, command: Command): Result<Applied> {
       if (!page.ok) return page;
       if ((page.value.archivedAt === null) === (command.now === null)) return unchanged(state);
       return updatePage(state, { ...page.value, archivedAt: command.now });
+    }
+    case 'page.setHideTasks': {
+      const page = requirePage(state, command.id);
+      if (!page.ok) return page;
+      if (page.value.hideTasks === command.hide) return unchanged(state);
+      return updatePage(state, { ...page.value, hideTasks: command.hide === true });
     }
     case 'page.markOpened': {
       const page = requirePage(state, command.id);

@@ -333,6 +333,8 @@ export const pt: TranslationSchema = {
     },
   },
   pageMenu: {
+    hideFromTasks: 'Deixar listas fora de Tarefas',
+    showInTasks: 'Mostrar listas em Tarefas',
     pageOptions: 'Opções da página',
     addSubpage: 'Adicionar subpágina',
     rename: 'Renomear',

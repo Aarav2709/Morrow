@@ -90,6 +90,7 @@ export function normalizePage(raw: unknown): PageMeta | null {
     updatedAt,
     trashedAt: typeof raw.trashedAt === 'number' && Number.isFinite(raw.trashedAt) ? raw.trashedAt : null,
     archivedAt: typeof raw.archivedAt === 'number' && Number.isFinite(raw.archivedAt) ? raw.archivedAt : null,
+    hideTasks: raw.hideTasks === true,
     favorite: raw.favorite === true,
     dailyDate:
       typeof raw.dailyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.dailyDate) ? raw.dailyDate : null,

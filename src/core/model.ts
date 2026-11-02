@@ -114,6 +114,8 @@ export interface PageMeta {
   trashedAt: number | null;
   // archived pages leave the sidebar but stay searchable and linkable
   archivedAt: number | null;
+  // its checklists, and those of the pages inside it, stay out of Tasks, like a recipe's ingredients
+  hideTasks: boolean;
   favorite: boolean;
   dailyDate: string | null;
   lastOpenedAt: number | null;
@@ -330,6 +332,7 @@ export function newPageMeta(fields: Pick<PageMeta, 'id' | 'parentId'> & Partial<
     updatedAt: fields.updatedAt ?? now,
     trashedAt: null,
     archivedAt: null,
+    hideTasks: false,
     favorite: false,
     dailyDate: null,
     lastOpenedAt: null,
