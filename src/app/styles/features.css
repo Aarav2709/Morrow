@@ -1278,6 +1278,10 @@ td:hover .prop-empty,
 .canvas-node[class*='canvas-color-'] {
   background: color-mix(in srgb, var(--card-color) 9%, var(--surface));
 }
+/* a coloured group stays see-through, the arrows between its cards are drawn under it */
+.canvas-node.canvas-group[class*='canvas-color-'] {
+  background: color-mix(in srgb, var(--card-color) 9%, transparent);
+}
 .canvas-text {
   padding: 10px 14px;
   font-size: 15px;
