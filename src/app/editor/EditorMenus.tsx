@@ -301,8 +301,13 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
     // capture the node now, the editor can be destroyed before this cleanup runs
     const dom = editor.view.dom;
     const open = () => setEditingLink(true);
+    const colour = () => setColoring(true);
     dom.addEventListener('morrow:edit-link', open);
-    return () => dom.removeEventListener('morrow:edit-link', open);
+    dom.addEventListener('morrow:colour', colour);
+    return () => {
+      dom.removeEventListener('morrow:edit-link', open);
+      dom.removeEventListener('morrow:colour', colour);
+    };
   }, [editor]);
 
   return (
@@ -747,6 +752,23 @@ export function BlockMenu({
     })),
     { label: t('slash.items.quote.title'), icon: Quote, onSelect: turn({ kind: 'blockquote' }) },
     { label: t('slash.items.code.title'), icon: Code2, onSelect: turn({ kind: 'codeBlock' }) },
+    { separator: true },
+    {
+      label: t('editor.colour'),
+      icon: Palette,
+      // the block's words are picked and the colours open over them, for its text or a highlight
+      onSelect: () => {
+        const node = editor.state.doc.nodeAt(request.pos);
+        const from = range?.from ?? request.pos;
+        const to = range?.to ?? request.pos + (node?.nodeSize ?? 0);
+        const selection = TextSelection.between(editor.state.doc.resolve(from), editor.state.doc.resolve(to));
+        if (selection.empty) return;
+        clearBlockSelection(editor);
+        editor.view.dispatch(editor.state.tr.setSelection(selection));
+        editor.view.focus();
+        requestAnimationFrame(() => editor.view.dom.dispatchEvent(new Event('morrow:colour')));
+      },
+    },
     { separator: true },
     {
       label: t('editor.moveUp'),
