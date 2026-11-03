@@ -462,6 +462,24 @@ async function usedFileIds(): Promise<Set<FileId>> {
   return used;
 }
 
+// pages left in the trash longer than the days set in Settings are deleted for good, with the files only
+// they used. runs when morrow opens and every few hours while it stays open
+export function emptyOldTrash(now = Date.now()): void {
+  const days = getPreferences().trashDays;
+  if (!days) return;
+  const { pages } = getState();
+  const old = Object.values(pages).filter(
+    (page) => page.trashedAt !== null && page.trashedAt < now - days * 86_400_000,
+  );
+  if (!old.length) return;
+  const ids = old.flatMap((page) => [page.id, ...descendantsOf(pages, page.id).map((child) => child.id)]);
+  const files = filesOf(ids);
+  let removed = false;
+  for (const page of old)
+    if (getState().pages[page.id]) removed = run({ type: 'page.deleteForever', id: page.id }).ok || removed;
+  if (removed) void removeFilesLeftBehind(files);
+}
+
 export function duplicatePage(id: PageId): void {
   const copyId = newId();
   const result = run({ type: 'page.duplicate', id, newId: copyId, now: Date.now() });

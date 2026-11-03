@@ -5,6 +5,7 @@ import type { SupportedLocale } from '../i18n/types';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
 export type PageWidth = 'comfortable' | 'wide';
+export type TrashDays = 0 | 30 | 60 | 90;
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
 // the views the sidebar lists, each one can be left out, daily notes turn off everywhere with theirs
@@ -39,6 +40,8 @@ export interface Preferences {
   canvasSizes: Record<string, CanvasSize>;
   // pages shown wider or narrower than the width set for every page
   pageWidths: Record<string, PageWidth>;
+  // pages in the trash longer than this many days are deleted for good, 0 keeps them until emptied
+  trashDays: TrashDays;
   // how much of a split tab the first side takes
   splitShare: number;
   startPage: StartPage;
@@ -84,6 +87,7 @@ const defaults: Preferences = {
   name: '',
   canvasSizes: {},
   pageWidths: {},
+  trashDays: 0,
   splitShare: 0.5,
   startPage: 'today',
   assistant: false,
@@ -139,6 +143,7 @@ function read(): Preferences {
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],
       canvasSizes: readCanvasSizes(parsed.canvasSizes),
+      trashDays: ([30, 60, 90] as const).find((days) => days === parsed.trashDays) ?? 0,
       pageWidths: Object.fromEntries(
         Object.entries(parsed.pageWidths ?? {})
           .filter(([, width]) => width === 'wide' || width === 'comfortable')

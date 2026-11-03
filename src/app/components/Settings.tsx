@@ -10,6 +10,7 @@ import type { SupportedLocale, TranslationKey } from '../i18n';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
 import {
   deleteUnusedFiles,
+  emptyOldTrash,
   exportAllMarkdown,
   exportBackup,
   importMarkdown,
@@ -19,7 +20,7 @@ import {
 import { formatBytes } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
 import { ACCENTS, SIDEBAR_MODULES, setPreferences, usePreferences } from '../platform/preferences';
-import type { PageWidth, StartPage, ThemePreference, WritingFont } from '../platform/preferences';
+import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
 import { chooseVaultFolder } from '../vaults';
@@ -378,6 +379,7 @@ function CustomCss() {
 
 function VaultSettings() {
   const { t, tp } = useTranslation();
+  const prefs = usePreferences();
   const vault = getSession().location;
   const [legacy, setLegacy] = useState(0);
   const [files, setFiles] = useState<{ count: number; bytes: number; unused: number } | null>(null);
@@ -456,6 +458,24 @@ function VaultSettings() {
           <button type="button" className="button small" onClick={() => void importMarkdown()}>
             {t('settings.vault.importMarkdownButton')}
           </button>
+        </SettingRow>
+      </SettingsGroup>
+      <SettingsGroup title={t('settings.vault.trash')}>
+        <SettingRow label={t('settings.vault.emptyTrash')} help={t('settings.vault.emptyTrashHelp')}>
+          <Segmented<`${TrashDays}`>
+            label={t('settings.vault.emptyTrash')}
+            value={String(prefs.trashDays) as `${TrashDays}`}
+            options={[
+              ['0', t('settings.vault.never')],
+              ['30', t('settings.vault.afterDays', { days: 30 })],
+              ['60', t('settings.vault.afterDays', { days: 60 })],
+              ['90', t('settings.vault.afterDays', { days: 90 })],
+            ]}
+            onChange={(days) => {
+              setPreferences({ trashDays: Number(days) as TrashDays });
+              emptyOldTrash();
+            }}
+          />
         </SettingRow>
       </SettingsGroup>
       <SettingsGroup title={t('settings.vault.unusedFiles')}>
