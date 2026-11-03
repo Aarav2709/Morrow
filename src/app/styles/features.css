@@ -1181,6 +1181,10 @@ td:hover .prop-empty,
   position: absolute;
   inset: 0 auto auto 0;
   transform-origin: 0 0;
+  user-select: none;
+}
+.canvas-world :is(textarea, input, [contenteditable='true']) {
+  user-select: text;
 }
 .canvas-edges {
   position: absolute;

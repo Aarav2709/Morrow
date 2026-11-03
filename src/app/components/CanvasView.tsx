@@ -527,6 +527,9 @@ export function CanvasView({
     } else if (nodeElement && event.button === 0) {
       const id = nodeElement.dataset.node!;
       if (editing === id) return;
+      // a drag on a card moves it, it never selects the words on the card or on a group under it
+      event.preventDefault();
+      window.getSelection()?.removeAllRanges();
       const next = new Set(event.shiftKey ? selected : selected.has(id) ? selected : []);
       if (event.shiftKey && next.has(id)) next.delete(id);
       else next.add(id);
@@ -666,25 +669,35 @@ export function CanvasView({
     } else if (current.kind === 'connect') {
       setLink(null);
       const point = toWorld(event.clientX, event.clientY);
-      const target = [...data.nodes]
-        .reverse()
-        .find(
-          (node) =>
-            node.id !== current.from &&
-            node.type !== 'group' &&
-            point.x >= node.x &&
-            point.x <= node.x + node.width &&
-            point.y >= node.y &&
-            point.y <= node.y + node.height,
-        );
+      // let go on one of a card's dots, the line joins that dot. anywhere else on a card, the side nearest
+      // the pointer
+      const dot = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>('.canvas-handle[data-node]');
+      const onDot =
+        dot && dot.dataset.node !== current.from
+          ? data.nodes.find((n) => n.id === dot.dataset.node)
+          : undefined;
+      const target =
+        onDot ??
+        [...data.nodes]
+          .reverse()
+          .find(
+            (node) =>
+              node.id !== current.from &&
+              node.type !== 'group' &&
+              point.x >= node.x &&
+              point.x <= node.x + node.width &&
+              point.y >= node.y &&
+              point.y <= node.y + node.height,
+          );
       if (target) {
-        const from = data.nodes.find((node) => node.id === current.from)!;
         const edge: CanvasEdge = {
           id: newId().replace(/-/g, '').slice(0, 16),
           fromNode: current.from,
           toNode: target.id,
           fromSide: current.side,
-          toSide: facing(target, anchor(from, current.side).x, anchor(from, current.side).y),
+          toSide: onDot ? (dot!.dataset.handle as CanvasSide) : facing(target, point.x, point.y),
         };
         commit({ ...data, edges: [...data.edges, edge] });
       } else {
