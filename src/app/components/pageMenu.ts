@@ -18,6 +18,7 @@ import {
   History,
   ListChecks,
   ListX,
+  MoveHorizontal,
   Pencil,
   Plus,
   Smile,
@@ -43,6 +44,8 @@ import {
   turnIntoPage,
 } from '../operations';
 import { desktop } from '../platform/desktop';
+import { getPreferences, setPreferences } from '../platform/preferences';
+import type { PageWidth } from '../platform/preferences';
 import { navigate } from '../router';
 import { getUi, openDialog, setUi } from '../ui';
 import { childrenOf } from '../../core/tree';
@@ -164,6 +167,23 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       : []),
     { label: t('pageMenu.publishWebsite'), icon: Globe, onSelect: () => void publishSite(pageId) },
     { label: t('pageMenu.importMarkdownHere'), icon: FileUp, onSelect: () => void importMarkdown(pageId) },
+    ...(page.kind === 'page'
+      ? [
+          {
+            label: t('pageMenu.fullWidth'),
+            icon: MoveHorizontal,
+            checked: (getPreferences().pageWidths[pageId] ?? getPreferences().width) === 'wide',
+            onSelect: () => {
+              const prefs = getPreferences();
+              const wide = (prefs.pageWidths[pageId] ?? prefs.width) === 'wide';
+              const { [pageId]: _was, ...others } = prefs.pageWidths;
+              const next: PageWidth = wide ? 'comfortable' : 'wide';
+              // a page set back to the width every page has needs no width of its own
+              setPreferences({ pageWidths: next === prefs.width ? others : { ...others, [pageId]: next } });
+            },
+          },
+        ]
+      : []),
     // checklists that only matter on the page, like a recipe's ingredients, can stay out of Tasks
     page.hideTasks
       ? {

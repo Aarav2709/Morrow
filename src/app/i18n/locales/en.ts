@@ -329,6 +329,7 @@ export const en = {
     },
   },
   pageMenu: {
+    fullWidth: 'Full width',
     hideFromTasks: 'Leave checklists out of Tasks',
     showInTasks: 'Show checklists in Tasks',
     pageOptions: 'Page options',

@@ -37,6 +37,8 @@ export interface Preferences {
   name: string;
   // the size each inline canvas was dragged to
   canvasSizes: Record<string, CanvasSize>;
+  // pages shown wider or narrower than the width set for every page
+  pageWidths: Record<string, PageWidth>;
   // how much of a split tab the first side takes
   splitShare: number;
   startPage: StartPage;
@@ -81,6 +83,7 @@ const defaults: Preferences = {
   colorful: true,
   name: '',
   canvasSizes: {},
+  pageWidths: {},
   splitShare: 0.5,
   startPage: 'today',
   assistant: false,
@@ -136,6 +139,11 @@ function read(): Preferences {
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],
       canvasSizes: readCanvasSizes(parsed.canvasSizes),
+      pageWidths: Object.fromEntries(
+        Object.entries(parsed.pageWidths ?? {})
+          .filter(([, width]) => width === 'wide' || width === 'comfortable')
+          .slice(0, 2000),
+      ) as Record<string, PageWidth>,
       splitShare:
         typeof parsed.splitShare === 'number' ? Math.min(0.8, Math.max(0.2, parsed.splitShare)) : 0.5,
       startPage: ['today', 'home', 'last'].includes(parsed.startPage as string)

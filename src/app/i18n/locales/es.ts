@@ -333,6 +333,7 @@ export const es: TranslationSchema = {
     },
   },
   pageMenu: {
+    fullWidth: 'Ancho completo',
     hideFromTasks: 'Excluir listas de Tareas',
     showInTasks: 'Mostrar listas en Tareas',
     pageOptions: 'Opciones de página',
