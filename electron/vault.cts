@@ -16,7 +16,9 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { isInside } from './cloud.cjs';
 
@@ -592,6 +594,41 @@ export async function copyImage(relative: unknown): Promise<boolean> {
   if (!image || image.isEmpty()) return false;
   const png = new Blob([new Uint8Array(image.toPNG())], { type: 'image/png' });
   await clipboard.write([new ClipboardItem({ 'image/png': png })]);
+  return true;
+}
+
+// documents a link in a page can open straight away. anything else, a program above all, is only shown in
+// its folder, so a link can never run something
+const OPENABLE_DOCUMENTS =
+  /\.(txt|md|markdown|csv|rtf|docx?|xlsx?|pptx?|odt|ods|odp|epub|html?|json|xml|zip|7z|rar|tar|gz)$/i;
+
+// a link to a file or folder on the computer: file:// addresses, paths from the home folder or a drive, and
+// paths relative to the page the link is in, like ../Reading/paper.pdf
+export async function openLocalLink(href: unknown, pagePath: unknown): Promise<boolean> {
+  if (typeof href !== 'string' || !href.trim()) return false;
+  let target: string;
+  try {
+    const value = href.trim();
+    if (/^file:/i.test(value)) target = fileURLToPath(value);
+    else {
+      const decoded = decodeURIComponent(value);
+      if (decoded.startsWith('~/') || decoded.startsWith('~\\'))
+        target = path.join(os.homedir(), decoded.slice(2));
+      else if (path.isAbsolute(decoded)) target = decoded;
+      else {
+        if (!root) return false;
+        const from = typeof pagePath === 'string' && pagePath ? path.dirname(resolveInVault(pagePath)) : root;
+        target = path.resolve(from, decoded);
+      }
+    }
+  } catch {
+    return false;
+  }
+  const info = await stat(target).catch(() => null);
+  if (!info) return false;
+  if (info.isDirectory() || OPENABLE.test(target) || OPENABLE_DOCUMENTS.test(target))
+    return (await shell.openPath(target)) === '';
+  shell.showItemInFolder(target);
   return true;
 }
 

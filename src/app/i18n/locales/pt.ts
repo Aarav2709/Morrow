@@ -617,6 +617,7 @@ export const pt: TranslationSchema = {
     strikethrough: 'Tachado',
     code: 'Código embutido',
     highlight: 'Destaque',
+    fileNotFound: 'Não foi possível encontrar {path} neste computador.',
     uppercase: 'Maiúsculas',
     lowercase: 'Minúsculas',
     colour: 'Cor',

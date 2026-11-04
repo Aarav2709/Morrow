@@ -26,6 +26,7 @@ export interface DesktopVaultApi {
   list(path: string): Promise<Array<{ path: string; size: number; mtime: number }>>;
   reveal(path?: string): Promise<void>;
   openFile(path: string): Promise<boolean>;
+  openLink?(href: string, pagePath: string | null): Promise<boolean>;
   copyImage(path: string): Promise<boolean>;
   onChanges(listener: (changes: unknown) => void): () => void;
   manifest(): Promise<Record<string, string>>;

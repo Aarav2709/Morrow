@@ -55,7 +55,7 @@ import { t } from '../i18n';
 import type { MenuEntry } from '../components/Menu';
 import { copyImageFile, downloadFile } from '../platform/attachments';
 import { copyText, desktop, openExternal } from '../platform/desktop';
-import { openPage } from '../router';
+import { activeRoute, openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
 import { clearBlockSelection, selectedBlocks } from './BlockSelect';
@@ -63,6 +63,7 @@ import type { BlockRange } from './BlockSelect';
 import { turnListItem } from './turnInto';
 import type { TurnTarget } from './turnInto';
 import { openDialog, toast } from '../ui';
+import { getSession } from '../workspace';
 import { colorLabel } from '../i18n/labels';
 
 function ToolButton({
@@ -93,9 +94,15 @@ function ToolButton({
   );
 }
 
+// a file or folder on the computer: ./ and ../ from the page's own folder, ~/ from the home folder, a full
+// path or a file:// address. a path like Reading/paper.pdf, whose first folder has no dot in it the way a
+// web address would, is one too
+const LOCAL_HREF = /^(file:|\.{1,2}[/\\]|~[/\\]|\/|[a-z]:[/\\]|[^./\\:#?]+[/\\])/i;
+
 export function normalizeHref(raw: string): string | null {
   const value = raw.trim();
   if (!value) return null;
+  if (LOCAL_HREF.test(value)) return value;
   if (/^(https?:|mailto:|#\/page\/)/i.test(value)) return value;
   if (/^[\w.-]+@[\w.-]+\.\w+$/.test(value)) return `mailto:${value}`;
   if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return null;
@@ -105,7 +112,17 @@ export function normalizeHref(raw: string): string | null {
 export function openHref(href: string): void {
   const pageId = pageIdFromHref(href);
   if (pageId) openPage(pageId);
+  else if (LOCAL_HREF.test(href)) void openLocal(href);
   else openExternal(href);
+}
+
+async function openLocal(href: string): Promise<void> {
+  const route = activeRoute();
+  const pagePath = route.name === 'page' ? getSession().pathOf(route.id) : null;
+  const opened = await (desktop?.vault?.openLink?.(href, pagePath) ?? Promise.resolve(false)).catch(
+    () => false,
+  );
+  if (!opened) toast(t('editor.fileNotFound', { path: href }), { tone: 'error' });
 }
 
 function LinkInput({ editor, onDone }: { editor: Editor; onDone: () => void }) {

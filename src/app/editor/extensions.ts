@@ -103,7 +103,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
         autolink: true,
         linkOnPaste: true,
         defaultProtocol: 'https',
-        protocols: ['http', 'https', 'mailto'],
+        protocols: ['http', 'https', 'mailto', 'file'],
         HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: null },
       },
       dropcursor: { color: 'var(--accent)', width: 2 },

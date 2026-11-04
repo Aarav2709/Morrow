@@ -610,6 +610,7 @@ export const en = {
     strikethrough: 'Strikethrough',
     code: 'Inline code',
     highlight: 'Highlight',
+    fileNotFound: 'Couldn’t find {path} on this computer.',
     uppercase: 'Uppercase',
     lowercase: 'Lowercase',
     colour: 'Colour',

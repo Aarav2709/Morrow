@@ -36,6 +36,7 @@ import {
   readText,
   copyImage,
   openInDefaultApp,
+  openLocalLink,
   revealInFolder,
   scanVault,
   selectVault,
@@ -543,6 +544,7 @@ function registerVaultIpc(): void {
   handle('vault:list', (relative) => listDir(relative));
   handle('vault:reveal', (relative) => revealInFolder(relative ?? ''));
   handle('vault:open-file', (relative) => openInDefaultApp(relative));
+  handle('vault:open-link', (href, pagePath) => openLocalLink(href, pagePath));
   handle('vault:copy-image', (relative) => copyImage(relative));
   handle('vault:current', () => currentVault());
   handle('vault:manifest', () => vaultManifest());

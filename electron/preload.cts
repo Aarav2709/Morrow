@@ -100,6 +100,8 @@ contextBridge.exposeInMainWorld('morrow', {
     list: (path: string) => ipcRenderer.invoke('vault:list', path),
     reveal: (path?: string) => ipcRenderer.invoke('vault:reveal', path ?? ''),
     openFile: (path: string) => ipcRenderer.invoke('vault:open-file', path),
+    openLink: (href: string, pagePath: string | null) =>
+      ipcRenderer.invoke('vault:open-link', href, pagePath),
     copyImage: (path: string) => ipcRenderer.invoke('vault:copy-image', path),
     manifest: () => ipcRenderer.invoke('vault:manifest'),
     identity: () => ipcRenderer.invoke('vault:identity'),

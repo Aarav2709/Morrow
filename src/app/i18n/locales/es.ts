@@ -617,6 +617,7 @@ export const es: TranslationSchema = {
     strikethrough: 'Tachado',
     code: 'Código en línea',
     highlight: 'Resaltado',
+    fileNotFound: 'No se encontró {path} en este ordenador.',
     uppercase: 'Mayúsculas',
     lowercase: 'Minúsculas',
     colour: 'Color',
