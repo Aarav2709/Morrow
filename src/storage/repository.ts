@@ -67,6 +67,8 @@ export interface WorkspaceRepository {
   deleteFiles(ids: FileId[]): Promise<void>;
   listSnapshots(pageId: PageId): Promise<Snapshot[]>;
   allSnapshots(): Promise<Snapshot[]>;
+  // names a version in page history, or with null for the change deletes it
+  changeSnapshot(pageId: PageId, id: string, change: { name: string } | null): Promise<void>;
   close(): void;
 }
 
@@ -194,6 +196,14 @@ class IndexedDbRepository implements WorkspaceRepository {
 
   async allSnapshots(): Promise<Snapshot[]> {
     return this.db.getAll('history');
+  }
+
+  async changeSnapshot(_pageId: PageId, id: string, change: { name: string } | null): Promise<void> {
+    if (!change) return this.db.delete('history', id);
+    const snapshot = await this.db.get('history', id);
+    if (!snapshot) return;
+    const { name: _old, ...rest } = snapshot;
+    await this.db.put('history', change.name.trim() ? { ...rest, name: change.name.trim() } : rest);
   }
 
   close(): void {

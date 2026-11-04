@@ -298,6 +298,25 @@ describe('edits made outside morrow', () => {
   });
 });
 
+describe('page history', () => {
+  it('names and deletes versions, and the names survive reopening', async () => {
+    const vault = new MemoryVault({ 'Note.md': 'First\n' });
+    const session = await open(vault);
+    const note = idOf(session, 'Note');
+    await session.keepVersion(note);
+    await run(session, { type: 'page.setDoc', id: note, doc: doc('Second'), now: 5 });
+    await session.keepVersion(note);
+    const [newest, older] = await session.listSnapshots(note);
+    await session.changeSnapshot(note, older!.id, { name: 'Before the rewrite' });
+    await session.changeSnapshot(note, newest!.id, null);
+    await session.close();
+    const reopened = await open(vault);
+    const versions = await reopened.listSnapshots(note);
+    expect(versions.map((version) => version.name)).toEqual(['Before the rewrite']);
+    await reopened.close();
+  });
+});
+
 describe('databases and journals in files', () => {
   it('writes row properties as readable frontmatter and reads them back', async () => {
     const vault = new MemoryVault();

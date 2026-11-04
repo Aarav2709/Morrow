@@ -271,6 +271,8 @@ export interface Snapshot {
   title: string;
   doc: DocNode;
   createdAt: number;
+  // a name given to the version in page history. named versions are kept however many come after
+  name?: string;
   // the page's database values and other frontmatter, missing from versions kept before they were
   properties?: Record<string, PropValue>;
   extra?: Record<string, unknown>;

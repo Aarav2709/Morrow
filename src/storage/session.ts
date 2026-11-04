@@ -275,6 +275,10 @@ export class WorkspaceSession {
     return this.repository.allSnapshots();
   }
 
+  changeSnapshot(pageId: PageId, id: string, change: { name: string } | null): Promise<void> {
+    return this.repository.changeSnapshot(pageId, id, change);
+  }
+
   // earlier versions brought over from another storage, written as they are
   async importSnapshots(snapshots: Snapshot[]): Promise<void> {
     if (snapshots.length === 0) return;

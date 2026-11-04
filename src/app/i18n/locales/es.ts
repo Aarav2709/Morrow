@@ -1209,6 +1209,12 @@ export const es: TranslationSchema = {
     reloadMorrow: 'Recargar Morrow',
   },
   history: {
+    name: 'Nombrar esta versión',
+    rename: 'Cambiar nombre',
+    namePlaceholder: 'Nombre, como Antes de reescribir',
+    delete: 'Eliminar',
+    deleteTitle: '¿Eliminar esta versión?',
+    deleteBody: 'Se quita del historial de la página. La página no cambia.',
     words: '{count} palabras',
     wordsOne: '{count} palabra',
     unchangedLines: '{count} líneas sin cambios',

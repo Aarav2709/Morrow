@@ -1941,9 +1941,22 @@ input[type='checkbox']:checked::after {
 
 .history-actions {
   display: flex;
+  gap: 8px;
   justify-content: flex-end;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+}
+
+.history-naming {
+  flex: 1;
+  display: flex;
+}
+.history-naming input {
+  flex: 1;
+}
+.history-name {
+  display: block;
+  font-weight: 600;
 }
 
 .checkbox-row {

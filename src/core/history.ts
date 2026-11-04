@@ -9,8 +9,9 @@ export function snapshotDue(lastAt: number | undefined, now: number): boolean {
 }
 
 // ids of the oldest versions beyond the per page limit
-export function snapshotsToPrune(snapshots: Array<Pick<Snapshot, 'id' | 'createdAt'>>): string[] {
+export function snapshotsToPrune(snapshots: Array<Pick<Snapshot, 'id' | 'createdAt' | 'name'>>): string[] {
   return [...snapshots]
+    .filter((snapshot) => !snapshot.name)
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(MAX_SNAPSHOTS_PER_PAGE)
     .map((snapshot) => snapshot.id);

@@ -561,6 +561,9 @@ export class VaultRepository implements WorkspaceRepository {
             title: String(snapshot.title ?? ''),
             doc: doc.value,
             createdAt: snapshot.createdAt,
+            ...(typeof snapshot.name === 'string' && snapshot.name
+              ? { name: snapshot.name.slice(0, 200) }
+              : {}),
             ...(isRecord(snapshot.properties)
               ? { properties: snapshot.properties as Record<string, PropValue> }
               : {}),
@@ -628,9 +631,26 @@ export class VaultRepository implements WorkspaceRepository {
     const list = [...existing, snapshot];
     const prune = new Set(snapshotsToPrune(list));
     const kept = list.filter((item) => !prune.has(item.id)).sort((a, b) => a.createdAt - b.createdAt);
-    this.history.set(snapshot.pageId, kept);
+    return this.writeHistory(snapshot.pageId, kept);
+  }
+
+  private writeHistory(pageId: PageId, kept: Snapshot[]): VaultOp {
+    this.history.set(pageId, kept);
     const text = JSON.stringify({ version: 1, snapshots: kept.map(({ pageId: _pageId, ...rest }) => rest) });
-    return { op: 'write', path: this.historyPath(snapshot.pageId), text };
+    return { op: 'write', path: this.historyPath(pageId), text };
+  }
+
+  async changeSnapshot(pageId: PageId, id: string, change: { name: string } | null): Promise<void> {
+    const existing = await this.historyOf(pageId);
+    if (!existing.some((item) => item.id === id)) return;
+    const kept = existing.flatMap((item) => {
+      if (item.id !== id) return [item];
+      if (!change) return [];
+      const { name: _old, ...rest } = item;
+      return [change.name.trim() ? { ...rest, name: change.name.trim().slice(0, 200) } : rest];
+    });
+    const [result] = await this.bridge.apply([this.writeHistory(pageId, kept)]);
+    if (result && !result.ok) throw new Error(result.message);
   }
 
   private async keepDiskVersion(pageId: PageId, text: string): Promise<void> {

@@ -1196,6 +1196,12 @@ export const en = {
     reloadMorrow: 'Reload Morrow',
   },
   history: {
+    name: 'Name this version',
+    rename: 'Rename',
+    namePlaceholder: 'Name, like Before the rewrite',
+    delete: 'Delete',
+    deleteTitle: 'Delete this version?',
+    deleteBody: 'It is removed from the page history. The page itself stays as it is.',
     words: '{count} words',
     wordsOne: '{count} word',
     unchangedLines: '{count} unchanged lines',

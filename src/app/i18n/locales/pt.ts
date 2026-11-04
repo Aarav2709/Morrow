@@ -1208,6 +1208,12 @@ export const pt: TranslationSchema = {
     reloadMorrow: 'Recarregar o Morrow',
   },
   history: {
+    name: 'Nomear esta versão',
+    rename: 'Renomear',
+    namePlaceholder: 'Nome, como Antes da reescrita',
+    delete: 'Excluir',
+    deleteTitle: 'Excluir esta versão?',
+    deleteBody: 'Ela sai do histórico da página. A página continua como está.',
     words: '{count} palavras',
     wordsOne: '{count} palavra',
     unchangedLines: '{count} linhas sem alteração',

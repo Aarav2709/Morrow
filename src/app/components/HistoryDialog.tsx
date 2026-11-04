@@ -12,7 +12,7 @@ import type { PageId, PageMeta, PropValue, Snapshot, WorkspaceState } from '../.
 import { createExtensions } from '../editor/extensions';
 import { restoreVersion } from '../operations';
 import { fileUrl } from '../platform/attachments';
-import { closeDialog } from '../ui';
+import { closeDialog, toast } from '../ui';
 import { getSession, useWorkspace } from '../workspace';
 import { Dialog, relativeTime } from './primitives';
 import { dateLocale, t, tp } from '../i18n';
@@ -62,6 +62,9 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
   const [versions, setVersions] = useState<Snapshot[] | null>(null);
   const [selected, setSelected] = useState(0);
   const [mode, setMode] = useState<'changes' | 'version'>('changes');
+  const [naming, setNaming] = useState(false);
+  // delete asks once more in place, a second dialog would close this one
+  const [deleting, setDeleting] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -106,6 +109,18 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
 
   if (!page) return null;
 
+  // a version can be given a name, which keeps it, or deleted from the history
+  const change = async (version: Snapshot, next: { name: string } | null) => {
+    try {
+      await getSession().changeSnapshot(pageId, version.id, next);
+      const list = await getSession().listSnapshots(pageId);
+      setVersions(list);
+      if (!next) setSelected((index) => Math.min(index, Math.max(0, list.length - 1)));
+    } catch (error) {
+      toast(String(error), { tone: 'error' });
+    }
+  };
+
   return (
     <Dialog
       title={t('history.title', { title: displayTitle(page) })}
@@ -132,8 +147,13 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
                     role="option"
                     aria-selected={index === selected}
                     className={`history-item${index === selected ? ' is-active' : ''}`}
-                    onClick={() => setSelected(index)}
+                    onClick={() => {
+                      setSelected(index);
+                      setNaming(false);
+                      setDeleting(false);
+                    }}
                   >
+                    {version.name && <strong className="history-name">{version.name}</strong>}
                     <span>
                       {new Date(version.createdAt).toLocaleString(dateLocale(), {
                         dateStyle: 'medium',
@@ -170,6 +190,50 @@ export function HistoryDialog({ pageId }: { pageId: PageId }) {
             )}
             {snapshot && (
               <div className="history-actions">
+                {naming ? (
+                  <form
+                    className="history-naming"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const input = event.currentTarget.elements.namedItem('name') as HTMLInputElement;
+                      setNaming(false);
+                      void change(snapshot, { name: input.value });
+                    }}
+                  >
+                    <input
+                      name="name"
+                      className="prop-input"
+                      defaultValue={snapshot.name ?? ''}
+                      placeholder={t('history.namePlaceholder')}
+                      aria-label={t('history.name')}
+                      autoFocus
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Escape') return;
+                        event.stopPropagation();
+                        setNaming(false);
+                      }}
+                    />
+                  </form>
+                ) : (
+                  <>
+                    <button type="button" className="button" onClick={() => setNaming(true)}>
+                      {snapshot.name ? t('history.rename') : t('history.name')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`button${deleting ? ' danger' : ''}`}
+                      title={t('history.deleteBody')}
+                      onClick={() => {
+                        if (!deleting) return setDeleting(true);
+                        setDeleting(false);
+                        void change(snapshot, null);
+                      }}
+                      onBlur={() => setDeleting(false)}
+                    >
+                      {deleting ? t('history.deleteTitle') : t('history.delete')}
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   className="button primary"
