@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('morrow', {
   showBackupsFolder: () => ipcRenderer.invoke('morrow:show-backups'),
   writeAutoBackup: (json: string) => ipcRenderer.invoke('morrow:write-backup', json),
   exportPdf: (name: string) => ipcRenderer.invoke('morrow:export-pdf', name),
+  exportPng: (name: string, area: { x: number; y: number; width: number; height: number }) =>
+    ipcRenderer.invoke('morrow:export-png', name, area),
   copyText: (text: string) => ipcRenderer.invoke('morrow:copy-text', text),
   copyRich: (text: string, html: string) => ipcRenderer.invoke('morrow:copy-rich', text, html),
   setSpellcheck: (enabled: boolean) => ipcRenderer.send('morrow:spellcheck', enabled),

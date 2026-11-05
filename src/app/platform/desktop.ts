@@ -184,6 +184,10 @@ export interface DesktopBridge {
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   showBackupsFolder(): Promise<void>;
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
+  exportPng?(
+    name: string,
+    area: { x: number; y: number; width: number; height: number },
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
   copyText(text: string): Promise<boolean> | void;
   copyRich?(text: string, html: string): Promise<boolean>;
   setSpellcheck?(enabled: boolean): void;

@@ -1128,6 +1128,8 @@ export const en = {
     redo: 'Redo',
     zoomOut: 'Zoom out',
     zoomIn: 'Zoom in',
+    saveImage: 'Save as image',
+    savedImage: 'Saved the canvas as an image.',
     fitEverythingInView: 'Fit everything in view',
     deleteSelection: 'Delete selection',
     emptyHint:

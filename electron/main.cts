@@ -451,6 +451,36 @@ function registerIpc(): void {
   });
   registerVaultIpc();
   // prints the page as it looks, with print styles hiding the rest of the app, and saves it where asked
+  // a picture of part of the window, such as a whole canvas fitted into view, saved where the user picks
+  ipcMain.handle('morrow:export-png', async (event, name: unknown, area: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!fromApp(event) || !window) return { ok: false, error: 'Not allowed.' };
+    const box = area as { x?: unknown; y?: unknown; width?: unknown; height?: unknown } | null;
+    const numbers = [box?.x, box?.y, box?.width, box?.height];
+    if (!numbers.every((value) => typeof value === 'number' && Number.isFinite(value)))
+      return { ok: false, error: 'Nothing to save.' };
+    // the page measures in its own pixels, which zooming the window makes larger or smaller
+    const zoom = event.sender.getZoomFactor();
+    const [x, y, width, height] = (numbers as number[]).map((value) => Math.max(0, Math.round(value * zoom)));
+    const image = await event.sender.capturePage({ x: x!, y: y!, width: width!, height: height! });
+    const base =
+      (typeof name === 'string' ? name : 'Canvas')
+        .replace(/[\\/:*?"<>|\x00-\x1f]+/g, ' ')
+        .trim()
+        .slice(0, 120) || 'Canvas';
+    const choice = await dialog.showSaveDialog(window, {
+      title: 'Save as image',
+      defaultPath: path.join(app.getPath('documents'), `${base}.png`),
+      filters: [{ name: 'PNG', extensions: ['png'] }],
+    });
+    if (choice.canceled || !choice.filePath) return { ok: false, error: null };
+    try {
+      await writeFile(choice.filePath, image.toPNG());
+      return { ok: true, path: choice.filePath };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
   ipcMain.handle('morrow:export-pdf', async (event, name: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!fromApp(event) || !window) return { ok: false, error: 'Not allowed.' };

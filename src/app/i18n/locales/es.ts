@@ -1141,6 +1141,8 @@ export const es: TranslationSchema = {
     redo: 'Rehacer',
     zoomOut: 'Alejar',
     zoomIn: 'Acercar',
+    saveImage: 'Guardar como imagen',
+    savedImage: 'Lienzo guardado como imagen.',
     fitEverythingInView: 'Ajustar todo a la vista',
     deleteSelection: 'Eliminar la selección',
     emptyHint:

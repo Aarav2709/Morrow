@@ -1420,6 +1420,9 @@ td:hover .prop-empty,
   height: 8px;
   cursor: ns-resize;
 }
+.canvas-view.is-capturing :is(.canvas-toolbar, .canvas-handle, .canvas-resize, .canvas-resize-edge) {
+  visibility: hidden;
+}
 .canvas-toolbar {
   position: absolute;
   left: 50%;

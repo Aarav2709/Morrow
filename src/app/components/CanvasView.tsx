@@ -3,6 +3,7 @@ import {
   FileText,
   Group,
   Highlighter,
+  ImageDown,
   Maximize,
   Minus,
   MousePointer2,
@@ -22,10 +23,10 @@ import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle } from '../../core/search';
 import { isImagePath } from '../../core/vault/paths';
 import { fileUrl } from '../platform/attachments';
-import { openExternal } from '../platform/desktop';
+import { desktop, openExternal } from '../platform/desktop';
 import { newId } from '../platform/files';
 import { openPage } from '../router';
-import { openDialog } from '../ui';
+import { openDialog, toast } from '../ui';
 import { getState, run, useWorkspace } from '../workspace';
 import { Emoji } from './Emoji';
 import { Popover } from './Popover';
@@ -335,6 +336,31 @@ export function CanvasView({
       x: rect.width / 2 - ((minX + maxX) / 2) * zoom,
       y: rect.height / 2 - ((minY + maxY) / 2) * zoom,
     });
+  };
+
+  // everything on the canvas fitted into view and saved as a picture, without the toolbar, the selection
+  // or the dots for joining cards
+  const [capturing, setCapturing] = useState(false);
+  const saveImage = async () => {
+    const root = rootRef.current;
+    if (!root || !desktop?.exportPng) return;
+    const before = view;
+    setSelected(new Set());
+    setSelectedEdge(null);
+    setEditing(null);
+    setCapturing(true);
+    fit();
+    // two frames, so the fitted view and the hidden toolbar are painted before the picture is taken
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const rect = root.getBoundingClientRect();
+    const title = displayTitle(getState().pages[pageId]);
+    const result = await desktop
+      .exportPng(title, { x: rect.left, y: rect.top, width: rect.width, height: rect.height })
+      .catch((error: unknown) => ({ ok: false as const, error: String(error) }));
+    setCapturing(false);
+    setView(before);
+    if (result.ok) toast(t('canvas.savedImage'));
+    else if (result.error) toast(result.error, { tone: 'error' });
   };
 
   // start fitted to what is on the canvas
@@ -851,7 +877,7 @@ export function CanvasView({
   return (
     <div
       ref={rootRef}
-      className={`canvas-view tool-${tool}${link ? ' is-connecting' : ''}`}
+      className={`canvas-view tool-${tool}${link ? ' is-connecting' : ''}${capturing ? ' is-capturing' : ''}`}
       tabIndex={0}
       role="application"
       aria-label={t('canvas.canvasAria')}
@@ -1135,6 +1161,17 @@ export function CanvasView({
         >
           <Maximize size={16} />
         </button>
+        {desktop?.exportPng && (
+          <button
+            type="button"
+            className="icon-button"
+            title={t('canvas.saveImage')}
+            aria-label={t('canvas.saveImage')}
+            onClick={() => void saveImage()}
+          >
+            <ImageDown size={16} />
+          </button>
+        )}
         {editable && (selectedNodes.length > 0 || selectedEdge) && (
           <>
             <span className="toolbar-divider" />

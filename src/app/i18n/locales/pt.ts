@@ -1140,6 +1140,8 @@ export const pt: TranslationSchema = {
     redo: 'Refazer',
     zoomOut: 'Diminuir zoom',
     zoomIn: 'Aumentar zoom',
+    saveImage: 'Salvar como imagem',
+    savedImage: 'Quadro salvo como imagem.',
     fitEverythingInView: 'Ajustar tudo à tela',
     deleteSelection: 'Excluir a seleção',
     emptyHint:
