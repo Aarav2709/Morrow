@@ -103,7 +103,10 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       const target =
         typeof node.attrs?.fileId === 'string' ? options.filePath?.(node.attrs.fileId) : undefined;
       const src = target ?? (typeof node.attrs?.src === 'string' ? node.attrs.src : null);
-      return src ? `![${alt}](${formatHref(src)})` : `*[image${alt ? `: ${alt}` : ''}]*`;
+      // a resized picture keeps its width the way obsidian writes it, ![alt|300](path)
+      const width = imageWidth(node.attrs?.width);
+      const label = width ? `${alt}|${width}` : alt;
+      return src ? `![${label}](${formatHref(src)})` : `*[image${alt ? `: ${alt}` : ''}]*`;
     }
     case 'fileAttachment': {
       const name = escapeText(String(node.attrs?.name ?? 'file'));
@@ -205,6 +208,12 @@ export function calloutIcon(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const icon = value.trim();
   return icon && icon.length <= 16 && !/[|\]\n]/.test(icon) ? icon : null;
+}
+
+export function imageWidth(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 40 && value <= 4000
+    ? Math.round(value)
+    : null;
 }
 
 export function toggleLevel(value: unknown): 1 | 2 | 3 | 4 | 5 | 6 | null {

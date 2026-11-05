@@ -632,6 +632,17 @@
   min-height: 48px;
 }
 
+.prose .image-block {
+  text-align: center;
+}
+
+.prose .image-frame {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: top;
+}
+
 .prose .image-block img {
   display: block;
   max-width: 100%;
@@ -640,11 +651,41 @@
   border-radius: var(--radius);
 }
 
+.prose .image-block img[style*='width'] {
+  max-height: none;
+}
+
+/* bars on each side of a picture to drag it smaller or larger */
+.prose .image-resize {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: min(48px, 40%);
+  transform: translateY(-50%);
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.prose .image-resize.is-left {
+  left: 8px;
+}
+.prose .image-resize.is-right {
+  right: 8px;
+}
+.prose .image-block:hover .image-resize,
+.prose .image-block.ProseMirror-selectednode .image-resize {
+  opacity: 1;
+}
+
 .prose .image-block.is-loading {
   background: var(--hover);
 }
 
 .prose .image-block.is-missing {
+  text-align: left;
   padding: 14px 16px;
   font-family: var(--font-ui);
   font-size: var(--text-sm);

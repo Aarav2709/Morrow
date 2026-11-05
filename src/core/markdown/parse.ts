@@ -3,7 +3,7 @@ import type { StateBlock, StateInline, Token } from 'markdown-it';
 import { BACKGROUND_HEX, calloutTone, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
-import { calloutIcon, HEADER_COLUMN, toggleLevel } from './serialize';
+import { calloutIcon, HEADER_COLUMN, imageWidth, toggleLevel } from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -499,11 +499,12 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         break;
       case 'image': {
         const src = String(token.attrGet('src') ?? '');
-        const alt = token.content || String(token.attrGet('alt') ?? '');
+        const { alt, width } = sizedAlt(token.content || String(token.attrGet('alt') ?? ''));
+        const sized = width ? { width } : {};
         const file = options.resolveFile?.(src) ?? null;
-        if (file?.image) out.push({ type: 'image', attrs: { fileId: file.fileId, alt } });
+        if (file?.image) out.push({ type: 'image', attrs: { fileId: file.fileId, alt, ...sized } });
         else if (file) add(alt || file.name, [{ type: 'link', attrs: { href: src, fileRef: file } }]);
-        else out.push({ type: 'image', attrs: { fileId: null, src, alt } });
+        else out.push({ type: 'image', attrs: { fileId: null, src, alt, ...sized } });
         break;
       }
       case 'html_inline': {
@@ -534,10 +535,20 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
   return mergeText(out);
 }
 
+// obsidian sizes a picture in its alt text: "a cat|300", "a cat|300x200", or just "300" in an embed
+function sizedAlt(text: string): { alt: string; width: number | null } {
+  const match = /^(?:(.*)\|)?(\d{2,4})(?:x\d{2,4})?$/.exec(text.trim());
+  const width = match ? imageWidth(Number(match[2])) : null;
+  return width ? { alt: (match![1] ?? '').trim(), width } : { alt: text, width: null };
+}
+
 function wikiNode(link: WikiLink, markup: string, options: ParseOptions, marks: DocMark[]): DocNode[] {
   if (link.embed) {
     const file = link.target ? (options.resolveFile?.(link.target) ?? null) : null;
-    if (file?.image) return [{ type: 'image', attrs: { fileId: file.fileId, alt: link.alias ?? '' } }];
+    if (file?.image) {
+      const { alt, width } = sizedAlt(link.alias ?? '');
+      return [{ type: 'image', attrs: { fileId: file.fileId, alt, ...(width ? { width } : {}) } }];
+    }
     if (file) {
       const fileMarks = [
         ...marks,

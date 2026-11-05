@@ -22,6 +22,12 @@ export const Image = Node.create({
       // an image on the web or at a path morrow could not find, kept as written
       src: { default: null, parseHTML: (element) => element.getAttribute('data-src') },
       alt: { default: '', parseHTML: (element) => element.getAttribute('alt') ?? '' },
+      // the width the picture was dragged to, null to fit the page
+      width: {
+        default: null,
+        parseHTML: (element) => Number(element.getAttribute('width')) || null,
+        renderHTML: (attributes) => (attributes.width ? { width: String(attributes.width) } : {}),
+      },
     };
   },
 
@@ -52,14 +58,52 @@ export const Image = Node.create({
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return ({ node, getPos, editor }) => {
       const dom = document.createElement('figure');
       dom.className = 'image-block is-loading';
       dom.contentEditable = 'false';
       const img = document.createElement('img');
       img.alt = String(node.attrs.alt ?? '');
       img.draggable = false;
-      dom.appendChild(img);
+      const frame = document.createElement('span');
+      frame.className = 'image-frame';
+      frame.appendChild(img);
+      dom.appendChild(frame);
+      const width = typeof node.attrs.width === 'number' ? node.attrs.width : null;
+      if (width) img.style.width = `${width}px`;
+      // the picture's sides drag to make it smaller or larger. it stays centred, so it grows both ways
+      if (editor.isEditable)
+        for (const side of ['left', 'right'] as const) {
+          const handle = document.createElement('span');
+          handle.className = `image-resize is-${side}`;
+          handle.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const startX = event.clientX;
+            const start = img.getBoundingClientRect().width;
+            const most = dom.getBoundingClientRect().width;
+            let next = start;
+            const onMove = (move: PointerEvent) => {
+              const delta = (move.clientX - startX) * (side === 'right' ? 2 : -2);
+              next = Math.round(Math.min(most, Math.max(60, start + delta)));
+              img.style.width = `${next}px`;
+            };
+            const onUp = () => {
+              window.removeEventListener('pointermove', onMove);
+              window.removeEventListener('pointerup', onUp);
+              const pos = getPos();
+              if (typeof pos !== 'number' || next === start) return;
+              // as wide as the page is the same as no width at all
+              const value = next >= most - 2 ? null : next;
+              editor.view.dispatch(
+                editor.state.tr.setNodeMarkup(pos, undefined, { ...node.attrs, width: value }),
+              );
+            };
+            window.addEventListener('pointermove', onMove);
+            window.addEventListener('pointerup', onUp);
+          });
+          frame.appendChild(handle);
+        }
       const src = typeof node.attrs.src === 'string' ? node.attrs.src : null;
       if (!node.attrs.fileId && src) {
         // pictures from the web are only fetched when asked, opening a page never contacts anyone

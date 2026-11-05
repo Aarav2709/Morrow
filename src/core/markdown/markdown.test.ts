@@ -97,6 +97,22 @@ describe('markdown import', () => {
     expect(summary).toEqual({ type: 'detailsSummary', attrs: { level: 2 }, content: [text('Section')] });
   });
 
+  it('keeps the width of a resized picture the way obsidian writes it', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [{ type: 'image', attrs: { fileId: null, src: 'cat.png', alt: 'A cat', width: 320 } }],
+    };
+    const markdown = docToMarkdown(doc);
+    expect(markdown).toBe('![A cat|320](cat.png)\n');
+    expect(markdownToDoc(markdown).content![0]!.attrs).toEqual({
+      fileId: null,
+      src: 'cat.png',
+      alt: 'A cat',
+      width: 320,
+    });
+    expect(markdownToDoc('![2024 trip](trip.png)\n').content![0]!.attrs?.alt).toBe('2024 trip');
+  });
+
   it('keeps a toggle open or closed through a save and load', () => {
     const toggle = (open: boolean): DocNode => ({
       type: 'doc',
