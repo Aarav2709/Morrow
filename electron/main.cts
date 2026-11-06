@@ -9,6 +9,7 @@ import {
   Menu,
   nativeTheme,
   net,
+  Notification,
   protocol,
   screen,
   session,
@@ -463,6 +464,24 @@ function registerIpc(): void {
   registerVaultIpc();
   // prints the page as it looks, with print styles hiding the rest of the app, and saves it where asked
   // a picture of part of the window, such as a whole canvas fitted into view, saved where the user picks
+  // a reminder from the app, shown by the system. clicking it brings morrow forward on the page it is about
+  ipcMain.on('morrow:notify', (event, title: unknown, body: unknown, pageId: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!fromApp(event) || !window || typeof title !== 'string' || !Notification.isSupported()) return;
+    const notification = new Notification({
+      title: title.slice(0, 200),
+      body: typeof body === 'string' ? body.slice(0, 500) : '',
+      icon: ICON,
+    });
+    notification.on('click', () => {
+      if (window.isMinimized()) window.restore();
+      window.show();
+      window.focus();
+      if (typeof pageId === 'string' && /^[\w-]{1,80}$/.test(pageId))
+        window.webContents.send('morrow:command', `page:${pageId}`);
+    });
+    notification.show();
+  });
   ipcMain.handle('morrow:export-png', async (event, name: unknown, area: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender);
     if (!fromApp(event) || !window) return { ok: false, error: 'Not allowed.' };

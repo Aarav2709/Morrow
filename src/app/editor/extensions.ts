@@ -28,6 +28,7 @@ export interface ExtensionOptions extends PageLinkOptions {
   openTag: (tag: string) => void;
   createChild: (kind: 'database' | 'canvas') => string | null;
   openDate: (date: Date) => void;
+  dateMenu?: (date: Date, anchor: HTMLElement) => void;
 }
 
 // obsidian block ids live on paragraphs and are written back as " ^id". pressing enter at the end of one
@@ -163,7 +164,11 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     Columns,
     Column,
     TableOfContents,
-    DateMention.configure({ openDate: options.openDate, findPages: options.findPages }),
+    DateMention.configure({
+      openDate: options.openDate,
+      findPages: options.findPages,
+      ...(options.dateMenu ? { dateMenu: options.dateMenu } : {}),
+    }),
     Details.configure({ persist: true, HTMLAttributes: { class: 'toggle' } }),
     ToggleSummary,
     DetailsContent,

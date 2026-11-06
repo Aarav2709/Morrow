@@ -183,6 +183,7 @@ export interface DesktopBridge {
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
   showBackupsFolder(): Promise<void>;
+  notify?(title: string, body: string, pageId: string | null): void;
   exportPdf(name: string): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
   exportPng?(
     name: string,

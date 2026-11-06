@@ -1232,6 +1232,15 @@ export const en = {
     newProperty: 'New property',
     editAsMarkdownHint: 'Edit the page as Markdown to change this value',
   },
+  reminders: {
+    dateMenu: 'Date',
+    openNote: 'Open that day’s note',
+    remindMe: 'Remind me',
+    atHour: 'At {time} that day',
+    remove: 'Remove reminder',
+    set: 'Morrow will remind you at {time} that day.',
+    body: 'A reminder for {date}',
+  },
   repeat: {
     never: 'Never',
     everyDay: 'Every day',

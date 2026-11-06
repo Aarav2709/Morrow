@@ -214,6 +214,8 @@ export const TableOfContents = Node.create<object, { prefix: string }>({
 
 export interface DateMentionOptions {
   openDate: (date: Date) => void;
+  // a click on a date shows what can be done with it, its day's note or a reminder
+  dateMenu?: (date: Date, anchor: HTMLElement) => void;
   findPages: (query: string) => Array<{ id: string; title: string; path: string }>;
 }
 
@@ -323,7 +325,9 @@ export const DateMention = Node.create<DateMentionOptions>({
       dom.addEventListener('click', (event) => {
         event.preventDefault();
         const date = parseDateKey(String(current.attrs.date ?? ''));
-        if (date) this.options.openDate(date);
+        if (!date) return;
+        if (this.options.dateMenu) this.options.dateMenu(date, dom);
+        else this.options.openDate(date);
       });
       return {
         dom,

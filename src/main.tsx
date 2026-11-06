@@ -14,6 +14,7 @@ import { createRoot } from 'react-dom/client';
 import { sampleCommands } from './core/sample';
 import { emptyOldTrash } from './app/operations';
 import { startRecurring } from './app/recurring';
+import { startReminders } from './app/reminders';
 import { WorkspaceSession } from './storage/session';
 import { VaultRepository } from './storage/vaultRepository';
 import { App } from './app/App';
@@ -72,6 +73,7 @@ async function openWorkspace(): Promise<BootState> {
   setSession(session);
   startRecurring();
   emptyOldTrash();
+  startReminders();
   setInterval(() => emptyOldTrash(), 6 * 60 * 60 * 1000);
   if (session.problems.length > 0) {
     console.warn('Morrow could not read some stored records:', session.problems);

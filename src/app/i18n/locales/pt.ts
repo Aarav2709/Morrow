@@ -1245,6 +1245,15 @@ export const pt: TranslationSchema = {
     newProperty: 'Nova propriedade',
     editAsMarkdownHint: 'Edite a página como Markdown para alterar este valor',
   },
+  reminders: {
+    dateMenu: 'Data',
+    openNote: 'Abrir a nota desse dia',
+    remindMe: 'Lembrar-me',
+    atHour: 'Às {time} nesse dia',
+    remove: 'Remover lembrete',
+    set: 'O Morrow vai lembrar você às {time} nesse dia.',
+    body: 'Um lembrete para {date}',
+  },
   repeat: {
     never: 'Nunca',
     everyDay: 'Todo dia',

@@ -25,7 +25,7 @@ import {
   setPreferences,
   usePreferences,
 } from './platform/preferences';
-import { navigate, parseRoute, routeHash, useRoute } from './router';
+import { navigate, openPage, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
 import { getUi, setUi, toast, useUi } from './ui';
 import { loadCustomCss } from './customCss';
@@ -40,7 +40,7 @@ import {
 } from './tabs';
 import type { PaneId } from './tabs';
 import { flushPlaces } from './readingPlace';
-import { clearPropertyHistory, getSession } from './workspace';
+import { clearPropertyHistory, getSession, getState } from './workspace';
 
 const AUTO_BACKUP_MS = 10 * 60 * 1000;
 
@@ -161,6 +161,10 @@ function useLifecycle() {
         flushPlaces();
         await session.flush();
         await writeAutoBackup();
+        return;
+      }
+      if (id.startsWith('page:')) {
+        if (getState().pages[id.slice(5)]) openPage(id.slice(5));
         return;
       }
       if ((id === 'go.back' || id === 'go.forward') && !claimNavigation()) return;

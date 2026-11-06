@@ -6,6 +6,13 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
 export type PageWidth = 'comfortable' | 'wide';
 export type TrashDays = 0 | 30 | 60 | 90;
+export interface Reminder {
+  id: string;
+  pageId: string;
+  // the day written in the page, yyyy-mm-dd, and when on it to remind
+  date: string;
+  at: number;
+}
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
 // the views the sidebar lists, each one can be left out, daily notes turn off everywhere with theirs
@@ -42,6 +49,8 @@ export interface Preferences {
   pageWidths: Record<string, PageWidth>;
   // pages in the trash longer than this many days are deleted for good, 0 keeps them until emptied
   trashDays: TrashDays;
+  // reminders set on dates in pages, shown by this computer when they are due
+  reminders: Reminder[];
   // how much of a split tab the first side takes
   splitShare: number;
   startPage: StartPage;
@@ -88,6 +97,7 @@ const defaults: Preferences = {
   canvasSizes: {},
   pageWidths: {},
   trashDays: 0,
+  reminders: [],
   splitShare: 0.5,
   startPage: 'today',
   assistant: false,
@@ -143,6 +153,18 @@ function read(): Preferences {
         ? parsed.expanded.filter((id) => typeof id === 'string').slice(0, 2000)
         : [],
       canvasSizes: readCanvasSizes(parsed.canvasSizes),
+      reminders: Array.isArray(parsed.reminders)
+        ? parsed.reminders
+            .filter(
+              (item) =>
+                item &&
+                typeof item.id === 'string' &&
+                typeof item.pageId === 'string' &&
+                typeof item.date === 'string' &&
+                typeof item.at === 'number',
+            )
+            .slice(0, 500)
+        : [],
       trashDays: ([30, 60, 90] as const).find((days) => days === parsed.trashDays) ?? 0,
       pageWidths: Object.fromEntries(
         Object.entries(parsed.pageWidths ?? {})

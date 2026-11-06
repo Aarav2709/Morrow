@@ -14,6 +14,13 @@ import { displayTitle } from '../../core/model';
 import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle, foldText, pageIdByTitle, resolveLinkTarget } from '../../core/search';
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
+import { dateKey } from '../../core/daily';
+import { Bell, BellOff, CalendarDays } from 'lucide-react';
+import { Menu } from '../components/Menu';
+import type { MenuEntry } from '../components/Menu';
+import { dateLocale, t } from '../i18n';
+import { addReminder, remindersFor, removeReminders } from '../reminders';
+import { toast } from '../ui';
 import { createPage, openToday } from '../operations';
 import { navigate, openPage } from '../router';
 import { targetPane, usePane } from '../tabs';
@@ -158,10 +165,42 @@ function plainTextOf(slice: Slice): string {
   ).trimEnd();
 }
 
+// a date in a page opens its day's note, or reminds you on that day
+function dateMenuEntries(pageId: PageId, date: Date): MenuEntry[] {
+  const key = dateKey(date);
+  const set = remindersFor(pageId, key)[0];
+  const time = (hour: number) =>
+    new Date(2000, 0, 1, hour).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
+  const hours = [9, 13, 18].filter(
+    (hour) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour).getTime() > Date.now(),
+  );
+  return [
+    {
+      label: t('reminders.openNote'),
+      icon: CalendarDays,
+      onSelect: () => openToday(date),
+    },
+    ...(hours.length || set ? [{ heading: t('reminders.remindMe') }] : []),
+    ...hours.map((hour) => ({
+      label: t('reminders.atHour', { time: time(hour) }),
+      icon: Bell,
+      checked: !!set && new Date(set.at).getHours() === hour,
+      onSelect: () => {
+        addReminder(pageId, key, hour);
+        toast(t('reminders.set', { time: time(hour) }));
+      },
+    })),
+    ...(set
+      ? [{ label: t('reminders.remove'), icon: BellOff, onSelect: () => removeReminders(pageId, key) }]
+      : []),
+  ];
+}
+
 // keeps one editor instance per page and writes changes back through commands
 export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onDirty, onReady }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
+  const [dateMenu, setDateMenu] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
   // the find bar opens with the words picked on the page, n changes so pressing it again refills it
   const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
@@ -277,6 +316,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           mountEmbed: (id, element, canEdit) => mountEmbed(id, pageId, element, canEdit),
           createChild: (kind) => createPage({ parentId: pageId, kind, open: false }),
           openDate: (date) => openToday(date),
+          dateMenu: (date, anchor) => setDateMenu({ date, anchor }),
           onBlockMenu: setBlockMenu,
           resolvePage: (title) => pageIdByTitle(getState(), title),
         }),
@@ -427,6 +467,14 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           <LinkMenu editor={editor} />
           <TableMenu editor={editor} />
         </>
+      )}
+      {dateMenu && (
+        <Menu
+          anchor={dateMenu.anchor}
+          label={t('reminders.dateMenu')}
+          onClose={() => setDateMenu(null)}
+          entries={dateMenuEntries(pageId, dateMenu.date)}
+        />
       )}
       {blockMenu && (
         <BlockMenu
