@@ -611,6 +611,8 @@ export const en = {
     code: 'Inline code',
     highlight: 'Highlight',
     fileNotFound: 'Couldn’t find {path} on this computer.',
+    videoFrom: 'A video from {host}',
+    playVideo: 'Play video',
     uppercase: 'Uppercase',
     lowercase: 'Lowercase',
     colour: 'Colour',

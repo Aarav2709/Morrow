@@ -618,6 +618,8 @@ export const pt: TranslationSchema = {
     code: 'Código embutido',
     highlight: 'Destaque',
     fileNotFound: 'Não foi possível encontrar {path} neste computador.',
+    videoFrom: 'Um vídeo do {host}',
+    playVideo: 'Reproduzir vídeo',
     uppercase: 'Maiúsculas',
     lowercase: 'Minúsculas',
     colour: 'Cor',

@@ -618,6 +618,8 @@ export const es: TranslationSchema = {
     code: 'Código en línea',
     highlight: 'Resaltado',
     fileNotFound: 'No se encontró {path} en este ordenador.',
+    videoFrom: 'Un vídeo de {host}',
+    playVideo: 'Reproducir vídeo',
     uppercase: 'Mayúsculas',
     lowercase: 'Minúsculas',
     colour: 'Color',

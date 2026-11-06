@@ -183,6 +183,16 @@ async function serveApp(request: Request): Promise<Response> {
   return net.fetch(pathToFileURL(file).toString());
 }
 
+// pictures, sound and video a page links to elsewhere on the computer play from where they are, without a
+// copy in the vault. only those kinds of file are ever served this way
+const LOCAL_MEDIA =
+  /\.(png|jpe?g|gif|webp|avif|bmp|svg|mp3|m4a|wav|ogg|oga|flac|aac|opus|weba|mp4|m4v|webm|mov|ogv)$/i;
+function localMediaPath(value: string): string | null {
+  // the address drops the leading slash, a windows path keeps its drive, C:/folder/file
+  const file = /^[a-z]:\//i.test(value) ? value : `/${value}`;
+  return path.isAbsolute(file) && LOCAL_MEDIA.test(file) ? path.normalize(file) : null;
+}
+
 async function serveVaultFile(request: Request): Promise<Response> {
   const url = new URL(request.url);
   let relative: string;
@@ -191,7 +201,8 @@ async function serveVaultFile(request: Request): Promise<Response> {
   } catch {
     return new Response('Not found', { status: 404 });
   }
-  const file = url.host === 'vault' ? vaultFilePath(relative) : null;
+  const file =
+    url.host === 'vault' ? vaultFilePath(relative) : url.host === 'local' ? localMediaPath(relative) : null;
   if (!file || !existsSync(file)) return new Response('Not found', { status: 404 });
   const response = await net.fetch(pathToFileURL(file).toString());
   // svg images can carry scripts, they are only ever shown as images, pdfs open in the built in viewer

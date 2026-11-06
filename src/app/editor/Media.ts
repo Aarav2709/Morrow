@@ -6,6 +6,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import type { FileMeta } from '../../core/model';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
 import { desktop } from '../platform/desktop';
+import { activeRoute } from '../router';
 import { getSession } from '../workspace';
 import { t } from '../i18n';
 
@@ -105,6 +106,28 @@ export const Image = Node.create({
           frame.appendChild(handle);
         }
       const src = typeof node.attrs.src === 'string' ? node.attrs.src : null;
+      const video = src && !node.attrs.fileId ? youtubeId(src) : null;
+      if (video) return { dom: youtubeEmbed(dom, video), stopEvent: () => true, ignoreMutation: () => true };
+      const local = src && !node.attrs.fileId ? localMediaUrl(src) : null;
+      if (local) {
+        dom.classList.remove('is-loading');
+        const kind = mediaKind(src!);
+        if (kind === 'audio' || kind === 'video') {
+          const player = document.createElement(kind);
+          player.controls = true;
+          player.preload = 'metadata';
+          player.src = local;
+          player.addEventListener('error', () => dom.classList.add('is-missing'));
+          frame.replaceWith(player);
+          return { dom, stopEvent: (event) => event.target === player, ignoreMutation: () => true };
+        }
+        img.src = local;
+        img.addEventListener('error', () => {
+          dom.classList.add('is-missing');
+          dom.textContent = t('editor.imageNotFound', { src: src! });
+        });
+        return { dom };
+      }
       if (!node.attrs.fileId && src) {
         // pictures from the web are only fetched when asked, opening a page never contacts anyone
         dom.classList.remove('is-loading');
@@ -225,6 +248,75 @@ export const FileAttachment = Node.create({
     };
   },
 });
+
+// a youtube video written as a picture, ![](https://www.youtube.com/watch?v=…), the way obsidian embeds one
+const YOUTUBE =
+  /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/i;
+
+export function youtubeId(src: string): string | null {
+  return YOUTUBE.exec(src)?.[1] ?? null;
+}
+
+// like pictures from the web, the video only loads once asked, so opening a page never contacts anyone
+function youtubeEmbed(dom: HTMLElement, id: string): HTMLElement {
+  dom.className = 'image-block media-block media-youtube';
+  dom.replaceChildren();
+  const box = document.createElement('div');
+  box.className = 'image-remote';
+  const label = document.createElement('span');
+  label.textContent = t('editor.videoFrom', { host: 'YouTube' });
+  const play = document.createElement('button');
+  play.type = 'button';
+  play.className = 'button small';
+  play.textContent = t('editor.playVideo');
+  play.addEventListener('click', (event) => {
+    event.preventDefault();
+    const player = document.createElement('iframe');
+    player.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+    player.title = 'YouTube';
+    player.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    player.allowFullscreen = true;
+    player.referrerPolicy = 'strict-origin-when-cross-origin';
+    dom.replaceChildren(player);
+  });
+  box.append(label, play);
+  dom.append(box);
+  return dom;
+}
+
+// a picture, sound or video elsewhere on the computer, shown from where it is: a file:// address, a full path
+// or one relative to the page, like ../Videos/talk.mp4
+function localMediaUrl(src: string): string | null {
+  const value = src.trim();
+  if (/^[a-z][a-z0-9+.-]*:/i.test(value) && !/^file:/i.test(value) && !/^[a-z]:[\\/]/i.test(value))
+    return null;
+  let absolute: string;
+  if (/^file:/i.test(value)) {
+    try {
+      absolute = decodeURIComponent(new URL(value).pathname);
+    } catch {
+      return null;
+    }
+  } else if (value.startsWith('/') || /^[a-z]:[\\/]/i.test(value)) absolute = value;
+  else if (/^\.{1,2}[\\/]/.test(value)) {
+    const session = getSession();
+    const route = activeRoute();
+    const page = route.name === 'page' ? session.pathOf(route.id) : null;
+    if (!session.location) return null;
+    absolute = `${session.location}/${page ? page.split('/').slice(0, -1).join('/') : ''}/${value}`;
+  } else return null;
+  const parts: string[] = [];
+  for (const part of absolute.replace(/\\/g, '/').split('/')) {
+    if (part === '..') parts.pop();
+    else if (part && part !== '.') parts.push(part);
+  }
+  // a windows drive keeps its colon, C:/Videos/talk.mp4
+  const path = parts
+    .map(encodeURIComponent)
+    .join('/')
+    .replace(/^([a-z])%3A/i, '$1:');
+  return `morrow-file://local/${path}`;
+}
 
 export function mediaKind(name: string): 'audio' | 'video' | 'pdf' | null {
   const extension = /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase() ?? '';
