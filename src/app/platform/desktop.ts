@@ -1,3 +1,5 @@
+import { tauriBridge } from './tauri';
+
 export interface CloudFolder {
   provider: string;
   path: string;
@@ -81,7 +83,6 @@ export interface DesktopSyncApi {
   onEvent(listener: (event: SyncEvent) => void): () => void;
 }
 
-// bridge exposed by the electron preload script, absent when running in a browser
 export type AssistantProviderId = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'custom';
 
 export interface AssistantSettings {
@@ -178,7 +179,8 @@ export interface DesktopBridge {
   onCommand(listener: (id: string) => void): () => void;
   onZoom?(listener: (percent: number) => void): () => void;
   setTheme(theme: 'light' | 'dark'): void;
-  paintTitleBar(color: string, symbolColor: string): void;
+  // the native window buttons of the electron versions, which took the colours under them
+  paintTitleBar?(color: string, symbolColor: string): void;
   openExternal(url: string): Promise<void>;
   showDataFolder(): Promise<void>;
   writeAutoBackup(json: string): Promise<{ ok: true; path: string } | { ok: false; error: string }>;
@@ -193,6 +195,11 @@ export interface DesktopBridge {
   copyRich?(text: string, html: string): Promise<boolean>;
   setSpellcheck?(enabled: boolean): void;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
+  // a file made in the app, saved where the person picks. the webview has no downloads of its own
+  saveFile?(
+    name: string,
+    data: ArrayBuffer,
+  ): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
 }
 
 declare global {
@@ -201,7 +208,18 @@ declare global {
   }
 }
 
-export const desktop: DesktopBridge | null = typeof window !== 'undefined' ? (window.morrow ?? null) : null;
+// the bridge morrow's native side gives the page, absent when running in a browser
+export const desktop: DesktopBridge | null =
+  typeof window !== 'undefined' ? (window.morrow ?? tauriBridge()) : null;
+if (desktop && typeof window !== 'undefined') window.morrow = desktop;
+
+// a file in the open vault, or a picture or video elsewhere on the computer, as an address the page can load.
+// windows' webview has no addresses of its own kind, there they look like a website on this computer
+export function nativeFileUrl(kind: 'vault' | 'local', encodedPath: string): string {
+  return desktop?.platform === 'win32'
+    ? `http://morrow-file.localhost/${kind}/${encodedPath}`
+    : `morrow-file://localhost/${kind}/${encodedPath}`;
+}
 
 export const isMac =
   typeof navigator !== 'undefined' &&
@@ -271,7 +289,7 @@ function paintTitleBar(): void {
     const key = `${hex(color)} ${hex(symbols)}`;
     if (key === painted) return;
     painted = key;
-    desktop?.paintTitleBar(hex(color), hex(symbols));
+    desktop?.paintTitleBar?.(hex(color), hex(symbols));
   });
 }
 
@@ -307,7 +325,7 @@ export function dialogOpened(): () => void {
   };
 }
 
-// the desktop app copies through electron, which works whether or not the window has focus. the web
+// the desktop app copies through the native side, which works whether or not the window has focus. the web
 // clipboard needs a focused page, so it is only the fallback
 export async function copyText(text: string): Promise<boolean> {
   try {

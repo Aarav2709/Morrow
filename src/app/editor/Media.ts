@@ -5,7 +5,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { FileMeta } from '../../core/model';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
-import { desktop } from '../platform/desktop';
+import { desktop, nativeFileUrl } from '../platform/desktop';
 import { activeRoute } from '../router';
 import { getSession } from '../workspace';
 import { t } from '../i18n';
@@ -315,7 +315,7 @@ function localMediaUrl(src: string): string | null {
     .map(encodeURIComponent)
     .join('/')
     .replace(/^([a-z])%3A/i, '$1:');
-  return `morrow-file://local/${path}`;
+  return nativeFileUrl('local', path);
 }
 
 export function mediaKind(name: string): 'audio' | 'video' | 'pdf' | null {

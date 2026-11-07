@@ -2,6 +2,7 @@ import type { VaultScan } from '../../core/vault/load';
 import { encodePathForUrl } from '../../core/vault/paths';
 import type { VaultOp, VaultOpResult } from '../../core/vault/plan';
 import type { VaultBridge, VaultChange } from '../../storage/vaultBridge';
+import { nativeFileUrl } from './desktop';
 import type { DesktopVaultApi } from './desktop';
 
 // the vault as the desktop shell exposes it, every call goes through the shell's path checks
@@ -19,7 +20,7 @@ export function desktopVaultBridge(api: DesktopVaultApi, root: string): VaultBri
     exists: (path) => api.exists(path),
     listFiles: (dir) => api.list(dir),
     onChange: (listener) => api.onChanges((changes) => listener(changes as VaultChange[])),
-    fileUrl: (path) => `morrow-file://vault/${encodePathForUrl(path)}`,
+    fileUrl: (path) => nativeFileUrl('vault', encodePathForUrl(path)),
   };
 }
 

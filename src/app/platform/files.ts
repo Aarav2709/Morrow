@@ -1,6 +1,12 @@
-// saves through the browser download flow, electron turns this into a native save dialog
+import { desktop } from './desktop';
+
+// the desktop app asks where to save, a browser downloads it
 export function saveFile(name: string, content: BlobPart, type: string): void {
   const blob = new Blob([content], { type });
+  if (desktop?.saveFile) {
+    void blob.arrayBuffer().then((data) => desktop?.saveFile?.(name, data));
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;

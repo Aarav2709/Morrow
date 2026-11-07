@@ -111,7 +111,7 @@ export function AssistantSettings() {
     {
       mcpServers: {
         morrow: mcpLaunch?.available
-          ? { command: mcpLaunch.command, args: [mcpLaunch.script], env: { ELECTRON_RUN_AS_NODE: '1' } }
+          ? { command: mcpLaunch.command, args: [mcpLaunch.script] }
           : { command: 'morrow-mcp' },
       },
     },

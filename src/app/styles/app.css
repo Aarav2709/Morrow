@@ -1714,9 +1714,57 @@ input[type='checkbox']:checked::after {
   -webkit-app-region: no-drag;
 }
 
+/* windows and linux draw morrow's own window buttons, the same colours as the bar under them. they sit below
+   dialogs, so they dim with the rest of the window rather than staying bright */
+[data-desktop='win32'],
+[data-desktop='linux'] {
+  --window-controls-width: 138px;
+}
+
+.window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 45;
+  display: flex;
+  height: 46px;
+}
+
+.window-control {
+  width: 46px;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.window-control:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.window-control.is-close:hover {
+  background: #c42b1c;
+  color: #fff;
+}
+
+html.is-printing .window-controls {
+  display: none;
+}
+
+@media print {
+  .window-controls {
+    display: none;
+  }
+}
+
 /* the tab bar is the title bar row, the window's own buttons sit at its end */
 [data-desktop] .tab-bar {
-  padding-right: calc(8px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  padding-right: calc(8px + var(--window-controls-width, 0px));
 }
 
 [data-desktop='darwin'] .sidebar-header,
@@ -1726,7 +1774,7 @@ input[type='checkbox']:checked::after {
 
 /* focus mode hides the tabs, the top bars are the title bar row again */
 [data-desktop] .app.focus-mode .pane:last-child .topbar {
-  padding-right: calc(12px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  padding-right: calc(12px + var(--window-controls-width, 0px));
 }
 
 [data-desktop='darwin'] .app.focus-mode .pane[data-pane='main'] .topbar {
@@ -1736,7 +1784,7 @@ input[type='checkbox']:checked::after {
 /* a narrow window hides a lone tab, the top bar is the title bar row again */
 @media (max-width: 800px) {
   [data-desktop] .main:has(> .tab-bar.is-single) .pane[data-pane='main'] .topbar {
-    padding-right: calc(12px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+    padding-right: calc(12px + var(--window-controls-width, 0px));
   }
 
   [data-desktop='darwin'] .main:has(> .tab-bar.is-single) .pane[data-pane='main'] .topbar {

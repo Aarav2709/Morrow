@@ -1904,7 +1904,7 @@ td:hover .prop-empty,
 }
 /* the window's own buttons sit at the end of this row while the panel is open */
 [data-desktop] .assistant-header {
-  padding-right: calc(8px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  padding-right: calc(8px + var(--window-controls-width, 0px));
 }
 [data-desktop] .app.has-assistant .tab-bar {
   padding-right: 8px;
