@@ -176,7 +176,11 @@ export const ACTIONS: Action[] = [
     icon: Columns2,
     shortcut: 'Mod+Shift+\\',
     keywords: 'split pane side by side two pages columns',
-    run: () => openSide(),
+    // the new side starts on the same page, with the search open to pick another one for it
+    run: () => {
+      openSide();
+      setUi({ palette: true, paletteForSide: true });
+    },
   },
   {
     id: 'view.swapSplit',

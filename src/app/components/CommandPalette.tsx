@@ -10,7 +10,7 @@ import { ACTIONS, currentContext, formatShortcut } from '../actions';
 import { useTranslation } from '../i18n';
 import { createPage } from '../operations';
 import { navigate, openPage } from '../router';
-import { setUi } from '../ui';
+import { getUi, setUi } from '../ui';
 import { useWorkspace } from '../workspace';
 import { pageIcon } from './Sidebar';
 
@@ -46,7 +46,7 @@ export function CommandPalette() {
     };
   }, []);
 
-  const close = () => setUi({ palette: false });
+  const close = () => setUi({ palette: false, paletteForSide: false });
 
   const entries = useMemo<Entry[]>(() => {
     const context = currentContext();
@@ -183,7 +183,9 @@ export function CommandPalette() {
           <input
             ref={inputRef}
             className="palette-input"
-            placeholder={t('actions.searchPlaceholder')}
+            placeholder={t(
+              getUi().paletteForSide ? 'actions.chooseSidePlaceholder' : 'actions.searchPlaceholder',
+            )}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}

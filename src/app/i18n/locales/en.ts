@@ -456,6 +456,7 @@ export const en = {
       pages: 'Pages',
     },
     searchPlaceholder: 'Search pages or commands…',
+    chooseSidePlaceholder: 'Choose a page for the other side…',
     noResults: 'No matching pages or commands',
     searchEverywhere: 'Search every page for “{query}”',
     createNamed: 'Create a page called “{query}”',

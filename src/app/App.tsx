@@ -465,7 +465,7 @@ export function App() {
           <AssistantPanel />
         </Suspense>
       )}
-      {ui.palette && <CommandPalette />}
+      {ui.palette && <CommandPalette key={ui.paletteForSide ? 'side' : 'main'} />}
       <Dialogs />
       <Toasts />
       <ZoomLevel />

@@ -51,6 +51,8 @@ export interface Toast {
 
 export interface UiState {
   palette: boolean;
+  // the palette was opened to choose the page for the new side of a split
+  paletteForSide: boolean;
   dialog: Dialog | null;
   toasts: Toast[];
   mobileSidebar: boolean;
@@ -67,6 +69,7 @@ export interface UiState {
 
 let state: UiState = {
   palette: false,
+  paletteForSide: false,
   dialog: null,
   toasts: [],
   mobileSidebar: false,

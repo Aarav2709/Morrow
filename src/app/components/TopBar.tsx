@@ -21,7 +21,7 @@ import { ACTION_SHORTCUTS, formatShortcut, runAction } from '../actions';
 import { toggleFavorite } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { openPage } from '../router';
-import { canGo, closeSide, goBack, goForward, openSide, swapSides, usePane, useTabs } from '../tabs';
+import { canGo, closeSide, goBack, goForward, swapSides, usePane, useTabs } from '../tabs';
 import { setUi } from '../ui';
 import { getSession, useSaveStatus, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
@@ -127,7 +127,7 @@ function SplitButtons() {
       className="icon-button desktop-only"
       aria-label={t('topBar.openSplit')}
       title={t('topBar.openSplitWithShortcut', { shortcut: formatShortcut('Mod+Shift+\\') })}
-      onClick={() => openSide()}
+      onClick={() => runAction('view.split')}
     >
       <Columns2 size={16} strokeWidth={1.75} />
     </button>
