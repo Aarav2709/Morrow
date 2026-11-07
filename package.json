@@ -2,9 +2,8 @@
   "name": "morrow",
   "productName": "Morrow",
   "private": true,
-  "version": "1.4.0",
+  "version": "2.0.0",
   "description": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, and no AI unless you bring your own.",
-  "desktopName": "morrow.desktop",
   "license": "Apache-2.0",
   "author": {
     "name": "Aarav Gupta"
@@ -15,7 +14,6 @@
     "url": "https://github.com/Aarav2709/Morrow.git"
   },
   "type": "module",
-  "main": "dist-electron/main.cjs",
   "bin": {
     "morrow-mcp": "./dist-mcp/index.js"
   },
@@ -23,19 +21,22 @@
     "node": ">=20.19"
   },
   "scripts": {
-    "dev": "vite --mode desktop",
-    "build": "tsc -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit && vite build && vite build --config vite.electron.config.ts && npm run build:mcp",
+    "dev": "tauri dev",
+    "dev:web": "vite",
+    "build": "tauri build",
+    "build:web": "tsc -p tsconfig.json && vite build && npm run build:mcp",
     "build:mcp": "vite build --config vite.config.mcp.ts",
-    "start": "electron .",
-    "dist": "npm run build && electron-builder --publish never",
-    "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.electron.json --noEmit",
+    "android:init": "tauri android init",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build",
+    "tauri": "tauri",
+    "typecheck": "tsc -p tsconfig.json",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+    "check": "npm run typecheck && npm run lint && npm test && npm run build:web"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
     "@eslint/js": "^10.0.1",
     "@floating-ui/dom": "^1.8.0",
     "@fontsource-variable/inter": "^5.3.0",
@@ -43,6 +44,8 @@
     "@fontsource-variable/source-serif-4": "^5.3.1",
     "@lobehub/fluent-emoji-3d": "^1.1.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/cli": "^2.12.4",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-blockquote": "^3.32.0",
     "@tiptap/extension-code": "^3.32.0",
@@ -63,8 +66,6 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "d3-force": "^3.0.0",
-    "electron": "^44.7.0",
-    "electron-builder": "^26.15.3",
     "emojibase-data": "^17.0.0",
     "eslint": "^10.12.0",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -92,98 +93,5 @@
     "singleQuote": true,
     "printWidth": 110,
     "trailingComma": "all"
-  },
-  "build": {
-    "appId": "app.morrow.desktop",
-    "productName": "Morrow",
-    "copyright": "Copyright 2026 Aarav Gupta and Morrow contributors",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "files": [
-      "dist/**",
-      "dist-electron/**",
-      "dist-mcp/**",
-      "package.json",
-      "build/icon.png"
-    ],
-    "extraResources": [
-      {
-        "from": "LICENSE",
-        "to": "LICENSE"
-      }
-    ],
-    "asar": true,
-    "asarUnpack": [
-      "dist-mcp/**"
-    ],
-    "electronLanguages": [
-      "en",
-      "en-US",
-      "en-GB",
-      "es",
-      "es-419",
-      "pt-BR",
-      "pt-PT"
-    ],
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "icon": "build/icon.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
-    },
-    "portable": {
-      "artifactName": "${productName}-${version}-portable-${arch}.${ext}",
-      "splashImage": "build/splash.bmp"
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "category": "public.app-category.productivity",
-      "icon": "build/icon.png",
-      "hardenedRuntime": true,
-      "notarize": false,
-      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "category": "Office",
-      "icon": "build/icon.png",
-      "synopsis": "A local first workspace for notes and ideas",
-      "maintainer": "Aarav Gupta <Aarav2709@users.noreply.github.com>",
-      "syncDesktopName": true
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "Aarav2709",
-        "repo": "Morrow"
-      }
-    ]
   }
 }

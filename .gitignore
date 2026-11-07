@@ -1,8 +1,8 @@
 node_modules
 dist
-dist-electron
 dist-mcp
-release
+src-tauri/target
+src-tauri/gen/schemas
 *.local
 .DS_Store
 .cursor
