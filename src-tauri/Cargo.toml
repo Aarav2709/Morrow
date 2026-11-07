@@ -1,0 +1,74 @@
+[package]
+name = "morrow"
+version = "2.0.0"
+description = "A free, open source, local first workspace for notes, databases and canvases."
+authors = ["Aarav Gupta"]
+license = "Apache-2.0"
+repository = "https://github.com/Aarav2709/Morrow"
+edition = "2021"
+rust-version = "1.80"
+
+# a library as well as a binary, so the same code builds the android and ios apps
+[lib]
+name = "morrow_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-notification = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["sync", "time", "macros", "rt-multi-thread"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "http2"] }
+futures-util = "0.3"
+notify = "6"
+sha2 = "0.10"
+hkdf = "0.12"
+pbkdf2 = { version = "0.12", default-features = false, features = ["hmac"] }
+aes-gcm = "0.10"
+rand = "0.8"
+base64 = "0.22"
+uuid = { version = "1", features = ["v4"] }
+percent-encoding = "2"
+url = "2"
+dunce = "1"
+rayon = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
+tiny_http = "0.12"
+socket2 = { version = "0.5", features = ["all"] }
+if-addrs = "0.13"
+gethostname = "0.5"
+which = "6"
+mime_guess = "2"
+dirs = "5"
+trash = "5"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-global-shortcut = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = { version = "2.0", features = ["v2_40"] }
+gtk = "0.18"
+glib = "0.18"
+cairo-rs = { version = "0.18", features = ["png"] }
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.39"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Win32_UI_Shell"] }
+windows-core = "0.62"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

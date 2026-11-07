@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Morrow",
+  "version": "../package.json",
+  "identifier": "app.morrow.desktop",
+  "build": {
+    "beforeDevCommand": "npm run dev:web",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build:web",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: blob: https: morrow-file: http://morrow-file.localhost",
+        "media-src": "'self' blob: morrow-file: http://morrow-file.localhost",
+        "frame-src": "blob: morrow-file: http://morrow-file.localhost https://www.youtube-nocookie.com",
+        "font-src": "'self' data:",
+        "connect-src": "'self' ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'"
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "dmg", "app", "appimage", "deb"],
+    "publisher": "Aarav Gupta",
+    "copyright": "Copyright 2026 Aarav Gupta and Morrow contributors",
+    "category": "Productivity",
+    "shortDescription": "A local first workspace for notes and ideas",
+    "longDescription": "A free, open source, local first workspace for notes, databases and canvases, kept as plain Markdown files. No account, no cloud, and no AI unless you bring your own.",
+    "homepage": "https://github.com/Aarav2709/Morrow",
+    "license": "Apache-2.0",
+    "licenseFile": "../LICENSE",
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "resources": { "../dist-mcp/index.js": "mcp/index.js" },
+    "windows": {
+      "nsis": { "installMode": "currentUser" }
+    },
+    "macOS": { "minimumSystemVersion": "11.0" },
+    "linux": {
+      "deb": { "section": "editors" }
+    }
+  }
+}
