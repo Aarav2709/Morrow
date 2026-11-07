@@ -463,7 +463,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
       <EditorContent editor={editor} className="editor-surface" />
       {editable && (
         <>
-          <FormattingMenu editor={editor} />
+          <FormattingMenu editor={editor} pageId={pageId} />
           <LinkMenu editor={editor} />
           <TableMenu editor={editor} />
         </>

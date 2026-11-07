@@ -29,6 +29,7 @@ import { openDialog } from '../ui';
 import { getState } from '../workspace';
 import { SETTINGS_CHANGED } from './AssistantSettings';
 import { answerProposal, newChat, sendMessage, stopTurn, undoChange, useChat } from './chat';
+import { clearSelection, useAttachedSelection } from './selection';
 import type { ChatItem } from './chat';
 import { t } from '../i18n';
 
@@ -192,6 +193,16 @@ export function AssistantPanel() {
   }, [ready]);
   const label = settings?.providers.find((item) => item.id === settings.provider)?.label ?? '';
 
+  const highlighted = useAttachedSelection();
+  // highlighting text to ask about brings the cursor here, ready to type
+  useEffect(() => {
+    if (highlighted && ready) input.current?.focus();
+  }, [highlighted, ready]);
+  const quick = (key: QuickAction) => {
+    if (chat.busy || !ready) return;
+    void sendMessage(t(`assistant.quickPrompt.${key}`));
+  };
+
   const submit = () => {
     if (!text.trim() || chat.busy || !ready) return;
     void sendMessage(text);
@@ -305,6 +316,32 @@ export function AssistantPanel() {
           </div>
         )}
       </div>
+      {highlighted && (
+        <div className="assistant-highlighted">
+          <div className="assistant-highlighted-head">
+            <span>{t('assistant.highlighted')}</span>
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={t('assistant.removeHighlighted')}
+              title={t('assistant.removeHighlighted')}
+              onClick={clearSelection}
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <blockquote>
+            {highlighted.text.length > 280 ? `${highlighted.text.slice(0, 280)}…` : highlighted.text}
+          </blockquote>
+          <div className="assistant-quick">
+            {QUICK_ACTIONS.map((key) => (
+              <button key={key} type="button" disabled={chat.busy || !ready} onClick={() => quick(key)}>
+                {t(`assistant.quick.${key}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <form
         className="assistant-input"
         onSubmit={(event) => {
@@ -317,7 +354,13 @@ export function AssistantPanel() {
           rows={2}
           value={text}
           disabled={!ready}
-          placeholder={ready ? t('assistant.askPlaceholder') : t('assistant.setupPlaceholder')}
+          placeholder={
+            !ready
+              ? t('assistant.setupPlaceholder')
+              : highlighted
+                ? t('assistant.askHighlightedPlaceholder')
+                : t('assistant.askPlaceholder')
+          }
           aria-label={t('assistant.messageAria')}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => {
@@ -352,6 +395,9 @@ export function AssistantPanel() {
     </aside>
   );
 }
+
+const QUICK_ACTIONS = ['improve', 'fix', 'shorter', 'longer', 'simpler'] as const;
+type QuickAction = (typeof QUICK_ACTIONS)[number];
 
 const providerNeedsKey = (settings: AssistantSettings) =>
   settings.providers.find((item) => item.id === settings.provider)?.needsKey ?? true;

@@ -43,6 +43,7 @@ import {
   Underline,
   CaseLower,
   CaseUpper,
+  Sparkles,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -55,6 +56,8 @@ import { t } from '../i18n';
 import type { MenuEntry } from '../components/Menu';
 import { copyImageFile, downloadFile } from '../platform/attachments';
 import { copyText, desktop, openExternal } from '../platform/desktop';
+import { attachSelection } from '../assistant/selection';
+import { setPreferences } from '../platform/preferences';
 import { activeRoute, openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
@@ -296,7 +299,7 @@ function changeCase(editor: Editor, change: (text: string) => string): void {
   editor.commands.focus();
 }
 
-export function FormattingMenu({ editor }: { editor: Editor }) {
+export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: string }) {
   const [editingLink, setEditingLink] = useState(false);
   const [coloring, setColoring] = useState(false);
   const marks = useMarks(editor);
@@ -336,6 +339,19 @@ export function FormattingMenu({ editor }: { editor: Editor }) {
           <ColorPanel editor={editor} onDone={() => setColoring(false)} />
         ) : (
           <>
+            {desktop?.assistant && pageId && (
+              <>
+                <ToolButton
+                  label={t('editor.askAssistant')}
+                  icon={Sparkles}
+                  onClick={() => {
+                    // the highlighted words go to the assistant, which changes only those
+                    if (attachSelection(editor, pageId)) setPreferences({ assistantOpen: true });
+                  }}
+                />
+                <span className="toolbar-divider" />
+              </>
+            )}
             <ToolButton
               label={t('editor.bold')}
               icon={Bold}

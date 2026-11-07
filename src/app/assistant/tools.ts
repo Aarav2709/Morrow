@@ -14,6 +14,7 @@ import type { AssistantToolSpec } from '../platform/desktop';
 import { newId } from '../platform/files';
 import { activeRoute, openPage } from '../router';
 import { getSession, getState, run } from '../workspace';
+import { proposeSelectionChange } from './selection';
 
 export interface ToolCall {
   id: string;
@@ -379,6 +380,12 @@ export function runTool(call: ToolCall): ToolOutcome {
         return { kind: 'proposal', proposal: proposeCreate(state, input) };
       case 'trash_page':
         return { kind: 'proposal', proposal: proposeTrash(state, input) };
+      case 'replace_selection':
+        try {
+          return { kind: 'proposal', proposal: proposeSelectionChange(text(input, 'markdown')) };
+        } catch (error) {
+          throw new ToolError(error instanceof Error ? error.message : String(error));
+        }
       case 'edit_page':
       case 'continue_text':
       case 'append_to_page':

@@ -2076,6 +2076,46 @@ td:hover .prop-empty,
   color: var(--text-faint);
   font-size: var(--text-xs);
 }
+.assistant-highlighted {
+  flex: none;
+  margin: 0 12px 8px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-sidebar);
+}
+.assistant-highlighted-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.assistant-highlighted blockquote {
+  margin: 4px 0 8px;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent-line);
+  max-height: 96px;
+  overflow: auto;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+.assistant-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.assistant-quick button {
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+.assistant-quick button:hover:not(:disabled) {
+  background: var(--hover);
+}
 .assistant-input {
   flex: none;
   display: flex;

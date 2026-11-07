@@ -8,6 +8,7 @@ import { getPreferences } from '../platform/preferences';
 import { activeRoute } from '../router';
 import { getSession, getState } from '../workspace';
 import { assistantRules } from './rules';
+import { SELECTION_TOOL, selectionContext } from './selection';
 import { runTool, TOOL_SPECS } from './tools';
 import type { AppliedChange, Proposal, ToolCall } from './tools';
 import { t } from '../i18n';
@@ -201,10 +202,16 @@ const titleFor = (reference: string) => {
 function withContext(text: string): string {
   const route = activeRoute();
   const open = route.name === 'page' ? getState().pages[route.id] : undefined;
-  return open && !open.encrypted
-    ? `${text}\n\n(The page open in Morrow right now is "${displayTitle(open)}", id ${open.id}.)`
-    : text;
+  const highlighted = selectionContext();
+  const page =
+    open && !open.encrypted
+      ? `\n\n(The page open in Morrow right now is "${displayTitle(open)}", id ${open.id}.)`
+      : '';
+  return `${text}${page}${highlighted ? `\n\n${highlighted}` : ''}`;
 }
+
+// the tool for changing highlighted text is only there while something is highlighted
+const toolsNow = () => (selectionContext() ? [...TOOL_SPECS, SELECTION_TOOL] : TOOL_SPECS);
 
 async function handleCall(call: ToolCall): Promise<ToolResult> {
   const itemId = nextId();
@@ -277,7 +284,7 @@ export async function sendMessage(text: string): Promise<void> {
   try {
     for (let step = 0; ; step++) {
       currentTurn = nextId();
-      const result = await assistant.turn({ id: currentTurn, history, add, system, tools: TOOL_SPECS });
+      const result = await assistant.turn({ id: currentTurn, history, add, system, tools: toolsNow() });
       currentTurn = null;
       if (!result.ok) {
         push({ kind: 'note', id: nextId(), text: result.error, tone: stopped ? 'info' : 'error' });
