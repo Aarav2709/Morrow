@@ -208,6 +208,55 @@ describe('markdown import', () => {
     ).toBe('tableCell');
   });
 
+  it('keeps lists and pictures inside table cells through a save and load', () => {
+    const item = (type: string, value: string, ...rest: DocNode[]): DocNode => ({
+      type,
+      ...(type === 'taskItem' ? { attrs: { checked: value === 'done' } } : {}),
+      content: [p(text(value)), ...rest],
+    });
+    const cells: DocNode[][] = [
+      [p(text('Plan'))],
+      [
+        p(text('Before')),
+        {
+          type: 'bulletList',
+          content: [item('listItem', 'one', { type: 'bulletList', content: [item('listItem', 'nested')] })],
+        },
+        p(text('After')),
+      ],
+      [
+        {
+          type: 'orderedList',
+          attrs: { start: 3 },
+          content: [item('listItem', 'three'), item('listItem', 'four')],
+        },
+      ],
+      [{ type: 'taskList', content: [item('taskItem', 'done'), item('taskItem', 'todo')] }],
+      [{ type: 'image', attrs: { fileId: null, src: 'attachments/cat.png', alt: 'cat' } }],
+    ];
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            {
+              type: 'tableRow',
+              content: cells.map(() => ({ type: 'tableHeader', content: [p(text('h'))] })),
+            },
+            { type: 'tableRow', content: cells.map((content) => ({ type: 'tableCell', content })) },
+          ],
+        },
+      ],
+    };
+    const markdown = docToMarkdown(doc);
+    expect(markdown.trimEnd().split('\n')).toHaveLength(3);
+    const row = markdownToDoc(markdown).content![0]!.content![1]!;
+    expect(row.content!.map((cell) => cell.content)).toEqual(cells);
+    // and it is still the same after a second save
+    expect(docToMarkdown(markdownToDoc(markdown))).toBe(markdown);
+  });
+
   it('builds tables with a header row', () => {
     const rows = doc.content![9]!.content!;
     expect(rows).toHaveLength(3);

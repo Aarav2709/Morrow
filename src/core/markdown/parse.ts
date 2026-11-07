@@ -252,9 +252,13 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
       case 'tr_close':
         close();
         break;
-      case 'inline':
-        (top().content ??= []).push(...inlineNodes(token.children ?? [], options));
+      case 'inline': {
+        const cell = stack[stack.length - 2];
+        if (cell && (cell.type === 'tableCell' || cell.type === 'tableHeader'))
+          cellInline(token.children ?? [], options, cell, top());
+        else (top().content ??= []).push(...inlineNodes(token.children ?? [], options));
         break;
+      }
       case 'fence':
       case 'code_block': {
         const code = token.content.replace(/\n$/, '');
@@ -286,6 +290,76 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
 
   const doc = normalize(root);
   return (doc.content ?? []).length > 0 ? doc : emptyDoc();
+}
+
+const CELL_LIST_OPEN = /^<(ul|ol)\b([^>]*)>$/i;
+const CELL_LIST_CLOSE = /^<\/(ul|ol)\s*>$/i;
+const CELL_ITEM_OPEN = /^<li\b([^>]*)>$/i;
+const CELL_ITEM_CLOSE = /^<\/li\s*>$/i;
+
+// a table cell is one line of markdown, lists in it are written as html tags, the way obsidian reads them
+function cellInline(children: Token[], options: ParseOptions, cell: DocNode, first: DocNode): void {
+  const containers: DocNode[] = [cell];
+  let paragraph: DocNode | null = first;
+  let run: Token[] = [];
+  const container = () => containers[containers.length - 1]!;
+  const flush = () => {
+    if (!run.length) return;
+    if (!paragraph) {
+      paragraph = { type: 'paragraph', content: [] };
+      (container().content ??= []).push(paragraph);
+    }
+    (paragraph.content ??= []).push(...inlineNodes(run, options));
+    run = [];
+  };
+  const tag = (token: Token) => (token.type === 'html_inline' ? token.content.trim() : '');
+  for (const token of children) {
+    const html = tag(token);
+    const list = CELL_LIST_OPEN.exec(html);
+    const item = CELL_ITEM_OPEN.exec(html);
+    if (list) {
+      flush();
+      const task = /data-type\s*=\s*["']taskList["']/i.test(list[2] ?? '');
+      const start = Number(/start\s*=\s*["']?(\d+)/i.exec(list[2] ?? '')?.[1] ?? 1);
+      const node: DocNode =
+        list[1]!.toLowerCase() === 'ol'
+          ? { type: 'orderedList', attrs: { start }, content: [] }
+          : { type: task ? 'taskList' : 'bulletList', content: [] };
+      (container().content ??= []).push(node);
+      containers.push(node);
+      paragraph = null;
+    } else if (item && containers.length > 1) {
+      flush();
+      const parent = container();
+      const node: DocNode =
+        parent.type === 'taskList'
+          ? {
+              type: 'taskItem',
+              attrs: { checked: /data-checked\s*=\s*["']true["']/i.test(item[1] ?? '') },
+              content: [],
+            }
+          : { type: 'listItem', content: [] };
+      (parent.content ??= []).push(node);
+      containers.push(node);
+      paragraph = null;
+    } else if (CELL_ITEM_CLOSE.test(html) && containers.length > 1) {
+      flush();
+      while (containers.length > 1 && !/Item$/.test(container().type)) containers.pop();
+      if (containers.length > 1) containers.pop();
+      paragraph = null;
+    } else if (CELL_LIST_CLOSE.test(html) && containers.length > 1) {
+      flush();
+      while (containers.length > 1 && !/List$/.test(container().type)) containers.pop();
+      if (containers.length > 1) containers.pop();
+      paragraph = null;
+    } else if (/^<br\s*\/?>$/i.test(html) && !paragraph && !run.length) {
+      // the line break written between a list and the text after it
+    } else run.push(token);
+  }
+  flush();
+  // the paragraph every cell starts with goes when the cell begins with a list instead
+  if (!first.content?.length && (cell.content?.length ?? 0) > 1)
+    cell.content = cell.content!.filter((node) => node !== first);
 }
 
 interface Builder {

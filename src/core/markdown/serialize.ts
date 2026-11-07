@@ -224,12 +224,47 @@ export function toggleLevel(value: unknown): 1 | 2 | 3 | 4 | 5 | 6 | null {
 
 export const HEADER_COLUMN = '<!-- header-column -->';
 
+// a table row is one line of markdown, so what sits in a cell is written on that line: text, pictures as
+// ![](path), and lists as the html obsidian also reads inside a cell
+function cellBlocks(nodes: DocNode[], options: SerializeOptions): string {
+  let out = '';
+  let previous: DocNode | null = null;
+  for (const node of nodes) {
+    const text = cellBlock(node, options);
+    // lines between paragraphs are <br>, a list's own tags already start and end a line
+    if (previous && !isList(previous) && !isList(node)) out += '<br>';
+    out += text;
+    previous = node;
+  }
+  return out;
+}
+
+function cellBlock(node: DocNode, options: SerializeOptions): string {
+  if (isList(node)) return listHtml(node, options);
+  if (node.type === 'image' || node.type === 'fileAttachment') return block(node, options) ?? '';
+  if (node.content?.some((child) => !isList(child) && child.type !== 'text' && child.content))
+    return cellBlocks(node.content, options);
+  return inline(node.content ?? [], options, true);
+}
+
+function listHtml(list: DocNode, options: SerializeOptions): string {
+  const ordered = list.type === 'orderedList';
+  const task = list.type === 'taskList';
+  const start = typeof list.attrs?.start === 'number' ? Math.max(0, Math.floor(list.attrs.start)) : 1;
+  const open = ordered
+    ? `<ol${start !== 1 ? ` start="${start}"` : ''}>`
+    : `<ul${task ? ' data-type="taskList"' : ''}>`;
+  const items = (list.content ?? []).map((item) => {
+    const checked = task ? ` data-checked="${item.attrs?.checked === true}"` : '';
+    return `<li${checked}>${cellBlocks(item.content ?? [], options)}</li>`;
+  });
+  return `${open}${items.join('')}</${ordered ? 'ol' : 'ul'}>`;
+}
+
 function table(node: DocNode, options: SerializeOptions): string {
   const rows = (node.content ?? []).map((row) =>
     (row.content ?? []).map((cell) =>
-      (cell.content ?? [])
-        .map((child) => inline(child.content ?? [], options, true))
-        .join('<br>')
+      cellBlocks(cell.content ?? [], options)
         .replace(/(?<!\\)\|/g, '\\|')
         .trim(),
     ),
