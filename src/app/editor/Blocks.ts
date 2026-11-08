@@ -104,12 +104,14 @@ function findPattern(query: string, regex: boolean): RegExp | null {
   }
 }
 
-function findMatches(state: EditorState, query: string, regex: boolean): FindState['matches'] {
+export function findMatches(state: EditorState, query: string, regex: boolean): FindState['matches'] {
   const pattern = findPattern(query, regex);
   if (!pattern) return [];
   const matches: FindState['matches'] = [];
   state.doc.descendants((node, pos) => {
-    if (!node.isTextblock || matches.length >= 10_000) return false;
+    if (matches.length >= 10_000) return false;
+    // lists, toggles, callouts, columns and tables are looked inside, their text is in the blocks they hold
+    if (!node.isTextblock) return true;
     // atoms count as one character so positions stay aligned with the document
     const text = node.textBetween(0, node.content.size, undefined, '\ufffc');
     for (const match of text.matchAll(pattern)) {
