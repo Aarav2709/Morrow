@@ -469,7 +469,12 @@ export function makeResolver(
         if (tail.length) return best(tail);
       }
       const folded = foldText(clean);
-      return best(names.get(folded)) ?? best(titles.get(folded));
+      // a date such as [[2026-11-10]] is never a page in the trash, the date opens that day's note instead
+      const live = (ids: PageId[] | undefined) =>
+        /^\d{4}-\d{2}-\d{2}$/.test(clean)
+          ? ids?.filter((id) => !isInTrash(layout.get(id)?.folder ?? ''))
+          : ids;
+      return best(live(names.get(folded))) ?? best(live(titles.get(folded)));
     },
   };
 }

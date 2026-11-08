@@ -426,3 +426,13 @@ describe('encrypted pages in files', () => {
     await reopened.close();
   });
 });
+
+describe('dates in pages', () => {
+  it('stay dates when an old note for that day is in the trash', async () => {
+    const session = await open(
+      new MemoryVault({ 'Plans.md': 'Call on [[2026-11-10]]\n', '.trash/2026-11-10.md': 'old\n' }),
+    );
+    const line = session.getState().docs[idOf(session, 'Plans')]!.content![0]!;
+    expect(line.content![1]).toEqual({ type: 'dateMention', attrs: { date: '2026-11-10' } });
+  });
+});
