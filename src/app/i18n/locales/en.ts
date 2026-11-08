@@ -1269,6 +1269,7 @@ export const en = {
     valueOf: '{key} of {title}',
     properties: 'Properties',
     editProperty: 'Edit property',
+    editLink: 'Edit the link',
     makeColumnAria: 'Make {key} a column of the database',
     makeColumn: 'Make this a column of the database',
     removeAria: 'Remove {key}',

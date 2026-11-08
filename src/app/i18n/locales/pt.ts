@@ -1282,6 +1282,7 @@ export const pt: TranslationSchema = {
     valueOf: '{key} de {title}',
     properties: 'Propriedades',
     editProperty: 'Editar propriedade',
+    editLink: 'Editar o link',
     makeColumnAria: 'Transformar {key} em uma coluna do banco de dados',
     makeColumn: 'Transformar em uma coluna do banco de dados',
     removeAria: 'Remover {key}',

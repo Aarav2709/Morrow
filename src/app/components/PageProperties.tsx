@@ -1,5 +1,5 @@
-import { Columns3, Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { Check, Columns3, Pencil, Plus, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import { stringify } from 'yaml';
 import { displayTitle } from '../../core/model';
 import type { DatabaseDef, PageId, PageMeta, PropDef } from '../../core/model';
@@ -7,6 +7,10 @@ import { inferFrontmatterType } from '../../core/properties';
 import { findKey, MANAGED_KEYS } from '../../core/vault/frontmatter';
 import { RECURRENCE_KEYS } from '../../core/recurring';
 import { findTemplatesPage } from '../../core/templates';
+import { tagColor } from '../../core/tags';
+import { openExternal } from '../platform/desktop';
+import { setPropertyType, usePropertyTypes } from '../propertyTypes';
+import type { ChosenType } from '../propertyTypes';
 import { getState } from '../workspace';
 import { toast } from '../ui';
 import { run } from '../workspace';
@@ -42,6 +46,7 @@ export function PageProperties({
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const [settings, setSettings] = useState<{ prop: PropDef; anchor: HTMLElement } | null>(null);
   const [extraMenu, setExtraMenu] = useState<{ key: string; anchor: HTMLElement } | null>(null);
+  const chosenTypes = usePropertyTypes();
   // a template's repeat settings have their own bar under its title
   const extraKeys = Object.keys(page.extra).filter(
     (key) => !(isTemplate(page) && RECURRENCE_KEYS.includes(key.toLowerCase())),
@@ -111,6 +116,8 @@ export function PageProperties({
           )}
           <span className="row-prop-value">
             <ExtraValue
+              propKey={key}
+              type={extraType(page.extra[key], chosenTypes[key])}
               label={t('properties.valueOf', { key, title: displayTitle(page) })}
               value={page.extra[key]}
               editable={editable}
@@ -205,13 +212,18 @@ export function PageProperties({
           anchor={extraMenu.anchor}
           label={t('properties.editProperty')}
           onClose={() => setExtraMenu(null)}
-          entries={extraMenuEntries(page.extra[extraMenu.key], (value) => {
-            const { key } = extraMenu;
-            if (value === undefined) {
-              const { [key]: _removed, ...rest } = page.extra;
-              setExtra(rest);
-            } else setExtra({ ...page.extra, [key]: value });
-          })}
+          entries={extraMenuEntries(
+            extraMenu.key,
+            page.extra[extraMenu.key],
+            chosenTypes[extraMenu.key],
+            (value) => {
+              const { key } = extraMenu;
+              if (value === undefined) {
+                const { [key]: _removed, ...rest } = page.extra;
+                setExtra(rest);
+              } else setExtra({ ...page.extra, [key]: value });
+            },
+          )}
         />
       )}
       {database && settings && (
@@ -231,14 +243,22 @@ const isTemplate = (page: PageMeta) =>
   page.parentId !== null && page.parentId === findTemplatesPage(getState())?.id;
 
 // the kinds of value a property outside a database can hold. its type is the shape of its value
-type ExtraType = 'text' | 'number' | 'checkbox' | 'date' | 'multiSelect';
-const EXTRA_TYPES: ExtraType[] = ['text', 'number', 'checkbox', 'date', 'multiSelect'];
+type ExtraType = 'text' | 'number' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'url';
+const EXTRA_TYPES: ExtraType[] = ['text', 'number', 'select', 'multiSelect', 'date', 'checkbox', 'url'];
+const WEB = /^https?:\/\/\S+$/i;
 
-function extraType(value: unknown): ExtraType | null {
+// the shape of the value says most of it, the type picked for the key tells a select or a link from text
+function extraType(value: unknown, chosen?: ChosenType): ExtraType | null {
   if (typeof value === 'boolean') return 'checkbox';
   if (typeof value === 'number') return 'number';
-  if (typeof value === 'string') return DAY.test(value) ? 'date' : 'text';
   if (Array.isArray(value)) return 'multiSelect';
+  if (typeof value === 'string' || value === null) {
+    const text = value ?? '';
+    if (DAY.test(text)) return 'date';
+    if (chosen === 'select') return 'select';
+    if (chosen === 'url' || (chosen !== 'text' && WEB.test(text))) return 'url';
+    return 'text';
+  }
   return null;
 }
 
@@ -251,7 +271,10 @@ function convertExtra(value: unknown, type: ExtraType): unknown {
       : String(value);
   switch (type) {
     case 'text':
+    case 'url':
       return text;
+    case 'select':
+      return Array.isArray(value) ? String(value[0] ?? '') : text;
     case 'number': {
       const number = typeof value === 'boolean' ? Number(value) : Number(text.replace(/,/g, ''));
       return text.trim() && Number.isFinite(number) ? number : 0;
@@ -276,14 +299,24 @@ function convertExtra(value: unknown, type: ExtraType): unknown {
 }
 
 // undefined removes the property
-function extraMenuEntries(value: unknown, change: (value: unknown) => void): MenuEntry[] {
-  const current = extraType(value);
+function extraMenuEntries(
+  key: string,
+  value: unknown,
+  chosen: ChosenType | undefined,
+  change: (value: unknown) => void,
+): MenuEntry[] {
+  const current = extraType(value, chosen);
   return [
     { heading: t('properties.type') },
     ...EXTRA_TYPES.map((type) => ({
       label: propLabel(type),
       checked: type === current,
-      onSelect: () => type !== current && change(convertExtra(value, type)),
+      onSelect: () => {
+        if (type === current) return;
+        // text, a select and a link all hold words, which one it is is kept for the whole vault
+        void setPropertyType(key, type === 'select' || type === 'url' || type === 'text' ? type : null);
+        change(convertExtra(value, type));
+      },
     })),
     { separator: true },
     { label: t('properties.remove'), danger: true, onSelect: () => change(undefined) },
@@ -296,12 +329,16 @@ function saveExtra(id: PageId, extra: Record<string, unknown>): boolean {
 
 // one frontmatter value, edited in a way that fits what it holds
 function ExtraValue({
+  propKey,
+  type,
   label,
   value,
   editable,
   autoFocus,
   onChange,
 }: {
+  propKey: string;
+  type: ExtraType | null;
   label: string;
   value: unknown;
   editable: boolean;
@@ -309,6 +346,65 @@ function ExtraValue({
   onChange: (value: unknown) => void;
 }) {
   const [editingLinks, setEditingLinks] = useState(false);
+  const [picker, setPicker] = useState<HTMLElement | null>(null);
+  const [editingUrl, setEditingUrl] = useState(false);
+  if (type === 'select' || (type === 'multiSelect' && inferFrontmatterType([value]) !== 'relation')) {
+    const chosen = (Array.isArray(value) ? value : value ? [value] : []).map(String).filter(Boolean);
+    return (
+      <>
+        <button
+          type="button"
+          className="prop-select"
+          aria-label={label}
+          disabled={!editable}
+          autoFocus={autoFocus}
+          onClick={(event) => setPicker(event.currentTarget)}
+        >
+          {chosen.length === 0 && editable && <span className="prop-empty">{t('database.empty')}</span>}
+          {chosen.map((name) => (
+            <span key={name} className={`chip color-${tagColor(name)}`}>
+              {name}
+            </span>
+          ))}
+        </button>
+        {picker && (
+          <ExtraOptionPicker
+            propKey={propKey}
+            multi={type === 'multiSelect'}
+            selected={chosen}
+            anchor={picker}
+            onClose={() => setPicker(null)}
+            onChange={onChange}
+          />
+        )}
+      </>
+    );
+  }
+  if (type === 'url' && typeof value === 'string' && value && !editingUrl && !autoFocus)
+    return (
+      <span className="prop-url">
+        <a
+          href={value}
+          onClick={(event) => {
+            event.preventDefault();
+            openExternal(value);
+          }}
+        >
+          {value.replace(/^https?:\/\//i, '')}
+        </a>
+        {editable && (
+          <button
+            type="button"
+            className="icon-button tiny"
+            aria-label={t('properties.editLink')}
+            title={t('properties.editLink')}
+            onClick={() => setEditingUrl(true)}
+          >
+            <Pencil size={12} />
+          </button>
+        )}
+      </span>
+    );
   if (typeof value === 'boolean')
     return (
       <input
@@ -384,7 +480,97 @@ function ExtraValue({
             .filter(Boolean),
         );
       }}
-      onDone={() => setEditingLinks(false)}
+      onDone={() => {
+        setEditingLinks(false);
+        setEditingUrl(false);
+      }}
     />
+  );
+}
+
+// the choices for a select outside a database are the values this key already has across the vault
+function ExtraOptionPicker({
+  propKey,
+  multi,
+  selected,
+  anchor,
+  onClose,
+  onChange,
+}: {
+  propKey: string;
+  multi: boolean;
+  selected: string[];
+  anchor: HTMLElement;
+  onClose: () => void;
+  onChange: (value: unknown) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const options = useMemo(() => {
+    const found = new Set<string>(selected);
+    for (const page of Object.values(getState().pages)) {
+      const value = page.extra[propKey];
+      for (const item of Array.isArray(value) ? value : [value])
+        if (typeof item === 'string' && item.trim() && !/^\[\[/.test(item)) found.add(item.trim());
+    }
+    return [...found].sort((a, b) => a.localeCompare(b));
+  }, [propKey, selected]);
+  const wanted = query.trim();
+  const shown = options.filter((option) => option.toLowerCase().includes(wanted.toLowerCase()));
+  const exact = options.some((option) => option.toLowerCase() === wanted.toLowerCase());
+  const choose = (name: string) => {
+    if (multi) {
+      onChange(selected.includes(name) ? selected.filter((item) => item !== name) : [...selected, name]);
+      setQuery('');
+    } else {
+      onChange(selected[0] === name ? '' : name);
+      onClose();
+    }
+  };
+  return (
+    <Popover
+      anchor={anchor}
+      onClose={onClose}
+      label={t('database.chooseAria', { name: propKey })}
+      className="option-picker"
+    >
+      <input
+        className="text-input small"
+        data-autofocus
+        placeholder={options.length ? t('database.findOrCreateOption') : t('database.createOption')}
+        aria-label={t('database.option')}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          if (wanted && !exact) choose(wanted);
+          else if (shown[0]) choose(shown[0]);
+        }}
+      />
+      <ul className="option-list" role="listbox" aria-multiselectable={multi}>
+        {shown.map((option) => (
+          <li key={option}>
+            <button
+              type="button"
+              role="option"
+              aria-selected={selected.includes(option)}
+              className="option-row"
+              onClick={() => choose(option)}
+            >
+              <span className={`chip color-${tagColor(option)}`}>{option}</span>
+              {selected.includes(option) && <Check size={14} className="option-check" />}
+            </button>
+          </li>
+        ))}
+        {wanted && !exact && (
+          <li>
+            <button type="button" className="option-row" onClick={() => choose(wanted)}>
+              <Plus size={14} /> {t('database.create')}
+              <span className={`chip color-${tagColor(wanted)}`}>{wanted}</span>
+            </button>
+          </li>
+        )}
+      </ul>
+    </Popover>
   );
 }
