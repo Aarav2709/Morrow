@@ -1276,6 +1276,7 @@ input[type='checkbox']:checked::after {
 }
 
 .menu-item:hover,
+.menu-item.is-active,
 .menu-item:focus-visible {
   background: var(--hover);
   outline: none;

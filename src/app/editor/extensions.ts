@@ -11,6 +11,7 @@ import { t } from '../i18n';
 import { BlockHandle } from './BlockHandle';
 import { BlockSelect } from './BlockSelect';
 import { Callout, FindReplace } from './Blocks';
+import { PasteMenu } from './PasteMenu';
 import { EmojiSuggest } from './EmojiSuggest';
 import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
 import { FileAttachment, FileDrop, Image } from './Media';
@@ -173,6 +174,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     ToggleSummary,
     DetailsContent,
     FindReplace,
+    PasteMenu,
     BlockHandle.configure({ onMenu: options.onBlockMenu }),
     BlockSelect,
     MarkdownPaste.configure({ resolvePage: options.resolvePage }),
