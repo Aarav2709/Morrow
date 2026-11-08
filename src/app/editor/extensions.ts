@@ -12,6 +12,7 @@ import { BlockHandle } from './BlockHandle';
 import { BlockSelect } from './BlockSelect';
 import { Callout, FindReplace } from './Blocks';
 import { PasteMenu } from './PasteMenu';
+import { ClickBelow } from './ClickBelow';
 import { EmojiSuggest } from './EmojiSuggest';
 import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
 import { FileAttachment, FileDrop, Image } from './Media';
@@ -109,6 +110,8 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
         HTMLAttributes: { rel: 'noopener noreferrer nofollow', target: null },
       },
       dropcursor: { color: 'var(--accent)', width: 2 },
+      // no empty line is kept at the end of every page, ClickBelow adds one when the space under it is clicked
+      trailingNode: false,
       codeBlock: false,
       code: false,
       blockquote: false,
@@ -175,6 +178,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     DetailsContent,
     FindReplace,
     PasteMenu,
+    ClickBelow,
     BlockHandle.configure({ onMenu: options.onBlockMenu }),
     BlockSelect,
     MarkdownPaste.configure({ resolvePage: options.resolvePage }),
