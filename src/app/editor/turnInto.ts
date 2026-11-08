@@ -17,7 +17,7 @@ const LIST_ITEMS = new Set(['listItem', 'taskItem']);
 const LISTS = new Set(['bulletList', 'orderedList', 'taskList']);
 
 // the inline content of a line, kept to what the new block can hold. a toggle's title only takes text
-function lineContent(type: Schema['nodes'][string], line: PMNode): Fragment {
+export function lineContent(type: Schema['nodes'][string], line: PMNode): Fragment {
   if (type.validContent(line.content)) return line.content;
   const kept: PMNode[] = [];
   line.content.forEach((child) => {

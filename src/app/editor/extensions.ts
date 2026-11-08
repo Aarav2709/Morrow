@@ -21,7 +21,8 @@ import { MarkdownPaste } from './MarkdownPaste';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
-import { IndentedLines, KeepTab } from './turnInto';
+import { IndentedLines, KeepTab, lineContent } from './turnInto';
+import { TextSelection } from '@tiptap/pm/state';
 import { Column, Columns, DateMention, TableOfContents } from './Structure';
 
 export interface ExtensionOptions extends PageLinkOptions {
@@ -78,14 +79,54 @@ const Quote = Blockquote.extend({
   },
 });
 
+// > and a space at the start of a line turns that line into a toggle's title, a heading keeping its level,
+// with an empty line inside to write in. # to ###### and a space at the start of a toggle's title make it a
+// toggle heading
 const ToggleShortcut = Extension.create({
   name: 'toggleShortcut',
+  priority: 1000,
   addInputRules() {
     return [
       new InputRule({
         find: /^\s*>\s$/,
-        handler: ({ range, chain }) => {
-          chain().deleteRange(range).setDetails().run();
+        handler: ({ state, range, chain }) => {
+          const $from = state.doc.resolve(range.from);
+          const line = $from.parent;
+          const { details, detailsSummary, detailsContent, paragraph } = state.schema.nodes;
+          const start = $from.before();
+          const parent = $from.node($from.depth - 1);
+          const index = $from.index($from.depth - 1);
+          const fits =
+            details &&
+            detailsSummary &&
+            detailsContent &&
+            paragraph &&
+            (line.type.name === 'paragraph' || line.type.name === 'heading') &&
+            parent.canReplaceWith(index, index + 1, details);
+          if (!fits) {
+            chain().deleteRange(range).setDetails().run();
+            return;
+          }
+          const { tr } = state;
+          tr.delete(range.from, range.to);
+          const rest = tr.doc.nodeAt(start)!;
+          const level = line.type.name === 'heading' ? (line.attrs.level as number) : null;
+          const toggle = details.create({ open: true }, [
+            detailsSummary.create(level ? { level } : null, lineContent(detailsSummary, rest)),
+            detailsContent.create(null, paragraph.create()),
+          ]);
+          tr.replaceWith(start, start + rest.nodeSize, toggle);
+          tr.setSelection(TextSelection.create(tr.doc, start + 2));
+        },
+      }),
+      new InputRule({
+        find: /^(#{1,6})\s$/,
+        handler: ({ state, range, match }) => {
+          const $from = state.doc.resolve(range.from);
+          if ($from.parent.type.name !== 'detailsSummary') return null;
+          const { tr } = state;
+          tr.delete(range.from, range.to);
+          tr.setNodeMarkup($from.before(), undefined, { ...$from.parent.attrs, level: match[1]!.length });
         },
       }),
     ];
