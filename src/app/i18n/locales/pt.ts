@@ -194,8 +194,9 @@ export const pt: TranslationSchema = {
       },
       pageWidth: 'Largura da página',
       widths: {
-        comfortable: 'Confortável',
+        comfortable: 'Padrão',
         wide: 'Ampla',
+        full: 'Total',
       },
       customCss: 'CSS personalizado',
       customCssHelp: 'Personalize qualquer estilo. Salvo no seu cofre como .morrow/style.css.',
@@ -351,6 +352,7 @@ export const pt: TranslationSchema = {
   },
   pageMenu: {
     fullWidth: 'Largura total',
+    width: 'Largura da página',
     hideFromTasks: 'Deixar listas fora de Tarefas',
     showInTasks: 'Mostrar listas em Tarefas',
     pageOptions: 'Opções da página',

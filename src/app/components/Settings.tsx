@@ -278,6 +278,7 @@ function AppearanceSettings() {
             options={[
               ['comfortable', t('settings.appearance.widths.comfortable')],
               ['wide', t('settings.appearance.widths.wide')],
+              ['full', t('settings.appearance.widths.full')],
             ]}
             onChange={(width) => setPreferences({ width })}
           />

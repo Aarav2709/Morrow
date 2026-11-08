@@ -190,8 +190,9 @@ export const en = {
       },
       pageWidth: 'Page width',
       widths: {
-        comfortable: 'Comfortable',
+        comfortable: 'Standard',
         wide: 'Wide',
+        full: 'Full',
       },
       customCss: 'Custom CSS',
       customCssHelp: 'Restyle anything. Saved in your vault as .morrow/style.css.',
@@ -347,6 +348,7 @@ export const en = {
   },
   pageMenu: {
     fullWidth: 'Full width',
+    width: 'Page width',
     hideFromTasks: 'Leave checklists out of Tasks',
     showInTasks: 'Show checklists in Tasks',
     pageOptions: 'Page options',

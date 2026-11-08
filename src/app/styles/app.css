@@ -885,7 +885,15 @@ button.crumb:hover {
 }
 
 .page.width-wide {
-  --page-width: 980px;
+  --page-width: 1080px;
+}
+
+/* the whole window, with room at the sides so nothing touches its edges */
+.page.width-full {
+  --page-width: 100%;
+  max-width: none;
+  padding-left: clamp(56px, 8vw, 140px);
+  padding-right: clamp(56px, 8vw, 140px);
 }
 
 .page-title-heading {

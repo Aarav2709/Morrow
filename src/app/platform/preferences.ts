@@ -4,7 +4,9 @@ import type { SupportedLocale } from '../i18n/types';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
-export type PageWidth = 'comfortable' | 'wide';
+// standard keeps lines easy to read, wide fits tables, full uses the whole window
+export type PageWidth = 'comfortable' | 'wide' | 'full';
+export const PAGE_WIDTHS: readonly PageWidth[] = ['comfortable', 'wide', 'full'];
 export type TrashDays = 0 | 30 | 60 | 90;
 export interface Reminder {
   id: string;
@@ -138,7 +140,7 @@ function read(): Preferences {
         : defaults.locale,
       theme: ['system', 'light', 'dark'].includes(parsed.theme as string) ? parsed.theme! : defaults.theme,
       font: ['serif', 'sans', 'mono'].includes(parsed.font as string) ? parsed.font! : defaults.font,
-      width: parsed.width === 'wide' ? 'wide' : 'comfortable',
+      width: PAGE_WIDTHS.find((width) => width === parsed.width) ?? 'comfortable',
       sidebarOpen: parsed.sidebarOpen !== false,
       sidebarPeek: parsed.sidebarPeek === true,
       accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
@@ -171,7 +173,7 @@ function read(): Preferences {
       trashDays: ([30, 60, 90] as const).find((days) => days === parsed.trashDays) ?? 0,
       pageWidths: Object.fromEntries(
         Object.entries(parsed.pageWidths ?? {})
-          .filter(([, width]) => width === 'wide' || width === 'comfortable')
+          .filter(([, width]) => PAGE_WIDTHS.includes(width as PageWidth))
           .slice(0, 2000),
       ) as Record<string, PageWidth>,
       splitShare:
