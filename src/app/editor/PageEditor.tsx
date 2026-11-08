@@ -15,12 +15,13 @@ import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle, foldText, pageIdByTitle, resolveLinkTarget } from '../../core/search';
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
 import { dateKey } from '../../core/daily';
-import { Bell, BellOff, CalendarDays } from 'lucide-react';
+import { Bell, BellOff, CalendarDays, Clock } from 'lucide-react';
 import { Menu } from '../components/Menu';
 import type { MenuEntry } from '../components/Menu';
 import { dateLocale, t } from '../i18n';
 import { addReminder, remindersFor, removeReminders } from '../reminders';
 import { toast } from '../ui';
+import { Popover } from '../components/Popover';
 import { createPage, openToday } from '../operations';
 import { navigate, openPage } from '../router';
 import { targetPane, usePane } from '../tabs';
@@ -166,21 +167,27 @@ function plainTextOf(slice: Slice): string {
 }
 
 // a date in a page opens its day's note, or reminds you on that day
-function dateMenuEntries(pageId: PageId, date: Date): MenuEntry[] {
+function dateMenuEntries(pageId: PageId, date: Date, pickTime: () => void): MenuEntry[] {
   const key = dateKey(date);
   const set = remindersFor(pageId, key)[0];
-  const time = (hour: number) =>
-    new Date(2000, 0, 1, hour).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' });
+  const time = (hour: number, minute = 0) =>
+    new Date(2000, 0, 1, hour, minute).toLocaleTimeString(dateLocale(), {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   const hours = [9, 13, 18].filter(
     (hour) => new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour).getTime() > Date.now(),
   );
+  const setAt = set ? new Date(set.at) : null;
+  const custom = setAt && (setAt.getMinutes() !== 0 || ![9, 13, 18].includes(setAt.getHours()));
+  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59).getTime();
   return [
     {
       label: t('reminders.openNote'),
       icon: CalendarDays,
       onSelect: () => openToday(date),
     },
-    ...(hours.length || set ? [{ heading: t('reminders.remindMe') }] : []),
+    ...(hours.length || set || endOfDay > Date.now() ? [{ heading: t('reminders.remindMe') }] : []),
     ...hours.map((hour) => ({
       label: t('reminders.atHour', { time: time(hour) }),
       icon: Bell,
@@ -190,10 +197,77 @@ function dateMenuEntries(pageId: PageId, date: Date): MenuEntry[] {
         toast(t('reminders.set', { time: time(hour) }));
       },
     })),
+    ...(custom && setAt
+      ? [
+          {
+            label: t('reminders.atHour', { time: time(setAt.getHours(), setAt.getMinutes()) }),
+            icon: Bell,
+            checked: true,
+            onSelect: () => {},
+          },
+        ]
+      : []),
+    ...(endOfDay > Date.now() ? [{ label: t('reminders.otherTime'), icon: Clock, onSelect: pickTime }] : []),
     ...(set
       ? [{ label: t('reminders.remove'), icon: BellOff, onSelect: () => removeReminders(pageId, key) }]
       : []),
   ];
+}
+
+// a reminder at a time of your own, typed or picked, on the date's day
+function ReminderTime({
+  pageId,
+  date,
+  anchor,
+  onClose,
+}: {
+  pageId: PageId;
+  date: Date;
+  anchor: HTMLElement;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(() => {
+    const soon = new Date(Date.now() + 60 * 60 * 1000);
+    return `${String(soon.getHours()).padStart(2, '0')}:00`;
+  });
+  const save = () => {
+    const [hour, minute] = value.split(':').map(Number);
+    if (hour === undefined || minute === undefined || Number.isNaN(hour) || Number.isNaN(minute)) return;
+    const at = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute);
+    if (at.getTime() <= Date.now()) {
+      toast(t('reminders.inThePast'), { tone: 'error' });
+      return;
+    }
+    addReminder(pageId, dateKey(date), hour, minute);
+    toast(
+      t('reminders.set', {
+        time: at.toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' }),
+      }),
+    );
+    onClose();
+  };
+  return (
+    <Popover anchor={anchor} onClose={onClose} label={t('reminders.otherTime')} className="reminder-time">
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          save();
+        }}
+      >
+        <input
+          type="time"
+          className="text-input small"
+          data-autofocus
+          aria-label={t('reminders.otherTime')}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+        />
+        <button type="submit" className="button small primary">
+          {t('reminders.remind')}
+        </button>
+      </form>
+    </Popover>
+  );
 }
 
 // keeps one editor instance per page and writes changes back through commands
@@ -201,6 +275,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
   const [dateMenu, setDateMenu] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
+  const [timePicker, setTimePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
   // the find bar opens with the words picked on the page, n changes so pressing it again refills it
   const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
@@ -473,7 +548,15 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           anchor={dateMenu.anchor}
           label={t('reminders.dateMenu')}
           onClose={() => setDateMenu(null)}
-          entries={dateMenuEntries(pageId, dateMenu.date)}
+          entries={dateMenuEntries(pageId, dateMenu.date, () => setTimePicker(dateMenu))}
+        />
+      )}
+      {timePicker && (
+        <ReminderTime
+          pageId={pageId}
+          date={timePicker.date}
+          anchor={timePicker.anchor}
+          onClose={() => setTimePicker(null)}
         />
       )}
       {blockMenu && (

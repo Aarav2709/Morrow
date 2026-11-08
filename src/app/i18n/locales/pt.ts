@@ -1294,7 +1294,10 @@ export const pt: TranslationSchema = {
   },
   reminders: {
     dateMenu: 'Data',
-    openNote: 'Abrir a nota desse dia',
+    openNote: 'Abrir a nota deste dia',
+    otherTime: 'Em outro horário…',
+    inThePast: 'Esse horário já passou.',
+    remind: 'Lembrar-me',
     remindMe: 'Lembrar-me',
     atHour: 'Às {time} nesse dia',
     remove: 'Remover lembrete',

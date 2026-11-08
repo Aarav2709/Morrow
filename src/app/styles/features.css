@@ -2633,3 +2633,11 @@ td:hover .prop-empty,
   line-height: 1.45;
   overflow-x: auto;
 }
+
+/* a reminder at a time of your own */
+.reminder-time form {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+}

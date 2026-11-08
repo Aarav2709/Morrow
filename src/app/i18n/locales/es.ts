@@ -1295,7 +1295,10 @@ export const es: TranslationSchema = {
   },
   reminders: {
     dateMenu: 'Fecha',
-    openNote: 'Abrir la nota de ese día',
+    openNote: 'Abrir la nota de este día',
+    otherTime: 'A otra hora…',
+    inThePast: 'Esa hora ya ha pasado.',
+    remind: 'Recordármelo',
     remindMe: 'Recordármelo',
     atHour: 'A las {time} ese día',
     remove: 'Quitar recordatorio',

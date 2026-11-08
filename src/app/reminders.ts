@@ -15,11 +15,11 @@ export function remindersFor(pageId: string, date: string): Reminder[] {
   return getPreferences().reminders.filter((item) => item.pageId === pageId && item.date === date);
 }
 
-// a reminder on the day at the given hour
-export function addReminder(pageId: string, date: string, hour: number): void {
+// a reminder on the day at the given time
+export function addReminder(pageId: string, date: string, hour: number, minute = 0): void {
   const day = parseDateKey(date);
   if (!day) return;
-  const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour).getTime();
+  const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute).getTime();
   const reminders = getPreferences().reminders.filter(
     (item) => !(item.pageId === pageId && item.date === date),
   );

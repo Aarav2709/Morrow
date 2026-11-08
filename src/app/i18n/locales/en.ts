@@ -1281,7 +1281,10 @@ export const en = {
   },
   reminders: {
     dateMenu: 'Date',
-    openNote: 'Open that day’s note',
+    openNote: 'Open this day’s note',
+    otherTime: 'At another time…',
+    inThePast: 'That time has already passed.',
+    remind: 'Remind me',
     remindMe: 'Remind me',
     atHour: 'At {time} that day',
     remove: 'Remove reminder',
