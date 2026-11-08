@@ -5,7 +5,9 @@ use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
 fn is_dir(path: &Path) -> bool {
-    std::fs::metadata(path).map(|info| info.is_dir()).unwrap_or(false)
+    std::fs::metadata(path)
+        .map(|info| info.is_dir())
+        .unwrap_or(false)
 }
 
 // dropbox writes where its folders are, one per account, in an info.json of its own
@@ -22,7 +24,11 @@ fn dropbox_folders(home: &Path) -> Vec<PathBuf> {
     for file in files {
         if let Some(Value::Object(accounts)) = paths::read_json(&file) {
             for account in accounts.values() {
-                if let Some(path) = account["path"].as_str().map(PathBuf::from).filter(|p| p.is_absolute()) {
+                if let Some(path) = account["path"]
+                    .as_str()
+                    .map(PathBuf::from)
+                    .filter(|p| p.is_absolute())
+                {
                     found.push(path);
                 }
             }
@@ -48,7 +54,9 @@ pub fn folders() -> Vec<(String, PathBuf)> {
     if cfg!(target_os = "macos") {
         candidates.push((
             "iCloud Drive".into(),
-            home.join("Library").join("Mobile Documents").join("com~apple~CloudDocs"),
+            home.join("Library")
+                .join("Mobile Documents")
+                .join("com~apple~CloudDocs"),
         ));
         // apps built on apple's file provider all keep their folder here, named after the app and the account
         let storage = home.join("Library").join("CloudStorage");
@@ -78,7 +86,10 @@ pub fn folders() -> Vec<(String, PathBuf)> {
         candidates.push(("iCloud Drive".into(), home.join("iCloudDrive")));
         // google drive for desktop shows up as a drive of its own, G: unless that letter was taken
         for letter in "GHIJKLMNOPQRSTUVWXYZDEF".chars() {
-            candidates.push(("Google Drive".into(), PathBuf::from(format!("{letter}:\\My Drive"))));
+            candidates.push((
+                "Google Drive".into(),
+                PathBuf::from(format!("{letter}:\\My Drive")),
+            ));
         }
     }
     for (provider, name) in [

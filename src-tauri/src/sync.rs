@@ -92,7 +92,10 @@ fn notify(event: Value) {
 }
 
 fn valid_id(id: &str) -> bool {
-    (8..=64).contains(&id.len()) && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    (8..=64).contains(&id.len())
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 fn host_name() -> String {
@@ -189,7 +192,12 @@ fn pairing_key(code: &str, device_id: &str) -> [u8; 32] {
         .filter(|c| c.is_ascii_uppercase() || ('2'..='7').contains(c))
         .collect();
     let mut key = [0u8; 32];
-    pbkdf2::pbkdf2_hmac::<Sha256>(normal.as_bytes(), format!("morrow-pair:{device_id}").as_bytes(), 200_000, &mut key);
+    pbkdf2::pbkdf2_hmac::<Sha256>(
+        normal.as_bytes(),
+        format!("morrow-pair:{device_id}").as_bytes(),
+        200_000,
+        &mut key,
+    );
     key
 }
 
@@ -204,19 +212,27 @@ fn seal(key: &[u8; 32], payload: Value) -> Value {
     let body = json!({ "ts": paths::now_ms(), "nonce": B64.encode(random_bytes::<12>()), "payload": payload });
     let cipher = Aes256Gcm::new(key.into());
     // the tag comes after the text, as node writes it
-    let data = cipher.encrypt(Nonce::from_slice(&iv), body.to_string().as_bytes()).unwrap_or_default();
+    let data = cipher
+        .encrypt(Nonce::from_slice(&iv), body.to_string().as_bytes())
+        .unwrap_or_default();
     json!({ "iv": B64.encode(iv), "data": B64.encode(data) })
 }
 
 // fails when the message was not made with this key, is old, or was seen before
 fn open(state: &mut State, key: &[u8; 32], envelope: &Value) -> Result<Value, String> {
-    let iv = B64.decode(envelope["iv"].as_str().ok_or("Bad message.")?).map_err(|_| "Bad message.")?;
-    let data = B64.decode(envelope["data"].as_str().ok_or("Bad message.")?).map_err(|_| "Bad message.")?;
+    let iv = B64
+        .decode(envelope["iv"].as_str().ok_or("Bad message.")?)
+        .map_err(|_| "Bad message.")?;
+    let data = B64
+        .decode(envelope["data"].as_str().ok_or("Bad message.")?)
+        .map_err(|_| "Bad message.")?;
     if iv.len() != 12 {
         return Err("Bad message.".into());
     }
     let cipher = Aes256Gcm::new(key.into());
-    let text = cipher.decrypt(Nonce::from_slice(&iv), data.as_ref()).map_err(|_| "Bad message.")?;
+    let text = cipher
+        .decrypt(Nonce::from_slice(&iv), data.as_ref())
+        .map_err(|_| "Bad message.")?;
     let message: Value = serde_json::from_slice(&text).map_err(|_| "Bad message.")?;
     let ts = message["ts"].as_f64().unwrap_or(0.0) as u64;
     let now = paths::now_ms();
@@ -235,8 +251,11 @@ fn open(state: &mut State, key: &[u8; 32], envelope: &Value) -> Result<Value, St
 // ---- the server other paired computers talk to
 
 fn reply(request: tiny_http::Request, status: u16, body: Value) {
-    let header = tiny_http::Header::from_bytes("Content-Type", "application/json").expect("valid header");
-    let response = tiny_http::Response::from_string(body.to_string()).with_status_code(status).with_header(header);
+    let header =
+        tiny_http::Header::from_bytes("Content-Type", "application/json").expect("valid header");
+    let response = tiny_http::Response::from_string(body.to_string())
+        .with_status_code(status)
+        .with_header(header);
     let _ = request.respond(response);
 }
 
@@ -245,7 +264,11 @@ fn handle(mut request: tiny_http::Request) {
     let url = request.url().to_string();
     let address = request.remote_addr().map(|addr| match addr {
         SocketAddr::V4(v4) => v4.ip().to_string(),
-        SocketAddr::V6(v6) => v6.ip().to_ipv4_mapped().map(|ip| ip.to_string()).unwrap_or_else(|| v6.ip().to_string()),
+        SocketAddr::V6(v6) => v6
+            .ip()
+            .to_ipv4_mapped()
+            .map(|ip| ip.to_string())
+            .unwrap_or_else(|| v6.ip().to_string()),
     });
     if method == "GET" && url == "/morrow/v1/id" {
         // only says who it is while it is waiting to be paired
@@ -263,7 +286,13 @@ fn handle(mut request: tiny_http::Request) {
         return reply(request, 404, json!({}));
     }
     let mut raw = Vec::new();
-    if request.as_reader().take(MAX_BODY as u64 + 1).read_to_end(&mut raw).is_err() || raw.len() > MAX_BODY {
+    if request
+        .as_reader()
+        .take(MAX_BODY as u64 + 1)
+        .read_to_end(&mut raw)
+        .is_err()
+        || raw.len() > MAX_BODY
+    {
         return reply(request, 400, json!({}));
     }
     let Ok(body) = serde_json::from_slice::<Value>(&raw) else {
@@ -283,7 +312,11 @@ fn handle(mut request: tiny_http::Request) {
         if !config.enabled {
             return None;
         }
-        let peer = config.peers.iter().find(|peer| Some(peer.id.as_str()) == body["from"].as_str())?.clone();
+        let peer = config
+            .peers
+            .iter()
+            .find(|peer| Some(peer.id.as_str()) == body["from"].as_str())?
+            .clone();
         let key = peer_key(&config.device_id, &peer);
         let payload = open(state, &key, &body).ok()?;
         // the address the request came from, and the port the other computer listens on
@@ -292,7 +325,10 @@ fn handle(mut request: tiny_http::Request) {
             if let Some(address) = &address {
                 stored.address = Some(address.clone());
             }
-            if let Some(port) = payload["port"].as_u64().filter(|port| (1..65536).contains(port)) {
+            if let Some(port) = payload["port"]
+                .as_u64()
+                .filter(|port| (1..65536).contains(port))
+            {
                 stored.port = Some(port as u16);
             }
         }
@@ -326,7 +362,9 @@ fn handle(mut request: tiny_http::Request) {
             "get" => {
                 let vault = vault::identity()?;
                 match payload["path"].as_str() {
-                    Some(path) if payload["vaultId"] == vault["id"] && vault::is_synced_path(path) => {
+                    Some(path)
+                        if payload["vaultId"] == vault["id"] && vault::is_synced_path(path) =>
+                    {
                         json!({ "data": vault::synced_file_base64(path) })
                     }
                     _ => json!({ "error": "not allowed" }),
@@ -344,21 +382,39 @@ fn handle(mut request: tiny_http::Request) {
     reply(request, 200, seal(&key, answer));
 }
 
-fn pair_request(state: &mut State, body: &Value, address: Option<String>) -> (u16, Value, Option<(String, String)>) {
+fn pair_request(
+    state: &mut State,
+    body: &Value,
+    address: Option<String>,
+) -> (u16, Value, Option<(String, String)>) {
     let now = paths::now_ms();
-    let Some(pairing) = state.pairing.as_mut().filter(|pairing| now <= pairing.expires) else {
-        return (403, json!({ "error": "This computer is not waiting to pair." }), None);
+    let Some(pairing) = state
+        .pairing
+        .as_mut()
+        .filter(|pairing| now <= pairing.expires)
+    else {
+        return (
+            403,
+            json!({ "error": "This computer is not waiting to pair." }),
+            None,
+        );
     };
     pairing.attempts += 1;
     if pairing.attempts > 5 {
         state.pairing = None;
-        return (403, json!({ "error": "Too many tries, start pairing again." }), None);
+        return (
+            403,
+            json!({ "error": "Too many tries, start pairing again." }),
+            None,
+        );
     }
     let key = pairing.key;
     let Ok(payload) = open(state, &key, body) else {
         return (403, json!({ "error": "That code is not right." }), None);
     };
-    let (Some(device_id), Some(secret)) = (payload["deviceId"].as_str(), payload["secret"].as_str()) else {
+    let (Some(device_id), Some(secret)) =
+        (payload["deviceId"].as_str(), payload["secret"].as_str())
+    else {
         return (403, json!({ "error": "That code is not right." }), None);
     };
     if !valid_id(device_id) {
@@ -366,7 +422,10 @@ fn pair_request(state: &mut State, body: &Value, address: Option<String>) -> (u1
     }
     let peer = Peer {
         id: device_id.to_string(),
-        name: payload["name"].as_str().map(|name| name.chars().take(60).collect()).unwrap_or_else(|| "Computer".into()),
+        name: payload["name"]
+            .as_str()
+            .map(|name| name.chars().take(60).collect())
+            .unwrap_or_else(|| "Computer".into()),
         secret: secret.to_string(),
         address,
         port: payload["port"].as_u64().map(|port| port as u16),
@@ -380,7 +439,10 @@ fn pair_request(state: &mut State, body: &Value, address: Option<String>) -> (u1
     config.peers.retain(|item| item.id != peer.id);
     config.peers.push(peer.clone());
     save_config(config);
-    let answer = seal(&key, json!({ "deviceId": config.device_id, "name": config.name }));
+    let answer = seal(
+        &key,
+        json!({ "deviceId": config.device_id, "name": config.name }),
+    );
     (200, answer, Some((peer.id, peer.name)))
 }
 
@@ -433,7 +495,9 @@ fn discovery_socket() -> Option<UdpSocket> {
     let address: SocketAddr = ([0, 0, 0, 0], DISCOVERY_PORT).into();
     socket.bind(&address.into()).ok()?;
     let socket: UdpSocket = socket.into();
-    socket.set_read_timeout(Some(Duration::from_millis(500))).ok()?;
+    socket
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .ok()?;
     Some(socket)
 }
 
@@ -444,7 +508,11 @@ fn start_services(state: &mut State) {
     let mut server = None;
     for port in [PORT, PORT + 2, PORT + 3, 0] {
         if let Ok(candidate) = tiny_http::Server::http(("0.0.0.0", port)) {
-            let actual = candidate.server_addr().to_ip().map(|addr| addr.port()).unwrap_or(port);
+            let actual = candidate
+                .server_addr()
+                .to_ip()
+                .map(|addr| addr.port())
+                .unwrap_or(port);
             LISTENING_PORT.store(actual, Ordering::Relaxed);
             server = Some(Arc::new(candidate));
             break;
@@ -460,7 +528,9 @@ fn start_services(state: &mut State) {
     });
     let stopping = stop.clone();
     std::thread::spawn(move || {
-        let Some(socket) = discovery_socket() else { return };
+        let Some(socket) = discovery_socket() else {
+            return;
+        };
         let mut last = 0u64;
         let mut buffer = [0u8; 2048];
         while !stopping.load(Ordering::Relaxed) {
@@ -468,23 +538,39 @@ fn start_services(state: &mut State) {
                 announce(&socket);
                 last = paths::now_ms();
             }
-            let Ok((size, from)) = socket.recv_from(&mut buffer) else { continue };
-            let Ok(message) = serde_json::from_slice::<Value>(&buffer[..size]) else { continue };
-            let Some(id) = message["id"].as_str().filter(|id| valid_id(id)) else { continue };
+            let Ok((size, from)) = socket.recv_from(&mut buffer) else {
+                continue;
+            };
+            let Ok(message) = serde_json::from_slice::<Value>(&buffer[..size]) else {
+                continue;
+            };
+            let Some(id) = message["id"].as_str().filter(|id| valid_id(id)) else {
+                continue;
+            };
             if message["app"] != "morrow-sync" {
                 continue;
             }
             with(|state| {
-                if state.config.as_ref().map(|config| config.device_id.as_str()) == Some(id) {
+                if state
+                    .config
+                    .as_ref()
+                    .map(|config| config.device_id.as_str())
+                    == Some(id)
+                {
                     return;
                 }
                 state.seen.insert(
                     id.to_string(),
                     Seen {
                         address: from.ip().to_string(),
-                        port: message["port"].as_u64().map(|port| port as u16).unwrap_or(PORT),
+                        port: message["port"]
+                            .as_u64()
+                            .map(|port| port as u16)
+                            .unwrap_or(PORT),
                         at: paths::now_ms(),
-                        pairing_name: message["pairing"].as_str().map(|name| name.chars().take(60).collect()),
+                        pairing_name: message["pairing"]
+                            .as_str()
+                            .map(|name| name.chars().take(60).collect()),
                     },
                 );
             });
@@ -530,8 +616,14 @@ pub fn status() -> Value {
             .peers
             .iter()
             .map(|peer| {
-                let seen = state.seen.get(&peer.id).filter(|seen| now - seen.at < ONLINE_MS);
-                let recent = state.contact.get(&peer.id).is_some_and(|at| *at > now.saturating_sub(3 * 60 * 1000));
+                let seen = state
+                    .seen
+                    .get(&peer.id)
+                    .filter(|seen| now - seen.at < ONLINE_MS);
+                let recent = state
+                    .contact
+                    .get(&peer.id)
+                    .is_some_and(|at| *at > now.saturating_sub(3 * 60 * 1000));
                 json!({
                     "id": peer.id,
                     "name": peer.name,
@@ -587,10 +679,21 @@ pub fn set_name(name: &str) {
 // shows a code the other computer types in, valid for ten minutes
 pub fn start_pairing() -> String {
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-    let raw: Vec<char> = random_bytes::<16>().iter().map(|byte| ALPHABET[(*byte % 32) as usize] as char).collect();
-    let code = raw.chunks(4).map(|chunk| chunk.iter().collect::<String>()).collect::<Vec<_>>().join("-");
+    let raw: Vec<char> = random_bytes::<16>()
+        .iter()
+        .map(|byte| ALPHABET[(*byte % 32) as usize] as char)
+        .collect();
+    let code = raw
+        .chunks(4)
+        .map(|chunk| chunk.iter().collect::<String>())
+        .collect::<Vec<_>>()
+        .join("-");
     with(|state| {
-        let device_id = state.config.as_ref().map(|config| config.device_id.clone()).unwrap_or_default();
+        let device_id = state
+            .config
+            .as_ref()
+            .map(|config| config.device_id.clone())
+            .unwrap_or_default();
         state.pairing = Some(Pairing {
             code: code.clone(),
             key: pairing_key(&code, &device_id),
@@ -610,7 +713,10 @@ pub fn stop_pairing() {
 }
 
 fn http() -> reqwest::Client {
-    reqwest::Client::builder().no_proxy().build().unwrap_or_default()
+    reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .unwrap_or_default()
 }
 
 pub async fn pair(target: Value, code: String) -> Value {
@@ -621,8 +727,14 @@ pub async fn pair(target: Value, code: String) -> Value {
 }
 
 async fn pair_inner(target: Value, code: String) -> Result<String, String> {
-    let address = target["address"].as_str().ok_or("Pairing failed.")?.to_string();
-    let port = target["port"].as_u64().map(|port| port as u16).unwrap_or(PORT);
+    let address = target["address"]
+        .as_str()
+        .ok_or("Pairing failed.")?
+        .to_string();
+    let port = target["port"]
+        .as_u64()
+        .map(|port| port as u16)
+        .unwrap_or(PORT);
     let client = http();
     let mut id = target["id"].as_str().map(String::from);
     if id.is_none() {
@@ -635,9 +747,15 @@ async fn pair_inner(target: Value, code: String) -> Result<String, String> {
         if !answer.status().is_success() {
             return Err("That computer is not waiting to pair.".into());
         }
-        id = answer.json::<Value>().await.ok().and_then(|body| body["id"].as_str().map(String::from));
+        id = answer
+            .json::<Value>()
+            .await
+            .ok()
+            .and_then(|body| body["id"].as_str().map(String::from));
     }
-    let id = id.filter(|id| valid_id(id)).ok_or("That computer did not answer.")?;
+    let id = id
+        .filter(|id| valid_id(id))
+        .ok_or("That computer did not answer.")?;
     // this computer starts listening first, so the other one learns where to reach it
     let (device_id, name) = with(|state| {
         let config = state.config.as_mut().expect("loaded");
@@ -664,7 +782,10 @@ async fn pair_inner(target: Value, code: String) -> Result<String, String> {
     let ok = response.status().is_success();
     let answer: Value = response.json().await.unwrap_or(Value::Null);
     if !ok {
-        return Err(answer["error"].as_str().unwrap_or("Pairing failed.").to_string());
+        return Err(answer["error"]
+            .as_str()
+            .unwrap_or("Pairing failed.")
+            .to_string());
     }
     with(|state| {
         let other = open(state, &key, &answer)?;
@@ -701,14 +822,25 @@ pub fn forget(id: &str) {
 pub async fn request(peer_id: String, mut payload: Value) -> Result<Value, String> {
     let (peer, key, device_id, address, port) = with(|state| {
         let config = state.config.as_ref().expect("loaded");
-        let peer = config.peers.iter().find(|peer| peer.id == peer_id).cloned().ok_or("That computer is not paired.")?;
+        let peer = config
+            .peers
+            .iter()
+            .find(|peer| peer.id == peer_id)
+            .cloned()
+            .ok_or("That computer is not paired.")?;
         let seen = state.seen.get(&peer.id);
         let address = seen
             .map(|seen| seen.address.clone())
             .or_else(|| peer.address.clone())
             .ok_or_else(|| format!("{} has not been seen on this network.", peer.name))?;
         let port = seen.map(|seen| seen.port).or(peer.port).unwrap_or(PORT);
-        Ok::<_, String>((peer.clone(), peer_key(&config.device_id, &peer), config.device_id.clone(), address, port))
+        Ok::<_, String>((
+            peer.clone(),
+            peer_key(&config.device_id, &peer),
+            config.device_id.clone(),
+            address,
+            port,
+        ))
     })?;
     let timeout = Duration::from_secs(if payload["op"] == "get" { 120 } else { 30 });
     payload["port"] = json!(LISTENING_PORT.load(Ordering::Relaxed));
@@ -722,7 +854,10 @@ pub async fn request(peer_id: String, mut payload: Value) -> Result<Value, Strin
         .await
         .map_err(|_| format!("{} did not answer. Is it on the same network?", peer.name))?;
     if !response.status().is_success() {
-        return Err(format!("{} refused the request. Is sync turned on there?", peer.name));
+        return Err(format!(
+            "{} refused the request. Is sync turned on there?",
+            peer.name
+        ));
     }
     let answer: Value = response.json().await.map_err(|error| error.to_string())?;
     with(|state| {
@@ -730,7 +865,8 @@ pub async fn request(peer_id: String, mut payload: Value) -> Result<Value, Strin
         state.contact.insert(peer.id.clone(), paths::now_ms());
         if let Some(config) = state.config.as_mut() {
             if let Some(stored) = config.peers.iter_mut().find(|item| item.id == peer.id) {
-                if stored.address.as_deref() != Some(address.as_str()) || stored.port != Some(port) {
+                if stored.address.as_deref() != Some(address.as_str()) || stored.port != Some(port)
+                {
                     stored.address = Some(address.clone());
                     stored.port = Some(port);
                     save_config(config);
@@ -772,8 +908,18 @@ mod tests {
     #[test]
     fn peer_keys_match_on_both_sides() {
         let secret = B64.encode([7u8; 32]);
-        let a = Peer { id: "device-bbbb".into(), name: String::new(), secret: secret.clone(), address: None, port: None, last_sync: None };
-        let b = Peer { id: "device-aaaa".into(), ..a.clone() };
+        let a = Peer {
+            id: "device-bbbb".into(),
+            name: String::new(),
+            secret: secret.clone(),
+            address: None,
+            port: None,
+            last_sync: None,
+        };
+        let b = Peer {
+            id: "device-aaaa".into(),
+            ..a.clone()
+        };
         assert_eq!(peer_key("device-aaaa", &a), peer_key("device-bbbb", &b));
     }
 }

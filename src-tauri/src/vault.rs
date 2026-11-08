@@ -73,12 +73,15 @@ fn write_list(list: &VaultList) -> Result<()> {
         .iter()
         .map(|(path, at)| json!({ "path": path, "openedAt": at }))
         .collect();
-    let body = serde_json::to_vec_pretty(&json!({ "current": list.current, "recent": recent })).map_err(err)?;
+    let body = serde_json::to_vec_pretty(&json!({ "current": list.current, "recent": recent }))
+        .map_err(err)?;
     paths::write_atomic_plain(&list_file(), &body).map_err(err)
 }
 
 fn is_dir(path: &Path) -> bool {
-    fs::metadata(path).map(|info| info.is_dir()).unwrap_or(false)
+    fs::metadata(path)
+        .map(|info| info.is_dir())
+        .unwrap_or(false)
 }
 
 fn exists(path: &Path) -> bool {
@@ -86,7 +89,9 @@ fn exists(path: &Path) -> bool {
 }
 
 fn base_name(path: &Path) -> String {
-    path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default()
+    path.file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 pub fn state() -> Value {
@@ -222,7 +227,11 @@ pub fn open(dir: &str, on_changes: impl Fn(Vec<Value>) + Send + 'static) -> Resu
     let root = normalize(Path::new(dir));
     let real_root = dunce::canonicalize(&root).map_err(err)?;
     let watcher = start_watching(&root, on_changes);
-    *OPEN.lock().map_err(err)? = Some(Open { root, real_root, _watcher: watcher });
+    *OPEN.lock().map_err(err)? = Some(Open {
+        root,
+        real_root,
+        _watcher: watcher,
+    });
     Ok(())
 }
 
@@ -239,7 +248,11 @@ pub fn resolve(relative: &str) -> Result<PathBuf> {
 }
 
 fn resolve_in(root: &Path, relative: &str) -> Result<PathBuf> {
-    if relative.is_empty() || relative.len() > 4096 || relative.contains('\0') || relative.contains('\\') {
+    if relative.is_empty()
+        || relative.len() > 4096
+        || relative.contains('\0')
+        || relative.contains('\\')
+    {
         return Err("Invalid path.".into());
     }
     let candidate = Path::new(relative);
@@ -314,7 +327,9 @@ pub fn scan() -> Result<Value> {
         if depth > MAX_DEPTH || count > MAX_FILES {
             continue;
         }
-        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             count += 1;
             if count > MAX_FILES {
@@ -323,13 +338,19 @@ pub fn scan() -> Result<Value> {
             let name = entry.file_name().to_string_lossy().into_owned();
             let absolute = entry.path();
             let relative = to_relative(&root, &absolute);
-            let Ok(kind) = entry.file_type() else { continue };
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
             if name.contains(TEMP_MARK) || kind.is_symlink() || is_hidden(&relative) {
                 continue;
             }
             if kind.is_dir() {
-                let mtime = fs::metadata(&absolute).map(|info| millis(info.modified())).unwrap_or(0.0);
-                let empty = fs::read_dir(&absolute).map(|mut items| items.next().is_none()).unwrap_or(false);
+                let mtime = fs::metadata(&absolute)
+                    .map(|info| millis(info.modified()))
+                    .unwrap_or(0.0);
+                let empty = fs::read_dir(&absolute)
+                    .map(|mut items| items.next().is_none())
+                    .unwrap_or(false);
                 folders.push(json!({ "path": relative, "mtime": mtime, "empty": empty }));
                 stack.push((absolute, depth + 1));
             } else if kind.is_file() {
@@ -388,7 +409,9 @@ fn read_text_or_none(absolute: &Path) -> Result<Option<String>> {
 fn random_hex(len: usize) -> String {
     use rand::Rng;
     let mut rng = rand::thread_rng();
-    (0..len).map(|_| format!("{:x}", rng.gen_range(0..16))).collect()
+    (0..len)
+        .map(|_| format!("{:x}", rng.gen_range(0..16)))
+        .collect()
 }
 
 // writes beside the target first, so a crash never leaves half a file
@@ -404,7 +427,9 @@ fn write_atomic(absolute: &Path, data: &[u8]) -> Result<()> {
     })
 }
 
-fn some<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(d: D) -> std::result::Result<Option<T>, D::Error> {
+fn some<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
+    d: D,
+) -> std::result::Result<Option<T>, D::Error> {
     T::deserialize(d).map(Some)
 }
 
@@ -456,7 +481,11 @@ fn apply_one(op: VaultOp) -> Result<Value> {
             }
             write_atomic(&absolute, text.as_bytes())?;
         }
-        VaultOp::Rename { from: from_rel, to: to_rel, optional } => {
+        VaultOp::Rename {
+            from: from_rel,
+            to: to_rel,
+            optional,
+        } => {
             let from = resolve(&from_rel)?;
             let to = resolve(&to_rel)?;
             if !exists(&from) {
@@ -466,7 +495,8 @@ fn apply_one(op: VaultOp) -> Result<Value> {
                     failed("error", format!("{from_rel} is missing."))
                 });
             }
-            let case_only = from.to_string_lossy().to_lowercase() == to.to_string_lossy().to_lowercase();
+            let case_only =
+                from.to_string_lossy().to_lowercase() == to.to_string_lossy().to_lowercase();
             if !case_only && exists(&to) {
                 return Ok(failed("exists", format!("{to_rel} already exists.")));
             }
@@ -486,10 +516,11 @@ fn apply_one(op: VaultOp) -> Result<Value> {
             if trash::delete(&absolute).is_err() {
                 // without a system trash the file is kept in the vault's own deleted folder instead
                 let (root, _) = roots()?;
-                let keep = root
-                    .join(".morrow")
-                    .join("deleted")
-                    .join(format!("{}-{}", paths::now_ms(), base_name(&absolute)));
+                let keep = root.join(".morrow").join("deleted").join(format!(
+                    "{}-{}",
+                    paths::now_ms(),
+                    base_name(&absolute)
+                ));
                 fs::create_dir_all(keep.parent().unwrap_or(&root)).map_err(err)?;
                 fs::rename(&absolute, &keep).map_err(err)?;
             }
@@ -501,7 +532,9 @@ fn apply_one(op: VaultOp) -> Result<Value> {
             }
             let absolute = resolve(&path)?;
             match fs::remove_file(&absolute) {
-                Err(error) if error.kind() != std::io::ErrorKind::NotFound => return Err(err(error)),
+                Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                    return Err(err(error))
+                }
                 _ => {}
             }
         }
@@ -566,9 +599,13 @@ pub fn list(relative: &str) -> Result<Vec<Value>> {
         if depth > 16 {
             continue;
         }
-        let Ok(entries) = fs::read_dir(&current) else { continue };
+        let Ok(entries) = fs::read_dir(&current) else {
+            continue;
+        };
         for entry in entries.flatten() {
-            let Ok(kind) = entry.file_type() else { continue };
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
             if entry.file_name().to_string_lossy().contains(TEMP_MARK) || kind.is_symlink() {
                 continue;
             }
@@ -629,12 +666,16 @@ pub fn manifest() -> Result<serde_json::Map<String, Value>> {
         if depth > MAX_DEPTH || count > MAX_FILES {
             continue;
         }
-        let Ok(entries) = fs::read_dir(&dir) else { continue };
+        let Ok(entries) = fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             count += 1;
             let absolute = entry.path();
             let relative = to_relative(&root, &absolute);
-            let Ok(kind) = entry.file_type() else { continue };
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
             if kind.is_symlink() {
                 continue;
             }
@@ -671,7 +712,9 @@ pub fn write_synced(relative: &str, data: &str, expect: Option<String>) -> Resul
         return Ok(failed("error", "Invalid file."));
     }
     let absolute = resolve(relative)?;
-    let current = fs::read(&absolute).ok().map(|bytes| hex(&Sha256::digest(&bytes)));
+    let current = fs::read(&absolute)
+        .ok()
+        .map(|bytes| hex(&Sha256::digest(&bytes)));
     if current != expect {
         return Ok(json!({
             "ok": false,
@@ -680,13 +723,18 @@ pub fn write_synced(relative: &str, data: &str, expect: Option<String>) -> Resul
             "current": null,
         }));
     }
-    let bytes = base64::engine::general_purpose::STANDARD.decode(data).map_err(err)?;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(err)?;
     write_atomic(&absolute, &bytes)?;
     Ok(json!({ "ok": true }))
 }
 
 fn valid_id(id: &str) -> bool {
-    (8..=64).contains(&id.len()) && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    (8..=64).contains(&id.len())
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 // each vault has an id, so two computers only sync folders that are copies of the same vault
@@ -700,7 +748,10 @@ pub fn identity() -> Result<Value> {
         }
     }
     let id = uuid::Uuid::new_v4().to_string();
-    let body = format!("{}\n", serde_json::to_string_pretty(&json!({ "version": 1, "id": id })).map_err(err)?);
+    let body = format!(
+        "{}\n",
+        serde_json::to_string_pretty(&json!({ "version": 1, "id": id })).map_err(err)?
+    );
     write_atomic(&file, body.as_bytes())?;
     Ok(json!({ "id": id, "name": name }))
 }
@@ -714,7 +765,10 @@ pub fn prepare_copy(dir: &str, vault_id: &str) -> Value {
     let Ok(entries) = fs::read_dir(path) else {
         return json!({ "ok": false, "error": "That folder does not exist." });
     };
-    if entries.flatten().any(|entry| !entry.file_name().to_string_lossy().starts_with('.')) {
+    if entries
+        .flatten()
+        .any(|entry| !entry.file_name().to_string_lossy().starts_with('.'))
+    {
         return json!({ "ok": false, "error": "Choose an empty folder for the copy." });
     }
     let body = format!("{}\n", json!({ "version": 1, "id": vault_id }));
@@ -728,10 +782,15 @@ pub fn read_sync_base(peer_id: &str) -> Value {
     let Some(root) = current().filter(|_| valid_id(peer_id)) else {
         return json!({});
     };
-    paths::read_json(&root.join(".morrow").join("sync").join(format!("{peer_id}.json")))
-        .map(|raw| raw["files"].clone())
-        .filter(Value::is_object)
-        .unwrap_or_else(|| json!({}))
+    paths::read_json(
+        &root
+            .join(".morrow")
+            .join("sync")
+            .join(format!("{peer_id}.json")),
+    )
+    .map(|raw| raw["files"].clone())
+    .filter(Value::is_object)
+    .unwrap_or_else(|| json!({}))
 }
 
 pub fn write_sync_base(peer_id: &str, files: Value) -> Result<()> {
@@ -739,7 +798,13 @@ pub fn write_sync_base(peer_id: &str, files: Value) -> Result<()> {
         return Ok(());
     };
     let body = json!({ "version": 1, "files": files }).to_string();
-    write_atomic(&root.join(".morrow").join("sync").join(format!("{peer_id}.json")), body.as_bytes())
+    write_atomic(
+        &root
+            .join(".morrow")
+            .join("sync")
+            .join(format!("{peer_id}.json")),
+        body.as_bytes(),
+    )
 }
 
 fn extension(path: &str) -> String {
@@ -754,9 +819,32 @@ fn extension(path: &str) -> String {
 pub fn openable(path: &str) -> bool {
     matches!(
         extension(path).as_str(),
-        "png" | "jpg" | "jpeg" | "gif" | "webp" | "avif" | "bmp" | "svg" | "ico" | "tif" | "tiff" | "heic"
-            | "mp3" | "m4a" | "wav" | "ogg" | "oga" | "flac" | "aac" | "opus" | "mp4" | "m4v" | "webm"
-            | "mov" | "mkv" | "pdf"
+        "png"
+            | "jpg"
+            | "jpeg"
+            | "gif"
+            | "webp"
+            | "avif"
+            | "bmp"
+            | "svg"
+            | "ico"
+            | "tif"
+            | "tiff"
+            | "heic"
+            | "mp3"
+            | "m4a"
+            | "wav"
+            | "ogg"
+            | "oga"
+            | "flac"
+            | "aac"
+            | "opus"
+            | "mp4"
+            | "m4v"
+            | "webm"
+            | "mov"
+            | "mkv"
+            | "pdf"
     )
 }
 
@@ -765,8 +853,30 @@ pub fn openable(path: &str) -> bool {
 fn openable_document(path: &str) -> bool {
     matches!(
         extension(path).as_str(),
-        "txt" | "md" | "markdown" | "csv" | "rtf" | "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "odt"
-            | "ods" | "odp" | "epub" | "htm" | "html" | "json" | "xml" | "zip" | "7z" | "rar" | "tar" | "gz"
+        "txt"
+            | "md"
+            | "markdown"
+            | "csv"
+            | "rtf"
+            | "doc"
+            | "docx"
+            | "xls"
+            | "xlsx"
+            | "ppt"
+            | "pptx"
+            | "odt"
+            | "ods"
+            | "odp"
+            | "epub"
+            | "htm"
+            | "html"
+            | "json"
+            | "xml"
+            | "zip"
+            | "7z"
+            | "rar"
+            | "tar"
+            | "gz"
     )
 }
 
@@ -785,8 +895,14 @@ pub fn local_link(href: &str, page_path: Option<&str>) -> Option<LinkAction> {
     let target = if value.to_ascii_lowercase().starts_with("file:") {
         url::Url::parse(value).ok()?.to_file_path().ok()?
     } else {
-        let decoded = percent_encoding::percent_decode_str(value).decode_utf8().ok()?.into_owned();
-        if let Some(rest) = decoded.strip_prefix("~/").or_else(|| decoded.strip_prefix("~\\")) {
+        let decoded = percent_encoding::percent_decode_str(value)
+            .decode_utf8()
+            .ok()?
+            .into_owned();
+        if let Some(rest) = decoded
+            .strip_prefix("~/")
+            .or_else(|| decoded.strip_prefix("~\\"))
+        {
             paths::home_dir().join(rest)
         } else if Path::new(&decoded).is_absolute() {
             PathBuf::from(decoded)
@@ -873,11 +989,14 @@ fn describe(root: &Path, absolute: &Path, relative: &str, changes: &mut Vec<Valu
         if depth > 16 {
             return;
         }
-        let Ok(entries) = fs::read_dir(absolute) else { return };
+        let Ok(entries) = fs::read_dir(absolute) else {
+            return;
+        };
         for entry in entries.flatten() {
             let child = entry.path();
             let child_relative = to_relative(root, &child);
-            if entry.file_name().to_string_lossy().contains(TEMP_MARK) || is_hidden(&child_relative) {
+            if entry.file_name().to_string_lossy().contains(TEMP_MARK) || is_hidden(&child_relative)
+            {
                 continue;
             }
             describe(root, &child, &child_relative, changes, depth + 1);
@@ -907,13 +1026,19 @@ mod tests {
     #[test]
     fn paths_stay_inside_the_vault() {
         let root = Path::new("/notes");
-        assert_eq!(resolve_in(root, "a/b.md").unwrap(), Path::new("/notes/a/b.md"));
+        assert_eq!(
+            resolve_in(root, "a/b.md").unwrap(),
+            Path::new("/notes/a/b.md")
+        );
         assert!(resolve_in(root, "../etc/passwd").is_err());
         assert!(resolve_in(root, "a/../../x").is_err());
         assert!(resolve_in(root, "/etc/passwd").is_err());
         assert!(resolve_in(root, "a\\b").is_err());
         assert!(resolve_in(root, "").is_err());
-        assert_eq!(resolve_in(root, "a/../b.md").unwrap(), Path::new("/notes/b.md"));
+        assert_eq!(
+            resolve_in(root, "a/../b.md").unwrap(),
+            Path::new("/notes/b.md")
+        );
     }
 
     #[test]
@@ -928,10 +1053,19 @@ mod tests {
 
     #[test]
     fn ops_keep_undefined_and_null_apart() {
-        let missing: VaultOp = serde_json::from_value(json!({ "op": "write", "path": "a.md", "text": "" })).unwrap();
-        let null: VaultOp =
-            serde_json::from_value(json!({ "op": "write", "path": "a.md", "text": "", "expect": null })).unwrap();
+        let missing: VaultOp =
+            serde_json::from_value(json!({ "op": "write", "path": "a.md", "text": "" })).unwrap();
+        let null: VaultOp = serde_json::from_value(
+            json!({ "op": "write", "path": "a.md", "text": "", "expect": null }),
+        )
+        .unwrap();
         assert!(matches!(missing, VaultOp::Write { expect: None, .. }));
-        assert!(matches!(null, VaultOp::Write { expect: Some(None), .. }));
+        assert!(matches!(
+            null,
+            VaultOp::Write {
+                expect: Some(None),
+                ..
+            }
+        ));
     }
 }

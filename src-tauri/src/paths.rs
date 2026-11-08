@@ -17,11 +17,16 @@ pub fn init_data_dir(fallback: Option<PathBuf>) {
 }
 
 pub fn data_dir() -> PathBuf {
-    DATA_DIR.get().cloned().unwrap_or_else(|| PathBuf::from("."))
+    DATA_DIR
+        .get()
+        .cloned()
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 pub fn documents_dir() -> PathBuf {
-    dirs::document_dir().or_else(dirs::home_dir).unwrap_or_else(|| PathBuf::from("."))
+    dirs::document_dir()
+        .or_else(dirs::home_dir)
+        .unwrap_or_else(|| PathBuf::from("."))
 }
 
 pub fn home_dir() -> PathBuf {
@@ -58,7 +63,10 @@ pub fn write_atomic_plain(target: &Path, data: &[u8]) -> std::io::Result<()> {
     }
     let temp = target.with_file_name(format!(
         "{}.tmp",
-        target.file_name().and_then(|name| name.to_str()).unwrap_or("file")
+        target
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("file")
     ));
     std::fs::write(&temp, data)?;
     std::fs::rename(&temp, target)
@@ -86,7 +94,13 @@ pub fn now_ms() -> u64 {
 pub fn safe_file_name(name: &str, fallback: &str) -> String {
     let cleaned: String = name
         .chars()
-        .map(|c| if "\\/:*?\"<>|".contains(c) || c.is_control() { ' ' } else { c })
+        .map(|c| {
+            if "\\/:*?\"<>|".contains(c) || c.is_control() {
+                ' '
+            } else {
+                c
+            }
+        })
         .collect();
     let trimmed: String = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
     let short: String = trimmed.chars().take(120).collect();

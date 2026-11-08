@@ -13,7 +13,9 @@ use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::ipc::{InvokeBody, Request, Response};
-use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{
+    AppHandle, Emitter, Manager, Runtime, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
@@ -68,7 +70,9 @@ fn is_web_url(url: &str) -> bool {
 
 // blocking work, files above all, runs off the threads that answer the interface
 async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Res<T> {
-    tauri::async_runtime::spawn_blocking(work).await.map_err(|error| error.to_string())
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|error| error.to_string())
 }
 
 // ---- the app
@@ -114,14 +118,20 @@ fn copy_rich<R: Runtime>(app: AppHandle<R>, text: String, html: String) -> bool 
 // fetched here rather than in the page, which most image hosts would refuse
 #[tauri::command]
 async fn fetch_image(url: String) -> Res<Response> {
-    if !url.to_ascii_lowercase().starts_with("http://") && !url.to_ascii_lowercase().starts_with("https://") {
+    if !url.to_ascii_lowercase().starts_with("http://")
+        && !url.to_ascii_lowercase().starts_with("https://")
+    {
         return Err("Not allowed.".into());
     }
     let client = reqwest::Client::builder()
         .user_agent(concat!("Morrow/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|error| error.to_string())?;
-    let response = client.get(&url).send().await.map_err(|error| error.to_string())?;
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
     let kind = response
         .headers()
         .get("content-type")
@@ -150,7 +160,9 @@ async fn fetch_image(url: String) -> Res<Response> {
 
 #[tauri::command]
 fn show_data_folder<R: Runtime>(app: AppHandle<R>) {
-    let _ = app.opener().open_path(paths::data_dir().to_string_lossy(), None::<&str>);
+    let _ = app
+        .opener()
+        .open_path(paths::data_dir().to_string_lossy(), None::<&str>);
 }
 
 fn backups_dir() -> PathBuf {
@@ -160,7 +172,9 @@ fn backups_dir() -> PathBuf {
 #[tauri::command]
 fn show_backups<R: Runtime>(app: AppHandle<R>) {
     let _ = std::fs::create_dir_all(backups_dir());
-    let _ = app.opener().open_path(backups_dir().to_string_lossy(), None::<&str>);
+    let _ = app
+        .opener()
+        .open_path(backups_dir().to_string_lossy(), None::<&str>);
 }
 
 // writes to a temporary file first so a crash never leaves a half written backup, keeps the last twenty
@@ -204,7 +218,12 @@ fn notify<R: Runtime>(app: AppHandle<R>, title: String, body: String) {
 }
 
 // asks where to save, starting in documents with the name given
-async fn ask_save_path<R: Runtime>(app: &AppHandle<R>, title: &str, name: &str, filter: Option<(&str, &str)>) -> Option<PathBuf> {
+async fn ask_save_path<R: Runtime>(
+    app: &AppHandle<R>,
+    title: &str,
+    name: &str,
+    filter: Option<(&str, &str)>,
+) -> Option<PathBuf> {
     let mut dialog = app
         .dialog()
         .file()
@@ -231,7 +250,9 @@ async fn save_file<R: Runtime>(app: AppHandle<R>, request: Request<'_>) -> Res<V
     let InvokeBody::Raw(data) = request.body() else {
         return Err("Invalid file data.".into());
     };
-    let extension = Path::new(&name).extension().map(|ext| ext.to_string_lossy().into_owned());
+    let extension = Path::new(&name)
+        .extension()
+        .map(|ext| ext.to_string_lossy().into_owned());
     let filter = extension.as_deref().map(|ext| (ext, ext));
     let Some(path) = ask_save_path(&app, "Save", &name, filter).await else {
         return Ok(json!({ "ok": false, "error": null }));
@@ -246,7 +267,11 @@ async fn save_file<R: Runtime>(app: AppHandle<R>, request: Request<'_>) -> Res<V
 
 // prints the page as it looks, with print styles hiding the rest of the app, and saves it where asked
 #[tauri::command]
-async fn export_pdf<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>, name: String) -> Value {
+async fn export_pdf<R: Runtime>(
+    app: AppHandle<R>,
+    window: WebviewWindow<R>,
+    name: String,
+) -> Value {
     // without a way to print straight to a file, the system's print dialog saves it instead
     if !native::PRINTS_TO_FILE {
         return match window.print() {
@@ -255,7 +280,14 @@ async fn export_pdf<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>, nam
         };
     }
     let base = paths::safe_file_name(&name, "Page");
-    let Some(path) = ask_save_path(&app, "Export as PDF", &format!("{base}.pdf"), Some(("PDF", "pdf"))).await else {
+    let Some(path) = ask_save_path(
+        &app,
+        "Export as PDF",
+        &format!("{base}.pdf"),
+        Some(("PDF", "pdf")),
+    )
+    .await
+    else {
         return json!({ "ok": false, "error": null });
     };
     // paper is white whatever the theme
@@ -269,18 +301,39 @@ async fn export_pdf<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>, nam
 
 // a picture of part of the window, such as a whole canvas fitted into view, saved where the person picks
 #[tauri::command]
-async fn export_png<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>, name: String, area: Value) -> Value {
-    let numbers: Vec<f64> = ["x", "y", "width", "height"].iter().filter_map(|key| area[key].as_f64()).collect();
+async fn export_png<R: Runtime>(
+    app: AppHandle<R>,
+    window: WebviewWindow<R>,
+    name: String,
+    area: Value,
+) -> Value {
+    let numbers: Vec<f64> = ["x", "y", "width", "height"]
+        .iter()
+        .filter_map(|key| area[key].as_f64())
+        .collect();
     if numbers.len() != 4 || numbers.iter().any(|value| !value.is_finite()) {
         return json!({ "ok": false, "error": "Nothing to save." });
     }
     let viewport = area["viewportWidth"].as_f64().unwrap_or(0.0);
-    let png = match native::capture(&window, [numbers[0], numbers[1], numbers[2], numbers[3]], viewport).await {
+    let png = match native::capture(
+        &window,
+        [numbers[0], numbers[1], numbers[2], numbers[3]],
+        viewport,
+    )
+    .await
+    {
         Ok(png) => png,
         Err(error) => return json!({ "ok": false, "error": error }),
     };
     let base = paths::safe_file_name(&name, "Canvas");
-    let Some(path) = ask_save_path(&app, "Save as image", &format!("{base}.png"), Some(("PNG", "png"))).await else {
+    let Some(path) = ask_save_path(
+        &app,
+        "Save as image",
+        &format!("{base}.png"),
+        Some(("PNG", "png")),
+    )
+    .await
+    else {
         return json!({ "ok": false, "error": null });
     };
     match std::fs::write(&path, png) {
@@ -293,7 +346,10 @@ async fn export_png<R: Runtime>(app: AppHandle<R>, window: WebviewWindow<R>, nam
 
 fn header(request: &Request<'_>, name: &str) -> Option<String> {
     let value = request.headers().get(name)?.to_str().ok()?;
-    percent_encoding::percent_decode_str(value).decode_utf8().ok().map(|text| text.into_owned())
+    percent_encoding::percent_decode_str(value)
+        .decode_utf8()
+        .ok()
+        .map(|text| text.into_owned())
 }
 
 #[tauri::command]
@@ -315,7 +371,11 @@ async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> O
     dialog.pick_folder(move |path| {
         let _ = send.send(path.and_then(|path| path.into_path().ok()));
     });
-    receive.await.ok().flatten().map(|path| path.to_string_lossy().into_owned())
+    receive
+        .await
+        .ok()
+        .flatten()
+        .map(|path| path.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -351,7 +411,9 @@ async fn vault_open<R: Runtime>(app: AppHandle<R>) -> Res<Value> {
             return Ok(json!({ "ok": false, "root": null }));
         };
         let handle = app.clone();
-        vault::open(&current, move |changes| to_window(&handle, "vault:changes", changes))?;
+        vault::open(&current, move |changes| {
+            to_window(&handle, "vault:changes", changes)
+        })?;
         Ok(json!({ "ok": true, "root": current }))
     })
     .await?
@@ -379,7 +441,10 @@ async fn vault_read_text(path: String) -> Res<Option<String>> {
 
 #[tauri::command]
 async fn vault_read_bytes(path: String) -> Res<Response> {
-    blocking(move || vault::read_bytes(&path)).await?.map(Response::new).ok_or_else(|| "missing".into())
+    blocking(move || vault::read_bytes(&path))
+        .await?
+        .map(Response::new)
+        .ok_or_else(|| "missing".into())
 }
 
 #[tauri::command]
@@ -408,7 +473,9 @@ fn vault_reveal<R: Runtime>(app: AppHandle<R>, path: Option<String>) -> Res<()> 
         Some(path) => vault::resolve(&path)?,
         None => vault::current().ok_or("No vault is open.")?,
     };
-    app.opener().reveal_item_in_dir(target).map_err(|error| error.to_string())
+    app.opener()
+        .reveal_item_in_dir(target)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -416,14 +483,21 @@ fn vault_open_file<R: Runtime>(app: AppHandle<R>, path: String) -> bool {
     if !vault::openable(&path) {
         return false;
     }
-    let Some(absolute) = vault::file_path(&path) else { return false };
-    app.opener().open_path(absolute.to_string_lossy(), None::<&str>).is_ok()
+    let Some(absolute) = vault::file_path(&path) else {
+        return false;
+    };
+    app.opener()
+        .open_path(absolute.to_string_lossy(), None::<&str>)
+        .is_ok()
 }
 
 #[tauri::command]
 fn vault_open_link<R: Runtime>(app: AppHandle<R>, href: String, page_path: Option<String>) -> bool {
     match vault::local_link(&href, page_path.as_deref()) {
-        Some(vault::LinkAction::Open(path)) => app.opener().open_path(path.to_string_lossy(), None::<&str>).is_ok(),
+        Some(vault::LinkAction::Open(path)) => app
+            .opener()
+            .open_path(path.to_string_lossy(), None::<&str>)
+            .is_ok(),
         Some(vault::LinkAction::Reveal(path)) => app.opener().reveal_item_in_dir(path).is_ok(),
         None => false,
     }
@@ -437,10 +511,14 @@ async fn vault_copy_image<R: Runtime>(app: AppHandle<R>, path: String) -> Res<bo
     }
     let decoded = blocking(move || {
         let bytes = vault::read_bytes(&path)?;
-        image::load_from_memory(&bytes).ok().map(|image| image.to_rgba8())
+        image::load_from_memory(&bytes)
+            .ok()
+            .map(|image| image.to_rgba8())
     })
     .await?;
-    let Some(rgba) = decoded else { return Ok(false) };
+    let Some(rgba) = decoded else {
+        return Ok(false);
+    };
     let (width, height) = rgba.dimensions();
     let image = tauri::image::Image::new_owned(rgba.into_raw(), width, height);
     Ok(app.clipboard().write_image(&image).is_ok())
@@ -541,7 +619,11 @@ async fn update_check() -> Value {
 #[tauri::command]
 async fn update_install<R: Runtime>(app: AppHandle<R>) -> Value {
     let handle = app.clone();
-    match updates::install(&app, move |share| to_window(&handle, "update:progress", share)).await {
+    match updates::install(&app, move |share| {
+        to_window(&handle, "update:progress", share)
+    })
+    .await
+    {
         Ok(()) => json!({ "ok": true }),
         Err(error) => json!({ "ok": false, "error": error }),
     }
@@ -590,7 +672,10 @@ fn mcp_is_enabled() -> bool {
 // ---- files in the vault and on the computer, for pictures, sound and video in pages
 
 fn not_found() -> tauri::http::Response<Vec<u8>> {
-    tauri::http::Response::builder().status(404).body(b"Not found".to_vec()).expect("valid response")
+    tauri::http::Response::builder()
+        .status(404)
+        .body(b"Not found".to_vec())
+        .expect("valid response")
 }
 
 // pictures, sound and video a page links to elsewhere on the computer play from where they are, without a
@@ -598,12 +683,17 @@ fn not_found() -> tauri::http::Response<Vec<u8>> {
 fn local_media_path(value: &str) -> Option<PathBuf> {
     // the address drops the leading slash, a windows path keeps its drive, C:/folder/file
     let bytes = value.as_bytes();
-    let windows_drive = bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'/';
-    let file = if windows_drive { PathBuf::from(value) } else { PathBuf::from(format!("/{value}")) };
+    let windows_drive =
+        bytes.len() > 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' && bytes[2] == b'/';
+    let file = if windows_drive {
+        PathBuf::from(value)
+    } else {
+        PathBuf::from(format!("/{value}"))
+    };
     let extension = file.extension()?.to_string_lossy().to_ascii_lowercase();
     let media = [
-        "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "svg", "mp3", "m4a", "wav", "ogg", "oga", "flac", "aac",
-        "opus", "weba", "mp4", "m4v", "webm", "mov", "ogv",
+        "png", "jpg", "jpeg", "gif", "webp", "avif", "bmp", "svg", "mp3", "m4a", "wav", "ogg",
+        "oga", "flac", "aac", "opus", "weba", "mp4", "m4v", "webm", "mov", "ogv",
     ];
     (file.is_absolute() && media.contains(&extension.as_str())).then(|| paths::normalize(&file))
 }
@@ -612,20 +702,30 @@ fn local_media_path(value: &str) -> Option<PathBuf> {
 // its webview, there they arrive as http://morrow-file.localhost/vault/<path>
 fn serve_file(request: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
     let raw_path = request.uri().path().trim_start_matches('/');
-    let Some((kind, rest)) = raw_path.split_once('/') else { return not_found() };
-    let Ok(relative) = percent_encoding::percent_decode_str(rest).decode_utf8() else { return not_found() };
+    let Some((kind, rest)) = raw_path.split_once('/') else {
+        return not_found();
+    };
+    let Ok(relative) = percent_encoding::percent_decode_str(rest).decode_utf8() else {
+        return not_found();
+    };
     let file = match kind {
         "vault" => vault::file_path(&relative),
         "local" => local_media_path(&relative),
         _ => None,
     };
-    let Some(file) = file.filter(|file| file.is_file()) else { return not_found() };
-    let Ok(info) = std::fs::metadata(&file) else { return not_found() };
+    let Some(file) = file.filter(|file| file.is_file()) else {
+        return not_found();
+    };
+    let Ok(info) = std::fs::metadata(&file) else {
+        return not_found();
+    };
     if info.len() > vault::MAX_FILE_BYTES {
         return not_found();
     }
     let size = info.len();
-    let mime = mime_guess::from_path(&file).first_or_octet_stream().to_string();
+    let mime = mime_guess::from_path(&file)
+        .first_or_octet_stream()
+        .to_string();
     let mut builder = tauri::http::Response::builder()
         .header("Content-Type", &mime)
         .header("Accept-Ranges", "bytes")
@@ -647,14 +747,21 @@ fn serve_file(request: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<
         .and_then(|value| {
             let (start, end) = value.split_once('-')?;
             let start: u64 = start.parse().ok()?;
-            let end: u64 = if end.is_empty() { (start + 4 * 1024 * 1024).min(size) - 1 } else { end.parse().ok()? };
+            let end: u64 = if end.is_empty() {
+                (start + 4 * 1024 * 1024).min(size) - 1
+            } else {
+                end.parse().ok()?
+            };
             (start <= end && end < size).then_some((start, end))
         });
     if let Some((start, end)) = range {
         use std::io::{Read, Seek, SeekFrom};
         let mut data = vec![0u8; (end - start + 1) as usize];
-        let read = std::fs::File::open(&file)
-            .and_then(|mut handle| handle.seek(SeekFrom::Start(start)).and_then(|_| handle.read_exact(&mut data)));
+        let read = std::fs::File::open(&file).and_then(|mut handle| {
+            handle
+                .seek(SeekFrom::Start(start))
+                .and_then(|_| handle.read_exact(&mut data))
+        });
         if read.is_err() {
             return not_found();
         }
@@ -666,7 +773,10 @@ fn serve_file(request: &tauri::http::Request<Vec<u8>>) -> tauri::http::Response<
             .unwrap_or_else(|_| not_found());
     }
     match std::fs::read(&file) {
-        Ok(data) => builder.status(200).body(data).unwrap_or_else(|_| not_found()),
+        Ok(data) => builder
+            .status(200)
+            .body(data)
+            .unwrap_or_else(|_| not_found()),
         Err(_) => not_found(),
     }
 }
@@ -695,7 +805,9 @@ fn create_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         // links to the web open in the browser, the window only ever shows morrow itself
         .on_navigation(move |url| {
             let internal = matches!(url.scheme(), "tauri" | "morrow-file")
-                || url.host_str().is_some_and(|host| host.ends_with(".localhost") || host == "localhost");
+                || url
+                    .host_str()
+                    .is_some_and(|host| host.ends_with(".localhost") || host == "localhost");
             if !internal && is_web_url(url.as_str()) {
                 let _ = handle.opener().open_url(url.as_str(), None::<&str>);
             }
@@ -746,11 +858,14 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder
-            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| bring_forward(app)))
+            .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+                bring_forward(app)
+            }))
             .plugin(
                 tauri_plugin_window_state::Builder::default()
                     .with_state_flags(
-                        tauri_plugin_window_state::StateFlags::all() - tauri_plugin_window_state::StateFlags::VISIBLE,
+                        tauri_plugin_window_state::StateFlags::all()
+                            - tauri_plugin_window_state::StateFlags::VISIBLE,
                     )
                     .build(),
             );
@@ -855,4 +970,48 @@ pub fn run() {
                 vault::close();
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serves_local_media_in_parts() {
+        let dir = std::env::temp_dir().join(format!("morrow-serve-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("clip.mp4");
+        std::fs::write(&file, (0u8..=255).collect::<Vec<_>>()).unwrap();
+        let path = file.to_string_lossy().trim_start_matches('/').to_string();
+        let request = |range: Option<&str>| {
+            let mut builder = tauri::http::Request::builder()
+                .uri(format!("morrow-file://localhost/local/{path}"));
+            if let Some(range) = range {
+                builder = builder.header("range", range);
+            }
+            serve_file(&builder.body(Vec::new()).unwrap())
+        };
+        let whole = request(None);
+        assert_eq!(whole.status(), 200);
+        assert_eq!(whole.body().len(), 256);
+        assert_eq!(whole.headers()["content-type"], "video/mp4");
+        let part = request(Some("bytes=10-19"));
+        assert_eq!(part.status(), 206);
+        assert_eq!(part.body(), &(10u8..20).collect::<Vec<_>>());
+        assert_eq!(part.headers()["content-range"], "bytes 10-19/256");
+        let open_ended = request(Some("bytes=250-"));
+        assert_eq!(open_ended.body().len(), 6);
+        // only media is served from outside the vault
+        let text = dir.join("secret.txt");
+        std::fs::write(&text, "no").unwrap();
+        let other = tauri::http::Request::builder()
+            .uri(format!(
+                "morrow-file://localhost/local/{}",
+                text.to_string_lossy().trim_start_matches('/')
+            ))
+            .body(Vec::new())
+            .unwrap();
+        assert_eq!(serve_file(&other).status(), 404);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

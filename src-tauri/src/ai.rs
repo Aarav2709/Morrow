@@ -66,7 +66,10 @@ const PROVIDERS: [Provider; 5] = [
 ];
 
 fn provider_of(id: &str) -> &'static Provider {
-    PROVIDERS.iter().find(|provider| provider.id == id).unwrap_or(&PROVIDERS[0])
+    PROVIDERS
+        .iter()
+        .find(|provider| provider.id == id)
+        .unwrap_or(&PROVIDERS[0])
 }
 
 #[derive(Clone)]
@@ -83,7 +86,11 @@ struct State {
     keychain: Option<bool>,
 }
 
-static STATE: Mutex<State> = Mutex::new(State { stored: None, key: None, keychain: None });
+static STATE: Mutex<State> = Mutex::new(State {
+    stored: None,
+    key: None,
+    keychain: None,
+});
 static RUNNING: Mutex<Option<HashMap<String, oneshot::Sender<()>>>> = Mutex::new(None);
 
 fn settings_file() -> PathBuf {
@@ -97,7 +104,9 @@ fn entry() -> Option<keyring::Entry> {
 // a keychain counts when it answers, even to say there is no key in it yet
 fn keychain_works(state: &mut State) -> bool {
     *state.keychain.get_or_insert_with(|| {
-        entry().is_some_and(|entry| matches!(entry.get_password(), Ok(_) | Err(keyring::Error::NoEntry)))
+        entry().is_some_and(|entry| {
+            matches!(entry.get_password(), Ok(_) | Err(keyring::Error::NoEntry))
+        })
     })
 }
 
@@ -109,8 +118,14 @@ fn load(state: &mut State) -> Stored {
     let provider = provider_of(raw["provider"].as_str().unwrap_or("anthropic"));
     let stored = Stored {
         provider: provider.id.to_string(),
-        model: raw["model"].as_str().unwrap_or(provider.default_model).to_string(),
-        base_url: raw["baseUrl"].as_str().unwrap_or(provider.base_url).to_string(),
+        model: raw["model"]
+            .as_str()
+            .unwrap_or(provider.default_model)
+            .to_string(),
+        base_url: raw["baseUrl"]
+            .as_str()
+            .unwrap_or(provider.base_url)
+            .to_string(),
     };
     state.stored = Some(stored.clone());
     stored
@@ -138,7 +153,11 @@ fn read_key(state: &mut State) -> Option<String> {
     if let Some(key) = &state.key {
         return key.clone();
     }
-    let key = if keychain_works(state) { entry().and_then(|entry| entry.get_password().ok()) } else { None };
+    let key = if keychain_works(state) {
+        entry().and_then(|entry| entry.get_password().ok())
+    } else {
+        None
+    };
     state.key = Some(key.clone());
     key
 }
@@ -191,7 +210,10 @@ pub fn configure(patch: Value) -> Result<Value, String> {
     let mut state = STATE.lock().unwrap_or_else(|poison| poison.into_inner());
     let current = load(&mut state);
     let mut next = current.clone();
-    if let Some(id) = patch["provider"].as_str().filter(|id| *id != current.provider) {
+    if let Some(id) = patch["provider"]
+        .as_str()
+        .filter(|id| *id != current.provider)
+    {
         let provider = provider_of(id);
         next.provider = provider.id.into();
         next.model = provider.default_model.into();
@@ -206,7 +228,9 @@ pub fn configure(patch: Value) -> Result<Value, String> {
     }
     match patch.get("key") {
         Some(Value::Null) => set_key(&mut state, None),
-        Some(Value::String(key)) if !key.trim().is_empty() => set_key(&mut state, Some(key.trim().to_string())),
+        Some(Value::String(key)) if !key.trim().is_empty() => {
+            set_key(&mut state, Some(key.trim().to_string()))
+        }
         _ => {}
     }
     save(&mut state, next)?;
@@ -248,7 +272,11 @@ fn describe_error(error: &reqwest::Error, local: bool) -> String {
             "Could not reach the service. Are you online?".into()
         };
     }
-    if lower.contains("reset") || lower.contains("closed") || lower.contains("incomplete") || error.is_body() {
+    if lower.contains("reset")
+        || lower.contains("closed")
+        || lower.contains("incomplete")
+        || error.is_body()
+    {
         return "The model stopped before answering. It may have run out of memory, try a smaller model.".into();
     }
     reason
@@ -259,7 +287,11 @@ async fn http_error(response: reqwest::Response) -> String {
     let body: Value = response.json().await.unwrap_or(Value::Null);
     let detail = match &body["error"] {
         Value::String(text) => text.clone(),
-        error => error["message"].as_str().or(body["message"].as_str()).unwrap_or_default().to_string(),
+        error => error["message"]
+            .as_str()
+            .or(body["message"].as_str())
+            .unwrap_or_default()
+            .to_string(),
     };
     match status {
         401 => "The API key was not accepted.".into(),
@@ -272,7 +304,9 @@ async fn http_error(response: reqwest::Response) -> String {
 }
 
 fn anthropic(request: reqwest::RequestBuilder, key: &str) -> reqwest::RequestBuilder {
-    request.header("x-api-key", key).header("anthropic-version", "2023-06-01")
+    request
+        .header("x-api-key", key)
+        .header("anthropic-version", "2023-06-01")
 }
 
 pub async fn models() -> Value {
@@ -294,7 +328,9 @@ pub async fn models() -> Value {
             }
             let response = match anthropic(client.get(url), &key).send().await {
                 Ok(response) => response,
-                Err(error) => return json!({ "ok": false, "models": [], "error": describe_error(&error, false) }),
+                Err(error) => {
+                    return json!({ "ok": false, "models": [], "error": describe_error(&error, false) })
+                }
             };
             if !response.status().is_success() {
                 return json!({ "ok": false, "models": [], "error": http_error(response).await });
@@ -318,14 +354,25 @@ pub async fn models() -> Value {
     }
     let response = match request.send().await {
         Ok(response) => response,
-        Err(error) => return json!({ "ok": false, "models": [], "error": describe_error(&error, local) }),
+        Err(error) => {
+            return json!({ "ok": false, "models": [], "error": describe_error(&error, local) })
+        }
     };
     if !response.status().is_success() {
         return json!({ "ok": false, "models": [], "error": http_error(response).await });
     }
     let body: Value = response.json().await.unwrap_or(Value::Null);
     let skip = [
-        "embed", "tts", "whisper", "dall-e", "moderation", "transcribe", "image", "audio", "realtime", "imagen",
+        "embed",
+        "tts",
+        "whisper",
+        "dall-e",
+        "moderation",
+        "transcribe",
+        "image",
+        "audio",
+        "realtime",
+        "imagen",
         "veo",
     ];
     // only models that chat, not the ones for pictures, speech or embeddings
@@ -344,7 +391,11 @@ pub async fn models() -> Value {
 }
 
 pub fn cancel(id: &str) {
-    if let Some(sender) = RUNNING.lock().ok().and_then(|mut running| running.as_mut()?.remove(id)) {
+    if let Some(sender) = RUNNING
+        .lock()
+        .ok()
+        .and_then(|mut running| running.as_mut()?.remove(id))
+    {
         let _ = sender.send(());
     }
 }
@@ -362,7 +413,9 @@ pub async fn turn(request: Value) -> Value {
     let id = request["id"].as_str().unwrap_or_default().to_string();
     let (stop, stopped) = oneshot::channel();
     if let Ok(mut running) = RUNNING.lock() {
-        running.get_or_insert_with(HashMap::new).insert(id.clone(), stop);
+        running
+            .get_or_insert_with(HashMap::new)
+            .insert(id.clone(), stop);
     }
     let work = async {
         if provider.id == "anthropic" {
@@ -425,16 +478,22 @@ async fn claude_turn(request: &Value, stored: &Stored, key: &str) -> Result<Valu
         // a declined request is answered by the model anthropic recommends for it instead of stopping
         "fallbacks": "default",
     });
-    let response = anthropic(client().post(format!("{ANTHROPIC}/messages?beta=true")), key)
-        .header("anthropic-beta", "server-side-fallback-2026-07-01")
-        .json(&body)
-        .send()
-        .await
-        .map_err(|error| describe_error(&error, false))?;
+    let response = anthropic(
+        client().post(format!("{ANTHROPIC}/messages?beta=true")),
+        key,
+    )
+    .header("anthropic-beta", "server-side-fallback-2026-07-01")
+    .json(&body)
+    .send()
+    .await
+    .map_err(|error| describe_error(&error, false))?;
     if !response.status().is_success() {
         return Err(http_error(response).await);
     }
-    let reply: Value = response.json().await.map_err(|error| describe_error(&error, false))?;
+    let reply: Value = response
+        .json()
+        .await
+        .map_err(|error| describe_error(&error, false))?;
     let content = reply["content"].as_array().cloned().unwrap_or_default();
     // the whole reply goes back next time, as it came, so nothing the model needs is lost
     history.push(json!({ "role": "assistant", "content": content }));
@@ -458,7 +517,9 @@ async fn claude_turn(request: &Value, stored: &Stored, key: &str) -> Result<Valu
     let model = reply["model"].as_str().unwrap_or(&stored.model).to_string();
     let reason = reply["stop_reason"].as_str().unwrap_or_default();
     if reason == "refusal" {
-        let explanation = reply["stop_details"]["explanation"].as_str().unwrap_or("The model declined to answer this.");
+        let explanation = reply["stop_details"]["explanation"]
+            .as_str()
+            .unwrap_or("The model declined to answer this.");
         return Ok(json!({
             "ok": true,
             "history": history,
@@ -475,7 +536,9 @@ async fn claude_turn(request: &Value, stored: &Stored, key: &str) -> Result<Valu
     } else {
         "done"
     };
-    Ok(json!({ "ok": true, "history": history, "text": text, "toolCalls": tool_calls, "stop": stop, "model": model }))
+    Ok(
+        json!({ "ok": true, "history": history, "text": text, "toolCalls": tool_calls, "stop": stop, "model": model }),
+    )
 }
 
 fn parse_arguments(raw: Option<&str>) -> Value {
@@ -489,7 +552,11 @@ fn parse_arguments(raw: Option<&str>) -> Value {
     }
 }
 
-async fn compatible_turn(request: &Value, stored: &Stored, key: Option<&str>) -> Result<Value, String> {
+async fn compatible_turn(
+    request: &Value,
+    stored: &Stored,
+    key: Option<&str>,
+) -> Result<Value, String> {
     let mut history = request["history"].as_array().cloned().unwrap_or_default();
     let add = &request["add"];
     if add["kind"] == "user" {
@@ -531,11 +598,17 @@ async fn compatible_turn(request: &Value, stored: &Stored, key: Option<&str>) ->
         post = post.header("X-Title", "Morrow");
     }
     let local = stored.provider == "custom";
-    let response = post.send().await.map_err(|error| describe_error(&error, local))?;
+    let response = post
+        .send()
+        .await
+        .map_err(|error| describe_error(&error, local))?;
     if !response.status().is_success() {
         return Err(http_error(response).await);
     }
-    let body: Value = response.json().await.map_err(|error| describe_error(&error, local))?;
+    let body: Value = response
+        .json()
+        .await
+        .map_err(|error| describe_error(&error, local))?;
     let choice = &body["choices"][0];
     let message = &choice["message"];
     if !message.is_object() {
@@ -575,7 +648,11 @@ async fn compatible_turn(request: &Value, stored: &Stored, key: Option<&str>) ->
     let finish = choice["finish_reason"].as_str().unwrap_or_default();
     let refusal = message["refusal"].as_str().filter(|text| !text.is_empty());
     let refused = finish == "content_filter" || refusal.is_some();
-    let text = if message["content"].is_string() { content } else { refusal.unwrap_or_default().to_string() };
+    let text = if message["content"].is_string() {
+        content
+    } else {
+        refusal.unwrap_or_default().to_string()
+    };
     let stop = if refused {
         "refusal"
     } else if finish == "length" {

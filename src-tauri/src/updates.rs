@@ -26,13 +26,19 @@ pub fn is_newer(candidate: &str, current: &str) -> bool {
             Some((core, pre)) => (core, Some(pre.to_string())),
             None => (version, None),
         };
-        let parts: Vec<u64> = core.split('.').map(|part| part.parse().unwrap_or(0)).collect();
+        let parts: Vec<u64> = core
+            .split('.')
+            .map(|part| part.parse().unwrap_or(0))
+            .collect();
         (parts, pre)
     };
     let (a, a_pre) = parse(candidate);
     let (b, b_pre) = parse(current);
     for i in 0..3 {
-        let (x, y) = (a.get(i).copied().unwrap_or(0), b.get(i).copied().unwrap_or(0));
+        let (x, y) = (
+            a.get(i).copied().unwrap_or(0),
+            b.get(i).copied().unwrap_or(0),
+        );
         if x != y {
             return x > y;
         }
@@ -71,12 +77,18 @@ fn installer_for(assets: &[Value], version: &str) -> Option<Asset> {
     } else {
         return None;
     };
-    assets.iter().find(|asset| asset["name"].as_str() == Some(&wanted)).map(|asset| Asset {
-        url: asset["browser_download_url"].as_str().unwrap_or_default().to_string(),
-        size: asset["size"].as_u64().unwrap_or(0),
-        digest: asset["digest"].as_str().map(String::from),
-        name: wanted.clone(),
-    })
+    assets
+        .iter()
+        .find(|asset| asset["name"].as_str() == Some(&wanted))
+        .map(|asset| Asset {
+            url: asset["browser_download_url"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string(),
+            size: asset["size"].as_u64().unwrap_or(0),
+            digest: asset["digest"].as_str().map(String::from),
+            name: wanted.clone(),
+        })
 }
 
 fn client() -> reqwest::Client {
@@ -97,15 +109,25 @@ pub async fn check() -> Result<Value, String> {
         return Err(format!("GitHub answered {}.", response.status().as_u16()));
     }
     let release: Value = response.json().await.map_err(|error| error.to_string())?;
-    let version = release["tag_name"].as_str().unwrap_or_default().trim_start_matches('v').to_string();
-    let skip = release["draft"].as_bool() == Some(true) || release["prerelease"].as_bool() == Some(true);
+    let version = release["tag_name"]
+        .as_str()
+        .unwrap_or_default()
+        .trim_start_matches('v')
+        .to_string();
+    let skip =
+        release["draft"].as_bool() == Some(true) || release["prerelease"].as_bool() == Some(true);
     if version.is_empty() || skip || !is_newer(&version, env!("CARGO_PKG_VERSION")) {
         *LATEST_ASSET.lock().map_err(|e| e.to_string())? = None;
         return Ok(Value::Null);
     }
     let assets = release["assets"].as_array().cloned().unwrap_or_default();
     let asset = installer_for(&assets, &version);
-    let notes: String = release["body"].as_str().unwrap_or_default().chars().take(8000).collect();
+    let notes: String = release["body"]
+        .as_str()
+        .unwrap_or_default()
+        .chars()
+        .take(8000)
+        .collect();
     let info = json!({
         "version": version,
         "notes": notes,
@@ -126,17 +148,32 @@ pub async fn install<R: tauri::Runtime>(
         .map_err(|e| e.to_string())?
         .clone()
         .ok_or("There is no update to install.")?;
-    let response = client().get(&asset.url).send().await.map_err(|error| error.to_string())?;
+    let response = client()
+        .get(&asset.url)
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
     if !response.status().is_success() {
-        return Err(format!("The download failed ({}).", response.status().as_u16()));
+        return Err(format!(
+            "The download failed ({}).",
+            response.status().as_u16()
+        ));
     }
     let mut data = Vec::with_capacity(asset.size as usize);
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
         data.extend_from_slice(&chunk.map_err(|error| error.to_string())?);
-        on_progress(if asset.size > 0 { (data.len() as f64 / asset.size as f64).min(1.0) } else { 0.0 });
+        on_progress(if asset.size > 0 {
+            (data.len() as f64 / asset.size as f64).min(1.0)
+        } else {
+            0.0
+        });
     }
-    if let Some(expected) = asset.digest.as_deref().and_then(|digest| digest.strip_prefix("sha256:")) {
+    if let Some(expected) = asset
+        .digest
+        .as_deref()
+        .and_then(|digest| digest.strip_prefix("sha256:"))
+    {
         if hex(&Sha256::digest(&data)) != expected.to_ascii_lowercase() {
             return Err("The download did not match the release, so it was not installed.".into());
         }
@@ -152,7 +189,8 @@ pub async fn install<R: tauri::Runtime>(
         app.exit(0);
         return Ok(());
     }
-    let target = std::env::var_os("APPIMAGE").ok_or("This copy of Morrow can not update itself.")?;
+    let target =
+        std::env::var_os("APPIMAGE").ok_or("This copy of Morrow can not update itself.")?;
     let target = std::path::PathBuf::from(target);
     let next = target.with_extension("AppImage.update");
     let replace = || -> std::io::Result<()> {
@@ -168,7 +206,9 @@ pub async fn install<R: tauri::Runtime>(
         let _ = std::fs::remove_file(&next);
         return Err(error.to_string());
     }
-    std::process::Command::new(&target).spawn().map_err(|error| error.to_string())?;
+    std::process::Command::new(&target)
+        .spawn()
+        .map_err(|error| error.to_string())?;
     app.exit(0);
     Ok(())
 }

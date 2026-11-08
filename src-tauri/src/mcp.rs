@@ -26,7 +26,10 @@ fn bundled_script<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBu
         .filter(|path| path.exists());
     // a development run uses the copy the build just made
     resource.or_else(|| {
-        let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("dist-mcp").join("index.js");
+        let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("dist-mcp")
+            .join("index.js");
         dev.exists().then(|| paths::normalize(&dev))
     })
 }
@@ -45,7 +48,8 @@ pub fn launch<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Value {
     };
     let script = paths::data_dir().join("mcp-server.mjs");
     let copied = std::fs::read(&bundled).ok().is_some_and(|source| {
-        std::fs::read(&script).ok().as_deref() == Some(&source[..]) || std::fs::write(&script, &source).is_ok()
+        std::fs::read(&script).ok().as_deref() == Some(&source[..])
+            || std::fs::write(&script, &source).is_ok()
     });
     let script = if copied { script } else { bundled };
     json!({ "command": command, "script": script.to_string_lossy(), "available": node.is_some() })

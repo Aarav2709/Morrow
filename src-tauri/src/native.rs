@@ -51,7 +51,11 @@ fn once<T: Send + 'static>() -> (impl Fn(T) + Clone + Send + 'static, oneshot::R
 // which zooming and the screen's scale make larger or smaller, so it says how wide it is in those
 pub fn crop_png(png: &[u8], area: [f64; 4], viewport_width: f64) -> Res<Vec<u8>> {
     let image = image::load_from_memory(png).map_err(|error| error.to_string())?;
-    let scale = if viewport_width > 0.0 { f64::from(image.width()) / viewport_width } else { 1.0 };
+    let scale = if viewport_width > 0.0 {
+        f64::from(image.width()) / viewport_width
+    } else {
+        1.0
+    };
     let [x, y, width, height] = area.map(|value| (value * scale).round().max(0.0) as u32);
     let x = x.min(image.width().saturating_sub(1));
     let y = y.min(image.height().saturating_sub(1));
@@ -69,7 +73,9 @@ pub fn crop_png(png: &[u8], area: [f64; 4], viewport_width: f64) -> Res<Vec<u8>>
 pub fn setup_webview<R: Runtime>(window: &WebviewWindow<R>) {
     let _ = window.with_webview(|webview| {
         use webkit2gtk::{WebContextExt, WebViewExt};
-        let Some(context) = webview.inner().context() else { return };
+        let Some(context) = webview.inner().context() else {
+            return;
+        };
         // webkitgtk leaves spelling off, it is checked in the languages this computer is set to
         let mut languages: Vec<String> = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"]
             .iter()
@@ -90,7 +96,9 @@ pub fn setup_webview<R: Runtime>(window: &WebviewWindow<R>) {
 
 #[cfg(target_os = "linux")]
 pub async fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Res<()> {
-    let uri = url::Url::from_file_path(path).map_err(|_| "Invalid path.".to_string())?.to_string();
+    let uri = url::Url::from_file_path(path)
+        .map_err(|_| "Invalid path.".to_string())?
+        .to_string();
     let (done, receive) = once::<Res<()>>();
     window
         .with_webview(move |webview| {
@@ -123,7 +131,11 @@ pub async fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) ->
 }
 
 #[cfg(target_os = "linux")]
-pub async fn capture<R: Runtime>(window: &WebviewWindow<R>, area: [f64; 4], viewport_width: f64) -> Res<Vec<u8>> {
+pub async fn capture<R: Runtime>(
+    window: &WebviewWindow<R>,
+    area: [f64; 4],
+    viewport_width: f64,
+) -> Res<Vec<u8>> {
     let (done, receive) = once::<Res<Vec<u8>>>();
     window
         .with_webview(move |webview| {
@@ -133,14 +145,16 @@ pub async fn capture<R: Runtime>(window: &WebviewWindow<R>, area: [f64; 4], view
                 SnapshotOptions::NONE,
                 None::<&gtk::gio::Cancellable>,
                 move |result| {
-                    let png = result.map_err(|error| error.to_string()).and_then(|surface| {
-                        let mut bytes = Vec::new();
-                        cairo::ImageSurface::try_from(surface)
-                            .map_err(|_| "The picture could not be made.".to_string())?
-                            .write_to_png(&mut bytes)
-                            .map_err(|error| error.to_string())?;
-                        Ok(bytes)
-                    });
+                    let png = result
+                        .map_err(|error| error.to_string())
+                        .and_then(|surface| {
+                            let mut bytes = Vec::new();
+                            cairo::ImageSurface::try_from(surface)
+                                .map_err(|_| "The picture could not be made.".to_string())?
+                                .write_to_png(&mut bytes)
+                                .map_err(|error| error.to_string())?;
+                            Ok(bytes)
+                        });
                     done(png);
                 },
             );
@@ -155,7 +169,9 @@ pub fn setup_webview<R: Runtime>(_window: &WebviewWindow<R>) {}
 
 #[cfg(windows)]
 pub async fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Res<()> {
-    use webview2_com::Microsoft::Web::WebView2::Win32::{ICoreWebView2Environment6, ICoreWebView2_7};
+    use webview2_com::Microsoft::Web::WebView2::Win32::{
+        ICoreWebView2Environment6, ICoreWebView2_7,
+    };
     use webview2_com::PrintToPdfCompletedHandler;
     use windows_core::{Interface, HSTRING};
     let target = HSTRING::from(path.as_os_str());
@@ -198,17 +214,22 @@ pub async fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) ->
 }
 
 #[cfg(windows)]
-pub async fn capture<R: Runtime>(window: &WebviewWindow<R>, area: [f64; 4], viewport_width: f64) -> Res<Vec<u8>> {
+pub async fn capture<R: Runtime>(
+    window: &WebviewWindow<R>,
+    area: [f64; 4],
+    viewport_width: f64,
+) -> Res<Vec<u8>> {
     use webview2_com::CapturePreviewCompletedHandler;
     use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG;
-    use windows::Win32::System::Com::{IStream, STATSTG, STATFLAG_NONAME, STREAM_SEEK_SET};
+    use windows::Win32::System::Com::{IStream, STATFLAG_NONAME, STATSTG, STREAM_SEEK_SET};
     use windows::Win32::UI::Shell::SHCreateMemStream;
     let (done, receive) = once::<Res<Vec<u8>>>();
     window
         .with_webview(move |webview| {
             let result = (|| -> windows_core::Result<()> {
                 let core = unsafe { webview.controller().CoreWebView2()? };
-                let stream: IStream = unsafe { SHCreateMemStream(None) }.ok_or_else(windows_core::Error::from_thread)?;
+                let stream: IStream = unsafe { SHCreateMemStream(None) }
+                    .ok_or_else(windows_core::Error::from_thread)?;
                 let reading = stream.clone();
                 let finished = done.clone();
                 let handler = CapturePreviewCompletedHandler::create(Box::new(move |result| {
@@ -218,14 +239,22 @@ pub async fn capture<R: Runtime>(window: &WebviewWindow<R>, area: [f64; 4], view
                         reading.Seek(0, STREAM_SEEK_SET, None)?;
                         let mut data = vec![0u8; stat.cbSize as usize];
                         let mut read = 0u32;
-                        reading.Read(data.as_mut_ptr().cast(), data.len() as u32, Some(&mut read)).ok()?;
+                        reading
+                            .Read(data.as_mut_ptr().cast(), data.len() as u32, Some(&mut read))
+                            .ok()?;
                         data.truncate(read as usize);
                         Ok(data)
                     });
                     finished(bytes.map_err(|error| error.message().to_string()));
                     Ok(())
                 }));
-                unsafe { core.CapturePreview(COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG, &stream, &handler) }
+                unsafe {
+                    core.CapturePreview(
+                        COREWEBVIEW2_CAPTURE_PREVIEW_IMAGE_FORMAT_PNG,
+                        &stream,
+                        &handler,
+                    )
+                }
             })();
             if let Err(error) = result {
                 done(Err(error.message().to_string()));
@@ -246,7 +275,11 @@ pub async fn print_to_pdf<R: Runtime>(_window: &WebviewWindow<R>, _path: &Path) 
 }
 
 #[cfg(not(any(target_os = "linux", windows)))]
-pub async fn capture<R: Runtime>(_window: &WebviewWindow<R>, _area: [f64; 4], _viewport_width: f64) -> Res<Vec<u8>> {
+pub async fn capture<R: Runtime>(
+    _window: &WebviewWindow<R>,
+    _area: [f64; 4],
+    _viewport_width: f64,
+) -> Res<Vec<u8>> {
     Err("Saving a picture of the canvas is not available on this system yet.".into())
 }
 
