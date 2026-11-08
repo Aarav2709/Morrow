@@ -69,6 +69,8 @@ const linkChild = (
     .run();
 };
 
+import { SAMPLE_BASE } from './bases';
+
 const SAMPLE_DIAGRAM = `flowchart LR
   Idea --> Draft --> Review
   Review -->|changes| Draft
@@ -357,6 +359,21 @@ export const BLOCK_ITEMS: BlockItem[] = [
     run: (e, r) => chain(e, r).insertContent({ type: 'tableOfContents' }).run(),
   },
   {
+    id: 'base',
+    title: 'Base',
+    description: 'A live table of pages, like Obsidian Bases',
+    icon: Table2,
+    keywords: 'base bases obsidian query dataview view filter pages table cards',
+    run: (e, r) =>
+      chain(e, r)
+        .insertContent({
+          type: 'codeBlock',
+          attrs: { language: 'base' },
+          content: [{ type: 'text', text: SAMPLE_BASE }],
+        })
+        .run(),
+  },
+  {
     id: 'diagram',
     title: 'Diagram',
     description: 'Flowcharts and more with Mermaid',
@@ -455,7 +472,11 @@ const SECTIONS: Array<[string, string[], TranslationKey]> = [
     ['link', 'embed', 'date', 'database', 'inlineDatabase', 'canvas', 'inlineCanvas'],
     'slash.sections.pagesAndData',
   ],
-  ['mathsAndDiagrams', ['math', 'inlineMath', 'diagram', 'highlight'], 'slash.sections.mathsAndDiagrams'],
+  [
+    'mathsAndDiagrams',
+    ['math', 'inlineMath', 'diagram', 'base', 'highlight'],
+    'slash.sections.mathsAndDiagrams',
+  ],
 ];
 
 function grouped(): BlockItem[] {

@@ -135,6 +135,84 @@
 .code-block:not(.is-mermaid) .mermaid-diagram {
   display: none;
 }
+/* obsidian bases: the pages a base finds, under its yaml, as wide as the page */
+.code-block.is-base .code-split {
+  display: block;
+}
+.code-block.is-base:not(.hide-code) .code-split > pre {
+  margin: 0 0 8px;
+}
+.code-block.is-base .mermaid-diagram {
+  display: block;
+  padding: 4px 0 0;
+  border: 0;
+  font-size: var(--text-sm);
+}
+.base-view-name {
+  margin: 8px 0 6px;
+  font-weight: 600;
+}
+.base-view-name span {
+  margin-left: 4px;
+  color: var(--text-faint);
+  font-weight: 400;
+}
+.base-table {
+  overflow-x: auto;
+}
+.base-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.base-table th,
+.base-table td {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.base-table th {
+  background: var(--bg-sidebar);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.base-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+.base-card {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.base-card > a {
+  font-weight: 600;
+}
+.base-card span {
+  margin-right: 6px;
+  color: var(--text-muted);
+}
+.base-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.base-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border-strong);
+  cursor: pointer;
+}
+.base-empty,
+.base-error {
+  color: var(--text-muted);
+}
+.base-error {
+  color: var(--danger);
+}
 .code-toggle {
   position: absolute;
   top: 8px;

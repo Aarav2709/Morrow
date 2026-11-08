@@ -623,6 +623,10 @@ export const es: TranslationSchema = {
     playVideo: 'Reproducir vídeo',
     uppercase: 'Mayúsculas',
     askAssistant: 'Preguntar al asistente sobre esto',
+    hideCode: 'Ocultar código',
+    editBase: 'Editar base',
+    editDiagram: 'Editar diagrama',
+    baseEmpty: 'Ninguna página coincide con esta vista.',
     lowercase: 'Minúsculas',
     colour: 'Color',
     link: 'Enlace',
@@ -861,6 +865,11 @@ export const es: TranslationSchema = {
         title: 'Tabla de contenidos',
         description: 'Todos los encabezados de esta página',
         keywords: 'tabla contenidos indice esquema encabezados toc outline',
+      },
+      base: {
+        title: 'Base',
+        description: 'Una tabla viva de páginas, como Obsidian Bases',
+        keywords: 'base bases obsidian consulta vista filtro páginas tabla tarjetas',
       },
       diagram: {
         title: 'Diagrama',

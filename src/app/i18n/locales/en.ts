@@ -616,6 +616,10 @@ export const en = {
     playVideo: 'Play video',
     uppercase: 'Uppercase',
     askAssistant: 'Ask the assistant about this',
+    hideCode: 'Hide code',
+    editBase: 'Edit base',
+    editDiagram: 'Edit diagram',
+    baseEmpty: 'No pages match this view.',
     lowercase: 'Lowercase',
     colour: 'Colour',
     link: 'Link',
@@ -854,6 +858,11 @@ export const en = {
         title: 'Table of contents',
         description: 'Every heading on this page',
         keywords: 'toc outline contents headings index',
+      },
+      base: {
+        title: 'Base',
+        description: 'A live table of pages, like Obsidian Bases',
+        keywords: 'base bases obsidian query view filter pages table cards',
       },
       diagram: {
         title: 'Diagram',

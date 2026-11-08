@@ -1,4 +1,5 @@
 import type { Mermaid } from 'mermaid';
+import { onPagesChange, renderBase } from './bases';
 import {
   Extension,
   InputRule,
@@ -305,7 +306,7 @@ function currentView(_node: PmNode): EditorView | null {
 export { MathViewTracker };
 
 const lowlight = createLowlight(common);
-export const CODE_LANGUAGES = [...lowlight.listLanguages(), 'mermaid'].sort();
+export const CODE_LANGUAGES = [...lowlight.listLanguages(), 'mermaid', 'base'].sort();
 
 // mermaid is large, it loads the first time a page has a diagram on it
 let mermaidReady: Promise<Mermaid> | null = null;
@@ -444,7 +445,8 @@ export const CodeBlock = CodeBlockLowlight.extend({
       select.addEventListener('change', () => {
         setAttrs(editor.view, getPos, { language: select.value || null });
         // a diagram is a one off, the next block is still code
-        if (select.value !== 'mermaid') setPreferences({ codeLanguage: select.value });
+        if (select.value !== 'mermaid' && select.value !== 'base')
+          setPreferences({ codeLanguage: select.value });
       });
       const pre = document.createElement('pre');
       const code = document.createElement('code');
@@ -460,14 +462,21 @@ export const CodeBlock = CodeBlockLowlight.extend({
       let showCode = current.textContent.trim() === '';
       let drawn = '';
       let timer: ReturnType<typeof setTimeout> | null = null;
-      const isMermaid = () => current.attrs.language === 'mermaid';
+      // mermaid draws a diagram, a base shows the pages it finds, both from the text in the block
+      const isBase = () => current.attrs.language === 'base';
+      const isMermaid = () => current.attrs.language === 'mermaid' || isBase();
       const layout = () => {
         const mermaid = isMermaid();
         dom.classList.toggle('is-mermaid', mermaid);
+        dom.classList.toggle('is-base', isBase());
         dom.classList.toggle('hide-code', mermaid && !showCode);
         diagram.hidden = !mermaid;
         toggle.hidden = !mermaid;
-        toggle.textContent = showCode ? 'Hide code' : 'Edit diagram';
+        toggle.textContent = showCode
+          ? t('editor.hideCode')
+          : isBase()
+            ? t('editor.editBase')
+            : t('editor.editDiagram');
       };
       const draw = () => {
         if (!isMermaid()) return;
@@ -476,7 +485,8 @@ export const CodeBlock = CodeBlockLowlight.extend({
         if (timer) clearTimeout(timer);
         timer = setTimeout(() => {
           drawn = source;
-          void renderMermaid(source).then((result) => {
+          const render = isBase() ? Promise.resolve(renderBase(source)) : renderMermaid(source);
+          void render.then((result) => {
             if (drawn !== source) return;
             diagram.classList.toggle('is-error', result.error);
             if (result.error) diagram.textContent = result.html;
@@ -504,6 +514,11 @@ export const CodeBlock = CodeBlockLowlight.extend({
         drawn = '';
         draw();
       });
+      const stopPages = onPagesChange(() => {
+        if (!isBase()) return;
+        drawn = '';
+        draw();
+      });
       const ours = (target: EventTarget | globalThis.Node | null) =>
         select.contains(target as globalThis.Node) ||
         toggle.contains(target as globalThis.Node) ||
@@ -526,6 +541,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
         destroy: () => {
           if (timer) clearTimeout(timer);
           stopWatching();
+          stopPages();
         },
       };
     };
