@@ -119,11 +119,23 @@ export const en = {
     closeSettings: 'Close settings',
     sections: {
       general: 'General',
+      plugins: 'Plugins',
       appearance: 'Appearance',
       assistant: 'Assistant',
       sync: 'Sync',
       vault: 'Vault and files',
       about: 'About',
+    },
+    plugins: {
+      allow: 'Turn on plugins on this computer',
+      allowHelp:
+        'Plugins are JavaScript in this vault’s .morrow/plugins folder. They can read and change every note, the same as Morrow can, so only turn on ones you trust.',
+      none: 'No plugins in this vault yet.',
+      folder: 'Open the plugins folder',
+      reload: 'Reload',
+      by: 'by {author}',
+      failed: 'Could not start: {error}',
+      installed: 'In this vault',
     },
     general: {
       title: 'General',

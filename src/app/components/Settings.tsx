@@ -1,4 +1,13 @@
-import { HardDrive, Info, MessageSquareText, Palette, RefreshCw, SlidersHorizontal, X } from 'lucide-react';
+import {
+  HardDrive,
+  Info,
+  MessageSquareText,
+  Palette,
+  Puzzle,
+  RefreshCw,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatShortcut } from '../actions';
@@ -28,6 +37,7 @@ import { checkForUpdate, installUpdate, useUpdateState } from '../updates';
 import { getSession } from '../workspace';
 import { Dialog, Logo, Switch } from './primitives';
 import { Select } from './Select';
+import { PluginSettings } from './PluginSettings';
 import { SettingRow, SettingsGroup } from './SettingsRows';
 import { CloudSettings, NetworkSettings } from './SyncSettings';
 import { t } from '../i18n';
@@ -44,6 +54,7 @@ const SECTIONS: SectionDef[] = [
   { id: 'assistant', key: 'settings.sections.assistant', icon: MessageSquareText },
   { id: 'sync', key: 'settings.sections.sync', icon: RefreshCw },
   { id: 'vault', key: 'settings.sections.vault', icon: HardDrive },
+  { id: 'plugins', key: 'settings.sections.plugins', icon: Puzzle },
   { id: 'about', key: 'settings.sections.about', icon: Info },
 ];
 
@@ -128,6 +139,7 @@ export function SettingsDialog({ section }: { section?: SettingsSection }) {
           </>
         )}
         {current === 'vault' && <VaultSettings />}
+        {current === 'plugins' && <PluginSettings />}
         {current === 'about' && <AboutSettings />}
       </div>
     </Dialog>

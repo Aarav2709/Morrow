@@ -28,6 +28,7 @@ import { desktopVaultBridge } from './app/platform/vault';
 import { resolvedTheme, getPreferences } from './app/platform/preferences';
 import { toast } from './app/ui';
 import { setSession } from './app/workspace';
+import { startPlugins } from './app/plugins';
 
 type BootState =
   | { kind: 'loading' }
@@ -74,6 +75,7 @@ async function openWorkspace(): Promise<BootState> {
   startRecurring();
   emptyOldTrash();
   startReminders();
+  void startPlugins();
   setInterval(() => emptyOldTrash(), 6 * 60 * 60 * 1000);
   if (session.problems.length > 0) {
     console.warn('Morrow could not read some stored records:', session.problems);

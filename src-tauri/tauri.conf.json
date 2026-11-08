@@ -15,7 +15,7 @@
     "security": {
       "csp": {
         "default-src": "'self'",
-        "script-src": "'self'",
+        "script-src": "'self' blob:",
         "style-src": "'self' 'unsafe-inline'",
         "img-src": "'self' data: blob: https: morrow-file: http://morrow-file.localhost",
         "media-src": "'self' blob: morrow-file: http://morrow-file.localhost",
@@ -30,7 +30,13 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "dmg", "app", "appimage", "deb"],
+    "targets": [
+      "nsis",
+      "dmg",
+      "app",
+      "appimage",
+      "deb"
+    ],
     "publisher": "Aarav Gupta",
     "copyright": "Copyright 2026 Aarav Gupta and Morrow contributors",
     "category": "Productivity",
@@ -39,14 +45,28 @@
     "homepage": "https://github.com/Aarav2709/Morrow",
     "license": "Apache-2.0",
     "licenseFile": "../LICENSE",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
-    "resources": { "../dist-mcp/index.js": "mcp/index.js" },
-    "windows": {
-      "nsis": { "installMode": "currentUser" }
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../dist-mcp/index.js": "mcp/index.js"
     },
-    "macOS": { "minimumSystemVersion": "11.0" },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
     "linux": {
-      "deb": { "section": "editors" }
+      "deb": {
+        "section": "editors"
+      }
     }
   }
 }

@@ -122,11 +122,23 @@ export const es: TranslationSchema = {
     closeSettings: 'Cerrar ajustes',
     sections: {
       general: 'General',
+      plugins: 'Complementos',
       appearance: 'Apariencia',
       assistant: 'Asistente',
       sync: 'Sincronización',
       vault: 'Bóveda y archivos',
       about: 'Acerca de',
+    },
+    plugins: {
+      allow: 'Activar complementos en este ordenador',
+      allowHelp:
+        'Los complementos son JavaScript en la carpeta .morrow/plugins de esta bóveda. Pueden leer y cambiar todas las notas, igual que Morrow, así que activa solo los que sean de confianza.',
+      none: 'Todavía no hay complementos en esta bóveda.',
+      folder: 'Abrir la carpeta de complementos',
+      reload: 'Recargar',
+      by: 'de {author}',
+      failed: 'No se pudo iniciar: {error}',
+      installed: 'En esta bóveda',
     },
     general: {
       title: 'General',

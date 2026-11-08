@@ -19,6 +19,10 @@ export function setFocusedEditor(editor: Editor | null): void {
   focused = editor;
 }
 
+export function focusedEditor(): Editor | null {
+  return focused && !focused.isDestroyed ? focused : null;
+}
+
 // routes native menu undo and redo to the editor, or to a plain text field
 export function undoRedo(direction: 'undo' | 'redo'): void {
   const active = document.activeElement;

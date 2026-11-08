@@ -122,11 +122,23 @@ export const pt: TranslationSchema = {
     closeSettings: 'Fechar configurações',
     sections: {
       general: 'Geral',
+      plugins: 'Plugins',
       appearance: 'Aparência',
       assistant: 'Assistente',
       sync: 'Sincronização',
       vault: 'Cofre e arquivos',
       about: 'Sobre',
+    },
+    plugins: {
+      allow: 'Ativar plugins neste computador',
+      allowHelp:
+        'Plugins são JavaScript na pasta .morrow/plugins deste cofre. Eles podem ler e mudar todas as notas, assim como o Morrow, então ative só os que você confia.',
+      none: 'Ainda não há plugins neste cofre.',
+      folder: 'Abrir a pasta de plugins',
+      reload: 'Recarregar',
+      by: 'de {author}',
+      failed: 'Não foi possível iniciar: {error}',
+      installed: 'Neste cofre',
     },
     general: {
       title: 'Geral',

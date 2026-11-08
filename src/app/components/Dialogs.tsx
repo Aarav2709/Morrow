@@ -3,7 +3,7 @@ import { displayTitle } from '../../core/model';
 import type { PageId } from '../../core/model';
 import { foldText } from '../../core/search';
 import { ancestorsOf, childrenOf, flattenTree, isDescendantOf } from '../../core/tree';
-import { ACTIONS, formatShortcut } from '../actions';
+import { allActions, formatShortcut } from '../actions';
 import { expandPage, movePage } from '../operations';
 import { closeDialog, useUi } from '../ui';
 import { run, useWorkspace } from '../workspace';
@@ -135,14 +135,16 @@ function ShortcutsDialog() {
         <section>
           <h3>{t('dialogs.shortcuts.everywhere')}</h3>
           <dl className="shortcut-list">
-            {ACTIONS.filter((action) => action.shortcut).map((action) => (
-              <div key={action.id}>
-                <dt>{tAction(action.id, action.label)}</dt>
-                <dd>
-                  <kbd className="kbd">{formatShortcut(action.shortcut!)}</kbd>
-                </dd>
-              </div>
-            ))}
+            {allActions()
+              .filter((action) => action.shortcut)
+              .map((action) => (
+                <div key={action.id}>
+                  <dt>{tAction(action.id, action.label)}</dt>
+                  <dd>
+                    <kbd className="kbd">{formatShortcut(action.shortcut!)}</kbd>
+                  </dd>
+                </div>
+              ))}
           </dl>
         </section>
         <section>

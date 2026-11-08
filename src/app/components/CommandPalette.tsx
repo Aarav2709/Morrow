@@ -6,7 +6,7 @@ import { displayTitle } from '../../core/model';
 import { foldText, searchWorkspace } from '../../core/search';
 import type { SearchSnippet } from '../../core/search';
 import { ancestorsOf, livePages } from '../../core/tree';
-import { ACTIONS, currentContext, formatShortcut } from '../actions';
+import { allActions, currentContext, formatShortcut } from '../actions';
 import { useTranslation } from '../i18n';
 import { createPage } from '../operations';
 import { navigate, openPage } from '../router';
@@ -51,9 +51,8 @@ export function CommandPalette() {
   const entries = useMemo<Entry[]>(() => {
     const context = currentContext();
     const actionQuery = foldText(searched.trim().replace(/^>/, ''));
-    const actions = ACTIONS.filter(
-      (action) => action.id !== 'search' && (!action.enabled || action.enabled(context)),
-    )
+    const actions = allActions()
+      .filter((action) => action.id !== 'search' && (!action.enabled || action.enabled(context)))
       .map((action) => ({
         action,
         title: tAction(action.id, action.label),

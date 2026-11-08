@@ -75,6 +75,7 @@ import {
 import { chooseVaultFolder } from './vaults';
 import { getPreferences, resolvedTheme, setPreferences } from './platform/preferences';
 import { activeRoute, navigate } from './router';
+import { pluginActions } from './plugins/registry';
 import { getUi, openDialog, setUi } from './ui';
 import { getState } from './workspace';
 
@@ -571,8 +572,13 @@ export function currentContext(): ActionContext {
   return { pageId: route.name === 'page' && getState().pages[route.id] ? route.id : null };
 }
 
+// morrow's own actions and the ones plugins add
+export function allActions(): Action[] {
+  return [...ACTIONS, ...pluginActions()];
+}
+
 export function runAction(id: string): void {
-  const action = ACTIONS.find((candidate) => candidate.id === id);
+  const action = allActions().find((candidate) => candidate.id === id);
   if (!action) return;
   const context = currentContext();
   if (action.enabled && !action.enabled(context)) return;

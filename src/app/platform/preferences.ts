@@ -68,6 +68,8 @@ export interface Preferences {
   spellcheck: boolean;
   // views left out of the sidebar, they still open from search and their shortcuts
   hiddenModules: SidebarModule[];
+  // plugins in a vault only run on a computer where this was turned on
+  plugins: boolean;
 }
 
 const KEY = 'morrow.preferences';
@@ -108,6 +110,7 @@ const defaults: Preferences = {
   codeLanguage: '',
   spellcheck: true,
   hiddenModules: [],
+  plugins: false,
 };
 
 // view preferences only, losing them never loses work
@@ -186,6 +189,7 @@ function read(): Preferences {
           ? parsed.codeLanguage
           : '',
       spellcheck: parsed.spellcheck !== false,
+      plugins: parsed.plugins === true,
       hiddenModules: Array.isArray(parsed.hiddenModules)
         ? SIDEBAR_MODULES.filter((module) => parsed.hiddenModules!.includes(module))
         : [],

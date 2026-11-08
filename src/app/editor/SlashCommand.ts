@@ -69,6 +69,7 @@ const linkChild = (
     .run();
 };
 
+import { pluginBlocks } from '../plugins/registry';
 import { SAMPLE_BASE } from './bases';
 
 const SAMPLE_DIAGRAM = `flowchart LR
@@ -418,22 +419,24 @@ export const BLOCK_ITEMS: BlockItem[] = [
 ];
 
 export function getLocalizedBlocks(): BlockItem[] {
-  return BLOCK_ITEMS.map((item) => {
-    const titleKey = `slash.items.${item.id}.title` as TranslationKey;
-    const descKey = `slash.items.${item.id}.description` as TranslationKey;
-    const kwKey = `slash.items.${item.id}.keywords` as TranslationKey;
-    const title = t(titleKey);
-    const description = t(descKey);
-    const localizedKw = t(kwKey);
-    const keywords =
-      localizedKw && localizedKw !== kwKey ? `${item.keywords ?? ''} ${localizedKw}` : item.keywords;
-    return {
-      ...item,
-      title: title && title !== titleKey ? title : item.title,
-      description: description && description !== descKey ? description : item.description,
-      keywords,
-    };
-  });
+  return [...BLOCK_ITEMS.map(localized), ...pluginBlocks()];
+}
+
+function localized(item: BlockItem): BlockItem {
+  const titleKey = `slash.items.${item.id}.title` as TranslationKey;
+  const descKey = `slash.items.${item.id}.description` as TranslationKey;
+  const kwKey = `slash.items.${item.id}.keywords` as TranslationKey;
+  const title = t(titleKey);
+  const description = t(descKey);
+  const localizedKw = t(kwKey);
+  const keywords =
+    localizedKw && localizedKw !== kwKey ? `${item.keywords ?? ''} ${localizedKw}` : item.keywords;
+  return {
+    ...item,
+    title: title && title !== titleKey ? title : item.title,
+    description: description && description !== descKey ? description : item.description,
+    keywords,
+  };
 }
 
 // the groups the menu shows before you type, in this order
