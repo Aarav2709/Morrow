@@ -236,7 +236,9 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
             </button>
           </div>
         )}
-        {page.kind !== 'database' && !unreadable && <Outline doc={doc} />}
+        {page.kind !== 'database' && !unreadable && !prefs.hiddenOutlines.includes(page.id) && (
+          <Outline doc={doc} />
+        )}
         <CoverBanner page={page} editable={!trashed} />
         <article
           className={`page font-${prefs.font} width-${prefs.pageWidths[page.id] ?? prefs.width}${page.cover ? ' has-cover' : ''}`}

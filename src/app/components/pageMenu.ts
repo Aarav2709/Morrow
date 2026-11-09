@@ -25,6 +25,7 @@ import {
   Star,
   StarOff,
   Trash2,
+  ListTree,
 } from 'lucide-react';
 import { cardsInDeck, collectCards } from '../../core/flashcards';
 import type { PageId } from '../../core/model';
@@ -168,6 +169,19 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     { label: t('pageMenu.importMarkdownHere'), icon: FileUp, onSelect: () => void importMarkdown(pageId) },
     ...(page.kind === 'page'
       ? [
+          {
+            label: t('pageMenu.showOutline'),
+            icon: ListTree,
+            checked: !getPreferences().hiddenOutlines.includes(pageId),
+            onSelect: () => {
+              const hidden = getPreferences().hiddenOutlines;
+              setPreferences({
+                hiddenOutlines: hidden.includes(pageId)
+                  ? hidden.filter((id) => id !== pageId)
+                  : [...hidden, pageId],
+              });
+            },
+          },
           { heading: t('pageMenu.width') },
           ...PAGE_WIDTHS.map((next) => ({
             label: t(`settings.appearance.widths.${next}`),

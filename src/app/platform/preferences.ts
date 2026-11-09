@@ -51,6 +51,8 @@ export interface Preferences {
   canvasSizes: Record<string, CanvasSize>;
   // pages shown wider or narrower than the width set for every page
   pageWidths: Record<string, PageWidth>;
+  // pages that leave out the On this page list of headings
+  hiddenOutlines: string[];
   // pages in the trash longer than this many days are deleted for good, 0 keeps them until emptied
   trashDays: TrashDays;
   // reminders set on dates in pages, shown by this computer when they are due
@@ -104,6 +106,7 @@ const defaults: Preferences = {
   name: '',
   canvasSizes: {},
   pageWidths: {},
+  hiddenOutlines: [],
   trashDays: 0,
   reminders: [],
   splitShare: 0.5,
@@ -176,6 +179,9 @@ function read(): Preferences {
             .slice(0, 500)
         : [],
       trashDays: ([30, 60, 90] as const).find((days) => days === parsed.trashDays) ?? 0,
+      hiddenOutlines: Array.isArray(parsed.hiddenOutlines)
+        ? parsed.hiddenOutlines.filter((id): id is string => typeof id === 'string').slice(0, 2000)
+        : [],
       pageWidths: Object.fromEntries(
         Object.entries(parsed.pageWidths ?? {})
           .filter(([, width]) => PAGE_WIDTHS.includes(width as PageWidth))

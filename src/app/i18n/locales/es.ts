@@ -352,6 +352,7 @@ export const es: TranslationSchema = {
   },
   pageMenu: {
     fullWidth: 'Ancho completo',
+    showOutline: 'Mostrar En esta página',
     width: 'Ancho de página',
     hideFromTasks: 'Excluir listas de Tareas',
     showInTasks: 'Mostrar listas en Tareas',
