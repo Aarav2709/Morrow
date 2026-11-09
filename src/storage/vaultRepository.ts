@@ -202,6 +202,12 @@ export class VaultRepository implements WorkspaceRepository {
     for (const id of removed) {
       const before = this.layout.get(id);
       if (before?.file) ops.push({ op: 'remove', path: before.file });
+      // a page deleted for good takes its history with it, which would otherwise keep its pictures and
+      // files in the attachments folder for ever
+      if (before) {
+        ops.push({ op: 'delete', path: this.historyPath(id) });
+        this.history.delete(id);
+      }
     }
     ops.push(...planMoves(previous, next));
 

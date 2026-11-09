@@ -436,3 +436,18 @@ describe('dates in pages', () => {
     expect(line.content![1]).toEqual({ type: 'dateMention', attrs: { date: '2026-11-10' } });
   });
 });
+
+describe('deleting a page for good', () => {
+  it('takes its history with it, so its pictures can be cleaned up', async () => {
+    const vault = new MemoryVault({});
+    const session = await open(vault);
+    await run(session, { type: 'page.create', id: 'gone', parentId: null, now: 1, title: 'Gone' });
+    await run(session, { type: 'page.setDoc', id: 'gone', doc: doc('first'), now: 2 });
+    await run(session, { type: 'page.setDoc', id: 'gone', doc: doc('second'), now: 20 * 60_000 });
+    expect(await session.listSnapshots('gone')).not.toEqual([]);
+    await run(session, { type: 'page.trash', id: 'gone', now: 30 * 60_000 });
+    await run(session, { type: 'page.deleteForever', id: 'gone' });
+    expect(await session.listSnapshots('gone')).toEqual([]);
+    expect(await vault.exists('.morrow/history/gone.json')).toBe(false);
+  });
+});
