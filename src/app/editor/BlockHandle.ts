@@ -122,6 +122,12 @@ const BOXED_INSET = 6;
 // the middle of a block's first line of text, which sits lower than its top in a callout, quote or
 // code block with padding around it. null for a block with no text, such as a picture
 function firstTextMiddle(block: HTMLElement): number | null {
+  // a table lines up with its first row, the header, whatever is written in it
+  const row = block.matches('table, .tableWrapper') ? block.querySelector('tr') : null;
+  if (row) {
+    const rect = row.getBoundingClientRect();
+    return rect.top + Math.min(rect.height, 40) / 2;
+  }
   // a checklist item lines up with its box
   const checkbox = block.tagName === 'LI' ? block.querySelector(':scope > label') : null;
   if (checkbox) {
