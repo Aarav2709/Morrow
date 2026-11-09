@@ -74,7 +74,8 @@ struct State {
 
 static STATE: Mutex<Option<State>> = Mutex::new(None);
 static LISTENING_PORT: AtomicU16 = AtomicU16::new(PORT);
-static NOTIFY: Mutex<Option<Box<dyn Fn(Value) + Send>>> = Mutex::new(None);
+type Listener = Box<dyn Fn(Value) + Send>;
+static NOTIFY: Mutex<Option<Listener>> = Mutex::new(None);
 
 fn with<T>(f: impl FnOnce(&mut State) -> T) -> T {
     let mut guard = STATE.lock().unwrap_or_else(|poison| poison.into_inner());

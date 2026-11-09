@@ -23,7 +23,9 @@ struct Open {
 }
 
 static OPEN: Mutex<Option<Open>> = Mutex::new(None);
-static HASHES: Mutex<Option<HashMap<PathBuf, (u64, f64, String)>>> = Mutex::new(None);
+// size, modified time and hash of each file, so an unchanged file is not read again
+type HashCache = HashMap<PathBuf, (u64, f64, String)>;
+static HASHES: Mutex<Option<HashCache>> = Mutex::new(None);
 
 pub type Result<T> = std::result::Result<T, String>;
 

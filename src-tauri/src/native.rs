@@ -109,7 +109,7 @@ pub async fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) ->
             settings.set("output-uri", Some(&uri));
             settings.set("output-file-format", Some("pdf"));
             let page = gtk::PageSetup::new();
-            page.set_paper_size(&gtk::PaperSize::new(Some(&gtk::PAPER_NAME_A4)));
+            page.set_paper_size(&gtk::PaperSize::new(Some(gtk::PAPER_NAME_A4)));
             for set in [
                 gtk::PageSetup::set_top_margin,
                 gtk::PageSetup::set_bottom_margin,

@@ -6,7 +6,7 @@ authors = ["Aarav Gupta"]
 license = "Apache-2.0"
 repository = "https://github.com/Aarav2709/Morrow"
 edition = "2021"
-rust-version = "1.80"
+rust-version = "1.82"
 
 # a library as well as a binary, so the same code builds the android and ios apps
 [lib]

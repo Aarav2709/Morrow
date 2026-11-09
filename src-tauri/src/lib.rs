@@ -800,7 +800,7 @@ fn create_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .inner_size(1280.0, 820.0)
         .min_inner_size(520.0, 420.0)
         .visible(false)
-        .initialization_script(&info_script())
+        .initialization_script(info_script())
         .disable_drag_drop_handler()
         // links to the web open in the browser, the window only ever shows morrow itself
         .on_navigation(move |url| {
