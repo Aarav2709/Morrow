@@ -27,7 +27,7 @@ import {
   unusedFiles,
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
-import { desktop } from '../platform/desktop';
+import { desktop, isMobile } from '../platform/desktop';
 import { ACCENTS, SIDEBAR_MODULES, setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
@@ -420,14 +420,16 @@ function VaultSettings() {
           label={t('settings.vault.currentFolder')}
           help={<span className="settings-path">{vault}</span>}
         >
-          {desktop?.vault && (
+          {desktop?.vault && !isMobile && (
             <button type="button" className="button small" onClick={() => void desktop?.vault?.reveal('')}>
               {t('settings.vault.showFolder')}
             </button>
           )}
-          <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
-            {t('settings.vault.chooseAnother')}
-          </button>
+          {!isMobile && (
+            <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
+              {t('settings.vault.chooseAnother')}
+            </button>
+          )}
         </SettingRow>
         {legacy > 0 && (
           <SettingRow

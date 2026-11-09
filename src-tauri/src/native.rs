@@ -94,7 +94,8 @@ pub fn setup_webview<R: Runtime>(window: &WebviewWindow<R>) {
         // drawing on the graphics card keeps scrolling and typing smooth in long pages
         if let Some(settings) = webkit2gtk::WebViewExt::settings(&webview.inner()) {
             use webkit2gtk::SettingsExt;
-            settings.set_hardware_acceleration_policy(webkit2gtk::HardwareAccelerationPolicy::Always);
+            settings
+                .set_hardware_acceleration_policy(webkit2gtk::HardwareAccelerationPolicy::Always);
             settings.set_enable_smooth_scrolling(true);
         }
     });

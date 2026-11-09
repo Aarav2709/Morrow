@@ -97,17 +97,63 @@ fn settings_file() -> PathBuf {
     paths::data_dir().join("assistant.json")
 }
 
-fn entry() -> Option<keyring::Entry> {
-    keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_USER).ok()
-}
+// the key lives in the system keychain on a computer
+#[cfg(desktop)]
+mod keychain {
+    use super::{KEYCHAIN_SERVICE, KEYCHAIN_USER};
 
-// a keychain counts when it answers, even to say there is no key in it yet
-fn keychain_works(state: &mut State) -> bool {
-    *state.keychain.get_or_insert_with(|| {
+    fn entry() -> Option<keyring::Entry> {
+        keyring::Entry::new(KEYCHAIN_SERVICE, KEYCHAIN_USER).ok()
+    }
+
+    // a keychain counts when it answers, even to say there is no key in it yet
+    pub fn works() -> bool {
         entry().is_some_and(|entry| {
             matches!(entry.get_password(), Ok(_) | Err(keyring::Error::NoEntry))
         })
-    })
+    }
+
+    pub fn read() -> Option<String> {
+        entry().and_then(|entry| entry.get_password().ok())
+    }
+
+    pub fn write(key: Option<&str>) {
+        if let Some(entry) = entry() {
+            let _ = match key {
+                Some(key) => entry.set_password(key),
+                None => entry.delete_credential(),
+            };
+        }
+    }
+}
+
+// a phone keeps it in the app's own storage, which no other app can read
+#[cfg(mobile)]
+mod keychain {
+    fn file() -> std::path::PathBuf {
+        crate::paths::data_dir().join("assistant-key")
+    }
+
+    pub fn works() -> bool {
+        true
+    }
+
+    pub fn read() -> Option<String> {
+        std::fs::read_to_string(file())
+            .ok()
+            .filter(|key| !key.is_empty())
+    }
+
+    pub fn write(key: Option<&str>) {
+        let _ = match key {
+            Some(key) => crate::paths::write_atomic_plain(&file(), key.as_bytes()),
+            None => std::fs::remove_file(file()),
+        };
+    }
+}
+
+fn keychain_works(state: &mut State) -> bool {
+    *state.keychain.get_or_insert_with(keychain::works)
 }
 
 fn load(state: &mut State) -> Stored {
@@ -154,7 +200,7 @@ fn read_key(state: &mut State) -> Option<String> {
         return key.clone();
     }
     let key = if keychain_works(state) {
-        entry().and_then(|entry| entry.get_password().ok())
+        keychain::read()
     } else {
         None
     };
@@ -195,12 +241,7 @@ pub fn settings() -> Value {
 
 fn set_key(state: &mut State, key: Option<String>) {
     if keychain_works(state) {
-        if let Some(entry) = entry() {
-            let _ = match &key {
-                Some(key) => entry.set_password(key),
-                None => entry.delete_credential(),
-            };
-        }
+        keychain::write(key.as_deref());
     }
     state.key = Some(key);
 }

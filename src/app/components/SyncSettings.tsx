@@ -2,7 +2,7 @@ import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { commitEditors } from '../editor/commits';
 import { useTranslation } from '../i18n';
-import { desktop } from '../platform/desktop';
+import { desktop, isMobile } from '../platform/desktop';
 import type { CloudFolder, SyncStatus } from '../platform/desktop';
 import { copyVaultFrom, syncWith } from '../sync';
 import { switchVault } from '../vaults';
@@ -54,7 +54,8 @@ export function NetworkSettings() {
   };
 
   const copyHere = async (peerId: string) => {
-    const dir = await desktop?.vault?.choose();
+    // a phone makes a new vault in its own storage for the copy
+    const dir = isMobile ? await desktop?.vault?.createDefault() : await desktop?.vault?.choose();
     if (!dir) return;
     const result = await copyVaultFrom(peerId, dir);
     if (!result.ok) toast(result.error ?? t('settings.sync.vaultCopyFailed'), { tone: 'error' });
@@ -136,6 +137,10 @@ export function NetworkSettings() {
 // a vault is a plain folder, so dropbox, icloud, google drive, onedrive or syncthing can carry it between
 // computers. morrow only finds their folders and copies the vault in, their own apps do the syncing
 export function CloudSettings() {
+  return isMobile ? null : <CloudFolders />;
+}
+
+function CloudFolders() {
   const { t } = useTranslation();
   const [cloud, setCloud] = useState<{ folders: CloudFolder[]; inside: CloudFolder | null } | null>(null);
   const [busy, setBusy] = useState(false);

@@ -4,6 +4,16 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 
 static DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
+static DOCUMENTS_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+// where new vaults go when the system has no documents folder of its own, as on a phone
+#[allow(dead_code)]
+pub fn set_documents_dir(dir: Option<PathBuf>) {
+    if let Some(dir) = dir {
+        let _ = std::fs::create_dir_all(&dir);
+        let _ = DOCUMENTS_DIR.set(dir);
+    }
+}
 
 pub fn init_data_dir(fallback: Option<PathBuf>) {
     let dir = (cfg!(debug_assertions))
@@ -24,7 +34,10 @@ pub fn data_dir() -> PathBuf {
 }
 
 pub fn documents_dir() -> PathBuf {
-    dirs::document_dir()
+    DOCUMENTS_DIR
+        .get()
+        .cloned()
+        .or_else(dirs::document_dir)
         .or_else(dirs::home_dir)
         .unwrap_or_else(|| PathBuf::from("."))
 }

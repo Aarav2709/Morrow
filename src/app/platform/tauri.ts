@@ -214,7 +214,9 @@ const NOT_DRAGGABLE =
 
 function setupWindow(platform: string, run: (id: string) => Promise<unknown>): void {
   const current = getCurrentWindow();
+  const mobile = platform === 'android' || platform === 'ios';
   document.addEventListener('mousedown', (event) => {
+    if (mobile) return;
     if (event.button !== 0 || !(event.target instanceof Element)) return;
     if (!event.target.closest(DRAG_AREAS) || event.target.closest(NOT_DRAGGABLE)) return;
     event.preventDefault();
@@ -249,7 +251,8 @@ function setupWindow(platform: string, run: (id: string) => Promise<unknown>): v
     }
     return open(url, ...rest);
   };
-  if (platform === 'darwin') return;
+  // a mac has its own buttons, and a phone has no window of its own to move or close
+  if (platform === 'darwin' || mobile) return;
   const add = () => {
     if (document.querySelector('.window-controls')) return;
     const controls = document.createElement('div');

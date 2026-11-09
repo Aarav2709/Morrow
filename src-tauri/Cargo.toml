@@ -47,10 +47,10 @@ gethostname = "0.5"
 which = "6"
 mime_guess = "2"
 dirs = "5"
-trash = "5"
-keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+trash = "5"
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-global-shortcut = "2"

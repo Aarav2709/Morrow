@@ -221,6 +221,10 @@ export function nativeFileUrl(kind: 'vault' | 'local', encodedPath: string): str
     : `morrow-file://localhost/${kind}/${encodedPath}`;
 }
 
+// a phone or tablet: no window to manage, and folders elsewhere on the device are not plain paths, so
+// vaults live in the app's own storage and come from a computer over sync
+export const isMobile = desktop?.platform === 'android' || desktop?.platform === 'ios';
+
 export const isMac =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/.test(desktop?.platform === 'darwin' ? 'Mac' : navigator.platform);

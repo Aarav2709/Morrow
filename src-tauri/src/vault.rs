@@ -515,7 +515,12 @@ fn apply_one(op: VaultOp) -> Result<Value> {
                 return Ok(json!({ "ok": true }));
             }
             check_real(&absolute)?;
-            if trash::delete(&absolute).is_err() {
+            // phones have no system trash, there the vault's own deleted folder keeps it
+            #[cfg(desktop)]
+            let trashed = trash::delete(&absolute).is_ok();
+            #[cfg(mobile)]
+            let trashed = false;
+            if !trashed {
                 // without a system trash the file is kept in the vault's own deleted folder instead
                 let (root, _) = roots()?;
                 let keep = root.join(".morrow").join("deleted").join(format!(

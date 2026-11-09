@@ -1,6 +1,6 @@
 import { commitEditors } from './editor/commits';
 import { COPY_LEGACY_KEY } from './legacy';
-import { desktop } from './platform/desktop';
+import { desktop, isMobile } from './platform/desktop';
 import { t } from './i18n';
 import { toast } from './ui';
 import { getSession } from './workspace';
@@ -26,6 +26,7 @@ export async function switchVault(dir: string, options: { copyLegacy?: boolean }
 }
 
 export async function chooseVaultFolder(options: { copyLegacy?: boolean } = {}): Promise<void> {
+  if (isMobile) return createVault(options);
   const dir = await desktop?.vault?.choose();
   if (dir) await switchVault(dir, options);
 }

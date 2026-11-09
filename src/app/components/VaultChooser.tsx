@@ -1,3 +1,4 @@
+import { isMobile } from '../platform/desktop';
 import { FolderOpen, FolderPlus, History } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n';
@@ -35,13 +36,15 @@ export function VaultChooser({ legacy }: { legacy: number }) {
             <span className="muted">{t('vaultChooser.createNewVaultHelp')}</span>
           </span>
         </button>
-        <button type="button" className="data-action" onClick={() => void chooseVaultFolder(options)}>
-          <FolderOpen size={20} strokeWidth={1.5} />
-          <span>
-            <strong>{t('vaultChooser.openFolder')}</strong>
-            <span className="muted">{t('vaultChooser.openFolderHelp')}</span>
-          </span>
-        </button>
+        {!isMobile && (
+          <button type="button" className="data-action" onClick={() => void chooseVaultFolder(options)}>
+            <FolderOpen size={20} strokeWidth={1.5} />
+            <span>
+              <strong>{t('vaultChooser.openFolder')}</strong>
+              <span className="muted">{t('vaultChooser.openFolderHelp')}</span>
+            </span>
+          </button>
+        )}
       </div>
       {recent.length > 0 && (
         <section className="vault-recent" aria-label={t('vaultChooser.recentVaultsAria')}>

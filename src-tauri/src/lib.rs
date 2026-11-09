@@ -274,10 +274,13 @@ async fn export_pdf<R: Runtime>(
 ) -> Value {
     // without a way to print straight to a file, the system's print dialog saves it instead
     if !native::PRINTS_TO_FILE {
+        #[cfg(desktop)]
         return match window.print() {
             Ok(()) => json!({ "ok": false, "error": null }),
             Err(error) => json!({ "ok": false, "error": error.to_string() }),
         };
+        #[cfg(mobile)]
+        return json!({ "ok": false, "error": "Saving as PDF is not available on this device yet." });
     }
     let base = paths::safe_file_name(&name, "Page");
     let Some(path) = ask_save_path(
@@ -880,6 +883,9 @@ pub fn run() {
         })
         .setup(|app| {
             paths::init_data_dir(app.path().app_config_dir().ok());
+            // a phone keeps vaults in the app's own storage, synced with a computer over the network
+            #[cfg(mobile)]
+            paths::set_documents_dir(app.path().app_data_dir().ok().map(|dir| dir.join("Vaults")));
             let handle = app.handle().clone();
             sync::init(move |event| to_window(&handle, "sync:event", event));
             #[cfg(desktop)]

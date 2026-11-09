@@ -47,7 +47,7 @@ import { collectTags } from '../../core/tags';
 import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { t, useTranslation } from '../i18n';
-import { desktop } from '../platform/desktop';
+import { desktop, isMobile } from '../platform/desktop';
 import { vaultName } from '../platform/vault';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
@@ -433,11 +433,15 @@ export function Sidebar() {
                 },
               })),
             { separator: true },
-            {
-              label: t('sidebar.openAnotherFolder'),
-              icon: FolderOpen,
-              onSelect: () => void chooseVaultFolder(),
-            },
+            ...(isMobile
+              ? []
+              : [
+                  {
+                    label: t('sidebar.openAnotherFolder'),
+                    icon: FolderOpen,
+                    onSelect: () => void chooseVaultFolder(),
+                  },
+                ]),
             { label: t('sidebar.createNewVault'), icon: FolderPlus, onSelect: () => void createVault() },
             {
               label: t('sidebar.showVaultFolder'),
