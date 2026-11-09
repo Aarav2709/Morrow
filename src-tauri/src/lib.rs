@@ -57,6 +57,7 @@ fn command<R: Runtime>(app: &AppHandle<R>, id: &str) {
 
 fn bring_forward<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = main_window(app) {
+        #[cfg(desktop)]
         let _ = window.unminimize();
         let _ = window.show();
         let _ = window.set_focus();
@@ -233,6 +234,7 @@ async fn ask_save_path<R: Runtime>(
     if let Some((label, extension)) = filter {
         dialog = dialog.add_filter(label, &[extension]);
     }
+    #[cfg(desktop)]
     if let Some(window) = main_window(app) {
         dialog = dialog.set_parent(&window);
     }
@@ -360,6 +362,7 @@ async fn vault_state() -> Res<Value> {
     blocking(vault::state).await
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> Option<String> {
     let mut dialog = app
@@ -379,6 +382,13 @@ async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> O
         .ok()
         .flatten()
         .map(|path| path.to_string_lossy().into_owned())
+}
+
+// a phone keeps its vaults in the app's own storage, so there is no folder to pick
+#[cfg(mobile)]
+#[tauri::command]
+async fn vault_choose(_start: Option<String>) -> Option<String> {
+    None
 }
 
 #[tauri::command]
