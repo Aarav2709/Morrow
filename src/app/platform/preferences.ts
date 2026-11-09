@@ -1,6 +1,8 @@
 import { desktop } from './desktop';
 import { useSyncExternalStore } from 'react';
 import type { SupportedLocale } from '../i18n/types';
+import { COLORS } from '../../core/model';
+import type { ColorName } from '../../core/model';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
@@ -72,6 +74,8 @@ export interface Preferences {
   hiddenModules: SidebarModule[];
   // plugins in a vault only run on a computer where this was turned on
   plugins: boolean;
+  // the colour last picked for words, which ctrl shift h puts on again
+  lastColor: { kind: 'text' | 'bg'; color: ColorName } | null;
 }
 
 const KEY = 'morrow.preferences';
@@ -113,6 +117,7 @@ const defaults: Preferences = {
   spellcheck: true,
   hiddenModules: [],
   plugins: false,
+  lastColor: null,
 };
 
 // view preferences only, losing them never loses work
@@ -192,6 +197,12 @@ function read(): Preferences {
           : '',
       spellcheck: parsed.spellcheck !== false,
       plugins: parsed.plugins === true,
+      lastColor:
+        parsed.lastColor &&
+        (parsed.lastColor.kind === 'text' || parsed.lastColor.kind === 'bg') &&
+        (COLORS as readonly string[]).includes(parsed.lastColor.color)
+          ? { kind: parsed.lastColor.kind, color: parsed.lastColor.color }
+          : null,
       hiddenModules: Array.isArray(parsed.hiddenModules)
         ? SIDEBAR_MODULES.filter((module) => parsed.hiddenModules!.includes(module))
         : [],

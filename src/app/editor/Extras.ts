@@ -85,6 +85,10 @@ export const Highlight = Mark.create({
         const { editor } = this;
         if (editor.isActive('highlight') || editor.isActive('textColor'))
           return editor.chain().unsetMark('highlight').unsetMark('textColor').run();
+        // the colour picked last time, a highlight or coloured words, rather than always yellow
+        const last = getPreferences().lastColor;
+        if (last?.kind === 'text') return editor.commands.setTextColor(last.color);
+        if (last) return editor.commands.setHighlightColor(last.color);
         return editor.commands.toggleHighlight();
       },
     };

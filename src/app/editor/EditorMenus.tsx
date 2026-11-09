@@ -228,6 +228,7 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
   });
   // a colour is picked, then the menu goes back to bold, italic and the rest for the same words
   const pick = (kind: 'text' | 'bg', color: ColorName | null) => {
+    if (color) setPreferences({ lastColor: { kind, color } });
     if (kind === 'text') editor.chain().focus().setTextColor(color).run();
     else editor.chain().focus().setHighlightColor(color).run();
     onDone();
