@@ -9,11 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Tag of the release to add the files to, like v1.2.0
+        description: Tag of the release to add the files to, like v2.0.0
         required: true
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   TAG: ${{ github.event.release.tag_name || inputs.tag }}
@@ -27,7 +27,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            args: --target x86_64-pc-windows-msvc
+            target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            args: --target aarch64-pc-windows-msvc --bundles nsis
+            target: aarch64-pc-windows-msvc
+          - os: macos-latest
+            args: --target aarch64-apple-darwin
+            target: aarch64-apple-darwin
+          - os: macos-latest
+            args: --target x86_64-apple-darwin
+            target: x86_64-apple-darwin
+          - os: ubuntu-22.04
+            args: ''
+            target: ''
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -46,80 +61,33 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Linux libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsecret-1-dev libdbus-1-dev
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      - run: npm run build
-      # signing turns on by itself once these secrets exist in the repository settings. a missing secret
-      # arrives as an empty string, which electron-builder would read as a certificate path, so only the
-      # ones that are set are passed on
-      - name: Pass on the signing secrets that exist
-        shell: bash
+      # signing turns on by itself once these secrets exist in the repository settings. without an apple
+      # certificate the mac app gets a free ad hoc signature, apple silicon refuses to open an app with none
+      - uses: tauri-apps/tauri-action@v0
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          for name in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if [ -n "${!name}" ]; then echo "$name=${!name}" >> "$GITHUB_ENV"; fi
-          done
-          # without a certificate the mac app gets a free ad hoc signature, apple silicon refuses to open
-          # an app with none at all and calls it damaged
-          if [ -z "$CSC_LINK" ] && [ "$RUNNER_OS" = macOS ]; then
-            echo "BUILDER_ARGS=--config.mac.identity=-" >> "$GITHUB_ENV"
-          fi
-      # bash on every system, powershell would split the option above at its dots.
-      # windows builds each architecture on its own so nobody downloads an installer twice the size,
-      # macos builds intel and apple silicon side by side from the apple silicon runner.
-      # nothing is uploaded from here, the upload job below adds every file to the release in one go
-      - name: Build
-        shell: bash
-        run: |
-          case "$RUNNER_OS" in
-            Windows)
-              npx electron-builder --win --x64 --publish never $BUILDER_ARGS
-              npx electron-builder --win --arm64 --publish never $BUILDER_ARGS
-              ;;
-            macOS)
-              npx electron-builder --mac --publish never $BUILDER_ARGS
-              ;;
-            *)
-              npx electron-builder --linux --publish never $BUILDER_ARGS
-              ;;
-          esac
-      - uses: actions/upload-artifact@v4
         with:
-          name: morrow-${{ runner.os }}
-          if-no-files-found: error
-          path: |
-            release/Morrow-*.exe
-            release/Morrow-*.dmg
-            release/Morrow-*.zip
-            release/Morrow-*.AppImage
-            release/morrow_*.deb
-
-  upload:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: files
-          merge-multiple: true
-      # files already on the release with the same name are replaced, so running it again is safe
-      - name: Add the files to the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          ls -l files
-          if ! gh release view "$TAG" > /dev/null 2>&1; then
-            echo "::error::There is no release for $TAG. Create it on GitHub first."
-            exit 1
-          fi
-          gh release upload "$TAG" files/* --clobber
+          tagName: ${{ env.TAG }}
+          releaseId: ${{ github.event.release.id }}
+          args: ${{ matrix.args }}
