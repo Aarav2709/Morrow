@@ -19,7 +19,9 @@ you time.
 
 ## Setting up
 
-You need [Node.js](https://nodejs.org) 20.19 or newer.
+You need [Node.js](https://nodejs.org) 20.19 or newer, [Rust](https://rustup.rs) and the
+[Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system. On Linux that is
+WebKitGTK 4.1, such as `libwebkit2gtk-4.1-dev` on Debian and Ubuntu or `webkit2gtk-4.1` on Arch.
 
 ```sh
 git clone https://github.com/Aarav2709/Morrow.git
@@ -27,6 +29,10 @@ cd Morrow
 npm install
 npm run dev        # the desktop app with live reload
 ```
+
+The first run builds the Rust side, which takes a few minutes. A development build runs the interface
+unbundled and the Rust side unoptimised, so it is noticeably slower than a release. `npm run build`
+makes the installers for your system in `src-tauri/target/release/bundle`.
 
 `npm run dev` opens Morrow with your normal settings and vault. To try things
 on a throwaway vault, run it with a separate profile:
@@ -42,7 +48,8 @@ npm run check      # type check, lint, tests and build
 npm run format     # prettier, if the check complains about formatting
 ```
 
-`npm run check` is what CI runs on every pull request, on Windows, macOS and
+`npm run check` is what CI runs on every pull request. For changes in `src-tauri`, also run
+`cargo fmt`, `cargo clippy -- -D warnings` and `cargo test` there, which CI runs on Windows, macOS and
 Linux.
 
 For anything you can see, try it in the running app as well, in both light and
@@ -53,7 +60,7 @@ the pull request make review much quicker.
 
 - **Read [ARCHITECTURE.md](ARCHITECTURE.md) first.** It shows where things live
   and how a change reaches the files on disk.
-- **`src/core` stays pure.** No React, no storage, no Electron, so it can be
+- **`src/core` stays pure.** No React, no storage, no Tauri, so it can be
   tested on its own. Lint enforces this.
 - **Every change to pages is a command** in `src/core/commands.ts`. Components
   never change state directly.
@@ -87,7 +94,7 @@ many, so `npm run check` tells you when a translation is out of step.
 
 To add a language, copy `es.ts`, translate every value keeping anything in
 braces, and add it to `SupportedLocale` and `SUPPORTED_LOCALES` in `src/app/i18n/types.ts`, to the
-list in `src/app/i18n/index.ts`, and to `electronLanguages` in `package.json`.
+list in `src/app/i18n/index.ts`.
 
 ## Licence
 

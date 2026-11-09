@@ -1,20 +1,20 @@
 # How Morrow is built
 
-Morrow is an Electron app. A React interface runs in the window, and a small
-main process does everything that needs the computer: files, sync, the
-assistant's network calls. The vault is a folder of Markdown files, and the app
-keeps an in-memory model of it that it writes back as files.
+Morrow is a Tauri app. A React interface runs in the system's web view, and a
+Rust side does everything that needs the computer: files, sync, the assistant's
+network calls. The vault is a folder of Markdown files, and the app keeps an
+in-memory model of it that it writes back as files.
 
 ## The folders
 
-| Folder         | What lives there                                                                                                                                                                                                                                                                                                     |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `electron/`    | The main process. `main.cts` makes the window and answers the interface over IPC, `vault.cts` reads, writes and watches the vault folder, `sync.cts` syncs between computers on a network, `cloud.cts` finds cloud folders, `ai.cts` calls the assistant's provider. `preload.cts` is the only bridge into the page. |
-| `src/core/`    | Pure logic with no UI or storage: the data model, commands, Markdown, databases, formulas, search, links, the vault's file layout. Most tests are here.                                                                                                                                                              |
-| `src/storage/` | Turns the model into files and back. `session.ts` runs commands and holds the state, `vaultRepository.ts` decides which files to write, `saveQueue.ts` batches saves.                                                                                                                                                |
-| `src/app/`     | The React interface: `components/`, the Tiptap editor in `editor/`, the assistant panel in `assistant/`, translations in `i18n/`, and app wide helpers such as `operations.ts` and `actions.ts`.                                                                                                                     |
-| `src/mcp/`     | The MCP server that other AI apps start, bundled on its own into `dist-mcp/index.js`. It reads the vault with `src/core` and writes plain files.                                                                                                                                                                     |
-| `scripts/`     | Build tooling, such as collecting third party licences.                                                                                                                                                                                                                                                              |
+| Folder         | What lives there                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src-tauri/`   | The Rust side. `lib.rs` makes the window and answers the interface's commands, `vault.rs` reads, writes and watches the vault folder, `sync.rs` syncs between computers on a network, `cloud.rs` finds cloud folders, `ai.rs` calls the assistant's provider, `native.rs` prints to PDF and takes pictures of the window on each system. `src/app/platform/tauri.ts` turns the interface's calls into commands. |
+| `src/core/`    | Pure logic with no UI or storage: the data model, commands, Markdown, databases, formulas, search, links, the vault's file layout. Most tests are here.                                                                                                                                                                                                                                                         |
+| `src/storage/` | Turns the model into files and back. `session.ts` runs commands and holds the state, `vaultRepository.ts` decides which files to write, `saveQueue.ts` batches saves.                                                                                                                                                                                                                                           |
+| `src/app/`     | The React interface: `components/`, the Tiptap editor in `editor/`, the assistant panel in `assistant/`, translations in `i18n/`, and app wide helpers such as `operations.ts` and `actions.ts`.                                                                                                                                                                                                                |
+| `src/mcp/`     | The MCP server that other AI apps start, bundled on its own into `dist-mcp/index.js`. It reads the vault with `src/core` and writes plain files.                                                                                                                                                                                                                                                                |
+| `scripts/`     | Build tooling, such as collecting third party licences.                                                                                                                                                                                                                                                                                                                                                         |
 
 ## From a keystroke to a file
 
@@ -27,9 +27,9 @@ keeps an in-memory model of it that it writes back as files.
 4. The save queue hands the changed pages to `VaultRepository`, which works out
    each page's file and folder (`src/core/vault/layout.ts`), renders its
    Markdown and frontmatter (`src/core/vault/pageFile.ts`,
-   `src/core/markdown/serialize.ts`), and sends the file operations to the main
-   process.
-5. `electron/vault.cts` writes each file atomically, next to the old one and
+   `src/core/markdown/serialize.ts`), and sends the file operations to the Rust
+   side.
+5. `src-tauri/src/vault.rs` writes each file atomically, next to the old one and
    then renamed into place, and refuses any path outside the vault.
 
 Reading goes the other way. At start `scanVault` reads the folder,
@@ -64,6 +64,7 @@ version in page history.
 
 `npm test` runs Vitest on `src/**/*.test.ts`. Storage tests run a real session
 against `MemoryVault`, an in-memory folder that can also fake edits from other
-apps. For interface changes, run the app and look: `MORROW_USER_DATA` points it
-at a throwaway profile, and in development `MORROW_HIDDEN=1` keeps the window
-out of sight for scripted checks over the Chrome DevTools Protocol.
+apps. Editor behaviour is tested in `src/app/editor/*.test.ts` with a real editor in
+happy-dom. The Rust side has its own tests, `cargo test` in `src-tauri`. For
+interface changes, run the app and look: `MORROW_USER_DATA` points a
+development build at a throwaway profile.

@@ -99,8 +99,12 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   the setup it shows into the app. It runs on your computer, started by that app
 - **In your language**: English, Spanish and Portuguese, chosen in Settings, General
 - **Export as PDF**, and **edit as Markdown** to work on a page's source directly
-- **Updates when you want them**: turn on update checks in Settings, About. Windows
-  and Linux AppImage copies download, verify and install the new version themselves
+- **Updates when you want them**: turn on update checks in Settings, About. Installed
+  Windows copies and Linux AppImages download, verify and install the new version themselves
+- **Obsidian Bases**: a `base` code block, or `/base`, shows the pages it finds as a live table,
+  cards or a list, with filters, formulas and sorting written the way Obsidian writes them
+- **Plugins**: JavaScript in your vault's `.morrow/plugins` folder can add commands, `/` items
+  and more. They stay off until you turn them on, see [PLUGINS.md](PLUGINS.md)
 - **Custom CSS** kept in the vault as `.morrow/style.css`
 - A full emoji picker for page icons, drawn the same on every system
 - Find and replace, Markdown shortcuts, Markdown paste, an outline of each page, focus mode
@@ -112,10 +116,11 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 
 ## Status
 
-Version **1.4.0**. Pages are files in a folder you choose. Earlier builds kept
-them inside the app; the first time this version opens it offers to copy those
-pages into the folder and leaves the original copy untouched. Releases are built
-for Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64).
+Version **2.0.0**. Morrow is now built with [Tauri](https://tauri.app) and Rust instead of
+Electron: it uses the web view your system already has, so it is a fraction of the size, starts
+quicker and uses far less memory. Pages are files in a folder you choose. Releases are built for
+Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64). An Android app is next,
+from the same code.
 
 ## Coming from Obsidian
 
