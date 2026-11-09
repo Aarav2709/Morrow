@@ -748,6 +748,23 @@ function turnBlocks(editor: Editor, range: BlockRange, target: TurnTarget): void
   }
 }
 
+// what a block is now, so the menu can tick it. a list item counts as its list
+function currentKind(editor: Editor, pos: number): { kind: string; level: number | null } | null {
+  const node = editor.state.doc.nodeAt(pos);
+  if (!node) return null;
+  const name = node.type.name;
+  if (name === 'heading') return { kind: 'heading', level: Number(node.attrs.level) || 1 };
+  if (name === 'details') {
+    const level = Number(node.firstChild?.attrs.level);
+    return { kind: 'toggle', level: level >= 1 && level <= 6 ? level : null };
+  }
+  if (name === 'listItem' || name === 'taskItem') {
+    const parent = editor.state.doc.resolve(pos).parent.type.name;
+    return { kind: parent, level: null };
+  }
+  return { kind: name, level: null };
+}
+
 export function BlockMenu({
   editor,
   request,
@@ -763,46 +780,96 @@ export function BlockMenu({
   const range = picked && request.pos >= picked.from && request.pos < picked.to ? picked : null;
   const turn = (target: TurnTarget) => () =>
     range ? turnBlocks(editor, range, target) : turnInto(editor, request.pos, target);
+  const current = range ? null : currentKind(editor, request.pos);
+  const is = (kind: string, level: number | null = null) =>
+    current !== null && current.kind === kind && current.level === level;
+  const block = editor.state.doc.nodeAt(request.pos);
+  // pictures, dividers and other blocks without words have no colour to change
+  const colourable = range !== null || (block !== null && block.textContent.trim() !== '');
   const entries: MenuEntry[] = [
     { heading: t('editor.turnInto') },
-    { label: t('slash.items.text.title'), icon: Pilcrow, onSelect: turn({ kind: 'paragraph' }) },
+    {
+      label: t('slash.items.text.title'),
+      icon: Pilcrow,
+      checked: is('paragraph'),
+      onSelect: turn({ kind: 'paragraph' }),
+    },
     ...([Heading1, Heading2, Heading3, Heading4, Heading5, Heading6] as const).map((icon, index) => {
       const level = (index + 1) as 1 | 2 | 3 | 4 | 5 | 6;
       return {
         label: t(`slash.items.h${level}.title`),
         icon,
+        checked: is('heading', level),
         onSelect: turn({ kind: 'heading', level }),
       };
     }),
-    { label: t('slash.items.bullet.title'), icon: List, onSelect: turn({ kind: 'bulletList' }) },
-    { label: t('slash.items.ordered.title'), icon: ListOrdered, onSelect: turn({ kind: 'orderedList' }) },
-    { label: t('slash.items.task.title'), icon: ListChecks, onSelect: turn({ kind: 'taskList' }) },
-    { label: t('slash.items.toggle.title'), icon: ChevronRight, onSelect: turn({ kind: 'toggle' }) },
+    {
+      label: t('slash.items.bullet.title'),
+      icon: List,
+      checked: is('bulletList'),
+      onSelect: turn({ kind: 'bulletList' }),
+    },
+    {
+      label: t('slash.items.ordered.title'),
+      icon: ListOrdered,
+      checked: is('orderedList'),
+      onSelect: turn({ kind: 'orderedList' }),
+    },
+    {
+      label: t('slash.items.task.title'),
+      icon: ListChecks,
+      checked: is('taskList'),
+      onSelect: turn({ kind: 'taskList' }),
+    },
+    {
+      label: t('slash.items.toggle.title'),
+      icon: ChevronRight,
+      checked: is('toggle'),
+      onSelect: turn({ kind: 'toggle' }),
+    },
     ...([1, 2, 3, 4, 5, 6] as const).map((level) => ({
       label: t(`slash.items.toggleH${level}.title`),
       icon: ChevronRight,
+      checked: is('toggle', level),
       onSelect: turn({ kind: 'toggle', level }),
     })),
-    { label: t('slash.items.quote.title'), icon: Quote, onSelect: turn({ kind: 'blockquote' }) },
-    { label: t('slash.items.code.title'), icon: Code2, onSelect: turn({ kind: 'codeBlock' }) },
-    { separator: true },
     {
-      label: t('editor.colour'),
-      icon: Palette,
-      // the block's words are picked and the colours open over them, for its text or a highlight
-      onSelect: () => {
-        const node = editor.state.doc.nodeAt(request.pos);
-        const from = range?.from ?? request.pos;
-        const to = range?.to ?? request.pos + (node?.nodeSize ?? 0);
-        const selection = TextSelection.between(editor.state.doc.resolve(from), editor.state.doc.resolve(to));
-        if (selection.empty) return;
-        clearBlockSelection(editor);
-        editor.view.dispatch(editor.state.tr.setSelection(selection));
-        editor.view.focus();
-        requestAnimationFrame(() => editor.view.dom.dispatchEvent(new Event('morrow:colour')));
-      },
+      label: t('slash.items.quote.title'),
+      icon: Quote,
+      checked: is('blockquote'),
+      onSelect: turn({ kind: 'blockquote' }),
+    },
+    {
+      label: t('slash.items.code.title'),
+      icon: Code2,
+      checked: is('codeBlock'),
+      onSelect: turn({ kind: 'codeBlock' }),
     },
     { separator: true },
+    ...(colourable
+      ? [
+          {
+            label: t('editor.colour'),
+            icon: Palette,
+            // the block's words are picked and the colours open over them, for its text or a highlight
+            onSelect: () => {
+              const node = editor.state.doc.nodeAt(request.pos);
+              const from = range?.from ?? request.pos;
+              const to = range?.to ?? request.pos + (node?.nodeSize ?? 0);
+              const selection = TextSelection.between(
+                editor.state.doc.resolve(from),
+                editor.state.doc.resolve(to),
+              );
+              if (selection.empty) return;
+              clearBlockSelection(editor);
+              editor.view.dispatch(editor.state.tr.setSelection(selection));
+              editor.view.focus();
+              requestAnimationFrame(() => editor.view.dom.dispatchEvent(new Event('morrow:colour')));
+            },
+          },
+          { separator: true as const },
+        ]
+      : []),
     {
       label: t('editor.moveUp'),
       icon: ArrowUp,
