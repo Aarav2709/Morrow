@@ -91,6 +91,12 @@ pub fn setup_webview<R: Runtime>(window: &WebviewWindow<R>) {
         let refs: Vec<&str> = languages.iter().map(String::as_str).take(3).collect();
         context.set_spell_checking_languages(&refs);
         context.set_spell_checking_enabled(true);
+        // drawing on the graphics card keeps scrolling and typing smooth in long pages
+        if let Some(settings) = webkit2gtk::WebViewExt::settings(&webview.inner()) {
+            use webkit2gtk::SettingsExt;
+            settings.set_hardware_acceleration_policy(webkit2gtk::HardwareAccelerationPolicy::Always);
+            settings.set_enable_smooth_scrolling(true);
+        }
     });
 }
 
