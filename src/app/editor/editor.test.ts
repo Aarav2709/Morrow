@@ -1,7 +1,9 @@
 // @vitest-environment happy-dom
 import { Editor } from '@tiptap/core';
+import { CellSelection } from '@tiptap/pm/tables';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DocNode } from '../../core/model';
+import { changeCase, setHeading } from './EditorMenus';
 import { createExtensions } from './extensions';
 
 const json = (target: Editor) => target.getJSON() as DocNode;
@@ -84,5 +86,50 @@ describe('the editor', () => {
   it('keeps no empty line at the end of a page', () => {
     const target = make({ type: 'doc', content: [p('One'), { type: 'horizontalRule' }] });
     expect(json(target).content!.map((node) => node.type)).toEqual(['paragraph', 'horizontalRule']);
+  });
+
+  it('changes the case of words in a table cell', () => {
+    const cell = (type: string, text: string) => ({ type, content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [cell('tableHeader', 'Name'), cell('tableHeader', 'Note')] },
+            { type: 'tableRow', content: [cell('tableCell', 'ada'), cell('tableCell', 'quiet')] },
+          ],
+        },
+      ],
+    });
+    let start = 0;
+    target.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'quiet') start = pos;
+    });
+    target.commands.setTextSelection({ from: start, to: start + 5 });
+    changeCase(target, (text) => text.toUpperCase());
+    expect(target.getText()).toContain('QUIET');
+    // dragging across cells picks whole cells
+    const cells: number[] = [];
+    target.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'tableCell') cells.push(pos);
+    });
+    target.view.dispatch(
+      target.state.tr.setSelection(CellSelection.create(target.state.doc, cells[0]!, cells[1]!)),
+    );
+    changeCase(target, (text) => text.toLowerCase());
+    expect(target.getText()).toContain('quiet');
+    expect(target.getText()).toContain('ada');
+  });
+
+  it('makes a toggle heading from the toolbar inside a toggle title', () => {
+    const target = make({ type: 'doc', content: [p('Plans')] });
+    target.commands.setTextSelection(1);
+    type(target, '> ');
+    target.commands.setTextSelection({ from: 2, to: 7 });
+    setHeading(target, 2);
+    expect(json(target).content![0]!.content![0]!.attrs?.level).toBe(2);
+    setHeading(target, 2);
+    expect(json(target).content![0]!.content![0]!.attrs?.level ?? null).toBeNull();
   });
 });

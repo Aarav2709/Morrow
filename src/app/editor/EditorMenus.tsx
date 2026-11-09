@@ -204,12 +204,12 @@ function useMarks(editor: Editor) {
       code: current.isActive('code'),
       highlight: current.isActive('highlight'),
       link: current.isActive('link'),
-      h1: current.isActive('heading', { level: 1 }),
-      h2: current.isActive('heading', { level: 2 }),
-      h3: current.isActive('heading', { level: 3 }),
-      h4: current.isActive('heading', { level: 4 }),
-      h5: current.isActive('heading', { level: 5 }),
-      h6: current.isActive('heading', { level: 6 }),
+      h1: headingLevel(current) === 1,
+      h2: headingLevel(current) === 2,
+      h3: headingLevel(current) === 3,
+      h4: headingLevel(current) === 4,
+      h5: headingLevel(current) === 5,
+      h6: headingLevel(current) === 6,
       href: String(current.getAttributes('link').href ?? ''),
     }),
   });
@@ -281,7 +281,30 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
 
 // the picked words in capitals or small letters, keeping their formatting. each run of text is changed on
 // its own so bold, links and colours stay where they were
-function changeCase(editor: Editor, change: (text: string) => string): void {
+// a heading from the toolbar. in a toggle's title the level goes on the title, which makes a toggle heading
+export function setHeading(editor: Editor, level: 1 | 2 | 3 | 4 | 5 | 6): void {
+  const { $from } = editor.state.selection;
+  if ($from.parent.type.name === 'detailsSummary') {
+    const same = $from.parent.attrs.level === level;
+    editor.view.dispatch(
+      editor.state.tr.setNodeMarkup($from.before(), undefined, {
+        ...$from.parent.attrs,
+        level: same ? null : level,
+      }),
+    );
+    editor.commands.focus();
+    return;
+  }
+  editor.chain().focus().toggleHeading({ level }).run();
+}
+
+const headingLevel = (editor: Editor): number | null => {
+  const { $from } = editor.state.selection;
+  if ($from.parent.type.name === 'detailsSummary') return Number($from.parent.attrs.level) || null;
+  return $from.parent.type.name === 'heading' ? Number($from.parent.attrs.level) : null;
+};
+
+export function changeCase(editor: Editor, change: (text: string) => string): void {
   const { from, to } = editor.state.selection;
   const { tr } = editor.state;
   editor.state.doc.nodesBetween(from, to, (node, pos) => {
@@ -418,37 +441,37 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
               label={t('slash.items.h1.title')}
               icon={Heading1}
               active={marks.h1}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+              onClick={() => setHeading(editor, 1)}
             />
             <ToolButton
               label={t('slash.items.h2.title')}
               icon={Heading2}
               active={marks.h2}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+              onClick={() => setHeading(editor, 2)}
             />
             <ToolButton
               label={t('slash.items.h3.title')}
               icon={Heading3}
               active={marks.h3}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+              onClick={() => setHeading(editor, 3)}
             />
             <ToolButton
               label={t('slash.items.h4.title')}
               icon={Heading4}
               active={marks.h4}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()}
+              onClick={() => setHeading(editor, 4)}
             />
             <ToolButton
               label={t('slash.items.h5.title')}
               icon={Heading5}
               active={marks.h5}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 5 }).run()}
+              onClick={() => setHeading(editor, 5)}
             />
             <ToolButton
               label={t('slash.items.h6.title')}
               icon={Heading6}
               active={marks.h6}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 6 }).run()}
+              onClick={() => setHeading(editor, 6)}
             />
           </>
         )}
