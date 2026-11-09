@@ -3,6 +3,7 @@ import { Editor } from '@tiptap/core';
 import { CellSelection } from '@tiptap/pm/tables';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DocNode } from '../../core/model';
+import { selectBlockRange } from './BlockSelect';
 import { changeCase, setHeading } from './EditorMenus';
 import { createExtensions } from './extensions';
 
@@ -131,5 +132,18 @@ describe('the editor', () => {
     expect(json(target).content![0]!.content![0]!.attrs?.level).toBe(2);
     setHeading(target, 2);
     expect(json(target).content![0]!.content![0]!.attrs?.level ?? null).toBeNull();
+  });
+
+  it('copies pictures with the words when blocks are picked in the margin', () => {
+    const target = make({
+      type: 'doc',
+      content: [p('Before'), { type: 'image', attrs: { src: 'https://example.org/cat.png', alt: 'cat' } }],
+    });
+    selectBlockRange(target.view, { from: 0, to: target.state.doc.content.size });
+    const data = new DataTransfer();
+    const event = new ClipboardEvent('copy', { clipboardData: data, bubbles: true, cancelable: true });
+    target.view.dom.dispatchEvent(event);
+    expect(data.getData('text/plain')).toContain('Before');
+    expect(data.getData('text/html')).toContain('cat.png');
   });
 });

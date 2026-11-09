@@ -7,6 +7,7 @@ import type { FileMeta } from '../../core/model';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
 import { desktop, nativeFileUrl } from '../platform/desktop';
 import { activeRoute } from '../router';
+import { selectedBlocks } from './BlockSelect';
 import { getSession } from '../workspace';
 import { t } from '../i18n';
 
@@ -450,6 +451,24 @@ async function copyWithImages(view: EditorView, slice: Slice): Promise<void> {
     ]);
 }
 
+// blocks picked in the margin are copied whole, pictures at either end included, which a text selection
+// spread over them would leave out. pictures then go to other apps as part of the copied html
+function copyBlocks(view: EditorView, event: ClipboardEvent, cut: boolean): boolean {
+  const range = selectedBlocks(view.state);
+  const slice = range ? view.state.doc.slice(range.from, range.to) : view.state.selection.content();
+  if (!range && view.state.selection.empty) return false;
+  if (range && event.clipboardData) {
+    const { dom, text } = view.serializeForClipboard(slice);
+    event.clipboardData.clearData();
+    event.clipboardData.setData('text/html', dom.innerHTML);
+    event.clipboardData.setData('text/plain', text);
+    event.preventDefault();
+    if (cut) view.dispatch(view.state.tr.delete(range.from, range.to).scrollIntoView());
+  }
+  void copyWithImages(view, slice).catch(() => {});
+  return range !== null;
+}
+
 export const FileDrop = Extension.create({
   name: 'fileDrop',
   addProseMirrorPlugins() {
@@ -465,16 +484,8 @@ export const FileDrop = Extension.create({
             return slice;
           },
           handleDOMEvents: {
-            copy: (view: EditorView) => {
-              if (!view.state.selection.empty)
-                void copyWithImages(view, view.state.selection.content()).catch(() => {});
-              return false;
-            },
-            cut: (view: EditorView) => {
-              if (!view.state.selection.empty)
-                void copyWithImages(view, view.state.selection.content()).catch(() => {});
-              return false;
-            },
+            copy: (view: EditorView, event: ClipboardEvent) => copyBlocks(view, event, false),
+            cut: (view: EditorView, event: ClipboardEvent) => copyBlocks(view, event, true),
           },
           handlePaste(_view: EditorView, event: ClipboardEvent) {
             const files = filesFrom(event.clipboardData);

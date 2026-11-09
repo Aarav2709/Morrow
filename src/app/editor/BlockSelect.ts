@@ -18,7 +18,7 @@ export function selectedBlocks(state: EditorState): BlockRange | null {
 }
 
 // the selected blocks with the cursor's selection spread over them, so copy and typing take them all
-function select(view: EditorView, range: BlockRange | null): void {
+export function selectBlockRange(view: EditorView, range: BlockRange | null): void {
   const { tr, doc } = view.state;
   tr.setMeta(key, range);
   if (range) {
@@ -29,7 +29,7 @@ function select(view: EditorView, range: BlockRange | null): void {
 }
 
 export function clearBlockSelection(editor: Editor): void {
-  if (selectedBlocks(editor.state)) select(editor.view, null);
+  if (selectedBlocks(editor.state)) selectBlockRange(editor.view, null);
 }
 
 interface Band {
@@ -146,7 +146,7 @@ function marginDrag(view: EditorView) {
         right: across ? content.right : right,
       });
       const now = selectedBlocks(view.state);
-      if (range && (now?.from !== range.from || now?.to !== range.to)) select(view, range);
+      if (range && (now?.from !== range.from || now?.to !== range.to)) selectBlockRange(view, range);
     };
     // near the top or bottom of the page it keeps scrolling, so long stretches can be picked
     const scroll = () => {
@@ -170,7 +170,7 @@ function marginDrag(view: EditorView) {
       window.removeEventListener('mouseup', onUp);
       if (selectedBlocks(view.state)) view.focus();
     };
-    if (selectedBlocks(view.state)) select(view, null);
+    if (selectedBlocks(view.state)) selectBlockRange(view, null);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     frame = requestAnimationFrame(scroll);
