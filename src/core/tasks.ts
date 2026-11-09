@@ -10,7 +10,19 @@ export interface TaskRef {
   checked: boolean;
 }
 
+// documents never change once made, so each one's checklist is read once. the sidebar counts open tasks
+// after every edit, which this keeps quick
+const taskCache = new WeakMap<DocNode, { pageId: PageId; tasks: TaskRef[] }>();
+
 export function tasksInDoc(pageId: PageId, doc: DocNode): TaskRef[] {
+  const cached = taskCache.get(doc);
+  if (cached?.pageId === pageId) return cached.tasks;
+  const tasks = readTasks(pageId, doc);
+  taskCache.set(doc, { pageId, tasks });
+  return tasks;
+}
+
+function readTasks(pageId: PageId, doc: DocNode): TaskRef[] {
   const tasks: TaskRef[] = [];
   const visit = (node: DocNode) => {
     if (node.type === 'taskItem') {

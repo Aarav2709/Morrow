@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { WorkspaceState } from '../../core/model';
 import { formatShortcut } from '../actions';
@@ -91,7 +91,8 @@ function describe(hash: string, state: WorkspaceState): { title: string; icon: R
 // every open tab, in the row the window's own buttons sit in
 export function TabBar() {
   const { tabs, active, closed } = useTabs();
-  const state = useWorkspace();
+  // titles and icons catch up just after typing
+  const state = useDeferredValue(useWorkspace());
   const [menu, setMenu] = useState<{ tab: Tab; at: DOMRect } | null>(null);
   const strip = useRef<HTMLDivElement>(null);
   // the tab being shown stays in view when there are more tabs than room

@@ -38,7 +38,18 @@ function hash(text: string): string {
   return `${a.toString(36)}${b.toString(36)}`;
 }
 
+// read once for each document, which never changes once made
+const cardCache = new WeakMap<DocNode, { pageId: PageId; cards: Card[] }>();
+
 export function cardsInDoc(pageId: PageId, doc: DocNode): Card[] {
+  const cached = cardCache.get(doc);
+  if (cached?.pageId === pageId) return cached.cards;
+  const cards = readCards(pageId, doc);
+  cardCache.set(doc, { pageId, cards });
+  return cards;
+}
+
+function readCards(pageId: PageId, doc: DocNode): Card[] {
   const cards: Card[] = [];
   const visit = (node: DocNode) => {
     if (node.type === 'codeBlock' || node.type === 'rawBlock') return;

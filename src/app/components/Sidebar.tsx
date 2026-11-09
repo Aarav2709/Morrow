@@ -28,7 +28,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { memo, useMemo, useRef, useState } from 'react';
+import { memo, useDeferredValue, useMemo, useRef, useState } from 'react';
 import { dateKey } from '../../core/daily';
 import { displayTitle } from '../../core/model';
 import type { PageId, PageMeta, WorkspaceState } from '../../core/model';
@@ -150,7 +150,8 @@ function NavItem({
 
 export function Sidebar() {
   const { t } = useTranslation();
-  const state = useWorkspace();
+  // the sidebar catches up just after typing, so its counts and tree never hold up a keystroke
+  const state = useDeferredValue(useWorkspace());
   const route = useActiveRoute();
   const prefs = usePreferences();
   const activeId = route.name === 'page' ? route.id : null;
@@ -471,7 +472,7 @@ interface TreeProps {
 
 const SUBPAGES_SHOWN = 50;
 
-function PageTree({ state, activeId, expanded }: TreeProps) {
+const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps) {
   const ui = useUi();
   const hideJournal = usePreferences().hiddenModules.includes('daily');
   const [drop, setDrop] = useState<{ id: PageId; zone: DropZone } | null>(null);
@@ -662,7 +663,7 @@ function PageTree({ state, activeId, expanded }: TreeProps) {
       )}
     </>
   );
-}
+});
 
 interface RowProps {
   page: PageMeta;
