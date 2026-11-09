@@ -15,6 +15,7 @@ import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { BlockMath, InlineMath } from '@tiptap/extension-mathematics';
 import type { Node as PmNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Transaction } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import type { EditorView } from '@tiptap/pm/view';
 import { common, createLowlight } from 'lowlight';
@@ -705,26 +706,77 @@ export function calloutNodeView(): NodeViewRenderer {
 const TAG_PATTERN = /(^|[\s(])#([\p{L}\p{N}_\-/]*[\p{L}_\-/][\p{L}\p{N}_\-/]*)/gu;
 const tagKey = new PluginKey<DecorationSet>('tags');
 
-function tagDecorations(doc: PmNode): DecorationSet {
-  const decorations: Decoration[] = [];
-  doc.descendants((node, pos, parent) => {
-    if (parent?.type.name === 'codeBlock') return false;
+// the tag chips in one block of text
+function tagsInBlock(block: PmNode, start: number, out: Decoration[]): void {
+  if (block.type.spec.code) return;
+  block.descendants((node, offset) => {
     if (
       !node.isText ||
       !node.text ||
       node.marks.some((mark) => mark.type.name === 'code' || mark.type.name === 'link')
     )
       return true;
+    const pos = start + 1 + offset;
     for (const match of node.text.matchAll(TAG_PATTERN)) {
       const from = pos + match.index + match[1]!.length;
       const to = from + match[2]!.length + 1;
-      decorations.push(
+      out.push(
         Decoration.inline(from, to, { class: `tag-chip tag-${tagColor(match[2]!)}`, 'data-tag': match[2]! }),
       );
     }
     return true;
   });
+}
+
+export function tagDecorations(doc: PmNode): DecorationSet {
+  const decorations: Decoration[] = [];
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) return true;
+    tagsInBlock(node, pos, decorations);
+    return false;
+  });
   return DecorationSet.create(doc, decorations);
+}
+
+// after an edit only the blocks it touched are looked at again, the rest of the chips just move along.
+// looking through the whole page on every key made long pages slow to type in
+export function updateTagDecorations(tr: Transaction, previous: DecorationSet): DecorationSet {
+  const { doc } = tr;
+  let set = previous.map(tr.mapping, doc);
+  const blocks = new Set<number>();
+  const blockAt = (pos: number) => {
+    const $pos = doc.resolve(Math.max(0, Math.min(pos, doc.content.size)));
+    for (let depth = $pos.depth; depth > 0; depth--)
+      if ($pos.node(depth).isTextblock) {
+        blocks.add($pos.before(depth));
+        return;
+      }
+  };
+  tr.mapping.maps.forEach((map, index) => {
+    const after = tr.mapping.slice(index + 1);
+    map.forEach((_oldFrom, _oldTo, newFrom, newTo) => {
+      const from = after.map(newFrom, -1);
+      const to = after.map(newTo, 1);
+      blockAt(from);
+      blockAt(to);
+      if (to > from)
+        doc.nodesBetween(from, to, (node, pos) => {
+          if (!node.isTextblock) return true;
+          blocks.add(pos);
+          return false;
+        });
+    });
+  });
+  for (const pos of blocks) {
+    const block = doc.nodeAt(pos);
+    if (!block) continue;
+    const end = pos + block.nodeSize;
+    set = set.remove(set.find(pos, end));
+    const fresh: Decoration[] = [];
+    tagsInBlock(block, pos, fresh);
+    if (fresh.length) set = set.add(doc, fresh);
+  }
+  return set;
 }
 
 // #tags written in text are shown as chips and open the tag's page when clicked with ctrl or cmd
@@ -737,7 +789,7 @@ export function Tags(open: (tag: string) => void) {
           key: tagKey,
           state: {
             init: (_config, state) => tagDecorations(state.doc),
-            apply: (tr, value) => (tr.docChanged ? tagDecorations(tr.doc) : value),
+            apply: (tr, value) => (tr.docChanged ? updateTagDecorations(tr, value) : value),
           },
           props: {
             decorations: (state) => tagKey.getState(state),

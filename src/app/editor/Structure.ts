@@ -99,7 +99,8 @@ function headingIds(doc: PMNode, prefix: string): DecorationSet {
   const decorations: Decoration[] = [];
   let index = 0;
   doc.descendants((node, pos) => {
-    if (node.type.name !== 'heading') return true;
+    // the words of a paragraph are never headings, so only blocks are looked through
+    if (node.type.name !== 'heading') return !node.isTextblock;
     decorations.push(Decoration.node(pos, pos + node.nodeSize, { id: `${prefix}-${index++}` }));
     return false;
   });

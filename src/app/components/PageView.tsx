@@ -12,7 +12,16 @@ import {
   Trash2,
   ChevronRight,
 } from 'lucide-react';
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { docToPlainText, findUnknownTypes, isDocEmpty } from '../../core/doc';
 import { backlinksTo, unlinkedMentions } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
@@ -483,12 +492,14 @@ function TitleField({
 }) {
   const ui = useUi();
 
+  // measured only when the title changes. measuring lays out the whole page again, which on every save
+  // while typing made webkit stall for a frame or two
   useLayoutEffect(() => {
     const element = inputRef.current;
     if (!element) return;
     element.style.height = '0px';
     element.style.height = `${element.scrollHeight}px`;
-  });
+  }, [page.title, inputRef]);
 
   // a narrower side of a split wraps the title onto more lines, so it is measured again
   useEffect(() => {
@@ -550,7 +561,7 @@ function TitleField({
 }
 
 function Subpages({ parentId }: { parentId: PageId }) {
-  const state = useWorkspace();
+  const state = useDeferredValue(useWorkspace());
   const children = useMemo(() => childrenOf(state.pages, parentId), [state.pages, parentId]);
   if (children.length === 0) return null;
   return (
@@ -576,7 +587,8 @@ function Subpages({ parentId }: { parentId: PageId }) {
 }
 
 function Backlinks({ id }: { id: PageId }) {
-  const state = useWorkspace();
+  // links from other pages are worked out after typing, never in its way
+  const state = useDeferredValue(useWorkspace());
   const backlinks = useMemo(() => backlinksTo(state, id), [state, id]);
   const linked = useShowMore(backlinks, 30);
   const [showMentions, setShowMentions] = useState(false);

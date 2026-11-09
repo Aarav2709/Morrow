@@ -6,6 +6,8 @@ import type { DocNode } from '../../core/model';
 import { selectBlockRange } from './BlockSelect';
 import { changeCase, setHeading } from './EditorMenus';
 import { createExtensions } from './extensions';
+import { tagDecorations } from './Extras';
+import type { DecorationSet } from '@tiptap/pm/view';
 
 const json = (target: Editor) => target.getJSON() as DocNode;
 
@@ -145,5 +147,36 @@ describe('the editor', () => {
     target.view.dom.dispatchEvent(event);
     expect(data.getData('text/plain')).toContain('Before');
     expect(data.getData('text/html')).toContain('cat.png');
+  });
+
+  it('keeps tag chips right while typing, updating only what changed', () => {
+    const target = make({ type: 'doc', content: [p('Plan #garden and #home'), p('nothing'), p('#a #b')] });
+    const shown = (set: DecorationSet) =>
+      set
+        .find()
+        .map((item) => `${item.from}-${item.to}`)
+        .sort()
+        .join(' ');
+    let seed = 7;
+    const random = (n: number) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    for (let step = 0; step < 400; step++) {
+      const size = target.state.doc.content.size;
+      const at = 1 + random(Math.max(1, size - 1));
+      const action = random(6);
+      target.commands.setTextSelection(Math.min(at, size - 1));
+      if (action < 3) type(target, ['#', 'a', ' ', 'x', '#t'][random(5)]!);
+      else if (action === 3)
+        target.commands.deleteRange({ from: Math.max(1, at - 2), to: Math.min(at, size - 1) });
+      else if (action === 4) target.commands.splitBlock();
+      else target.commands.joinBackward();
+      const plugin = target.state.plugins.find((item) =>
+        (item as unknown as { key: string }).key.startsWith('tags'),
+      );
+      const live = (plugin ?? { getState: () => null }).getState(target.state) as DecorationSet | null;
+      expect(live && shown(live)).toBe(shown(tagDecorations(target.state.doc)));
+    }
   });
 });
