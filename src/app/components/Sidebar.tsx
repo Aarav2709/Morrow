@@ -18,6 +18,7 @@ import {
   MoreHorizontal,
   Network,
   PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Search,
   Settings,
@@ -232,14 +233,19 @@ export function Sidebar() {
             <span className="brand-name">Morrow</span>
           </button>
         )}
+        {/* shown over the page while hidden, the button keeps it open rather than hiding it */}
         <button
           type="button"
           className="icon-button"
-          aria-label={t('sidebar.collapseSidebar')}
-          title={`${t('sidebar.collapseSidebar')} (${formatShortcut('Mod+\\')})`}
+          aria-label={prefs.sidebarOpen ? t('sidebar.collapseSidebar') : t('topBar.showSidebar')}
+          title={`${prefs.sidebarOpen ? t('sidebar.collapseSidebar') : t('topBar.showSidebar')} (${formatShortcut('Mod+\\')})`}
           onClick={() => runAction('view.sidebar')}
         >
-          <PanelLeftClose size={16} strokeWidth={1.75} />
+          {prefs.sidebarOpen ? (
+            <PanelLeftClose size={16} strokeWidth={1.75} />
+          ) : (
+            <PanelLeftOpen size={16} strokeWidth={1.75} />
+          )}
         </button>
       </div>
 
@@ -376,7 +382,9 @@ export function Sidebar() {
       </div>
 
       <div className="sidebar-footer">
-        <NavItem icon={FileUp} label={t('sidebar.import')} onClick={() => void importMarkdown()} />
+        {shown('import') && (
+          <NavItem icon={FileUp} label={t('sidebar.import')} onClick={() => void importMarkdown()} />
+        )}
         {(archiveCount > 0 || route.name === 'archive') && (
           <NavItem
             icon={Archive}

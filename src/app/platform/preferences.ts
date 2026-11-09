@@ -20,7 +20,7 @@ export interface Reminder {
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
 // the views the sidebar lists, each one can be left out, daily notes turn off everywhere with theirs
-export const SIDEBAR_MODULES = ['daily', 'tasks', 'tags', 'review', 'graph'] as const;
+export const SIDEBAR_MODULES = ['daily', 'tasks', 'tags', 'review', 'graph', 'import'] as const;
 export type SidebarModule = (typeof SIDEBAR_MODULES)[number];
 // accent colours, each tuned for light and dark in features.css
 export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
