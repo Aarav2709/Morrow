@@ -123,6 +123,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
   // the place is only written down once it has been put back, the empty page loading first is not it
   const placed = useRef(false);
   const prefs = usePreferences();
+  const reading = prefs.readingMode;
   const ui = useUi();
 
   useEffect(() => {
@@ -248,7 +249,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
         {page.kind !== 'database' && !unreadable && !prefs.hiddenOutlines.includes(page.id) && (
           <Outline doc={doc} />
         )}
-        <CoverBanner page={page} editable={!trashed} />
+        <CoverBanner page={page} editable={!trashed && !reading} />
         <article
           className={`page font-${prefs.font} width-${prefs.pageWidths[page.id] ?? prefs.width}${page.cover ? ' has-cover' : ''}`}
         >
@@ -300,7 +301,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
           <h1 className="page-title-heading">
             <TitleField
               page={page}
-              readOnly={trashed}
+              readOnly={trashed || reading}
               inputRef={titleRef}
               onEnter={(rest) => {
                 const editor = editorRef.current;
@@ -310,13 +311,15 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
               }}
             />
           </h1>
-          {page.kind !== 'database' && <PageTags page={page} editable={!trashed && !unreadable} />}
-          {isTemplate && <RepeatBar page={page} editable={!trashed && !unreadable} />}
+          {page.kind !== 'database' && (
+            <PageTags page={page} editable={!trashed && !unreadable && !reading} />
+          )}
+          {isTemplate && <RepeatBar page={page} editable={!trashed && !unreadable && !reading} />}
           {!unreadable && (
             <PageProperties
               page={page}
               database={database?.database ? { id: database.id, database: database.database } : null}
-              editable={!trashed}
+              editable={!trashed && !reading}
               adding={addingFor === id}
               onAdded={() => setAddingFor(null)}
             />
@@ -335,14 +338,14 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                   {t('page.backToEditor')}
                 </button>
               </div>
-              <SourceEditor pageId={id} doc={doc} editable={!trashed} />
+              <SourceEditor pageId={id} doc={doc} editable={!trashed && !reading} />
             </>
           ) : (
             showText && (
               <PageBody
                 id={id}
                 doc={doc}
-                editable={!trashed}
+                editable={!trashed && !reading}
                 find={find}
                 anchor={anchor ?? null}
                 onDirty={setEditing}

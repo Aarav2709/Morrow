@@ -39,6 +39,8 @@ export interface Preferences {
   sidebarOpen: boolean;
   // a hidden sidebar slides in while the pointer is at the window's left edge
   sidebarPeek: boolean;
+  // pages are shown for reading: nothing can be typed, so scrolling on a phone never brings the keyboard up
+  readingMode: boolean;
   sidebarWidth: number;
   assistantWidth: number;
   expanded: string[];
@@ -98,6 +100,7 @@ const defaults: Preferences = {
   width: 'comfortable',
   sidebarOpen: true,
   sidebarPeek: false,
+  readingMode: false,
   sidebarWidth: 264,
   assistantWidth: 380,
   expanded: [],
@@ -151,6 +154,7 @@ function read(): Preferences {
       width: PAGE_WIDTHS.find((width) => width === parsed.width) ?? 'comfortable',
       sidebarOpen: parsed.sidebarOpen !== false,
       sidebarPeek: parsed.sidebarPeek === true,
+      readingMode: parsed.readingMode === true,
       accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
       colorful: parsed.colorful !== false,
       name: typeof parsed.name === 'string' ? parsed.name.trim().slice(0, 60) : '',

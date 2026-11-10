@@ -618,6 +618,10 @@ kbd,
   background: var(--active);
 }
 
+.icon-button.is-reading {
+  color: var(--accent);
+}
+
 .icon-button.is-favorite {
   color: var(--accent);
 }

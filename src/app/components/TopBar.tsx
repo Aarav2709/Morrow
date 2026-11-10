@@ -3,12 +3,14 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowRightLeft,
+  BookOpen,
   Check,
   Columns2,
   Loader2,
   Menu as MenuIcon,
   MoreHorizontal,
   PanelLeftOpen,
+  Pencil,
   Star,
   X,
 } from 'lucide-react';
@@ -54,6 +56,25 @@ export function SidebarToggle() {
         </button>
       )}
     </>
+  );
+}
+
+// switches every page between reading and editing, as the book and pencil do in obsidian
+function ReadingToggle() {
+  const { t } = useTranslation();
+  const reading = usePreferences().readingMode;
+  const label = reading ? t('topBar.editingMode') : t('topBar.readingMode');
+  return (
+    <button
+      type="button"
+      className={`icon-button${reading ? ' is-reading' : ''}`}
+      aria-label={label}
+      title={`${label} (${formatShortcut('Mod+Shift+E')})`}
+      aria-pressed={reading}
+      onClick={() => runAction('view.reading')}
+    >
+      {reading ? <Pencil size={16} strokeWidth={1.75} /> : <BookOpen size={16} strokeWidth={1.75} />}
+    </button>
   );
 }
 
@@ -244,6 +265,7 @@ export function TopBar({
             >
               {t('topBar.edited', { time: relativeTime(page.updatedAt) })}
             </span>
+            <ReadingToggle />
             <button
               type="button"
               className={`icon-button${page.favorite ? ' is-favorite' : ''}`}

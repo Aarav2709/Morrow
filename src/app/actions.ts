@@ -23,6 +23,7 @@ import {
   Home,
   LayoutDashboard,
   LayoutTemplate,
+  BookOpen,
   Maximize2,
   Network,
   PenLine,
@@ -528,6 +529,15 @@ export const ACTIONS: Action[] = [
       if (window.matchMedia('(max-width: 800px)').matches) setUi({ mobileSidebar: !getUi().mobileSidebar });
       else setPreferences({ sidebarOpen: !getPreferences().sidebarOpen });
     },
+  },
+  {
+    id: 'view.reading',
+    label: 'Reading mode',
+    group: 'View',
+    icon: BookOpen,
+    shortcut: 'Mod+Shift+E',
+    keywords: 'read only preview view lock edit editing',
+    run: () => setPreferences({ readingMode: !getPreferences().readingMode }),
   },
   {
     id: 'view.focus',
