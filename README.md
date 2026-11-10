@@ -174,6 +174,8 @@ as databases, canvas drawing and the welcome guide, and handled most debugging
 and optimisation. I decide what goes into Morrow and test every change myself.
 Morrow itself has no AI and sends nothing anywhere. The optional assistant only
 runs when you turn it on and add your own key.
+Also, big thanks to all the contributors, and reporters, your insights made this app how it is today. 
+***Also, a SUPER DUPER big thanks to u/MindfulMog on Reddit, for testing my app, the insane amount of bugs reported single handedly by him, and also for the fabulous suggestions and insights.***
 
 ## Licence
 
