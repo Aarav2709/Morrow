@@ -36,7 +36,8 @@ export function Popover({
       void computePosition(reference, element, {
         placement,
         strategy: 'fixed',
-        middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8 })],
+        // shifted on both axes, so a tall menu opened near an edge is moved back in rather than cut off
+        middleware: [offset(6), flip({ padding: 8 }), shift({ padding: 8, crossAxis: true })],
       }).then(({ x, y }) => {
         element.style.left = `${x}px`;
         element.style.top = `${y}px`;

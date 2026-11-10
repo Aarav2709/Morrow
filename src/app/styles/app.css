@@ -1272,8 +1272,10 @@ input[type='checkbox']:checked::after {
   min-width: 220px;
   max-width: 320px;
   padding: 4px;
-  max-height: min(480px, calc(100vh - 32px));
+  /* the whole menu shows whenever the window has room, and scrolls inside itself when it does not */
+  max-height: calc(100vh - 16px);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .menu-item {
