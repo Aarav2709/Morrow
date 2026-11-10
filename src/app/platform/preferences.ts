@@ -101,7 +101,7 @@ const defaults: Preferences = {
   sidebarWidth: 264,
   assistantWidth: 380,
   expanded: [],
-  accent: 'ocean',
+  accent: 'ember',
   colorful: true,
   name: '',
   canvasSizes: {},
