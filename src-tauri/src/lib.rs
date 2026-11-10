@@ -98,7 +98,9 @@ fn set_theme<R: Runtime>(window: WebviewWindow<R>, theme: String) {
     #[cfg(target_os = "android")]
     {
         let dark = theme == "dark";
-        let hex = if dark { "#202020" } else { "#f8f8f7" };
+        // the colour of the page itself, so the strips beside the notch and behind the status bar read as
+        // part of it
+        let hex = if dark { "#191919" } else { "#ffffff" };
         device::set_theme(window.app_handle(), dark, hex);
     }
 }

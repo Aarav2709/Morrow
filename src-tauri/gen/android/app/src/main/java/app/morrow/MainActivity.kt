@@ -11,7 +11,8 @@ class MainActivity : TauriActivity() {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
     // android draws the app under the status bar, the navigation bar and the keyboard. the page is kept
-    // out from under all three, so the top bar can be tapped and the line being typed stays in view
+    // out from under all three and clear of the notch, so the top bar can be tapped and the line being
+    // typed stays in view. the strips left over take the page's colour, see DevicePlugin.setTheme
     val content = findViewById<View>(android.R.id.content)
     ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
       val bars = insets.getInsets(

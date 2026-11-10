@@ -2092,3 +2092,56 @@ html.is-printing .window-controls {
   font-size: var(--text-sm);
   color: var(--text-faint);
 }
+
+/* a phone on its side: the window is wide but only a few lines tall */
+@media (max-height: 480px) {
+  /* the sidebar's links, pages and footer scroll as one list. each keeping its own height left the pages a
+     strip a few pixels tall and pushed the footer off the screen */
+  .sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sidebar-header,
+  .sidebar-nav,
+  .sidebar-footer {
+    flex: none;
+  }
+
+  .sidebar-scroll {
+    flex: none;
+    overflow: visible;
+  }
+
+  .app .page-cover {
+    height: 72px;
+  }
+
+  .app .page-icon-row {
+    margin-top: 12px;
+  }
+
+  .app .page-icon {
+    font-size: 44px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .app .page-title {
+    font-size: 28px;
+    margin-top: 8px;
+  }
+
+  .home,
+  .collection {
+    padding-top: 12px;
+  }
+
+  .dialog-backdrop {
+    padding: 8px 16px;
+  }
+
+  .dialog {
+    max-height: calc(100vh - 16px);
+  }
+}
