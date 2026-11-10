@@ -825,6 +825,11 @@ button.home-stat:hover {
   user-select: all;
   margin: 0;
 }
+.pair-address code {
+  user-select: all;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
 .pair-waiting {
   list-style: none;
   margin: 0;
@@ -1077,6 +1082,56 @@ button.home-stat:hover {
 }
 .pane[data-size='narrow'] .review-card {
   padding: 52px 24px 36px;
+}
+/* nothing on the review page may be wider than a phone */
+.review-header > :first-child {
+  min-width: 0;
+}
+.review-deck {
+  max-width: min(320px, 100%);
+}
+.review-example {
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.pane[data-size='narrow'] .review-header {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pane[data-size='narrow'] .review-header h1 {
+  font-size: 26px;
+}
+.pane[data-size='narrow'] .review-progress {
+  align-items: flex-start;
+}
+.pane[data-size='narrow'] .review-empty {
+  padding: 36px 18px;
+}
+.pane[data-size='narrow'] .review-front {
+  font-size: 22px;
+}
+.pane[data-size='narrow'] .review-back {
+  font-size: 19px;
+}
+@media (max-width: 800px) {
+  .review {
+    padding: 3vh 16px 20vh;
+  }
+  .review-grades {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .review-card {
+    padding: 52px 18px 32px;
+    min-height: 240px;
+  }
+  .review-grade {
+    padding: 14px 8px 13px;
+  }
+  .review-grade kbd {
+    display: none;
+  }
 }
 
 .capture-input {

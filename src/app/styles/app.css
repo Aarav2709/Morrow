@@ -16,6 +16,11 @@ body,
   margin: 0;
 }
 
+/* a phone's browser flashes a blue box over whatever is tapped, the app shows its own pressed states */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
@@ -1820,22 +1825,32 @@ html.is-printing .window-controls {
     z-index: 40;
     width: min(300px, 86vw);
     transform: translateX(-102%);
-    transition:
-      transform 180ms var(--ease),
-      box-shadow 180ms var(--ease);
+    /* the sidebar is kept drawn on its own layer, so sliding it in only moves a picture that is already
+       there. animating its shadow as well made a phone repaint the whole list on every frame */
+    will-change: transform;
+    contain: layout paint style;
+    transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   .mobile-sidebar-open .sidebar {
     transform: none;
-    box-shadow: var(--shadow-dialog);
   }
 
-  .mobile-sidebar-open .scrim {
+  .scrim {
     display: block;
     position: fixed;
     inset: 0;
     z-index: 39;
     background: var(--scrim);
+    opacity: 0;
+    pointer-events: none;
+    will-change: opacity;
+    transition: opacity 200ms linear;
+  }
+
+  .mobile-sidebar-open .scrim {
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .sidebar-edge,
