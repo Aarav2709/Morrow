@@ -35,7 +35,9 @@ pub fn iso_stamp() -> String {
     )
 }
 
-// a channel whose sender can be handed to callbacks that may be called more than once
+// a channel whose sender can be handed to callbacks that may be called more than once. only linux and
+// windows print and take pictures themselves, so macos has no use for this or for crop_png below
+#[cfg_attr(not(any(target_os = "linux", windows)), allow(dead_code))]
 fn once<T: Send + 'static>() -> (impl Fn(T) + Clone + Send + 'static, oneshot::Receiver<T>) {
     let (send, receive) = oneshot::channel();
     let slot = Arc::new(Mutex::new(Some(send)));
@@ -49,6 +51,7 @@ fn once<T: Send + 'static>() -> (impl Fn(T) + Clone + Send + 'static, oneshot::R
 
 // the part of a picture of the whole window that the page asked for. the page measures in its own pixels,
 // which zooming and the screen's scale make larger or smaller, so it says how wide it is in those
+#[cfg_attr(not(any(target_os = "linux", windows)), allow(dead_code))]
 pub fn crop_png(png: &[u8], area: [f64; 4], viewport_width: f64) -> Res<Vec<u8>> {
     let image = image::load_from_memory(png).map_err(|error| error.to_string())?;
     let scale = if viewport_width > 0.0 {
