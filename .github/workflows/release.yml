@@ -127,7 +127,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      # the action's own default list still asks for a package called tools, which google has taken away
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Android NDK
         run: |
           sdkmanager "ndk;$NDK_VERSION"
