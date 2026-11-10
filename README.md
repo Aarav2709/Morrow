@@ -119,8 +119,12 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 Version **2.0.0**. Morrow is now built with [Tauri](https://tauri.app) and Rust instead of
 Electron: it uses the web view your system already has, so it is a fraction of the size, starts
 quicker and uses far less memory. Pages are files in a folder you choose. Releases are built for
-Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64). An Android app is next,
-from the same code.
+Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64).
+
+There is also a first **Android** app, built from the same code, as an APK on the release page. It
+is early: your notes live in the app's own storage and get there from a computer over LAN sync. The
+APK is signed with Morrow's own key, so updates install over each other. It is not on Google Play,
+so Android asks once before it lets your browser or file manager install it.
 
 ## Coming from Obsidian
 

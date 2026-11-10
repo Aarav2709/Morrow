@@ -34,6 +34,12 @@ The first run builds the Rust side, which takes a few minutes. A development bui
 unbundled and the Rust side unoptimised, so it is noticeably slower than a release. `npm run build`
 makes the installers for your system in `src-tauri/target/release/bundle`.
 
+For Android you also need a JDK, the Android SDK and NDK, with `JAVA_HOME`, `ANDROID_HOME` and
+`NDK_HOME` set. `npm run android:dev` runs Morrow on a phone or an emulator, and
+`npm run android:build -- --apk` makes an APK. A release build is signed with the key that
+`src-tauri/gen/android/keystore.properties` points at (`storeFile`, `storePassword`, `keyAlias`), a
+file that is never committed. Without it the APK is left unsigned.
+
 `npm run dev` opens Morrow with your normal settings and vault. To try things
 on a throwaway vault, run it with a separate profile:
 
