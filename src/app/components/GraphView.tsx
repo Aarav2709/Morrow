@@ -25,18 +25,21 @@ type SimLink = SimulationLinkDatum<SimNode> & { kind: GraphLink['kind'] };
 
 const OPTIONS_KEY = 'morrow.graph';
 
+// the graph opens showing how pages sit inside each other, and leaves out the ones nothing connects to
+const VIEW_DEFAULTS: GraphOptions = { ...DEFAULT_GRAPH_OPTIONS, hierarchy: true, orphans: false };
+
 function readOptions(): GraphOptions {
   try {
     const raw = JSON.parse(localStorage.getItem(OPTIONS_KEY) ?? '{}') as Partial<GraphOptions>;
     return {
-      ...DEFAULT_GRAPH_OPTIONS,
+      ...VIEW_DEFAULTS,
       tags: raw.tags === true,
-      hierarchy: raw.hierarchy === true,
-      orphans: raw.orphans !== false,
+      hierarchy: raw.hierarchy !== false,
+      orphans: raw.orphans === true,
       depth: raw.depth === 2 || raw.depth === 3 ? raw.depth : 1,
     };
   } catch {
-    return DEFAULT_GRAPH_OPTIONS;
+    return VIEW_DEFAULTS;
   }
 }
 
