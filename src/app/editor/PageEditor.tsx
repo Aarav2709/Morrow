@@ -1,11 +1,11 @@
 import { Editor, Extension } from '@tiptap/core';
 import type { JSONContent } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
-import { TextSelection } from '@tiptap/pm/state';
+import { EditorState, TextSelection } from '@tiptap/pm/state';
 import type { Node as ProseNode, Slice } from '@tiptap/pm/model';
 import { EditorContent } from '@tiptap/react';
 import katex from 'katex';
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { docToMarkdown } from '../../core/markdown/serialize';
@@ -280,6 +280,8 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
   const committed = useRef<DocNode>(doc);
+  // the editor that already holds its page
+  const filled = useRef<Editor | null>(null);
   const callbacks = useRef({ onExitTop, onDirty, onReady });
   useEffect(() => {
     callbacks.current = { onExitTop, onDirty, onReady };
@@ -288,6 +290,8 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   useEffect(() => {
     let dirty = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    // what this page holds as the editor is made, the editor is filled with it once it is in the window
+    committed.current = doc;
 
     const commit = () => {
       if (timer) clearTimeout(timer);
@@ -397,7 +401,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
         }),
         shortcuts,
       ],
-      content: doc as JSONContent,
+      // the editor starts empty and gets the page once it is in the window, see below
       editable,
       editorProps: {
         attributes: { class: 'prose', 'aria-label': 'Page content' },
@@ -455,6 +459,23 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     // the editor is rebuilt only when the page changes, later doc updates are synced below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageId]);
+
+  // the page is put into the editor only after tiptap has attached its block views. tiptap draws whatever the
+  // editor holds once before that and again after, and a long page drawn and laid out twice took a phone a
+  // second longer to open. this runs before the browser paints, so the empty editor is never seen
+  useLayoutEffect(() => {
+    if (!editor || editor.isDestroyed || filled.current === editor) return;
+    filled.current = editor;
+    const content = committed.current;
+    try {
+      editor.view.updateState(
+        EditorState.create({ doc: editor.schema.nodeFromJSON(content), plugins: editor.state.plugins }),
+      );
+    } catch {
+      // content the schema does not take as it is goes through tiptap, which mends what it can
+      editor.commands.setContent(content as JSONContent, { emitUpdate: false });
+    }
+  }, [editor]);
 
   // content changed outside this editor, for example a task ticked in the tasks view
   useEffect(() => {

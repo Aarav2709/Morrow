@@ -261,17 +261,19 @@ const InlineMathDollar = Extension.create({
   },
 });
 
+// katex is asked for the drawn formula only. it otherwise adds a hidden mathml copy of each one, a quarter
+// of everything on a page of maths, which the browser still has to style and lay out when the page opens
 export function mathExtensions() {
   return [
     InlineMath.configure({
-      katexOptions: { throwOnError: false, strict: false },
+      katexOptions: { throwOnError: false, strict: false, output: 'html' },
       onClick: (node, pos) => {
         const view = currentView(node);
         if (view) editMath(view, node, pos);
       },
     }),
     BlockMath.configure({
-      katexOptions: { throwOnError: false, displayMode: true, strict: false },
+      katexOptions: { throwOnError: false, displayMode: true, strict: false, output: 'html' },
       onClick: (node, pos) => {
         const view = currentView(node);
         if (view) editMath(view, node, pos);
