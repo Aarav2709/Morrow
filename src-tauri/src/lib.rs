@@ -1033,7 +1033,15 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let file = dir.join("clip.mp4");
         std::fs::write(&file, (0u8..=255).collect::<Vec<_>>()).unwrap();
-        let path = file.to_string_lossy().trim_start_matches('/').to_string();
+        // the way the interface writes a path into an address: forward slashes on every system, C:/folder
+        // on windows, and no slash at the start
+        let address = |file: &Path| {
+            file.to_string_lossy()
+                .replace('\\', "/")
+                .trim_start_matches('/')
+                .to_string()
+        };
+        let path = address(&file);
         let request = |range: Option<&str>| {
             let mut builder = tauri::http::Request::builder()
                 .uri(format!("morrow-file://localhost/local/{path}"));
@@ -1056,10 +1064,7 @@ mod tests {
         let text = dir.join("secret.txt");
         std::fs::write(&text, "no").unwrap();
         let other = tauri::http::Request::builder()
-            .uri(format!(
-                "morrow-file://localhost/local/{}",
-                text.to_string_lossy().trim_start_matches('/')
-            ))
+            .uri(format!("morrow-file://localhost/local/{}", address(&text)))
             .body(Vec::new())
             .unwrap();
         assert_eq!(serve_file(&other).status(), 404);
