@@ -1345,6 +1345,7 @@ export const pt: TranslationSchema = {
     looking: 'Procurando computadores mostrando um código… Se o seu não aparecer, digite o endereço dele.',
     addressPlaceholder: 'Endereço, como 192.168.1.20',
     addressAria: 'Endereço do outro computador',
+    thisAddress: 'O endereço deste dispositivo:',
     codeAria: 'Código mostrado no outro computador',
   },
   database: {

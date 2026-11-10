@@ -449,19 +449,47 @@ fn pair_request(
 
 // ---- finding each other on the network
 
-fn broadcast_addresses() -> Vec<String> {
-    let mut result = vec!["255.255.255.255".to_string()];
+// the address this device has on the network it reaches the rest of the world through. nothing is sent, a
+// udp socket only has to be pointed somewhere for the system to say which address it would use
+fn routed_address() -> Option<std::net::Ipv4Addr> {
+    let socket = UdpSocket::bind(("0.0.0.0", 0)).ok()?;
+    socket.connect(("192.0.2.1", 9)).ok()?;
+    match socket.local_addr().ok()?.ip() {
+        std::net::IpAddr::V4(ip) if !ip.is_loopback() && !ip.is_unspecified() => Some(ip),
+        _ => None,
+    }
+}
+
+// every address another computer on the same network could reach this one at
+fn local_addresses() -> Vec<(std::net::Ipv4Addr, Option<std::net::Ipv4Addr>)> {
+    let mut result: Vec<(std::net::Ipv4Addr, Option<std::net::Ipv4Addr>)> = Vec::new();
     for interface in if_addrs::get_if_addrs().unwrap_or_default() {
         if interface.is_loopback() {
             continue;
         }
         if let if_addrs::IfAddr::V4(v4) = interface.addr {
-            let ip = u32::from(v4.ip);
-            let mask = u32::from(v4.netmask);
-            let address = std::net::Ipv4Addr::from(ip | !mask).to_string();
-            if !result.contains(&address) {
-                result.push(address);
+            if !result.iter().any(|(ip, _)| *ip == v4.ip) {
+                result.push((v4.ip, Some(v4.netmask)));
             }
+        }
+    }
+    // android does not let an app list its network interfaces, so the routed address is all there is
+    if let Some(ip) = routed_address() {
+        if !result.iter().any(|(known, _)| *known == ip) {
+            result.push((ip, None));
+        }
+    }
+    result
+}
+
+fn broadcast_addresses() -> Vec<String> {
+    let mut result = vec!["255.255.255.255".to_string()];
+    for (ip, mask) in local_addresses() {
+        // with no mask known, the usual home network of 254 addresses is assumed
+        let mask = mask.map(u32::from).unwrap_or(0xffff_ff00);
+        let address = std::net::Ipv4Addr::from(u32::from(ip) | !mask).to_string();
+        if !result.contains(&address) {
+            result.push(address);
         }
     }
     result
@@ -647,6 +675,9 @@ pub fn status() -> Value {
             "enabled": config.enabled,
             "name": config.name,
             "deviceId": config.device_id,
+            // shown while pairing, for networks where the two can't find each other by themselves
+            "addresses": local_addresses().iter().map(|(ip, _)| ip.to_string()).collect::<Vec<_>>(),
+            "port": LISTENING_PORT.load(Ordering::Relaxed),
             "pairingCode": state.pairing.as_ref().filter(|pairing| pairing.expires > now).map(|pairing| pairing.code.clone()),
             "peers": peers,
             "waiting": waiting,
@@ -661,6 +692,24 @@ pub fn set_enabled(enabled: bool) {
             save_config(config);
         }
         refresh(state);
+    });
+}
+
+// a better name than the one the system reports, kept unless the person has picked their own
+#[allow(dead_code)]
+pub fn set_default_name(name: &str) {
+    let name: String = name.trim().chars().take(60).collect();
+    if name.is_empty() {
+        return;
+    }
+    with(|state| {
+        let Some(config) = state.config.as_mut() else {
+            return;
+        };
+        if config.name == host_name() || config.name == "localhost" {
+            config.name = name;
+            save_config(config);
+        }
     });
 }
 

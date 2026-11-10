@@ -230,6 +230,19 @@ function CloudFolders() {
   );
 }
 
+// an address typed by hand, with the port after a colon when the other computer shows one
+function typedTarget(text: string): { address: string; port?: number } | null {
+  const typed = text
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '');
+  if (!typed) return null;
+  const match = /^(.*):(\d{1,5})$/.exec(typed);
+  const host = match?.[1];
+  if (match && host && !host.includes(':')) return { address: host, port: Number(match[2]) };
+  return { address: typed };
+}
+
 export function PairDialog() {
   const { t } = useTranslation();
   const [status] = useSyncStatus(1500);
@@ -253,7 +266,7 @@ export function PairDialog() {
   }, []);
 
   const pair = async () => {
-    const chosen = target ?? (address.trim() ? { address: address.trim() } : null);
+    const chosen = target ?? typedTarget(address);
     if (!chosen || !entered.trim()) return;
     setBusy(true);
     setError(null);
@@ -274,6 +287,16 @@ export function PairDialog() {
             {code ?? '…'}
           </p>
           <p className="muted small">{t('pairing.howTo')}</p>
+          {status?.addresses && status.addresses.length > 0 && (
+            <p className="muted small pair-address">
+              {t('pairing.thisAddress')}{' '}
+              <code>
+                {status.addresses
+                  .map((item) => (status.port && status.port !== 47610 ? `${item}:${status.port}` : item))
+                  .join(', ')}
+              </code>
+            </p>
+          )}
         </section>
         <section>
           <h4>{t('pairing.orPairWithCode')}</h4>

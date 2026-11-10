@@ -19,6 +19,8 @@ pub fn init_data_dir(fallback: Option<PathBuf>) {
     let dir = (cfg!(debug_assertions))
         .then(|| std::env::var_os("MORROW_USER_DATA").map(PathBuf::from))
         .flatten()
+        // a phone has no home folder an app may write to, only the place the system gives the app
+        .or_else(|| if cfg!(mobile) { fallback.clone() } else { None })
         .or_else(|| dirs::config_dir().map(|dir| dir.join("Morrow")))
         .or(fallback)
         .unwrap_or_else(|| PathBuf::from("."));

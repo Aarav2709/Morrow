@@ -1332,6 +1332,7 @@ export const en = {
     looking: 'Looking for computers showing a code… If yours does not appear, type its address.',
     addressPlaceholder: 'Address, like 192.168.1.20',
     addressAria: 'Address of the other computer',
+    thisAddress: "This device's address:",
     codeAria: 'Code shown on the other computer',
   },
   database: {

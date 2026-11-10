@@ -1346,6 +1346,7 @@ export const es: TranslationSchema = {
     looking: 'Buscando ordenadores que muestren un código… Si el tuyo no aparece, escribe su dirección.',
     addressPlaceholder: 'Dirección, como 192.168.1.20',
     addressAria: 'Dirección del otro ordenador',
+    thisAddress: 'La dirección de este dispositivo:',
     codeAria: 'Código que muestra el otro ordenador',
   },
   database: {
