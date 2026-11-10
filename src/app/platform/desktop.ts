@@ -50,19 +50,23 @@ export interface SyncPeer {
   online: boolean;
   reachable: boolean;
   lastSync: number | null;
+  // heard on the network just now, and the version of morrow it said it runs. 1.x never says
+  seen?: boolean;
+  version?: string | null;
 }
 
 export interface SyncStatus {
   enabled: boolean;
   name: string;
   deviceId: string;
+  version?: string;
   // where another computer can reach this one, typed in there when the two can't find each other
   addresses?: string[];
   port?: number;
   pairingCode: string | null;
   peers: SyncPeer[];
   // computers nearby waiting to be paired
-  waiting: Array<{ id: string; name: string; address: string; port: number }>;
+  waiting: Array<{ id: string; name: string; address: string; port: number; version?: string | null }>;
 }
 
 export type SyncEvent =

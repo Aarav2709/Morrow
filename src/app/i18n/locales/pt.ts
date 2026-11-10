@@ -267,6 +267,10 @@ export const pt: TranslationSchema = {
       computerName: 'Nome deste computador',
       computerNameAria: 'Nome deste computador',
       onNetwork: 'Nesta rede',
+      versionMismatch:
+        '{name} usa o Morrow {theirs} e este dispositivo usa o {mine}. Atualize ambos para a mesma versão ou podem não sincronizar.',
+      versionOlder:
+        '{name} usa um Morrow mais antigo do que este dispositivo ({mine}). Atualize ambos para a mesma versão ou podem não sincronizar.',
       notSeenLately: 'Não visto recentemente',
       synced: 'sincronizado {time}',
       neverSynced: 'nunca sincronizado',

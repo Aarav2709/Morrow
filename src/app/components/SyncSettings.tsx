@@ -1,4 +1,4 @@
-import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { commitEditors } from '../editor/commits';
 import { useTranslation } from '../i18n';
@@ -91,11 +91,20 @@ export function NetworkSettings() {
               <Laptop size={14} /> {peer.name}
             </span>
           }
-          help={`${peer.online ? t('settings.sync.onNetwork') : t('settings.sync.notSeenLately')}, ${
-            peer.lastSync
-              ? t('settings.sync.synced', { time: relativeTime(peer.lastSync) })
-              : t('settings.sync.neverSynced')
-          }`}
+          help={
+            <>
+              {`${peer.online ? t('settings.sync.onNetwork') : t('settings.sync.notSeenLately')}, ${
+                peer.lastSync
+                  ? t('settings.sync.synced', { time: relativeTime(peer.lastSync) })
+                  : t('settings.sync.neverSynced')
+              }`}
+              {peer.seen && versionWarning(t, status.version, peer.name, peer.version) && (
+                <span className="settings-warning">
+                  <TriangleAlert size={13} /> {versionWarning(t, status.version, peer.name, peer.version)}
+                </span>
+              )}
+            </>
+          }
         >
           <button
             type="button"
@@ -243,6 +252,19 @@ function typedTarget(text: string): { address: string; port?: number } | null {
   return { address: typed };
 }
 
+// two computers on different versions of morrow may not sync, so the person is told before they wonder why
+function versionWarning(
+  t: ReturnType<typeof useTranslation>['t'],
+  mine: string | undefined,
+  name: string,
+  theirs: string | null | undefined,
+): string | null {
+  if (!mine || theirs === mine) return null;
+  return theirs
+    ? t('settings.sync.versionMismatch', { name, theirs, mine })
+    : t('settings.sync.versionOlder', { name, mine });
+}
+
 export function PairDialog() {
   const { t } = useTranslation();
   const [status] = useSyncStatus(1500);
@@ -313,6 +335,11 @@ export function PairDialog() {
                     />
                     {item.name}
                   </label>
+                  {versionWarning(t, status.version, item.name, item.version) && (
+                    <p className="settings-warning">
+                      <TriangleAlert size={13} /> {versionWarning(t, status.version, item.name, item.version)}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>

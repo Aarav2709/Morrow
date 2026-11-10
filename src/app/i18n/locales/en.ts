@@ -263,6 +263,10 @@ export const en = {
       computerName: "This computer's name",
       computerNameAria: 'Name of this computer',
       onNetwork: 'On this network',
+      versionMismatch:
+        '{name} runs Morrow {theirs} and this device runs {mine}. Update both to the same version, or they may not sync.',
+      versionOlder:
+        '{name} runs an older Morrow than this device ({mine}). Update both to the same version, or they may not sync.',
       notSeenLately: 'Not seen lately',
       synced: 'synced {time}',
       neverSynced: 'never synced',

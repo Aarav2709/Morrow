@@ -825,6 +825,18 @@ button.home-stat:hover {
   user-select: all;
   margin: 0;
 }
+.settings-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 4px 0 0;
+  color: var(--c-orange-text, var(--danger));
+  font-size: var(--text-sm);
+}
+.settings-warning svg {
+  flex: none;
+  margin-top: 2px;
+}
 .pair-address code {
   user-select: all;
   font-family: var(--font-mono);

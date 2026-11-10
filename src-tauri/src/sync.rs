@@ -47,6 +47,8 @@ struct Seen {
     at: u64,
     // set while that computer is waiting to be paired
     pairing_name: Option<String>,
+    // the version of morrow it runs, which 1.x never said
+    version: Option<String>,
 }
 
 struct Pairing {
@@ -503,6 +505,7 @@ fn announce(socket: &UdpSocket) {
             "app": "morrow-sync",
             "v": 1,
             "id": config.device_id,
+            "version": env!("CARGO_PKG_VERSION"),
             "port": LISTENING_PORT.load(Ordering::Relaxed),
             "pairing": state.pairing.as_ref().map(|_| config.name.clone()),
         }))
@@ -600,6 +603,9 @@ fn start_services(state: &mut State) {
                         pairing_name: message["pairing"]
                             .as_str()
                             .map(|name| name.chars().take(60).collect()),
+                        version: message["version"]
+                            .as_str()
+                            .map(|version| version.chars().take(20).collect()),
                     },
                 );
             });
@@ -659,6 +665,9 @@ pub fn status() -> Value {
                     "online": seen.is_some() || recent,
                     // worth trying even when broadcasts do not get through, as long as it was reached before
                     "reachable": seen.is_some() || peer.address.is_some(),
+                    // two versions of morrow may not sync, the interface warns when these differ
+                    "seen": seen.is_some(),
+                    "version": seen.and_then(|seen| seen.version.clone()),
                     "lastSync": peer.last_sync,
                 })
             })
@@ -669,12 +678,13 @@ pub fn status() -> Value {
             .filter(|(id, seen)| {
                 seen.pairing_name.is_some() && now - seen.at < ONLINE_MS && !config.peers.iter().any(|peer| &peer.id == *id)
             })
-            .map(|(id, seen)| json!({ "id": id, "name": seen.pairing_name, "address": seen.address, "port": seen.port }))
+            .map(|(id, seen)| json!({ "id": id, "name": seen.pairing_name, "address": seen.address, "port": seen.port, "version": seen.version }))
             .collect();
         json!({
             "enabled": config.enabled,
             "name": config.name,
             "deviceId": config.device_id,
+            "version": env!("CARGO_PKG_VERSION"),
             // shown while pairing, for networks where the two can't find each other by themselves
             "addresses": local_addresses().iter().map(|(ip, _)| ip.to_string()).collect::<Vec<_>>(),
             "port": LISTENING_PORT.load(Ordering::Relaxed),
