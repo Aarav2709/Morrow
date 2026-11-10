@@ -91,3 +91,65 @@ jobs:
           tagName: ${{ env.TAG }}
           releaseId: ${{ github.event.release.id }}
           args: ${{ matrix.args }}
+
+  # the android app, one apk for 64 and 32 bit arm phones, signed with the key in the repository's secrets
+  android:
+    runs-on: ubuntu-22.04
+    env:
+      NDK_VERSION: 28.2.13676358
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - name: Check the version matches the tag
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::package.json says $version but the release is $TAG. Change one so they match."
+            exit 1
+          fi
+      # an apk signed with another key can't be installed over the last one, so no key means no apk
+      - name: Check the signing key is set
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Add the ANDROID_KEYSTORE and ANDROID_KEYSTORE_PASSWORD secrets to sign the Android app."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE" | base64 --decode > "$RUNNER_TEMP/morrow-release.jks"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - name: Android NDK
+        run: |
+          sdkmanager "ndk;$NDK_VERSION"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - name: Build the apk
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/morrow-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'morrow' }}
+        run: npx tauri android build --apk --target aarch64 armv7 --ci
+      - name: Add the apk to the release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          apk="$RUNNER_TEMP/Morrow_${version}_android.apk"
+          cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk "$apk"
+          gh release upload "$TAG" "$apk" --clobber
