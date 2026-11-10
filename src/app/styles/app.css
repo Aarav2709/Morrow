@@ -575,6 +575,35 @@ kbd,
   display: flex;
 }
 
+/* on a touch screen the arrow that folds a page takes the whole left end of its row, a finger aimed at it used
+   to land on the row and open the page instead. the row's buttons show without a pointer to hover with */
+@media (pointer: coarse) {
+  .tree-row {
+    height: 38px;
+  }
+
+  .tree-toggle {
+    position: relative;
+    width: 26px;
+    height: 26px;
+  }
+
+  .tree-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -8px -6px -8px -14px;
+  }
+
+  .tree-actions {
+    display: flex;
+  }
+
+  .tree-actions .icon-button.tiny {
+    width: 30px;
+    height: 30px;
+  }
+}
+
 .tree-rename {
   flex: 1;
   min-width: 0;
