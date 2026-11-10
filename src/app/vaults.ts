@@ -1,6 +1,6 @@
 import { commitEditors } from './editor/commits';
 import { COPY_LEGACY_KEY } from './legacy';
-import { desktop, isMobile } from './platform/desktop';
+import { desktop } from './platform/desktop';
 import { t } from './i18n';
 import { toast } from './ui';
 import { getSession } from './workspace';
@@ -25,9 +25,18 @@ export async function switchVault(dir: string, options: { copyLegacy?: boolean }
   return true;
 }
 
+// asks for a folder. a phone first asks to be allowed to read files outside the app, and says so when it is not
+export async function chooseFolder(): Promise<string | null> {
+  try {
+    return (await desktop?.vault?.choose()) ?? null;
+  } catch (error) {
+    toast(error instanceof Error ? error.message : String(error), { tone: 'error', durationMs: 8000 });
+    return null;
+  }
+}
+
 export async function chooseVaultFolder(options: { copyLegacy?: boolean } = {}): Promise<void> {
-  if (isMobile) return createVault(options);
-  const dir = await desktop?.vault?.choose();
+  const dir = await chooseFolder();
   if (dir) await switchVault(dir, options);
 }
 

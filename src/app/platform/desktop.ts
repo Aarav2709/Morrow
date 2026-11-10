@@ -56,6 +56,9 @@ export interface SyncStatus {
   enabled: boolean;
   name: string;
   deviceId: string;
+  // where another computer can reach this one, typed in there when the two can't find each other
+  addresses?: string[];
+  port?: number;
   pairingCode: string | null;
   peers: SyncPeer[];
   // computers nearby waiting to be paired
@@ -224,6 +227,8 @@ export function nativeFileUrl(kind: 'vault' | 'local', encodedPath: string): str
 // a phone or tablet: no window to manage, and folders elsewhere on the device are not plain paths, so
 // vaults live in the app's own storage and come from a computer over sync
 export const isMobile = desktop?.platform === 'android' || desktop?.platform === 'ios';
+// android can open a folder that is already on the phone, once it is allowed to read all files
+export const canOpenFolders = !isMobile || desktop?.platform === 'android';
 
 export const isMac =
   typeof navigator !== 'undefined' &&

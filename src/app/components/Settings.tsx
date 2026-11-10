@@ -27,7 +27,7 @@ import {
   unusedFiles,
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
-import { desktop, isMobile } from '../platform/desktop';
+import { canOpenFolders, desktop, isMobile } from '../platform/desktop';
 import { ACCENTS, SIDEBAR_MODULES, setPreferences, usePreferences } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
@@ -425,7 +425,7 @@ function VaultSettings() {
               {t('settings.vault.showFolder')}
             </button>
           )}
-          {!isMobile && (
+          {canOpenFolders && (
             <button type="button" className="button small" onClick={() => void chooseVaultFolder()}>
               {t('settings.vault.chooseAnother')}
             </button>

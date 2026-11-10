@@ -1,7 +1,12 @@
 // morrow's native side: the window, the vault on disk, sync, the assistant's network calls and updates.
 // the interface reaches it only through the commands below, the same calls the electron versions answered
+// a phone leaves out the window, tray and keychain parts, which leaves a few helpers unused there
+#![cfg_attr(mobile, allow(dead_code, unused_mut))]
+
 mod ai;
 mod cloud;
+#[cfg(target_os = "android")]
+mod device;
 mod mcp;
 mod native;
 mod paths;
@@ -90,6 +95,12 @@ fn close_ready<R: Runtime>(app: AppHandle<R>) {
 fn set_theme<R: Runtime>(window: WebviewWindow<R>, theme: String) {
     let color = if theme == "dark" { DARK } else { LIGHT };
     let _ = window.set_background_color(Some(color));
+    #[cfg(target_os = "android")]
+    {
+        let dark = theme == "dark";
+        let hex = if dark { "#202020" } else { "#f8f8f7" };
+        device::set_theme(window.app_handle(), dark, hex);
+    }
 }
 
 #[tauri::command]
@@ -384,8 +395,19 @@ async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> O
         .map(|path| path.to_string_lossy().into_owned())
 }
 
-// a phone keeps its vaults in the app's own storage, so there is no folder to pick
-#[cfg(mobile)]
+// on android a folder that is already on the phone can be opened, once morrow may read files outside its own
+// storage. the person is asked for that here, the first time a folder is opened
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> Res<Option<String>> {
+    let _ = start;
+    if !device::storage_access(&app, true).await? {
+        return Err("Morrow needs access to all files to open a folder on this phone.".into());
+    }
+    device::pick_folder(&app).await
+}
+
+#[cfg(all(mobile, not(target_os = "android")))]
 #[tauri::command]
 async fn vault_choose(_start: Option<String>) -> Option<String> {
     None
@@ -896,6 +918,17 @@ pub fn run() {
             // a phone keeps vaults in the app's own storage, synced with a computer over the network
             #[cfg(mobile)]
             paths::set_documents_dir(app.path().app_data_dir().ok().map(|dir| dir.join("Vaults")));
+            #[cfg(target_os = "android")]
+            {
+                app.handle().plugin(device::init())?;
+                // a phone calls itself localhost, its own name is what the other computer should show
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Some(name) = device::name(&handle).await {
+                        sync::set_default_name(&name);
+                    }
+                });
+            }
             let handle = app.handle().clone();
             sync::init(move |event| to_window(&handle, "sync:event", event));
             #[cfg(desktop)]

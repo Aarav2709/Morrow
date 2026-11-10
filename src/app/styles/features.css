@@ -1615,6 +1615,11 @@ td:hover .prop-empty,
   gap: 10px;
   margin-top: 8px;
 }
+@media (max-width: 560px) {
+  .vault-actions {
+    grid-template-columns: 1fr;
+  }
+}
 .vault-legacy {
   display: flex;
   gap: 8px;

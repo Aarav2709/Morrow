@@ -1,8 +1,7 @@
-import { isMobile } from '../platform/desktop';
 import { FolderOpen, FolderPlus, History } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from '../i18n';
-import { desktop } from '../platform/desktop';
+import { canOpenFolders, desktop } from '../platform/desktop';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { Logo } from './primitives';
 
@@ -36,7 +35,7 @@ export function VaultChooser({ legacy }: { legacy: number }) {
             <span className="muted">{t('vaultChooser.createNewVaultHelp')}</span>
           </span>
         </button>
-        {!isMobile && (
+        {canOpenFolders && (
           <button type="button" className="data-action" onClick={() => void chooseVaultFolder(options)}>
             <FolderOpen size={20} strokeWidth={1.5} />
             <span>
