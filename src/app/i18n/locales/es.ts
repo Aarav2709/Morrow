@@ -152,6 +152,8 @@ export const es: TranslationSchema = {
       whenOpens: 'Al abrir Morrow',
       whenOpensHelp:
         '{shortcutDaily} abre la nota de hoy, {shortcutCapture} apunta en ella desde cualquier app.',
+      autoDaily: 'Crear la nota de hoy sola',
+      autoDailyHelp: 'Si está apagado, Morrow abre en el inicio los días sin nota, hasta que crees una.',
       spellcheck: 'Revisar la ortografía',
       spellcheckHelp: 'Subraya las palabras que el corrector no conoce mientras escribes.',
       startPages: {

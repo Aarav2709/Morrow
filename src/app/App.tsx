@@ -15,6 +15,7 @@ import { HomeView } from './components/Home';
 import { ArchiveView, TasksView, TrashView } from './components/Views';
 import { commitEditors, ownsUndo, undoRedo } from './editor/commits';
 import { ensureToday, writeAutoBackup } from './operations';
+import { dateKey, findDailyNote } from '../core/daily';
 import { startAutoSync, syncWith } from './sync';
 import { startUpdateChecks } from './updates';
 import { desktop, isMac, watchTitleBar } from './platform/desktop';
@@ -389,10 +390,11 @@ function useStartPage() {
     started = true;
     // a window opened at a particular place, or a brand new vault showing its guide, stays as it is
     if ((window.location.hash && window.location.hash !== '#/') || getSession().firstRun) return;
-    const { startPage: start, hiddenModules } = getPreferences();
+    const { startPage: start, hiddenModules, autoDaily } = getPreferences();
     if (start === 'last') goBack('main');
     else if (start === 'today' && !hiddenModules.includes('daily')) {
-      const id = ensureToday();
+      // with notes made by hand only, a day without one opens on home rather than making an empty note
+      const id = autoDaily ? ensureToday() : (findDailyNote(getState(), dateKey(new Date()))?.id ?? null);
       if (id) navigate({ name: 'page', id, find: null }, { replace: true, pane: 'main' });
     }
   }, []);

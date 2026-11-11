@@ -62,6 +62,8 @@ export interface Preferences {
   // how much of a split tab the first side takes
   splitShare: number;
   startPage: StartPage;
+  // today's note is made when morrow opens on it, off opens home instead until the note is made by hand
+  autoDaily: boolean;
   // the optional assistant, off until turned on in settings
   assistant: boolean;
   assistantOpen: boolean;
@@ -114,6 +116,7 @@ const defaults: Preferences = {
   reminders: [],
   splitShare: 0.5,
   startPage: 'today',
+  autoDaily: true,
   assistant: false,
   assistantOpen: false,
   assistantAsk: true,
@@ -196,6 +199,7 @@ function read(): Preferences {
       startPage: ['today', 'home', 'last'].includes(parsed.startPage as string)
         ? parsed.startPage!
         : defaults.startPage,
+      autoDaily: parsed.autoDaily !== false,
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,

@@ -195,6 +195,15 @@ function GeneralSettings() {
           onChange={(startPage) => setPreferences({ startPage })}
         />
       </SettingRow>
+      {!prefs.hiddenModules.includes('daily') && (
+        <SettingRow label={t('settings.general.autoDaily')} help={t('settings.general.autoDailyHelp')}>
+          <Switch
+            label={t('settings.general.autoDaily')}
+            checked={prefs.autoDaily}
+            onChange={(autoDaily) => setPreferences({ autoDaily })}
+          />
+        </SettingRow>
+      )}
       <SettingRow label={t('settings.general.spellcheck')} help={t('settings.general.spellcheckHelp')}>
         <Switch
           label={t('settings.general.spellcheck')}

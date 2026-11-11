@@ -148,6 +148,8 @@ export const en = {
       yourNamePlaceholder: 'Optional',
       whenOpens: 'When Morrow opens',
       whenOpensHelp: "{shortcutDaily} opens today's note, {shortcutCapture} jots into it from any app.",
+      autoDaily: "Make today's note by itself",
+      autoDailyHelp: 'When off, Morrow opens on home on a day without a note, until you make one.',
       spellcheck: 'Check spelling',
       spellcheckHelp: 'Underlines words the spellchecker does not know as you type.',
       startPages: {
