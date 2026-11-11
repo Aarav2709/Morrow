@@ -184,6 +184,10 @@
   margin: 0;
 }
 
+.prose ol[type='a'] {
+  list-style-type: lower-alpha;
+}
+
 /* a list or a toggle keeps the same room from the text around it as any other block. inside a list item
    a nested list stays snug under its line */
 :is(.prose, .prose :not(li, li > div)) > p + :is(ul, ol, .toggle),

@@ -441,6 +441,17 @@ describe('colours', () => {
     expect(markdownToDoc(out)).toEqual(doc);
   });
 
+  it('keeps a list counted in letters, numbered in the file', () => {
+    const item = (words: string) => ({ type: 'listItem', content: [p(text(words))] });
+    const doc: DocNode = {
+      type: 'doc',
+      content: [{ type: 'orderedList', attrs: { start: 1, type: 'a' }, content: [item('One'), item('Two')] }],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe('<!-- letters -->\n1. One\n2. Two\n');
+    expect(markdownToDoc(out)).toEqual(doc);
+  });
+
   it('leaves a comment with a colour it does not know alone', () => {
     const doc = markdownToDoc('<!-- background: mauve -->\nWords');
     expect(doc.content!.some((node) => node.attrs?.backgroundColor)).toBe(false);

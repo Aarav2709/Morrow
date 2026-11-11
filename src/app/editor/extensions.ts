@@ -69,7 +69,10 @@ const BlockBackground = Extension.create({
             parseHTML: (element) => element.getAttribute('data-background'),
             renderHTML: (attrs) =>
               attrs.backgroundColor
-                ? { 'data-background': attrs.backgroundColor, class: `block-bg block-bg-${attrs.backgroundColor}` }
+                ? {
+                    'data-background': attrs.backgroundColor,
+                    class: `block-bg block-bg-${attrs.backgroundColor}`,
+                  }
                 : {},
           },
         },
@@ -99,6 +102,15 @@ const ToggleSummary = DetailsSummary.extend({
 const Quote = Blockquote.extend({
   addInputRules() {
     return [wrappingInputRule({ find: /^\s*["“]\s$/, type: this.type })];
+  },
+});
+
+// a. and a space at the start of a line starts a list counted in letters
+const LetteredShortcut = Extension.create({
+  name: 'letteredShortcut',
+  addInputRules() {
+    const type = this.editor.schema.nodes.orderedList;
+    return type ? [wrappingInputRule({ find: /^\s*a\.\s$/, type, getAttributes: { type: 'a' } })] : [];
   },
 });
 
@@ -182,6 +194,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       blockquote: false,
     }),
     Quote,
+    LetteredShortcut,
     ToggleShortcut,
     InlineCode,
     CodeBlock,

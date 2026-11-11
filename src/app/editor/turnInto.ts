@@ -10,10 +10,19 @@ export type TurnTarget =
   | { kind: 'paragraph' }
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6 }
   | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' }
+  // a numbered list counted a, b, c
+  | { kind: 'letteredList' }
   // a toggle, with a heading for its title when it has a level
   | { kind: 'toggle'; level?: 1 | 2 | 3 | 4 | 5 | 6 };
 
 const LIST_ITEMS = new Set(['listItem', 'taskItem']);
+
+// a lettered list is a numbered one counted in letters
+export const listAttrs = (target: TurnTarget) => (target.kind === 'letteredList' ? { type: 'a' } : null);
+
+// lists of one kind join, a lettered list and a numbered one stay apart
+const sameList = (a: PMNode, b: PMNode) =>
+  a.type === b.type && (a.type.name !== 'orderedList' || (a.attrs.type ?? null) === (b.attrs.type ?? null));
 const LISTS = new Set(['bulletList', 'orderedList', 'taskList']);
 
 // the inline content of a line, kept to what the new block can hold. a toggle's title only takes text
@@ -41,12 +50,13 @@ function convertItem(schema: Schema, item: PMNode, target: TurnTarget): PMNode[]
   switch (target.kind) {
     case 'bulletList':
     case 'orderedList':
+    case 'letteredList':
     case 'taskList': {
       const itemType = target.kind === 'taskList' ? nodes.taskItem : nodes.listItem;
-      const listType = nodes[target.kind];
+      const listType = nodes[target.kind === 'letteredList' ? 'orderedList' : target.kind];
       if (!itemType || !listType) return null;
       const attrs = target.kind === 'taskList' ? { checked: item.attrs.checked === true } : null;
-      return [listType.create(null, itemType.create(attrs, item.content))];
+      return [listType.create(listAttrs(target), itemType.create(attrs, item.content))];
     }
     case 'paragraph':
       return nodes.paragraph ? after(nodes.paragraph.create(null, first.content)) : null;
@@ -107,14 +117,14 @@ export function turnListItem(editor: Editor, pos: number, target: TurnTarget): b
   let cursorFrom = listPos + (before ? before.nodeSize : 0);
   // a new list next to a list of the same kind becomes part of it
   const head = middle[0]!;
-  if (before && LISTS.has(head.type.name) && head.type === before.type) {
+  if (before && LISTS.has(head.type.name) && sameList(head, before)) {
     cursorFrom = listPos + 1 + before.content.size;
     merged = before.copy(before.content.append(head.content));
     middle.shift();
   }
   const blocks = [...(merged ? [merged] : []), ...middle];
   const last = blocks[blocks.length - 1]!;
-  if (after && LISTS.has(last.type.name) && last.type === after.type)
+  if (after && LISTS.has(last.type.name) && sameList(last, after))
     blocks[blocks.length - 1] = last.copy(last.content.append(after.content));
   else if (after) blocks.push(after);
 

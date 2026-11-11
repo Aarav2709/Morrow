@@ -773,6 +773,11 @@ export const pt: TranslationSchema = {
         description: 'Lista com números',
         keywords: 'lista numerada ordenada ol numeros',
       },
+      lettered: {
+        title: 'Lista com letras',
+        description: 'Lista contada a, b, c',
+        keywords: 'alfabetica letras esboço abc',
+      },
       task: {
         title: 'Lista de tarefas',
         description: 'Acompanhe tarefas',

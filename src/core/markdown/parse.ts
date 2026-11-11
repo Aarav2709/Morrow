@@ -3,7 +3,14 @@ import type { StateBlock, StateInline, Token } from 'markdown-it';
 import { BACKGROUND_HEX, calloutTone, COLORS, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
-import { BACKGROUND_PATTERN, calloutIcon, HEADER_COLUMN, imageWidth, toggleLevel } from './serialize';
+import {
+  BACKGROUND_PATTERN,
+  calloutIcon,
+  LETTERS_COMMENT,
+  HEADER_COLUMN,
+  imageWidth,
+  toggleLevel,
+} from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -180,11 +187,18 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
   const root: DocNode = { type: 'doc', content: [] };
   const stack: DocNode[] = [root];
   const top = () => stack[stack.length - 1]!;
-  // the colour from a background comment, for the next block at the same level
-  let background: { color: string; parent: DocNode } | null = null;
+  // what a comment morrow writes above a block says about it: its background colour, or a list counted in
+  // letters. it goes on the next block at the same level
+  let pending: { attrs: Record<string, unknown>; parent: DocNode } | null = null;
+  const note = (attrs: Record<string, unknown>) => {
+    pending = { attrs: { ...(pending?.parent === top() ? pending.attrs : {}), ...attrs }, parent: top() };
+  };
   const push = (node: DocNode) => {
-    if (background?.parent === top()) node.attrs = { ...node.attrs, backgroundColor: background.color };
-    background = null;
+    if (pending?.parent === top()) {
+      const { type, ...rest } = pending.attrs;
+      node.attrs = { ...node.attrs, ...rest, ...(type && node.type === 'orderedList' ? { type } : {}) };
+    }
+    pending = null;
     (top().content ??= []).push(node);
   };
   const open = (node: DocNode) => {
@@ -288,7 +302,11 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         {
           const color = BACKGROUND_PATTERN.exec(token.content.trim())?.[1];
           if (color && (COLORS as readonly string[]).includes(color)) {
-            background = { color, parent: top() };
+            note({ backgroundColor: color });
+            break;
+          }
+          if (token.content.trim() === LETTERS_COMMENT) {
+            note({ type: 'a' });
             break;
           }
         }

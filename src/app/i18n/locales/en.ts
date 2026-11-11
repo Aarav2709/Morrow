@@ -766,6 +766,11 @@ export const en = {
         description: 'List with numbers',
         keywords: 'ordered ol',
       },
+      lettered: {
+        title: 'Lettered list',
+        description: 'List counted a, b, c',
+        keywords: 'alphabetical letters outline abc',
+      },
       task: {
         title: 'Checklist',
         description: 'Track tasks',

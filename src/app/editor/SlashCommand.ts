@@ -86,7 +86,11 @@ const turnItem = (editor: Editor, range: Range, target: TurnTarget): boolean => 
   const item = listItemAtCursor(editor);
   if (item === null) return false;
   const list = editor.state.doc.resolve(item).parent.type.name;
-  if (list === target.kind) return false;
+  const kind =
+    list === 'orderedList' && editor.state.doc.resolve(item).parent.attrs.type === 'a'
+      ? 'letteredList'
+      : list;
+  if (kind === target.kind) return false;
   chain(editor, range).run();
   turnListItem(editor, item, target);
   return true;
@@ -158,6 +162,17 @@ export const BLOCK_ITEMS: BlockItem[] = [
     hint: '1.',
     keywords: 'ordered ol',
     run: (e, r) => turnItem(e, r, { kind: 'orderedList' }) || chain(e, r).toggleOrderedList().run(),
+  },
+  {
+    id: 'lettered',
+    title: 'Lettered list',
+    description: 'List counted a, b, c',
+    icon: ListOrdered,
+    hint: 'a.',
+    keywords: 'alphabetical letters outline abc',
+    run: (e, r) =>
+      turnItem(e, r, { kind: 'letteredList' }) ||
+      chain(e, r).toggleOrderedList().updateAttributes('orderedList', { type: 'a' }).run(),
   },
   {
     id: 'task',
@@ -470,6 +485,7 @@ const SECTIONS: Array<[string, string[], TranslationKey]> = [
       'h6',
       'bullet',
       'ordered',
+      'lettered',
       'task',
       'toggle',
       'toggleH1',

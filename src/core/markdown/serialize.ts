@@ -60,7 +60,11 @@ function blocks(nodes: DocNode[], options: SerializeOptions): string {
     const text = isEmptyParagraph(node) ? '<br>' : block(node, options);
     if (text === null) continue;
     const background = blockBackground(node);
-    parts.push(background ? `${BACKGROUND_COMMENT(background)}\n${text}` : text);
+    const notes = [
+      ...(background ? [BACKGROUND_COMMENT(background)] : []),
+      ...(node.type === 'orderedList' && node.attrs?.type === 'a' ? [LETTERS_COMMENT] : []),
+    ];
+    parts.push([...notes, text].join('\n'));
   }
   return parts.join('\n\n');
 }
@@ -229,10 +233,14 @@ export const HEADER_COLUMN = '<!-- header-column -->';
 // a block's background colour is a comment on the line above it, other apps hide it and show the block as is
 export const BACKGROUND_COMMENT = (color: ColorName) => `<!-- background: ${color} -->`;
 export const BACKGROUND_PATTERN = /^<!--\s*background:\s*([a-z]+)\s*-->$/;
+// a numbered list counted a, b, c. markdown only has numbers, so other apps show it numbered
+export const LETTERS_COMMENT = '<!-- letters -->';
 
 export function blockBackground(node: DocNode): ColorName | null {
   const color = node.attrs?.backgroundColor;
-  return typeof color === 'string' && (COLORS as readonly string[]).includes(color) ? (color as ColorName) : null;
+  return typeof color === 'string' && (COLORS as readonly string[]).includes(color)
+    ? (color as ColorName)
+    : null;
 }
 
 // a table row is one line of markdown, so what sits in a cell is written on that line: text, pictures as
