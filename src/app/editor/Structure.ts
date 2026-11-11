@@ -22,7 +22,7 @@ declare module '@tiptap/core' {
 export const Columns = Node.create({
   name: 'columns',
   group: 'block',
-  content: 'column{2,4}',
+  content: 'column{2,5}',
   defining: true,
   isolating: true,
 
@@ -52,7 +52,7 @@ export const Columns = Node.create({
             chain()
               .insertContent({
                 type: 'columns',
-                content: Array.from({ length: Math.min(4, Math.max(2, count)) }, () => ({
+                content: Array.from({ length: Math.min(5, Math.max(2, count)) }, () => ({
                   type: 'column',
                   content: [{ type: 'paragraph' }],
                 })),

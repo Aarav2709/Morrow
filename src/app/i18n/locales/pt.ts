@@ -893,6 +893,16 @@ export const pt: TranslationSchema = {
         description: 'Três blocos lado a lado',
         keywords: 'colunas 3 layout lado a lado dividir split',
       },
+      columns4: {
+        title: '4 colunas',
+        description: 'Quatro blocos lado a lado',
+        keywords: 'colunas 4 layout lado a lado dividir split',
+      },
+      columns5: {
+        title: '5 colunas',
+        description: 'Cinco blocos lado a lado',
+        keywords: 'colunas 5 layout lado a lado dividir split',
+      },
       toc: {
         title: 'Sumário',
         description: 'Todos os títulos desta página',
