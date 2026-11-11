@@ -266,7 +266,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
   },
   {
     id: 'math',
-    title: 'Formula',
+    title: 'Equation block',
     description: 'Display maths in LaTeX',
     icon: Sigma,
     hint: '$$',
@@ -281,7 +281,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
   },
   {
     id: 'inlineMath',
-    title: 'Inline formula',
+    title: 'Equation inline',
     description: 'Maths inside a sentence',
     icon: Sigma,
     hint: '$…$',

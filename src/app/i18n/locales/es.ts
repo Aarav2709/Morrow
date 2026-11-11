@@ -849,12 +849,12 @@ export const es: TranslationSchema = {
         keywords: 'tabla cuadricula hoja calculo table grid',
       },
       math: {
-        title: 'Fórmula',
+        title: 'Bloque de ecuación',
         description: 'Muestra fórmulas matemáticas en LaTeX',
         keywords: 'matematicas ecuacion latex katex formula math',
       },
       inlineMath: {
-        title: 'Fórmula en línea',
+        title: 'Ecuación en línea',
         description: 'Matemáticas dentro de una frase',
         keywords: 'matematicas ecuacion latex en linea inline',
       },
@@ -1121,8 +1121,8 @@ export const es: TranslationSchema = {
     syncCopyFailed: 'Error al copiar: {error}',
   },
   math: {
-    editTitle: 'Editar fórmula',
-    latexLabel: 'Fórmula en LaTeX',
+    editTitle: 'Editar ecuación',
+    latexLabel: 'Ecuación en LaTeX',
     previewLabel: 'Vista previa',
     saveHint: '{shortcut} para guardar',
     learnMore: 'Ayuda de LaTeX',

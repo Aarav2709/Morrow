@@ -849,12 +849,12 @@ export const pt: TranslationSchema = {
         keywords: 'tabela grade planilha linhas colunas table',
       },
       math: {
-        title: 'Fórmula',
+        title: 'Bloco de equação',
         description: 'Exiba matemática em LaTeX',
         keywords: 'matematica equacao latex katex formula math',
       },
       inlineMath: {
-        title: 'Fórmula em linha',
+        title: 'Equação embutida',
         description: 'Matemática dentro de uma frase',
         keywords: 'matematica equacao latex em linha inline',
       },
@@ -1120,8 +1120,8 @@ export const pt: TranslationSchema = {
     syncCopyFailed: 'Falha ao copiar: {error}',
   },
   math: {
-    editTitle: 'Editar fórmula',
-    latexLabel: 'Fórmula em LaTeX',
+    editTitle: 'Editar equação',
+    latexLabel: 'Equação em LaTeX',
     previewLabel: 'Pré-visualização',
     saveHint: '{shortcut} para salvar',
     learnMore: 'Ajuda de LaTeX',

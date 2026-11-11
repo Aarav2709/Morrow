@@ -842,12 +842,12 @@ export const en = {
         keywords: 'grid spreadsheet',
       },
       math: {
-        title: 'Formula',
+        title: 'Equation block',
         description: 'Display maths in LaTeX',
         keywords: 'math equation latex katex tex formula',
       },
       inlineMath: {
-        title: 'Inline formula',
+        title: 'Equation inline',
         description: 'Maths inside a sentence',
         keywords: 'math equation latex inline',
       },
@@ -1109,8 +1109,8 @@ export const en = {
     syncCopyFailed: 'Copying failed: {error}',
   },
   math: {
-    editTitle: 'Edit formula',
-    latexLabel: 'Formula in LaTeX',
+    editTitle: 'Edit equation',
+    latexLabel: 'Equation in LaTeX',
     previewLabel: 'Preview',
     saveHint: '{shortcut} to save',
     learnMore: 'LaTeX help',
