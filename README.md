@@ -177,7 +177,7 @@ runs when you turn it on and add your own key.
 
 Big thanks to all the contributors, and reporters, your insights made this app how it is today. 
 
-***Also, a SUPER DUPER big thanks to Gleyce Cruz (my friend), for testing my app, the insane amount of bugs reported single handedly by her, and also for the fabulous suggestions and insights.***
+***Also, a SUPER DUPER big thanks to Gleyce Cruz, for testing my app, the insane amount of bugs reported single handedly by her, and also for the fabulous suggestions and insights.***
 
 ## Licence
 
