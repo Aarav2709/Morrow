@@ -633,7 +633,7 @@ export const en = {
     italic: 'Italic',
     underline: 'Underline',
     strikethrough: 'Strikethrough',
-    code: 'Inline code',
+    code: 'Code inline',
     highlight: 'Highlight',
     fileNotFound: 'Couldn’t find {path} on this computer.',
     videoFrom: 'A video from {host}',
