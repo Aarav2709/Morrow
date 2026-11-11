@@ -1325,6 +1325,7 @@ input[type='checkbox']:checked::after {
 
 .menu-item:hover,
 .menu-item.is-active,
+.menu-item.is-open,
 .menu-item:focus-visible {
   background: var(--hover);
   outline: none;
@@ -1357,6 +1358,14 @@ input[type='checkbox']:checked::after {
 
 .menu-check {
   color: var(--accent);
+}
+
+/* the arrow on a row that opens a submenu */
+.menu-arrow {
+  display: grid;
+  place-items: center;
+  margin-right: -2px;
+  color: var(--text-faint);
 }
 
 .menu-separator {
