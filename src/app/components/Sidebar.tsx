@@ -257,6 +257,12 @@ export function Sidebar() {
           hint={formatShortcut('Mod+K')}
           onClick={() => setUi({ palette: true, mobileSidebar: false })}
         />
+        <NavItem
+          icon={Home}
+          label={t('settings.general.startPages.home')}
+          active={route.name === 'home'}
+          onClick={go(() => navigate({ name: 'home' }))}
+        />
         {shown('daily') && (
           <NavItem
             icon={CalendarDays}
@@ -265,12 +271,6 @@ export function Sidebar() {
             onClick={go(() => openToday())}
           />
         )}
-        <NavItem
-          icon={Home}
-          label={t('settings.general.startPages.home')}
-          active={route.name === 'home'}
-          onClick={go(() => navigate({ name: 'home' }))}
-        />
         {shown('tasks') && (
           <NavItem
             icon={CheckSquare}
