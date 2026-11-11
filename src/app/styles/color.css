@@ -313,7 +313,7 @@
   background: var(--c-red);
 }
 
-/* colourful style: on by default, turned off for a quieter page */
+/* colourful style: off by default, headings, lists and icons stay neutral until it is turned on */
 
 :root[data-colorful='true'] .prose h1 {
   color: var(--accent-strong);

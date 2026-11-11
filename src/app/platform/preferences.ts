@@ -45,7 +45,7 @@ export interface Preferences {
   assistantWidth: number;
   expanded: string[];
   accent: Accent;
-  // colourful headings, lists, icons and tags, off for a quieter page
+  // colourful headings, lists, icons and tags, off by default so the accent stays on buttons and links
   colorful: boolean;
   // what the home page calls you, empty for no name
   name: string;
@@ -105,7 +105,7 @@ const defaults: Preferences = {
   assistantWidth: 380,
   expanded: [],
   accent: 'ember',
-  colorful: true,
+  colorful: false,
   name: '',
   canvasSizes: {},
   pageWidths: {},
@@ -156,7 +156,7 @@ function read(): Preferences {
       sidebarPeek: parsed.sidebarPeek === true,
       readingMode: parsed.readingMode === true,
       accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
-      colorful: parsed.colorful !== false,
+      colorful: parsed.colorful === true,
       name: typeof parsed.name === 'string' ? parsed.name.trim().slice(0, 60) : '',
       sidebarWidth:
         typeof parsed.sidebarWidth === 'number'
