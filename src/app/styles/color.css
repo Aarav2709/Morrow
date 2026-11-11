@@ -338,9 +338,7 @@
   border-left-color: var(--accent-line);
 }
 :root[data-colorful='true'] .prose hr {
-  border: 0;
-  height: 2px;
-  background: linear-gradient(90deg, var(--accent-line), transparent);
+  border-top-color: var(--accent-line);
 }
 :root[data-colorful='true'] .icon-kind-database {
   color: var(--c-blue-text);
