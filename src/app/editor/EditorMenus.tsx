@@ -305,19 +305,25 @@ const headingLevel = (editor: Editor): number | null => {
 };
 
 export function changeCase(editor: Editor, change: (text: string) => string): void {
-  const { from, to } = editor.state.selection;
+  const { selection } = editor.state;
   const { tr } = editor.state;
-  editor.state.doc.nodesBetween(from, to, (node, pos) => {
-    if (!node.isText || !node.text) return;
-    const start = Math.max(from, pos);
-    const end = Math.min(to, pos + node.nodeSize);
-    const text = node.text.slice(start - pos, end - pos);
-    const changed = change(text);
-    // a letter that grows into two, like ß into SS, would move what follows, so those keep their case
-    if (changed !== text && changed.length === text.length) tr.insertText(changed, start, end);
-  });
+  // cells picked across a table are a range each, all of them change, not only the first
+  for (const range of selection.ranges) {
+    const from = range.$from.pos;
+    const to = range.$to.pos;
+    editor.state.doc.nodesBetween(from, to, (node, pos) => {
+      if (!node.isText || !node.text) return;
+      const start = Math.max(from, pos);
+      const end = Math.min(to, pos + node.nodeSize);
+      const text = node.text.slice(start - pos, end - pos);
+      const changed = change(text);
+      // a letter that grows into two, like ß into SS, would move what follows, so those keep their case
+      if (changed !== text && changed.length === text.length) tr.insertText(changed, start, end);
+    });
+  }
   if (!tr.docChanged) return;
-  tr.setSelection(TextSelection.create(tr.doc, from, to));
+  // text keeps its length, so the same selection still fits, cells and all
+  tr.setSelection(selection.map(tr.doc, tr.mapping));
   editor.view.dispatch(tr);
   editor.commands.focus();
 }

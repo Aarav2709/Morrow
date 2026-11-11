@@ -125,6 +125,31 @@ describe('the editor', () => {
     expect(target.getText()).toContain('ada');
   });
 
+  it('changes the case of every cell picked, not only the first', () => {
+    const cell = (text: string) => ({ type: 'tableCell', content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [cell('one'), cell('two')] },
+            { type: 'tableRow', content: [cell('three'), cell('four')] },
+          ],
+        },
+      ],
+    });
+    const cells: number[] = [];
+    target.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'tableCell') cells.push(pos);
+    });
+    target.view.dispatch(
+      target.state.tr.setSelection(CellSelection.create(target.state.doc, cells[0]!, cells[3]!)),
+    );
+    changeCase(target, (text) => text.toUpperCase());
+    expect(target.getText()).toMatch(/ONE.*TWO.*THREE.*FOUR/s);
+  });
+
   it('makes a toggle heading from the toolbar inside a toggle title', () => {
     const target = make({ type: 'doc', content: [p('Plans')] });
     target.commands.setTextSelection(1);
