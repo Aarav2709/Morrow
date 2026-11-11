@@ -258,6 +258,42 @@
   background: var(--c-red);
   color: inherit;
 }
+/* the colour beside its name in a menu */
+.menu-swatch {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--border-strong);
+}
+.menu-swatch.swatch-gray {
+  background: var(--c-gray);
+}
+.menu-swatch.swatch-brown {
+  background: var(--c-brown);
+}
+.menu-swatch.swatch-orange {
+  background: var(--c-orange);
+}
+.menu-swatch.swatch-yellow {
+  background: var(--c-yellow);
+}
+.menu-swatch.swatch-green {
+  background: var(--c-green);
+}
+.menu-swatch.swatch-blue {
+  background: var(--c-blue);
+}
+.menu-swatch.swatch-purple {
+  background: var(--c-purple);
+}
+.menu-swatch.swatch-pink {
+  background: var(--c-pink);
+}
+.menu-swatch.swatch-red {
+  background: var(--c-red);
+}
+
 /* a whole block's background, from the colour in its Turn into menu */
 .prose .block-bg {
   border-radius: 4px;

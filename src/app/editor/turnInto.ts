@@ -12,6 +12,9 @@ export type TurnTarget =
   | { kind: 'bulletList' | 'orderedList' | 'taskList' | 'blockquote' | 'codeBlock' }
   // a numbered list counted a, b, c
   | { kind: 'letteredList' }
+  | { kind: 'callout' | 'equation' }
+  // the block, or the blocks picked, laid out side by side
+  | { kind: 'columns'; count: 2 | 3 | 4 | 5 }
   // a toggle, with a heading for its title when it has a level
   | { kind: 'toggle'; level?: 1 | 2 | 3 | 4 | 5 | 6 };
 
@@ -91,6 +94,8 @@ function convertItem(schema: Schema, item: PMNode, target: TurnTarget): PMNode[]
         ]),
       ];
     }
+    default:
+      return null;
   }
 }
 

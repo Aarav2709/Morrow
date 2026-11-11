@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { findParentNode } from '@tiptap/core';
+import type { Node as PmNode } from '@tiptap/pm/model';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
@@ -9,6 +10,7 @@ import {
   ArrowUp,
   Bold,
   ChevronRight,
+  Columns3,
   Code,
   Code2,
   Copy,
@@ -667,6 +669,18 @@ export function TableMenu({ editor }: { editor: Editor }) {
   );
 }
 
+// a square of a colour, shown beside its name in a menu
+const swatches = new Map<ColorName, LucideIcon>();
+function colourSwatch(color: ColorName): LucideIcon {
+  let icon = swatches.get(color);
+  if (!icon) {
+    const Swatch = () => <span className={`menu-swatch swatch-${color}`} />;
+    icon = Swatch as unknown as LucideIcon;
+    swatches.set(color, icon);
+  }
+  return icon;
+}
+
 // a short id for a block, only needs to be unique within its page
 function newBlockId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -731,9 +745,14 @@ function firstTextPosition(editor: Editor, pos: number): number | null {
 
 // turns one block into another the way notion does: the block is first taken out of its list or quote, so a
 // single list item changes on its own and a line inside a toggle stays in the toggle
-function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
+export function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
   const node = editor.state.doc.nodeAt(pos);
   if (!node) return;
+  // a whole block goes into the first column as it is, whatever it was
+  if (target.kind === 'columns') {
+    intoColumns(editor, pos, pos + node.nodeSize, target.count);
+    return;
+  }
   if (turnListItem(editor, pos, target)) return;
   if (node.type.name === 'details' && target.kind === 'toggle') {
     // a toggle stays a toggle with what it folds inside it, only its title's level changes
@@ -777,6 +796,27 @@ function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
     case 'orderedList':
       chain.toggleOrderedList().run();
       return;
+    case 'letteredList':
+      chain.toggleOrderedList().updateAttributes('orderedList', { type: 'a' }).run();
+      return;
+    case 'callout':
+      chain.setCallout().run();
+      return;
+    case 'equation': {
+      // the line's words become the equation's latex, then it opens for editing
+      chain
+        .command(({ tr, state }) => {
+          const { $from } = tr.selection;
+          const math = state.schema.nodes.blockMath;
+          if (!math || !$from.parent.isTextblock) return false;
+          const latex = $from.parent.textContent.trim();
+          tr.replaceWith($from.before(), $from.after(), math.create({ latex }));
+          return true;
+        })
+        .run();
+      editMathNear(editor, pos);
+      return;
+    }
     case 'taskList':
       chain.toggleTaskList().run();
       return;
@@ -809,9 +849,66 @@ function turnInto(editor: Editor, pos: number, target: TurnTarget): void {
   }
 }
 
+// blocks laid out side by side. one block goes in the first column with the rest left empty to write in,
+// several are shared out in order, as evenly as they go
+function intoColumns(editor: Editor, from: number, to: number, count: number): void {
+  const { schema, doc } = editor.state;
+  const { columns, column, paragraph } = schema.nodes;
+  if (!columns || !column || !paragraph) return;
+  const blocks: PmNode[] = [];
+  doc.nodesBetween(from, to, (node, pos) => {
+    if (pos >= from && pos + node.nodeSize <= to) blocks.push(node);
+    return false;
+  });
+  const each = Math.max(1, Math.ceil(blocks.length / count));
+  const filled = Array.from({ length: count }, (_, index) => {
+    const part = blocks.slice(index * each, (index + 1) * each);
+    return column.create(null, part.length ? part : paragraph.create());
+  });
+  const tr = editor.state.tr.replaceWith(from, to, columns.create(null, filled));
+  const selection = TextSelection.findFrom(tr.doc.resolve(from + 1), 1);
+  if (selection) tr.setSelection(selection);
+  editor.view.dispatch(tr.scrollIntoView());
+  editor.view.focus();
+}
+
+// a background on the whole block, not only its words. an item of a list colours its list
+export function setBlockBackground(editor: Editor, positions: number[], color: ColorName | null): void {
+  const { tr, doc } = editor.state;
+  const done = new Set<number>();
+  for (const at of positions) {
+    let pos = at;
+    let node = doc.nodeAt(pos);
+    if (node && ['listItem', 'taskItem'].includes(node.type.name)) {
+      const $pos = doc.resolve(pos);
+      pos = $pos.before();
+      node = $pos.parent;
+    }
+    if (!node || done.has(pos) || !('backgroundColor' in node.attrs)) continue;
+    done.add(pos);
+    tr.setNodeMarkup(pos, undefined, { ...node.attrs, backgroundColor: color });
+  }
+  if (tr.docChanged) editor.view.dispatch(tr);
+  clearBlockSelection(editor);
+  editor.commands.focus();
+}
+
 // several blocks picked in the margin turn one by one from the last, so the ones before keep their place.
 // a list stands for its items, each of them turns the way one item on its own would
 function turnBlocks(editor: Editor, range: BlockRange, target: TurnTarget): void {
+  if (target.kind === 'columns') {
+    intoColumns(editor, range.from, range.to, target.count);
+    return;
+  }
+  if (target.kind === 'callout') {
+    // the blocks go into one callout together
+    const { $from, $to } = TextSelection.between(
+      editor.state.doc.resolve(range.from),
+      editor.state.doc.resolve(range.to),
+    );
+    editor.chain().focus().setTextSelection({ from: $from.pos, to: $to.pos }).setCallout().run();
+    return;
+  }
   const positions: number[] = [];
   editor.state.doc.nodesBetween(range.from, range.to, (node, pos) => {
     if (['bulletList', 'orderedList', 'taskList'].includes(node.type.name)) return true;
@@ -844,9 +941,11 @@ function currentKind(editor: Editor, pos: number): { kind: string; level: number
     return { kind: 'toggle', level: level >= 1 && level <= 6 ? level : null };
   }
   if (name === 'listItem' || name === 'taskItem') {
-    const parent = editor.state.doc.resolve(pos).parent.type.name;
-    return { kind: parent, level: null };
+    const list = editor.state.doc.resolve(pos).parent;
+    const lettered = list.type.name === 'orderedList' && list.attrs.type === 'a';
+    return { kind: lettered ? 'letteredList' : list.type.name, level: null };
   }
+  if (name === 'orderedList' && node.attrs.type === 'a') return { kind: 'letteredList', level: null };
   return { kind: name, level: null };
 }
 
@@ -871,6 +970,25 @@ export function BlockMenu({
   const block = editor.state.doc.nodeAt(request.pos);
   // pictures, dividers and other blocks without words have no colour to change
   const colourable = range !== null || (block !== null && block.textContent.trim() !== '');
+  const blockPositions = () => {
+    if (!range) return [request.pos];
+    const positions: number[] = [];
+    editor.state.doc.nodesBetween(range.from, range.to, (_node, pos) => {
+      positions.push(pos);
+      return false;
+    });
+    return positions;
+  };
+  const background = range
+    ? null
+    : (() => {
+        const node = editor.state.doc.nodeAt(request.pos);
+        const owner =
+          node && ['listItem', 'taskItem'].includes(node.type.name)
+            ? editor.state.doc.resolve(request.pos).parent
+            : node;
+        return (owner?.attrs.backgroundColor as ColorName | null | undefined) ?? null;
+      })();
   const entries: MenuEntry[] = [
     { heading: t('editor.turnInto') },
     {
@@ -901,6 +1019,12 @@ export function BlockMenu({
       onSelect: turn({ kind: 'orderedList' }),
     },
     {
+      label: t('slash.items.lettered.title'),
+      icon: ListOrdered,
+      checked: is('letteredList'),
+      onSelect: turn({ kind: 'letteredList' }),
+    },
+    {
       label: t('slash.items.task.title'),
       icon: ListChecks,
       checked: is('taskList'),
@@ -912,12 +1036,17 @@ export function BlockMenu({
       checked: is('toggle'),
       onSelect: turn({ kind: 'toggle' }),
     },
-    ...([1, 2, 3, 4, 5, 6] as const).map((level) => ({
-      label: t(`slash.items.toggleH${level}.title`),
+    {
+      label: t('editor.toggleHeadings'),
       icon: ChevronRight,
-      checked: is('toggle', level),
-      onSelect: turn({ kind: 'toggle', level }),
-    })),
+      checked: current?.kind === 'toggle' && current.level !== null,
+      submenu: ([1, 2, 3, 4, 5, 6] as const).map((level) => ({
+        label: t(`slash.items.toggleH${level}.title`),
+        icon: ChevronRight,
+        checked: is('toggle', level),
+        onSelect: turn({ kind: 'toggle', level }),
+      })),
+    },
     {
       label: t('slash.items.quote.title'),
       icon: Quote,
@@ -925,10 +1054,31 @@ export function BlockMenu({
       onSelect: turn({ kind: 'blockquote' }),
     },
     {
+      label: t('editor.callout'),
+      icon: Info,
+      checked: is('callout'),
+      onSelect: turn({ kind: 'callout' }),
+    },
+    {
       label: t('slash.items.code.title'),
       icon: Code2,
       checked: is('codeBlock'),
       onSelect: turn({ kind: 'codeBlock' }),
+    },
+    {
+      label: t('slash.items.math.title'),
+      icon: Sigma,
+      checked: is('blockMath'),
+      onSelect: turn({ kind: 'equation' }),
+    },
+    {
+      label: t('editor.columns'),
+      icon: Columns3,
+      submenu: ([2, 3, 4, 5] as const).map((count) => ({
+        label: t(`slash.items.columns${count}.title`),
+        icon: Columns3,
+        onSelect: turn({ kind: 'columns', count }),
+      })),
     },
     { separator: true },
     ...(colourable
@@ -936,21 +1086,20 @@ export function BlockMenu({
           {
             label: t('editor.colour'),
             icon: Palette,
-            // the block's words are picked and the colours open over them, for its text or a highlight
-            onSelect: () => {
-              const node = editor.state.doc.nodeAt(request.pos);
-              const from = range?.from ?? request.pos;
-              const to = range?.to ?? request.pos + (node?.nodeSize ?? 0);
-              const selection = TextSelection.between(
-                editor.state.doc.resolve(from),
-                editor.state.doc.resolve(to),
-              );
-              if (selection.empty) return;
-              clearBlockSelection(editor);
-              editor.view.dispatch(editor.state.tr.setSelection(selection));
-              editor.view.focus();
-              requestAnimationFrame(() => editor.view.dom.dispatchEvent(new Event('morrow:colour')));
-            },
+            // the whole block takes the colour as its background, the words keep theirs
+            submenu: [
+              {
+                label: t('editor.defaultBackground'),
+                checked: !range && background === null,
+                onSelect: () => setBlockBackground(editor, blockPositions(), null),
+              },
+              ...COLORS.map((color) => ({
+                label: t('editor.colourBackground', { colour: colorLabel(color) }),
+                icon: colourSwatch(color),
+                checked: background === color,
+                onSelect: () => setBlockBackground(editor, blockPositions(), color),
+              })),
+            ],
           },
           { separator: true as const },
         ]

@@ -4,7 +4,7 @@ import { CellSelection } from '@tiptap/pm/tables';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { DocNode } from '../../core/model';
 import { selectBlockRange } from './BlockSelect';
-import { changeCase, setHeading } from './EditorMenus';
+import { changeCase, setBlockBackground, setHeading, turnInto } from './EditorMenus';
 import { createExtensions } from './extensions';
 import { tagDecorations } from './Extras';
 import type { DecorationSet } from '@tiptap/pm/view';
@@ -203,5 +203,45 @@ describe('the editor', () => {
       const live = (plugin ?? { getState: () => null }).getState(target.state) as DecorationSet | null;
       expect(live && shown(live)).toBe(shown(tagDecorations(target.state.doc)));
     }
+  });
+});
+
+describe('turn into', () => {
+  it('puts a line in the first of several columns', () => {
+    const target = make({ type: 'doc', content: [p('Left'), p('After')] });
+    turnInto(target, 0, { kind: 'columns', count: 4 });
+    const columns = json(target).content![0]!;
+    expect(columns.type).toBe('columns');
+    expect(columns.content).toHaveLength(4);
+    expect(columns.content![0]!.content![0]!.content![0]!.text).toBe('Left');
+    expect(json(target).content![1]!.content![0]!.text).toBe('After');
+  });
+
+  it('makes a lettered list and a callout', () => {
+    const target = make({ type: 'doc', content: [p('First'), p('Second')] });
+    turnInto(target, 0, { kind: 'letteredList' });
+    const list = json(target).content![0]!;
+    expect(list.type).toBe('orderedList');
+    expect(list.attrs?.type).toBe('a');
+    const second = target.state.doc.child(0).nodeSize;
+    turnInto(target, second, { kind: 'callout' });
+    expect(json(target).content![1]!.type).toBe('callout');
+  });
+
+  it('colours the whole block rather than its words', () => {
+    const target = make({ type: 'doc', content: [p('Shaded')] });
+    setBlockBackground(target, [0], 'green');
+    const line = json(target).content![0]!;
+    expect(line.attrs?.backgroundColor).toBe('green');
+    expect(line.content![0]!.marks).toBeUndefined();
+    setBlockBackground(target, [0], null);
+    expect(json(target).content![0]!.attrs?.backgroundColor ?? null).toBeNull();
+  });
+
+  it('starts a lettered list from a. and a space', () => {
+    const target = make({ type: 'doc', content: [p('')] });
+    target.commands.setTextSelection(1);
+    type(target, 'a. ');
+    expect(json(target).content![0]!.attrs?.type).toBe('a');
   });
 });

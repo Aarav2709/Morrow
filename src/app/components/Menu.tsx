@@ -32,9 +32,8 @@ interface MenuProps {
 
 export function Menu({ anchor, entries, onClose, placement = 'bottom-start', label, onPicked }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState<{ index: number; button: HTMLButtonElement; focus: boolean } | null>(
-    null,
-  );
+  const isSubmenu = onPicked !== undefined;
+  const [open, setOpen] = useState<{ index: number; button: HTMLButtonElement; focus: boolean } | null>(null);
   const closeRef = useRef(onClose);
   useEffect(() => {
     closeRef.current = onClose;
@@ -62,7 +61,7 @@ export function Menu({ anchor, entries, onClose, placement = 'bottom-start', lab
     const onPointer = (event: PointerEvent) => {
       if (ref.current?.contains(event.target as Node)) return;
       // a submenu opened from this one is part of it
-      if (!onPicked && (event.target as Element | null)?.closest?.('[data-submenu]')) return;
+      if (!isSubmenu && (event.target as Element | null)?.closest?.('[data-submenu]')) return;
       if (trigger?.contains(event.target as Node)) return;
       closeRef.current();
     };
@@ -78,7 +77,7 @@ export function Menu({ anchor, entries, onClose, placement = 'bottom-start', lab
       if (trigger?.isConnected && document.activeElement === document.body)
         trigger.focus({ preventScroll: true });
     };
-  }, [anchor]);
+  }, [anchor, isSubmenu]);
 
   const onKeyDown = (event: React.KeyboardEvent) => {
     // keys pressed in a submenu reach this menu too through react, they belong to the submenu
