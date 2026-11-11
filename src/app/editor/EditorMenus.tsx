@@ -57,7 +57,7 @@ import type { MenuEntry } from '../components/Menu';
 import { copyImageFile, downloadFile } from '../platform/attachments';
 import { copyText, desktop, openExternal } from '../platform/desktop';
 import { attachSelection } from '../assistant/selection';
-import { setPreferences } from '../platform/preferences';
+import { setPreferences, usePreferences } from '../platform/preferences';
 import { activeRoute, openPage } from '../router';
 import { moveBlock } from './BlockHandle';
 import type { BlockMenuRequest } from './BlockHandle';
@@ -327,6 +327,7 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
   const [editingLink, setEditingLink] = useState(false);
   const [coloring, setColoring] = useState(false);
   const marks = useMarks(editor);
+  const { assistant } = usePreferences();
   const [options] = useState(
     () =>
       ({
@@ -363,19 +364,6 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
           <ColorPanel editor={editor} onDone={() => setColoring(false)} />
         ) : (
           <>
-            {desktop?.assistant && pageId && (
-              <>
-                <ToolButton
-                  label={t('editor.askAssistant')}
-                  icon={Sparkles}
-                  onClick={() => {
-                    // the highlighted words go to the assistant, which changes only those
-                    if (attachSelection(editor, pageId)) setPreferences({ assistantOpen: true });
-                  }}
-                />
-                <span className="toolbar-divider" />
-              </>
-            )}
             <ToolButton
               label={t('editor.bold')}
               icon={Bold}
@@ -474,6 +462,20 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
               active={marks.h6}
               onClick={() => setHeading(editor, 6)}
             />
+            {/* only while the assistant is turned on, a workspace without it shows no trace of it */}
+            {assistant && desktop?.assistant && pageId && (
+              <>
+                <span className="toolbar-divider" />
+                <ToolButton
+                  label={t('editor.askAssistant')}
+                  icon={Sparkles}
+                  onClick={() => {
+                    // the highlighted words go to the assistant, which changes only those
+                    if (attachSelection(editor, pageId)) setPreferences({ assistantOpen: true });
+                  }}
+                />
+              </>
+            )}
           </>
         )}
       </div>
