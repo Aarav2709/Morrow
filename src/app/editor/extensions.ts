@@ -55,6 +55,29 @@ const BlockIds = Extension.create({
   },
 });
 
+// a block's own background colour, from the colour in its Turn into menu
+const BlockBackground = Extension.create({
+  name: 'blockBackground',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'taskList', 'details'],
+        attributes: {
+          backgroundColor: {
+            default: null,
+            keepOnSplit: true,
+            parseHTML: (element) => element.getAttribute('data-background'),
+            renderHTML: (attrs) =>
+              attrs.backgroundColor
+                ? { 'data-background': attrs.backgroundColor, class: `block-bg block-bg-${attrs.backgroundColor}` }
+                : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
 // a toggle's title can be a heading, the way notion's toggle headings fold a whole section away. the level
 // lives on the title, so opening and closing the toggle never touches it
 const ToggleSummary = DetailsSummary.extend({
@@ -140,6 +163,7 @@ const InlineCode = Code.extend({ excludes: '' });
 export function createExtensions(options: ExtensionOptions): AnyExtension[] {
   return [
     BlockIds,
+    BlockBackground,
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: {

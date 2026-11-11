@@ -1,9 +1,9 @@
 import MarkdownIt from 'markdown-it';
 import type { StateBlock, StateInline, Token } from 'markdown-it';
-import { BACKGROUND_HEX, calloutTone, emptyDoc, nearestColor, TEXT_HEX } from '../model';
+import { BACKGROUND_HEX, calloutTone, COLORS, emptyDoc, nearestColor, TEXT_HEX } from '../model';
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
-import { calloutIcon, HEADER_COLUMN, imageWidth, toggleLevel } from './serialize';
+import { BACKGROUND_PATTERN, calloutIcon, HEADER_COLUMN, imageWidth, toggleLevel } from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -180,7 +180,11 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
   const root: DocNode = { type: 'doc', content: [] };
   const stack: DocNode[] = [root];
   const top = () => stack[stack.length - 1]!;
+  // the colour from a background comment, for the next block at the same level
+  let background: { color: string; parent: DocNode } | null = null;
   const push = (node: DocNode) => {
+    if (background?.parent === top()) node.attrs = { ...node.attrs, backgroundColor: background.color };
+    background = null;
     (top().content ??= []).push(node);
   };
   const open = (node: DocNode) => {
@@ -280,6 +284,13 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         if (token.content.trim() === HEADER_COLUMN) {
           headerColumn = true;
           break;
+        }
+        {
+          const color = BACKGROUND_PATTERN.exec(token.content.trim())?.[1];
+          if (color && (COLORS as readonly string[]).includes(color)) {
+            background = { color, parent: top() };
+            break;
+          }
         }
         htmlBlock(token.content, options, { push, top, close, stack });
         break;

@@ -258,6 +258,44 @@
   background: var(--c-red);
   color: inherit;
 }
+/* a whole block's background, from the colour in its Turn into menu */
+.prose .block-bg {
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-left: -6px;
+  margin-right: -6px;
+}
+.prose ul.block-bg,
+.prose ol.block-bg {
+  padding-left: calc(1.45em + 6px);
+}
+.prose .block-bg-gray {
+  background: var(--c-gray);
+}
+.prose .block-bg-brown {
+  background: var(--c-brown);
+}
+.prose .block-bg-orange {
+  background: var(--c-orange);
+}
+.prose .block-bg-yellow {
+  background: var(--c-yellow);
+}
+.prose .block-bg-green {
+  background: var(--c-green);
+}
+.prose .block-bg-blue {
+  background: var(--c-blue);
+}
+.prose .block-bg-purple {
+  background: var(--c-purple);
+}
+.prose .block-bg-pink {
+  background: var(--c-pink);
+}
+.prose .block-bg-red {
+  background: var(--c-red);
+}
 .color-dot.text-gray {
   color: var(--c-gray-text);
 }

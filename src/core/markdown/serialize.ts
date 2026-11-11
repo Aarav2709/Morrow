@@ -1,4 +1,4 @@
-import { BACKGROUND_HEX, TEXT_HEX } from '../model';
+import { BACKGROUND_HEX, COLORS, TEXT_HEX } from '../model';
 import type { ColorName, DocMark, DocNode, PageId } from '../model';
 
 export interface SerializeOptions {
@@ -58,7 +58,9 @@ function blocks(nodes: DocNode[], options: SerializeOptions): string {
   const parts: string[] = [];
   for (const node of nodes.slice(0, last + 1)) {
     const text = isEmptyParagraph(node) ? '<br>' : block(node, options);
-    if (text !== null) parts.push(text);
+    if (text === null) continue;
+    const background = blockBackground(node);
+    parts.push(background ? `${BACKGROUND_COMMENT(background)}\n${text}` : text);
   }
   return parts.join('\n\n');
 }
@@ -223,6 +225,15 @@ export function toggleLevel(value: unknown): 1 | 2 | 3 | 4 | 5 | 6 | null {
 }
 
 export const HEADER_COLUMN = '<!-- header-column -->';
+
+// a block's background colour is a comment on the line above it, other apps hide it and show the block as is
+export const BACKGROUND_COMMENT = (color: ColorName) => `<!-- background: ${color} -->`;
+export const BACKGROUND_PATTERN = /^<!--\s*background:\s*([a-z]+)\s*-->$/;
+
+export function blockBackground(node: DocNode): ColorName | null {
+  const color = node.attrs?.backgroundColor;
+  return typeof color === 'string' && (COLORS as readonly string[]).includes(color) ? (color as ColorName) : null;
+}
 
 // a table row is one line of markdown, so what sits in a cell is written on that line: text, pictures as
 // ![](path), and lists as the html obsidian also reads inside a cell

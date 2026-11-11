@@ -427,6 +427,25 @@ describe('colours', () => {
     expect(markdownToDoc(out)).toEqual(doc);
   });
 
+  it('round trips a block background as a comment above the block', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        { ...p(text('Shaded')), attrs: { backgroundColor: 'yellow' } },
+        { type: 'heading', attrs: { level: 2, backgroundColor: 'blue' }, content: [text('Title')] },
+        p(text('Plain')),
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe('<!-- background: yellow -->\nShaded\n\n<!-- background: blue -->\n## Title\n\nPlain\n');
+    expect(markdownToDoc(out)).toEqual(doc);
+  });
+
+  it('leaves a comment with a colour it does not know alone', () => {
+    const doc = markdownToDoc('<!-- background: mauve -->\nWords');
+    expect(doc.content!.some((node) => node.attrs?.backgroundColor)).toBe(false);
+  });
+
   it('snaps other colours to the nearest one in the palette', () => {
     const doc = markdownToDoc('<span style="color: #ff0000">alarm</span>');
     expect(doc.content![0]!.content![0]!.marks).toEqual([{ type: 'textColor', attrs: { color: 'red' } }]);
