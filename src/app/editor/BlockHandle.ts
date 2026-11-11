@@ -11,6 +11,8 @@ const MOVABLE_ITEMS = new Set(['listItem', 'taskItem']);
 export interface BlockMenuRequest {
   pos: number;
   rect: DOMRect;
+  // several blocks the selected words run across, which turn together
+  range?: { from: number; to: number };
 }
 
 // finds the block the selection is in, preferring the nearest list item

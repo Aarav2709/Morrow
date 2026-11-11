@@ -431,6 +431,12 @@
   margin: 0 3px;
 }
 
+/* the heading levels the toolbar's heading button opens, in a row in place of the other buttons */
+.heading-panel {
+  display: flex;
+  gap: 1px;
+}
+
 .link-form {
   display: flex;
   gap: 4px;

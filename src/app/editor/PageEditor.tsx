@@ -559,7 +559,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
       <EditorContent editor={editor} className="editor-surface" />
       {editable && (
         <>
-          <FormattingMenu editor={editor} pageId={pageId} />
+          <FormattingMenu editor={editor} pageId={pageId} onBlockMenu={setBlockMenu} />
           <LinkMenu editor={editor} />
           <TableMenu editor={editor} />
         </>

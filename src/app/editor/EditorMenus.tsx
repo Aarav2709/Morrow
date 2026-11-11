@@ -17,13 +17,16 @@ import {
   Eye,
   EyeOff,
   FolderOpen,
+  Ellipsis,
+  Heading,
   Heading1,
+  RemoveFormatting,
+  Sigma,
   Heading2,
   Heading3,
   Heading4,
   Heading5,
   Heading6,
-  Highlighter,
   ImageIcon,
   Info,
   Italic,
@@ -60,6 +63,7 @@ import { attachSelection } from '../assistant/selection';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import { activeRoute, openPage } from '../router';
 import { moveBlock } from './BlockHandle';
+import { editMathNear } from './Extras';
 import type { BlockMenuRequest } from './BlockHandle';
 import { clearBlockSelection, selectedBlocks } from './BlockSelect';
 import type { BlockRange } from './BlockSelect';
@@ -79,7 +83,7 @@ function ToolButton({
   label: string;
   icon: LucideIcon;
   active?: boolean;
-  onClick: () => void;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   shortcut?: string;
 }) {
   return (
@@ -204,12 +208,7 @@ function useMarks(editor: Editor) {
       code: current.isActive('code'),
       highlight: current.isActive('highlight'),
       link: current.isActive('link'),
-      h1: headingLevel(current) === 1,
-      h2: headingLevel(current) === 2,
-      h3: headingLevel(current) === 3,
-      h4: headingLevel(current) === 4,
-      h5: headingLevel(current) === 5,
-      h6: headingLevel(current) === 6,
+      heading: headingLevel(current) !== null,
       href: String(current.getAttributes('link').href ?? ''),
     }),
   });
@@ -323,9 +322,18 @@ export function changeCase(editor: Editor, change: (text: string) => string): vo
   editor.commands.focus();
 }
 
-export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: string }) {
+export function FormattingMenu({
+  editor,
+  pageId,
+  onBlockMenu,
+}: {
+  editor: Editor;
+  pageId?: string;
+  onBlockMenu?: (request: BlockMenuRequest) => void;
+}) {
   const [editingLink, setEditingLink] = useState(false);
   const [coloring, setColoring] = useState(false);
+  const [headings, setHeadings] = useState(false);
   const marks = useMarks(editor);
   const { assistant } = usePreferences();
   const [options] = useState(
@@ -338,6 +346,7 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
         onHide: () => {
           setEditingLink(false);
           setColoring(false);
+          setHeadings(false);
         },
       }) as const,
   );
@@ -355,6 +364,9 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
     };
   }, [editor]);
 
+  // headings make no sense inside a table's cells, so the button is left out there
+  const inTable = useEditorState({ editor, selector: ({ editor: e }) => e.isActive('table') });
+
   return (
     <BubbleMenu editor={editor} pluginKey="formattingMenu" options={options} shouldShow={showFormatting}>
       <div className="toolbar popover" role="toolbar" aria-label={t('editor.formattingAria')}>
@@ -362,8 +374,12 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
           <LinkInput editor={editor} onDone={() => setEditingLink(false)} />
         ) : coloring ? (
           <ColorPanel editor={editor} onDone={() => setColoring(false)} />
+        ) : headings ? (
+          <HeadingPanel editor={editor} onDone={() => setHeadings(false)} />
         ) : (
           <>
+            <ToolButton label={t('editor.colour')} icon={Palette} onClick={() => setColoring(true)} />
+            <span className="toolbar-divider" />
             <ToolButton
               label={t('editor.bold')}
               icon={Bold}
@@ -393,21 +409,6 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
               onClick={() => editor.chain().focus().toggleStrike().run()}
             />
             <ToolButton
-              label={t('editor.code')}
-              icon={Code}
-              shortcut="Mod+E"
-              active={marks.code}
-              onClick={() => editor.chain().focus().toggleCode().run()}
-            />
-            <ToolButton
-              label={t('editor.highlight')}
-              icon={Highlighter}
-              shortcut="Mod+Shift+H"
-              active={marks.highlight}
-              onClick={() => editor.chain().focus().toggleHighlight().run()}
-            />
-            <ToolButton label={t('editor.colour')} icon={Palette} onClick={() => setColoring(true)} />
-            <ToolButton
               label={t('editor.uppercase')}
               icon={CaseUpper}
               onClick={() => changeCase(editor, (text) => text.toLocaleUpperCase())}
@@ -425,53 +426,48 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
               active={marks.link}
               onClick={() => setEditingLink(true)}
             />
-            <span className="toolbar-divider" />
             <ToolButton
-              label={t('slash.items.h1.title')}
-              icon={Heading1}
-              active={marks.h1}
-              onClick={() => setHeading(editor, 1)}
+              label={t('editor.code')}
+              icon={Code}
+              shortcut="Mod+E"
+              active={marks.code}
+              onClick={() => editor.chain().focus().toggleCode().run()}
             />
+            <ToolButton label={t('editor.equation')} icon={Sigma} onClick={() => toEquation(editor)} />
+            {!inTable && (
+              <ToolButton
+                label={t('editor.heading')}
+                icon={Heading}
+                active={marks.heading}
+                onClick={() => setHeadings(true)}
+              />
+            )}
             <ToolButton
-              label={t('slash.items.h2.title')}
-              icon={Heading2}
-              active={marks.h2}
-              onClick={() => setHeading(editor, 2)}
-            />
-            <ToolButton
-              label={t('slash.items.h3.title')}
-              icon={Heading3}
-              active={marks.h3}
-              onClick={() => setHeading(editor, 3)}
-            />
-            <ToolButton
-              label={t('slash.items.h4.title')}
-              icon={Heading4}
-              active={marks.h4}
-              onClick={() => setHeading(editor, 4)}
-            />
-            <ToolButton
-              label={t('slash.items.h5.title')}
-              icon={Heading5}
-              active={marks.h5}
-              onClick={() => setHeading(editor, 5)}
-            />
-            <ToolButton
-              label={t('slash.items.h6.title')}
-              icon={Heading6}
-              active={marks.h6}
-              onClick={() => setHeading(editor, 6)}
+              label={t('editor.clearFormatting')}
+              icon={RemoveFormatting}
+              onClick={() => editor.chain().focus().unsetAllMarks().run()}
             />
             {/* only while the assistant is turned on, a workspace without it shows no trace of it */}
             {assistant && desktop?.assistant && pageId && (
+              <ToolButton
+                label={t('editor.askAssistant')}
+                icon={Sparkles}
+                onClick={() => {
+                  // the highlighted words go to the assistant, which changes only those
+                  if (attachSelection(editor, pageId)) setPreferences({ assistantOpen: true });
+                }}
+              />
+            )}
+            {onBlockMenu && (
               <>
                 <span className="toolbar-divider" />
                 <ToolButton
-                  label={t('editor.askAssistant')}
-                  icon={Sparkles}
-                  onClick={() => {
-                    // the highlighted words go to the assistant, which changes only those
-                    if (attachSelection(editor, pageId)) setPreferences({ assistantOpen: true });
+                  label={t('editor.moreOptions')}
+                  icon={Ellipsis}
+                  onClick={(event) => {
+                    const request = selectionBlocks(editor);
+                    if (request)
+                      onBlockMenu({ ...request, rect: event.currentTarget.getBoundingClientRect() });
                   }}
                 />
               </>
@@ -481,6 +477,63 @@ export function FormattingMenu({ editor, pageId }: { editor: Editor; pageId?: st
       </div>
     </BubbleMenu>
   );
+}
+
+// the six heading levels from the toolbar, with text to take a heading back to a line
+function HeadingPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) {
+  const level = useEditorState({ editor, selector: ({ editor: e }) => headingLevel(e) });
+  const icons = [Heading1, Heading2, Heading3, Heading4, Heading5, Heading6] as const;
+  return (
+    <div className="heading-panel" onKeyDown={(event) => event.key === 'Escape' && onDone()}>
+      <ToolButton
+        label={t('slash.items.text.title')}
+        icon={Pilcrow}
+        active={level === null}
+        onClick={() => {
+          if (level !== null) setHeading(editor, level as 1 | 2 | 3 | 4 | 5 | 6);
+          onDone();
+        }}
+      />
+      {icons.map((icon, index) => {
+        const value = (index + 1) as 1 | 2 | 3 | 4 | 5 | 6;
+        return (
+          <ToolButton
+            key={value}
+            label={t(`slash.items.h${value}.title`)}
+            icon={icon}
+            active={level === value}
+            onClick={() => {
+              if (level !== value) setHeading(editor, value);
+              onDone();
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// the picked words become an inline equation written in latex, then it opens for editing
+function toEquation(editor: Editor): void {
+  const { from, to, empty } = editor.state.selection;
+  const math = editor.schema.nodes.inlineMath;
+  if (!math) return;
+  const latex = empty ? '' : editor.state.doc.textBetween(from, to, ' ').trim();
+  editor.chain().focus().insertContentAt({ from, to }, { type: 'inlineMath', attrs: { latex } }).run();
+  editMathNear(editor, from);
+}
+
+// the blocks the selected words are in, for the turn into menu the toolbar opens
+function selectionBlocks(editor: Editor): Omit<BlockMenuRequest, 'rect'> | null {
+  const { $from, $to } = editor.state.selection;
+  if ($from.depth < 1 || $to.depth < 1) return null;
+  // words in one block turn that block, or the list item they are in
+  if ($from.before(1) === $to.before(1)) {
+    for (let depth = $from.depth; depth > 0; depth--)
+      if (['listItem', 'taskItem'].includes($from.node(depth).type.name)) return { pos: $from.before(depth) };
+    return { pos: $from.before(1) };
+  }
+  return { pos: $from.before(1), range: { from: $from.before(1), to: $to.after(1) } };
 }
 
 export function LinkMenu({ editor }: { editor: Editor }) {
@@ -802,7 +855,7 @@ export function BlockMenu({
   pageTitle: string;
   onClose: () => void;
 }) {
-  const picked = selectedBlocks(editor.state);
+  const picked = request.range ?? selectedBlocks(editor.state);
   const range = picked && request.pos >= picked.from && request.pos < picked.to ? picked : null;
   const turn = (target: TurnTarget) => () =>
     range ? turnBlocks(editor, range, target) : turnInto(editor, request.pos, target);
