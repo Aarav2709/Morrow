@@ -21,7 +21,7 @@ import { MarkdownPaste } from './MarkdownPaste';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
-import { IndentedLines, KeepTab, lineContent } from './turnInto';
+import { IndentedLines, KeepTab, lineContent, LineEdges } from './turnInto';
 import { TextSelection } from '@tiptap/pm/state';
 import { Column, Columns, DateMention, TableOfContents } from './Structure';
 
@@ -207,6 +207,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     TaskList,
     TaskItem.configure({ nested: true }),
     IndentedLines,
+    LineEdges,
     KeepTab,
     Table.configure({ resizable: false }),
     TableRow,

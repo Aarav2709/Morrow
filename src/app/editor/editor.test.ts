@@ -295,3 +295,21 @@ describe('nested lists', () => {
     }
   });
 });
+
+describe('home and end', () => {
+  it('move to the start and end of the line, and shift selects', () => {
+    const target = make({ type: 'doc', content: [p('Hello world'), p('Next')] });
+    target.commands.setTextSelection(4);
+    const press = (key: string, shiftKey = false, ctrlKey = false) =>
+      target.view.someProp('handleKeyDown', (handler) =>
+        handler(target.view, new KeyboardEvent('keydown', { key, shiftKey, ctrlKey })),
+      );
+    press('End');
+    expect(target.state.selection.head).toBe(12);
+    press('Home', true);
+    expect(target.state.selection.from).toBe(1);
+    expect(target.state.selection.to).toBe(12);
+    press('End', false, true);
+    expect(target.state.selection.head).toBe(target.state.doc.content.size - 1);
+  });
+});

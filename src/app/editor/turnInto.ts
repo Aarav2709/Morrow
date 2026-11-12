@@ -1,10 +1,11 @@
 import { Extension } from '@tiptap/core';
-import type { Editor } from '@tiptap/core';
+import type { Editor, KeyboardShortcutCommand } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import type { Node as PMNode, Schema } from '@tiptap/pm/model';
-import { TextSelection } from '@tiptap/pm/state';
+import { Selection, TextSelection } from '@tiptap/pm/state';
 import type { EditorState } from '@tiptap/pm/state';
 import { liftTarget } from '@tiptap/pm/transform';
+import { isMac } from '../platform/desktop';
 import { getPreferences } from '../platform/preferences';
 
 export type TurnTarget =
@@ -322,5 +323,59 @@ export const KeepTab = Extension.create({
   priority: 1,
   addKeyboardShortcuts() {
     return { Tab: () => true, 'Shift-Tab': () => true };
+  },
+});
+
+// home and end move to the start and end of the line on screen, a wrapped line's own part of it, with shift
+// to select and ctrl or cmd for the whole page. done here rather than left to the web view, which on
+// windows lets the keys go by without moving the cursor
+function lineEdge(editor: Editor, forward: boolean, extend: boolean, page: boolean): boolean {
+  const { view, state } = editor;
+  const { selection } = state;
+  let target: number;
+  if (page) {
+    const edge = forward ? Selection.atEnd(state.doc) : Selection.atStart(state.doc);
+    target = forward ? edge.to : edge.from;
+  } else {
+    const head = selection.head;
+    const $head = state.doc.resolve(head);
+    if (!$head.parent.isTextblock) return false;
+    const start = $head.start();
+    const end = $head.end();
+    target = forward ? end : start;
+    try {
+      const caret = view.coordsAtPos(head, forward ? -1 : 1);
+      const block = view.nodeDOM($head.before());
+      const box = block instanceof HTMLElement ? block.getBoundingClientRect() : null;
+      if (box) {
+        const top = (caret.top + caret.bottom) / 2;
+        const found = view.posAtCoords({ left: forward ? box.right - 1 : box.left + 1, top });
+        if (found && found.pos >= start && found.pos <= end) target = found.pos;
+      }
+    } catch {
+      // no layout to measure, such as a hidden page, so the edge of the whole line will do
+    }
+  }
+  const anchor = extend ? selection.anchor : target;
+  const next = TextSelection.between(state.doc.resolve(anchor), state.doc.resolve(target));
+  view.dispatch(state.tr.setSelection(next).scrollIntoView());
+  return true;
+}
+
+export const LineEdges = Extension.create({
+  name: 'lineEdges',
+  addKeyboardShortcuts(): Record<string, KeyboardShortcutCommand> {
+    // a mac has its own keys for this and home and end scroll there
+    if (isMac) return {};
+    return {
+      Home: ({ editor }) => lineEdge(editor, false, false, false),
+      End: ({ editor }) => lineEdge(editor, true, false, false),
+      'Shift-Home': ({ editor }) => lineEdge(editor, false, true, false),
+      'Shift-End': ({ editor }) => lineEdge(editor, true, true, false),
+      'Mod-Home': ({ editor }) => lineEdge(editor, false, false, true),
+      'Mod-End': ({ editor }) => lineEdge(editor, true, false, true),
+      'Mod-Shift-Home': ({ editor }) => lineEdge(editor, false, true, true),
+      'Mod-Shift-End': ({ editor }) => lineEdge(editor, true, true, true),
+    };
   },
 });
