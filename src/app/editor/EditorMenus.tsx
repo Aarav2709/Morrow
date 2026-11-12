@@ -725,6 +725,22 @@ function colourSwatch(color: ColorName): LucideIcon {
   return icon;
 }
 
+// ids given to blocks this session by copying a link to them. they stay while the link is on its way to
+// being pasted, ids nothing links to are dropped as the page is saved
+const copiedBlockIds = new Set<string>();
+export const isCopiedBlockId = (id: string) => copiedBlockIds.has(id);
+
+// a block without its ^id, for a copy of it
+export function withoutBlockIds(node: PmNode): PmNode {
+  const strip = (current: PmNode): PmNode => {
+    const children: PmNode[] = [];
+    current.forEach((child) => children.push(strip(child)));
+    const attrs = current.attrs.blockId ? { ...current.attrs, blockId: null } : current.attrs;
+    return current.isText ? current : current.type.create(attrs, children, current.marks);
+  };
+  return strip(node);
+}
+
 // a short id for a block, only needs to be unique within its page
 function newBlockId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -745,6 +761,7 @@ function copyBlockLink(editor: Editor, pos: number, pageTitle: string): void {
     let id = typeof paragraph.attrs.blockId === 'string' ? paragraph.attrs.blockId : '';
     if (!id) {
       id = newBlockId();
+      copiedBlockIds.add(id);
       editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, { ...paragraph.attrs, blockId: id }));
     }
     anchor = `^${id}`;
@@ -1173,8 +1190,12 @@ export function BlockMenu({
       label: t('editor.duplicate'),
       icon: Copy,
       onSelect: () => {
+        // the copy has no ^id, links to the block keep going to the original
         if (range) {
-          const blocks = editor.state.doc.slice(range.from, range.to).content;
+          const blocks: PmNode[] = [];
+          editor.state.doc
+            .slice(range.from, range.to)
+            .content.forEach((block) => blocks.push(withoutBlockIds(block)));
           editor.view.dispatch(editor.state.tr.insert(range.to, blocks));
           clearBlockSelection(editor);
           return;
@@ -1184,7 +1205,7 @@ export function BlockMenu({
           editor
             .chain()
             .focus()
-            .insertContentAt(request.pos + node.nodeSize, node.toJSON())
+            .insertContentAt(request.pos + node.nodeSize, withoutBlockIds(node).toJSON())
             .run();
       },
     },

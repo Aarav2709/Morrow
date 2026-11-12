@@ -29,9 +29,17 @@ import { getSession, getState, run } from '../workspace';
 import type { BlockMenuRequest } from './BlockHandle';
 import { registerCommit, setFocusedEditor } from './commits';
 import { revealAt } from './Blocks';
-import { pageIdFromHref } from '../../core/links';
+import { linkedBlockIds, pageIdFromHref } from '../../core/links';
 import { openTab } from '../tabs';
-import { BlockMenu, FormattingMenu, LinkMenu, noteMouseButton, openHref, TableMenu } from './EditorMenus';
+import {
+  BlockMenu,
+  FormattingMenu,
+  isCopiedBlockId,
+  LinkMenu,
+  noteMouseButton,
+  openHref,
+  TableMenu,
+} from './EditorMenus';
 import { FindBar } from './FindBar';
 import { createExtensions } from './extensions';
 import { anchorSlice, isBlockAnchor } from '../../core/anchors';
@@ -305,6 +313,22 @@ function ReminderTime({
   );
 }
 
+// a ^id nothing links to any more goes as the page is saved, unless its link was just copied and waits to
+// be pasted. it isn't an undo step
+function dropUnlinkedBlockIds(editor: Editor, pageId: PageId): void {
+  const { tr, doc } = editor.state;
+  let linked: Set<string> | null = null;
+  doc.descendants((node, pos) => {
+    const id = node.attrs.blockId;
+    if (typeof id !== 'string' || !id) return true;
+    linked ??= linkedBlockIds(getState(), pageId);
+    if (!linked.has(id) && !isCopiedBlockId(id))
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, blockId: null });
+    return true;
+  });
+  if (tr.docChanged) editor.view.dispatch(tr.setMeta('addToHistory', false));
+}
+
 // keeps one editor instance per page and writes changes back through commands
 export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onDirty, onReady }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -336,6 +360,9 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
       if (timer) clearTimeout(timer);
       timer = null;
       if (!dirty || instance.isDestroyed) return;
+      dropUnlinkedBlockIds(instance, pageId);
+      if (timer) clearTimeout(timer);
+      timer = null;
       dirty = false;
       callbacks.current.onDirty(false);
       if (sameContent(instance, committed.current)) return;

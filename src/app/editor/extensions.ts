@@ -22,7 +22,9 @@ import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
 import { IndentedLines, KeepTab, lineContent, LineEdges } from './turnInto';
-import { TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { Fragment, Slice } from '@tiptap/pm/model';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { Column, Columns, DateMention, TableOfContents } from './Structure';
 
 export interface ExtensionOptions extends PageLinkOptions {
@@ -38,6 +40,35 @@ export interface ExtensionOptions extends PageLinkOptions {
 // never hands its id to the new paragraph
 const BlockIds = Extension.create({
   name: 'blockIds',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('blockIdsPaste'),
+        props: {
+          transformPasted: (slice, view) => {
+            const taken = new Set<string>();
+            view.state.doc.descendants((node) => {
+              if (typeof node.attrs.blockId === 'string' && node.attrs.blockId) taken.add(node.attrs.blockId);
+            });
+            if (!taken.size) return slice;
+            const strip = (fragment: Fragment): Fragment => {
+              const children: PMNode[] = [];
+              fragment.forEach((child) => {
+                const id = child.attrs.blockId;
+                const attrs =
+                  typeof id === 'string' && taken.has(id) ? { ...child.attrs, blockId: null } : child.attrs;
+                children.push(
+                  child.isText ? child : child.type.create(attrs, strip(child.content), child.marks),
+                );
+              });
+              return Fragment.from(children);
+            };
+            return new Slice(strip(slice.content), slice.openStart, slice.openEnd);
+          },
+        },
+      }),
+    ];
+  },
   addGlobalAttributes() {
     return [
       {
@@ -46,6 +77,7 @@ const BlockIds = Extension.create({
           blockId: {
             default: null,
             keepOnSplit: false,
+            // a pasted copy of a block on the same page leaves its ^id behind, links go to the original
             parseHTML: (element) => element.getAttribute('data-block-id'),
             renderHTML: (attrs) => (attrs.blockId ? { 'data-block-id': attrs.blockId } : {}),
           },

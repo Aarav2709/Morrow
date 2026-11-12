@@ -117,3 +117,20 @@ export function unlinkedMentions(state: WorkspaceState, targetId: PageId, limit 
   }
   return result.sort((a, b) => b.source.updatedAt - a.source.updatedAt);
 }
+
+// the ^ids of blocks in a page that some page links to, [[Page#^id]]
+export function linkedBlockIds(state: WorkspaceState, pageId: PageId): Set<string> {
+  const ids = new Set<string>();
+  const visit = (node: DocNode) => {
+    if (node.type === 'pageLink' && node.attrs?.id === pageId) {
+      const anchor = node.attrs?.anchor;
+      if (typeof anchor === 'string' && anchor.startsWith('^')) ids.add(anchor.slice(1));
+    }
+    for (const child of node.content ?? []) visit(child);
+  };
+  for (const page of livePages(state.pages)) {
+    const doc = state.docs[page.id];
+    if (doc) visit(doc);
+  }
+  return ids;
+}
