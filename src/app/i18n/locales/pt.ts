@@ -165,6 +165,12 @@ export const pt: TranslationSchema = {
     sidebar: {
       title: 'Barra lateral',
       show: 'Mostrar {name}',
+      groupTop: 'Links no topo',
+      groupSections: 'Seções',
+      groupBottom: 'Links embaixo',
+      moveAria: 'Mover {name}',
+      moveHint: 'Arraste para reordenar, ou use as setas',
+      conditionalHelp: 'Início, Páginas e Configurações sempre ficam. Favoritos, Modelos, Arquivo e Lixeira só aparecem quando têm algo.',
       peek: 'Mostrar ao apontar para a borda esquerda',
       peekHelp:
         'Com a barra lateral oculta, ela aparece enquanto o ponteiro está na borda esquerda da janela.',

@@ -2668,3 +2668,24 @@ td:hover .prop-empty,
   align-items: center;
   padding: 6px;
 }
+
+/* a sidebar item in settings: its handle to drag it, its name and whether it shows */
+.sidebar-layout-row {
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 14px 6px 8px;
+}
+.sidebar-layout-label {
+  flex: 1;
+}
+.sidebar-layout-row .drag-grip {
+  cursor: grab;
+  color: var(--text-faint);
+}
+.sidebar-layout-row.is-dragging {
+  opacity: 0.5;
+}
+.settings-note {
+  margin: 4px 2px 0;
+}

@@ -161,6 +161,12 @@ export const en = {
     sidebar: {
       title: 'Sidebar',
       show: 'Show {name}',
+      groupTop: 'Links at the top',
+      groupSections: 'Sections',
+      groupBottom: 'Links at the bottom',
+      moveAria: 'Move {name}',
+      moveHint: 'Drag to reorder, or use the arrow keys',
+      conditionalHelp: 'Home, Pages and Settings always stay. Favourites, Templates, Archive and Trash only show once something is in them.',
       peek: 'Show when pointing at the left edge',
       peekHelp:
         'With the sidebar hidden, it slides in while the pointer rests at the left edge of the window.',

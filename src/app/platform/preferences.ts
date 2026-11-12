@@ -20,8 +20,32 @@ export interface Reminder {
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
 // the views the sidebar lists, each one can be left out, daily notes turn off everywhere with theirs
-export const SIDEBAR_MODULES = ['daily', 'tasks', 'tags', 'review', 'graph', 'import'] as const;
+export const SIDEBAR_MODULES = [
+  'search',
+  'daily',
+  'tasks',
+  'tags',
+  'review',
+  'graph',
+  'favorites',
+  'templates',
+  'import',
+  'archive',
+  'trash',
+] as const;
 export type SidebarModule = (typeof SIDEBAR_MODULES)[number];
+// everything in the sidebar in the order it is shown, in three groups: the links at the top, the sections
+// that scroll, and the links at the bottom. home, pages and settings are always there
+export const SIDEBAR_GROUPS = {
+  top: ['search', 'home', 'daily', 'tasks', 'review', 'tags', 'graph', 'assistant'],
+  sections: ['favorites', 'templates', 'pages'],
+  bottom: ['import', 'archive', 'trash', 'settings'],
+} as const;
+export type SidebarItem =
+  | (typeof SIDEBAR_GROUPS.top)[number]
+  | (typeof SIDEBAR_GROUPS.sections)[number]
+  | (typeof SIDEBAR_GROUPS.bottom)[number];
+export const SIDEBAR_FIXED: readonly SidebarItem[] = ['home', 'pages', 'settings'];
 // accent colours, each tuned for light and dark in features.css
 export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
 export type Accent = (typeof ACCENTS)[number];
@@ -78,6 +102,8 @@ export interface Preferences {
   spellcheck: boolean;
   // views left out of the sidebar, they still open from search and their shortcuts
   hiddenModules: SidebarModule[];
+  // the order of what the sidebar shows, dragged in settings
+  sidebarOrder: SidebarItem[];
   // plugins in a vault only run on a computer where this was turned on
   plugins: boolean;
   // the colour last picked for words, which ctrl shift h puts on again
@@ -125,6 +151,7 @@ const defaults: Preferences = {
   codeLanguage: '',
   spellcheck: true,
   hiddenModules: [],
+  sidebarOrder: [...SIDEBAR_GROUPS.top, ...SIDEBAR_GROUPS.sections, ...SIDEBAR_GROUPS.bottom],
   plugins: false,
   lastColor: null,
 };
@@ -141,6 +168,24 @@ function readCanvasSizes(raw: unknown): Record<string, CanvasSize> {
     sizes[id] = { width: typeof value.width === 'number' ? value.width : null, height: value.height };
   }
   return sizes;
+}
+
+// an order saved before an item existed gets it in its usual place
+function readSidebarOrder(raw: unknown): SidebarItem[] {
+  const all = [...SIDEBAR_GROUPS.top, ...SIDEBAR_GROUPS.sections, ...SIDEBAR_GROUPS.bottom] as SidebarItem[];
+  if (!Array.isArray(raw)) return all;
+  const kept = raw.filter(
+    (item, index): item is SidebarItem => all.includes(item) && raw.indexOf(item) === index,
+  );
+  for (const item of all) {
+    if (kept.includes(item)) continue;
+    const before = all
+      .slice(0, all.indexOf(item))
+      .reverse()
+      .find((other) => kept.includes(other));
+    kept.splice(before ? kept.indexOf(before) + 1 : 0, 0, item);
+  }
+  return kept;
 }
 
 function read(): Preferences {
@@ -220,6 +265,7 @@ function read(): Preferences {
       hiddenModules: Array.isArray(parsed.hiddenModules)
         ? SIDEBAR_MODULES.filter((module) => parsed.hiddenModules!.includes(module))
         : [],
+      sidebarOrder: readSidebarOrder(parsed.sidebarOrder),
     };
   } catch {
     return defaults;

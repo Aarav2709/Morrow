@@ -7,6 +7,7 @@ import {
   RefreshCw,
   SlidersHorizontal,
   X,
+  GripVertical,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -28,7 +29,15 @@ import {
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
 import { canOpenFolders, desktop, isMobile } from '../platform/desktop';
-import { ACCENTS, SIDEBAR_MODULES, setPreferences, usePreferences } from '../platform/preferences';
+import {
+  ACCENTS,
+  SIDEBAR_FIXED,
+  SIDEBAR_GROUPS,
+  SIDEBAR_MODULES,
+  setPreferences,
+  usePreferences,
+} from '../platform/preferences';
+import type { SidebarItem, SidebarModule } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -303,36 +312,136 @@ function AppearanceSettings() {
 function SidebarSettings() {
   const { t } = useTranslation();
   const prefs = usePreferences();
+  const [dragging, setDragging] = useState<SidebarItem | null>(null);
+  const label = (item: SidebarItem): string => {
+    switch (item) {
+      case 'search':
+        return t('common.search');
+      case 'home':
+        return t('settings.general.startPages.home');
+      case 'daily':
+        return t('sidebar.today');
+      case 'templates':
+        return t('dialogs.templates');
+      case 'pages':
+        return t('sidebar.pagesHeading');
+      case 'settings':
+        return t('settings.title');
+      case 'assistant':
+        return t('settings.sections.assistant');
+      default:
+        return t(`sidebar.${item}` as TranslationKey);
+    }
+  };
+  // an item moves within its own group, before the one it is dropped on or a step up or down
+  const move = (item: SidebarItem, to: SidebarItem | number) => {
+    const order = prefs.sidebarOrder.filter((other) => other !== item);
+    const group = groupOf(item);
+    const members = order.filter((other) => groupOf(other) === group);
+    let target: SidebarItem | undefined;
+    if (typeof to === 'number') {
+      const index = prefs.sidebarOrder.filter((other) => groupOf(other) === group).indexOf(item) + to;
+      if (index < 0 || index > members.length) return;
+      target = members[index];
+      if (!target) {
+        const last = members[members.length - 1];
+        order.splice(last ? order.indexOf(last) + 1 : order.length, 0, item);
+        setPreferences({ sidebarOrder: order });
+        return;
+      }
+    } else target = to;
+    if (!target || groupOf(target) !== group) return;
+    order.splice(order.indexOf(target), 0, item);
+    setPreferences({ sidebarOrder: order });
+  };
+  const groups: Array<[keyof typeof SIDEBAR_GROUPS, string]> = [
+    ['top', t('settings.sidebar.groupTop')],
+    ['sections', t('settings.sidebar.groupSections')],
+    ['bottom', t('settings.sidebar.groupBottom')],
+  ];
   return (
-    <SettingsGroup title={t('settings.sidebar.title')}>
-      {SIDEBAR_MODULES.map((module) => {
-        const label = t(`sidebar.${module}` as TranslationKey);
-        return (
-          <SettingRow key={module} label={t('settings.sidebar.show', { name: label })}>
-            <Switch
-              label={t('settings.sidebar.show', { name: label })}
-              checked={!prefs.hiddenModules.includes(module)}
-              onChange={(show) =>
-                setPreferences({
-                  hiddenModules: show
-                    ? prefs.hiddenModules.filter((item) => item !== module)
-                    : [...prefs.hiddenModules, module],
-                })
-              }
-            />
-          </SettingRow>
-        );
-      })}
-      <SettingRow label={t('settings.sidebar.peek')} help={t('settings.sidebar.peekHelp')}>
-        <Switch
-          label={t('settings.sidebar.peek')}
-          checked={prefs.sidebarPeek}
-          onChange={(sidebarPeek) => setPreferences({ sidebarPeek })}
-        />
-      </SettingRow>
-    </SettingsGroup>
+    <>
+      <SettingsGroup title={t('settings.sidebar.title')}>
+        <SettingRow label={t('settings.sidebar.peek')} help={t('settings.sidebar.peekHelp')}>
+          <Switch
+            label={t('settings.sidebar.peek')}
+            checked={prefs.sidebarPeek}
+            onChange={(sidebarPeek) => setPreferences({ sidebarPeek })}
+          />
+        </SettingRow>
+      </SettingsGroup>
+      {groups.map(([group, title]) => (
+        <SettingsGroup key={group} title={title}>
+          {prefs.sidebarOrder
+            .filter((item) => groupOf(item) === group && item !== 'assistant')
+            .map((item) => {
+              const fixed = SIDEBAR_FIXED.includes(item);
+              const module = (SIDEBAR_MODULES as readonly string[]).includes(item)
+                ? (item as SidebarModule)
+                : null;
+              return (
+                <div
+                  key={item}
+                  className={`settings-row sidebar-layout-row${dragging === item ? ' is-dragging' : ''}`}
+                  onDragOver={(event) => {
+                    if (dragging && groupOf(dragging) === group) event.preventDefault();
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (dragging && dragging !== item) move(dragging, item);
+                    setDragging(null);
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="icon-button small drag-grip"
+                    draggable
+                    aria-label={t('settings.sidebar.moveAria', { name: label(item) })}
+                    title={t('settings.sidebar.moveHint')}
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/plain', item);
+                      setDragging(item);
+                    }}
+                    onDragEnd={() => setDragging(null)}
+                    onKeyDown={(event) => {
+                      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+                      event.preventDefault();
+                      move(item, event.key === 'ArrowUp' ? -1 : 1);
+                    }}
+                  >
+                    <GripVertical size={14} />
+                  </button>
+                  <span className="settings-row-label sidebar-layout-label">{label(item)}</span>
+                  <Switch
+                    label={t('settings.sidebar.show', { name: label(item) })}
+                    checked={fixed || (module !== null && !prefs.hiddenModules.includes(module))}
+                    disabled={fixed || module === null}
+                    onChange={(show) =>
+                      module &&
+                      setPreferences({
+                        hiddenModules: show
+                          ? prefs.hiddenModules.filter((other) => other !== module)
+                          : [...prefs.hiddenModules, module],
+                      })
+                    }
+                  />
+                </div>
+              );
+            })}
+        </SettingsGroup>
+      ))}
+      <p className="muted small settings-note">{t('settings.sidebar.conditionalHelp')}</p>
+    </>
   );
 }
+
+const groupOf = (item: SidebarItem): keyof typeof SIDEBAR_GROUPS =>
+  (SIDEBAR_GROUPS.top as readonly SidebarItem[]).includes(item)
+    ? 'top'
+    : (SIDEBAR_GROUPS.sections as readonly SidebarItem[]).includes(item)
+      ? 'sections'
+      : 'bottom';
 
 // styles of your own, saved in the vault and shown as you type
 function CustomCss() {
