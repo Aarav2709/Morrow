@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowRightLeft,
-  BookOpen,
   Check,
   Columns2,
   Loader2,
@@ -13,6 +12,7 @@ import {
   Pencil,
   Star,
   X,
+  Eye,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
@@ -59,7 +59,7 @@ export function SidebarToggle() {
   );
 }
 
-// switches every page between reading and editing, as the book and pencil do in obsidian
+// switches every page between view mode, the eye, and edit mode, the pencil
 function ReadingToggle() {
   const { t } = useTranslation();
   const reading = usePreferences().readingMode;
@@ -73,7 +73,7 @@ function ReadingToggle() {
       aria-pressed={reading}
       onClick={() => runAction('view.reading')}
     >
-      {reading ? <Pencil size={16} strokeWidth={1.75} /> : <BookOpen size={16} strokeWidth={1.75} />}
+      {reading ? <Pencil size={16} strokeWidth={1.75} /> : <Eye size={16} strokeWidth={1.75} />}
     </button>
   );
 }
