@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
-import { ChevronDown, ChevronUp, Regex, Replace, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Regex, Replace, X, CaseSensitive } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '../ui';
 import { t } from '../i18n';
@@ -28,7 +28,12 @@ export function FindBar({ editor, seed, onClose }: Props) {
     editor,
     selector: ({ editor: current }) => {
       const state = getFindState(current.state);
-      return { count: state.matches.length, current: state.current, regex: state.regex };
+      return {
+        count: state.matches.length,
+        current: state.current,
+        regex: state.regex,
+        caseSensitive: state.caseSensitive ?? false,
+      };
     },
   });
 
@@ -57,9 +62,9 @@ export function FindBar({ editor, seed, onClose }: Props) {
         .querySelector('.find-match.is-current')
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     );
-  const update = (value: string, regex = find.regex) => {
+  const update = (value: string, regex = find.regex, caseSensitive = find.caseSensitive) => {
     setQuery(value);
-    setFindQuery(editor.state, editor.view.dispatch, value, regex);
+    setFindQuery(editor.state, editor.view.dispatch, value, regex, caseSensitive);
     reveal();
   };
   const step = (direction: 1 | -1) => {
@@ -95,6 +100,16 @@ export function FindBar({ editor, seed, onClose }: Props) {
         <span className="find-count" aria-live="polite">
           {query ? (find.count ? `${find.current + 1} of ${find.count}` : t('editor.noResults')) : ''}
         </span>
+        <button
+          type="button"
+          className={`icon-button small${find.caseSensitive ? ' is-active' : ''}`}
+          aria-label={t('editor.matchCase')}
+          title={t('editor.matchCase')}
+          aria-pressed={find.caseSensitive}
+          onClick={() => update(query, find.regex, !find.caseSensitive)}
+        >
+          <CaseSensitive size={15} />
+        </button>
         <button
           type="button"
           className={`icon-button small${find.regex ? ' is-active' : ''}`}

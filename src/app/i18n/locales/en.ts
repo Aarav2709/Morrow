@@ -701,6 +701,7 @@ export const en = {
     previousMatch: 'Previous match',
     nextMatch: 'Next match',
     useRegex: 'Regular expression',
+    matchCase: 'Match case',
     closeFind: 'Close find',
     suggestion: {
       toChoose: 'to choose',

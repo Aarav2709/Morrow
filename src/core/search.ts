@@ -92,9 +92,12 @@ export function searchWorkspace(
   query: string,
   limit = 50,
   snippetCount = 1,
+  options: { matchCase?: boolean } = {},
 ): SearchResult[] {
   const { terms, excluded, tags: wantedTags } = parseQuery(query);
   if (terms.length === 0 && wantedTags.length === 0) return [];
+  // with match case the words have to be there as typed, capitals and all
+  const exact = options.matchCase ? caseTerms(query) : [];
   const phrase = terms.join(' ');
   const scored: Array<{
     page: PageMeta;
@@ -125,6 +128,10 @@ export function searchWorkspace(
       if (inBody) score += Math.min(5, countOccurrences(body.folded, term));
     }
     if (!matchedAll) continue;
+    if (exact.length) {
+      const rawTitle = displayTitle(page);
+      if (!exact.every((term) => rawTitle.includes(term) || body.raw.includes(term))) continue;
+    }
     const titleMatch = terms.every((term) => title.includes(term));
     if (phrase && title === phrase) score += 30;
     else if (phrase && title.startsWith(phrase)) score += 15;
@@ -157,6 +164,19 @@ export function searchWorkspace(
           .map((ancestor) => displayTitle(ancestor)),
       };
     });
+}
+
+// the words and phrases to find as they were typed, without tags or left out words
+function caseTerms(query: string): string[] {
+  const terms: string[] = [];
+  for (const match of query.matchAll(/(-?)"([^"]*)"?|(\S+)/g)) {
+    if (match[1]) continue;
+    const term = (match[2] ?? match[3] ?? '').trim().replace(/\s+/g, ' ');
+    if (!term || (match[3] && (/^#[^#\s]+$/.test(term) || (term.length > 1 && term.startsWith('-')))))
+      continue;
+    terms.push(term);
+  }
+  return terms;
 }
 
 function countOccurrences(haystack: string, needle: string): number {

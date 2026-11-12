@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { Search, CaseSensitive } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import { searchWorkspace } from '../../core/search';
@@ -36,6 +36,7 @@ export function SearchView({ query }: { query: string }) {
   const pane = usePane();
   const [text, setText] = useState(query);
   const [order, setOrder] = useState<Order>('best');
+  const [matchCase, setMatchCase] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -50,8 +51,8 @@ export function SearchView({ query }: { query: string }) {
   }, [text, query, pane]);
 
   const results = useMemo(
-    () => sorted(searchWorkspace(state, query, MAX_RESULTS, SNIPPETS_PER_PAGE), order),
-    [state, query, order],
+    () => sorted(searchWorkspace(state, query, MAX_RESULTS, SNIPPETS_PER_PAGE, { matchCase }), order),
+    [state, query, order, matchCase],
   );
 
   return (
@@ -77,6 +78,16 @@ export function SearchView({ query }: { query: string }) {
                     navigate({ name: 'search', query: text }, { replace: true, pane });
                 }}
               />
+              <button
+                type="button"
+                className={`icon-button small${matchCase ? ' is-active' : ''}`}
+                aria-label={t('editor.matchCase')}
+                title={t('editor.matchCase')}
+                aria-pressed={matchCase}
+                onClick={() => setMatchCase((value) => !value)}
+              >
+                <CaseSensitive size={16} strokeWidth={1.75} />
+              </button>
             </label>
             <p className="muted small search-tips">
               {tr('searchView.tips', {

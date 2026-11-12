@@ -87,6 +87,8 @@ export interface FindState {
   query: string;
   // the query is a regular expression, and a replacement can use its groups as $1, $2 and so on
   regex: boolean;
+  // capitals and small letters have to match as typed
+  caseSensitive?: boolean;
   matches: Array<{ from: number; to: number }>;
   current: number;
 }
@@ -94,18 +96,24 @@ export interface FindState {
 const findKey = new PluginKey<FindState>('findReplace');
 
 // null when a regular expression is still being typed and isn't valid yet
-function findPattern(query: string, regex: boolean): RegExp | null {
+function findPattern(query: string, regex: boolean, caseSensitive = false): RegExp | null {
   if (!query) return null;
-  if (!regex) return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+  const flags = caseSensitive ? 'g' : 'gi';
+  if (!regex) return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
   try {
-    return new RegExp(query, 'gi');
+    return new RegExp(query, flags);
   } catch {
     return null;
   }
 }
 
-export function findMatches(state: EditorState, query: string, regex: boolean): FindState['matches'] {
-  const pattern = findPattern(query, regex);
+export function findMatches(
+  state: EditorState,
+  query: string,
+  regex: boolean,
+  caseSensitive = false,
+): FindState['matches'] {
+  const pattern = findPattern(query, regex, caseSensitive);
   if (!pattern) return [];
   const matches: FindState['matches'] = [];
   state.doc.descendants((node, pos) => {
@@ -133,9 +141,9 @@ function replacementFor(
   text: string,
 ) {
   if (!find.regex) return text;
-  const pattern = findPattern(find.query, true);
+  const pattern = findPattern(find.query, true, find.caseSensitive);
   const found = state.doc.textBetween(match.from, match.to, undefined, '\ufffc');
-  return pattern ? found.replace(new RegExp(pattern.source, 'i'), text) : text;
+  return pattern ? found.replace(new RegExp(pattern.source, find.caseSensitive ? '' : 'i'), text) : text;
 }
 
 // opens every folded toggle around a position, so a match found inside one can be seen
@@ -158,14 +166,15 @@ export function setFindQuery(
   dispatch: (tr: Transaction) => void,
   query: string,
   regex = getFindState(state).regex,
+  caseSensitive = getFindState(state).caseSensitive ?? false,
 ): void {
-  const matches = findMatches(state, query, regex);
+  const matches = findMatches(state, query, regex, caseSensitive);
   const from = state.selection.from;
   const current = Math.max(
     0,
     matches.findIndex((match) => match.from >= from),
   );
-  const tr = state.tr.setMeta(findKey, { query, regex, matches, current });
+  const tr = state.tr.setMeta(findKey, { query, regex, caseSensitive, matches, current });
   const match = matches[current];
   dispatch(match ? revealAt(tr, match.from) : tr);
 }
@@ -192,7 +201,7 @@ export function replaceCurrent(
   const match = find.matches[find.current];
   if (!match) return;
   const tr = state.tr.insertText(replacementFor(state, find, match, replacement), match.from, match.to);
-  const matches = findMatches(state.apply(tr), find.query, find.regex);
+  const matches = findMatches(state.apply(tr), find.query, find.regex, find.caseSensitive);
   dispatch(
     tr.setMeta(findKey, {
       ...find,
@@ -216,7 +225,7 @@ export function replaceAll(
   dispatch(
     tr.setMeta(findKey, {
       ...find,
-      matches: findMatches(state.apply(tr), find.query, find.regex),
+      matches: findMatches(state.apply(tr), find.query, find.regex, find.caseSensitive),
       current: 0,
     }),
   );
@@ -235,7 +244,7 @@ export const FindReplace = Extension.create({
             const meta = tr.getMeta(findKey) as FindState | undefined;
             if (meta) return meta;
             if (!tr.docChanged || !value.query) return value;
-            const matches = findMatches(next, value.query, value.regex);
+            const matches = findMatches(next, value.query, value.regex, value.caseSensitive);
             return { ...value, matches, current: Math.min(value.current, Math.max(0, matches.length - 1)) };
           },
         },

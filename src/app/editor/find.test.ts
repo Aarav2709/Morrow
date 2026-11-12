@@ -35,5 +35,8 @@ describe('find in page', () => {
       'tomatoes',
     ]);
     expect(findMatches(state, 't.m', true)).toHaveLength(3);
+    // with match case only the word as typed counts
+    expect(findMatches(state, 'Tomatoes', false, true)).toHaveLength(1);
+    expect(findMatches(state, 'T.m', true, true)).toHaveLength(1);
   });
 });

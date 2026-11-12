@@ -708,6 +708,7 @@ export const es: TranslationSchema = {
     previousMatch: 'Coincidencia anterior',
     nextMatch: 'Coincidencia siguiente',
     useRegex: 'Expresión regular',
+    matchCase: 'Coincidir mayúsculas',
     closeFind: 'Cerrar búsqueda',
     suggestion: {
       toChoose: 'para elegir',
