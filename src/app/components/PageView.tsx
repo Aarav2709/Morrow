@@ -45,7 +45,7 @@ import { applyTemplateTo, deleteForever, restorePage, setArchived, trashPage } f
 import { usePreferences } from '../platform/preferences';
 import { readingPlace, rememberPlace } from '../readingPlace';
 import { navigate, openPage, routeHash } from '../router';
-import { openSide } from '../tabs';
+import { openSide, usePane } from '../tabs';
 import { getUi, openDialog, setUi, useUi } from '../ui';
 import { getSession, run, useWorkspace } from '../workspace';
 import { Menu } from './Menu';
@@ -89,8 +89,9 @@ let firstPage = true;
 
 // puts the page back where it was left: scrolled as far down, the cursor where it was. the page can still be
 // growing as images load, so the scroll is set again for a moment until it holds
-function restorePlace(editor: Editor, scroller: HTMLElement | null, id: PageId, focus: boolean): void {
-  const place = readingPlace(id);
+function restorePlace(editor: Editor, scroller: HTMLElement | null, id: string, focus: boolean): void {
+  // the second side of a split has a place of its own, the same page open on both sides keeps both
+  const place = readingPlace(id) ?? readingPlace(id.replace(/@side$/, ''));
   if (!place || editor.isDestroyed) return;
   const { doc, tr } = editor.state;
   const size = doc.content.size;
@@ -123,6 +124,8 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
   // enter in the title can arrive before the editor exists, focus it once it does
   const focusWhenReady = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pane = usePane();
+  const placeKey = pane === 'side' ? `${id}@side` : id;
   // the place is only written down once it has been put back, the empty page loading first is not it
   const placed = useRef(false);
   const prefs = usePreferences();
@@ -220,7 +223,9 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
       <div
         className="page-scroll"
         ref={scrollRef}
-        onScroll={(event) => placed.current && rememberPlace(id, { scroll: event.currentTarget.scrollTop })}
+        onScroll={(event) =>
+          placed.current && rememberPlace(placeKey, { scroll: event.currentTarget.scrollTop })
+        }
       >
         {trashed && (
           <div className="banner" role="note">
@@ -372,13 +377,13 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                     editor.on('selectionUpdate', ({ editor: current }) => {
                       if (!placed.current) return;
                       const { from, to } = current.state.selection;
-                      rememberPlace(id, { from, to });
+                      rememberPlace(placeKey, { from, to });
                     });
                     const startup = firstPage;
                     firstPage = false;
                     if (!focusWhenReady.current) {
                       requestAnimationFrame(() => {
-                        if (!find && !anchor) restorePlace(editor, scrollRef.current, id, startup);
+                        if (!find && !anchor) restorePlace(editor, scrollRef.current, placeKey, startup);
                         placed.current = true;
                       });
                       return;
