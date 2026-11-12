@@ -177,6 +177,91 @@ pub async fn capture<R: Runtime>(
 #[cfg(windows)]
 pub fn setup_webview<R: Runtime>(_window: &WebviewWindow<R>) {}
 
+// webview2 checks spelling only in the language windows shows itself in. the electron app checked the
+// first three of the languages windows is set up for, so writing in english, spanish and portuguese at
+// once was fine. the web view takes the same list as its languages, which spelling follows
+#[cfg(windows)]
+pub fn browser_args() -> String {
+    // wry's own arguments, which giving any replaces
+    let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection");
+    let languages = windows_languages();
+    if !languages.is_empty() {
+        args.push_str(" --accept-lang=");
+        args.push_str(&languages.join(","));
+    }
+    args
+}
+
+#[cfg(windows)]
+fn windows_languages() -> Vec<String> {
+    use windows::Win32::Globalization::{GetUserPreferredUILanguages, MUI_LANGUAGE_NAME};
+    use windows::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_MULTI_SZ};
+    use windows_core::{w, PWSTR};
+    let split = |buffer: &[u16]| -> Vec<String> {
+        buffer
+            .split(|unit| *unit == 0)
+            .filter(|part| !part.is_empty())
+            .map(String::from_utf16_lossy)
+            .collect()
+    };
+    // the list in settings, languages and regions, in the order picked there
+    let mut languages = unsafe {
+        let mut size = 0u32;
+        let key = w!("Control Panel\\International\\User Profile");
+        let value = w!("Languages");
+        let found = RegGetValueW(
+            HKEY_CURRENT_USER,
+            key,
+            value,
+            RRF_RT_REG_MULTI_SZ,
+            None,
+            None,
+            Some(&mut size),
+        );
+        if found.is_ok() && size > 0 {
+            let mut buffer = vec![0u16; size as usize / 2 + 1];
+            let read = RegGetValueW(
+                HKEY_CURRENT_USER,
+                key,
+                value,
+                RRF_RT_REG_MULTI_SZ,
+                None,
+                Some(buffer.as_mut_ptr().cast()),
+                Some(&mut size),
+            );
+            if read.is_ok() {
+                split(&buffer)
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        }
+    };
+    if languages.is_empty() {
+        unsafe {
+            let (mut count, mut size) = (0u32, 0u32);
+            if GetUserPreferredUILanguages(MUI_LANGUAGE_NAME, &mut count, None, &mut size).is_ok() {
+                let mut buffer = vec![0u16; size as usize];
+                if GetUserPreferredUILanguages(
+                    MUI_LANGUAGE_NAME,
+                    &mut count,
+                    Some(PWSTR(buffer.as_mut_ptr())),
+                    &mut size,
+                )
+                .is_ok()
+                {
+                    languages = split(&buffer);
+                }
+            }
+        }
+    }
+    languages.retain(|code| code.chars().all(|c| c.is_ascii_alphanumeric() || c == '-'));
+    languages.dedup();
+    languages.truncate(3);
+    languages
+}
+
 #[cfg(windows)]
 pub async fn print_to_pdf<R: Runtime>(window: &WebviewWindow<R>, path: &Path) -> Res<()> {
     use webview2_com::Microsoft::Web::WebView2::Win32::{

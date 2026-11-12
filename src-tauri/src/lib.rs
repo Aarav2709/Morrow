@@ -852,6 +852,8 @@ fn create_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         });
     #[cfg(desktop)]
     let builder = builder.decorations(cfg!(target_os = "macos"));
+    #[cfg(windows)]
+    let builder = builder.additional_browser_args(&native::browser_args());
     #[cfg(target_os = "macos")]
     let builder = builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
