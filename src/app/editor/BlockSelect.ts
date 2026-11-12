@@ -120,6 +120,10 @@ function marginDrag(view: EditorView) {
     let lastY = event.clientY;
     let lastX = event.clientX;
     let frame = 0;
+    // moves are taken once a frame, measuring every block on each move of the mouse made the box lag
+    let moved = false;
+    // a video's player would take the mouse's moves for itself while the box passes over it
+    document.documentElement.classList.add('is-picking-blocks');
     // the box being drawn, so it is clear what the drag takes in
     const box = document.createElement('div');
     box.className = 'block-select-box';
@@ -152,19 +156,20 @@ function marginDrag(view: EditorView) {
     const scroll = () => {
       const box = scroller.getBoundingClientRect();
       const speed = lastY < box.top + 40 ? -12 : lastY > box.bottom - 40 ? 12 : 0;
-      if (speed) {
-        scroller.scrollTop += speed;
-        update();
-      }
+      if (speed) scroller.scrollTop += speed;
+      if (speed || moved) update();
+      moved = false;
       frame = requestAnimationFrame(scroll);
     };
     const onMove = (move: MouseEvent) => {
       lastY = move.clientY;
       lastX = move.clientX;
-      if (Math.abs(lastY + scroller.scrollTop - startY) > 4 || selectedBlocks(view.state)) update();
+      if (Math.abs(lastY + scroller.scrollTop - startY) > 4 || selectedBlocks(view.state)) moved = true;
     };
     const onUp = () => {
       cancelAnimationFrame(frame);
+      if (moved) update();
+      document.documentElement.classList.remove('is-picking-blocks');
       box.remove();
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
