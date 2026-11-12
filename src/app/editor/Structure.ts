@@ -344,37 +344,42 @@ export const DateMention = Node.create<DateMentionOptions>({
 
   addProseMirrorPlugins() {
     const options = this.options;
+    const mentionItems = (query: string): MenuItem[] => {
+      if (query.length > 30 || /^\s/.test(query)) return [];
+      const dates: MenuItem[] = dateSuggestions(query).map((date) => ({
+        id: `date:${dateKey(date)}`,
+        title: describeDate(dateKey(date)),
+        description: date.toLocaleDateString(dateLocale(), {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        }),
+        icon: CalendarDays,
+      }));
+      const pages: MenuItem[] = options
+        .findPages(query.trim())
+        .slice(0, 5)
+        .map((page) => ({
+          id: `page:${page.id}`,
+          title: page.title,
+          ...(page.path ? { description: page.path } : {}),
+          icon: FileText,
+        }));
+      return [...dates, ...pages];
+    };
     return [
       Suggestion<MenuItem, MenuItem>({
         editor: this.editor,
         pluginKey: new PluginKey('dateMentionSuggestion'),
         char: '@',
         allowSpaces: true,
-        allow: ({ state }) => state.selection.$from.parent.type.name !== 'codeBlock',
-        items: ({ query }) => {
-          if (query.length > 30) return [];
-          const dates: MenuItem[] = dateSuggestions(query).map((date) => ({
-            id: `date:${dateKey(date)}`,
-            title: describeDate(dateKey(date)),
-            description: date.toLocaleDateString(dateLocale(), {
-              weekday: 'short',
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            }),
-            icon: CalendarDays,
-          }));
-          const pages: MenuItem[] = options
-            .findPages(query.trim())
-            .slice(0, 5)
-            .map((page) => ({
-              id: `page:${page.id}`,
-              title: page.title,
-              ...(page.path ? { description: page.path } : {}),
-              icon: FileText,
-            }));
-          return [...dates, ...pages];
-        },
+        // an @ followed by a space or by words that match no date or page is just an @ in a sentence, so
+        // the menu goes away and doesn't come back when the cursor returns there
+        allow: ({ state, range }) =>
+          state.selection.$from.parent.type.name !== 'codeBlock' &&
+          mentionItems(state.doc.textBetween(range.from + 1, range.to, ' ')).length > 0,
+        items: ({ query }) => mentionItems(query),
         command: ({ editor, range, props }) => insertMention(editor, range, props),
         render: renderSuggestion(
           () => t('editor.mentionDateOrPage'),

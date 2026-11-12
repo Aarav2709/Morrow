@@ -23,6 +23,7 @@ function make(content: unknown): Editor {
       createChild: () => null,
       openDate: () => {},
       pages: () => [],
+      findPages: () => [],
       createPage: () => null,
       renderEmbed: () => {},
     } as never),
@@ -311,5 +312,36 @@ describe('home and end', () => {
     expect(target.state.selection.to).toBe(12);
     press('End', false, true);
     expect(target.state.selection.head).toBe(target.state.doc.content.size - 1);
+  });
+});
+
+describe('the / and @ menus', () => {
+  const active = (target: Editor, name: string) => {
+    const plugin = target.state.plugins.find((entry) =>
+      (entry as unknown as { key: string }).key.startsWith(name),
+    );
+    return Boolean((plugin?.getState(target.state) as { active?: boolean } | undefined)?.active);
+  };
+
+  it('stay away after a space or words that match nothing', () => {
+    for (const [char, key] of [
+      ['/', 'slashCommand'],
+      ['@', 'dateMentionSuggestion'],
+    ] as const) {
+      const target = make({ type: 'doc', content: [p('')] });
+      target.commands.setTextSelection(1);
+      type(target, `${char}to`);
+      expect(active(target, key)).toBe(true);
+      type(target, 'qqzz');
+      expect(active(target, key)).toBe(false);
+      target.commands.setContent({ type: 'doc', content: [p('')] });
+      target.commands.setTextSelection(1);
+      type(target, `a ${char} b`);
+      expect(active(target, key)).toBe(false);
+      // coming back to it later doesn't open it either
+      target.commands.setTextSelection(6);
+      expect(active(target, key)).toBe(false);
+      target.destroy();
+    }
   });
 });

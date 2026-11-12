@@ -555,6 +555,9 @@ export function filterBlocks(query: string): BlockItem[] {
     .map((entry) => entry.item);
 }
 
+const slashItems = (query: string): MenuItem[] =>
+  query.length > 40 || /^\s|\s{2}/.test(query) ? [] : filterBlocks(query).slice(0, 40);
+
 export const SlashCommand = Extension.create<SlashOptions>({
   name: 'slashCommand',
   addOptions() {
@@ -570,12 +573,14 @@ export const SlashCommand = Extension.create<SlashOptions>({
         startOfLine: false,
         // names like "2 columns" have spaces, a sentence typed after a slash simply finds nothing
         allowSpaces: true,
-        allow: ({ state }) => {
+        // a slash followed by a space or by words no block is called is just a slash in a sentence, so the
+        // menu goes away and doesn't come back when the cursor returns there
+        allow: ({ state, range }) => {
           const parent = state.selection.$from.parent;
-          return parent.type.name !== 'codeBlock';
+          if (parent.type.name === 'codeBlock') return false;
+          return slashItems(state.doc.textBetween(range.from + 1, range.to, ' ')).length > 0;
         },
-        items: ({ query }) =>
-          query.length > 40 || /\s{2}/.test(query) ? [] : filterBlocks(query).slice(0, 40),
+        items: ({ query }) => slashItems(query),
         command: ({ editor, range, props }) => {
           const item = BLOCK_ITEMS.find((candidate) => candidate.id === props.id);
           item?.run(editor, range, options);
