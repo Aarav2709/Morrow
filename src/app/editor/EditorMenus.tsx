@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core';
-import { findParentNode } from '@tiptap/core';
+import { findParentNode, getMarkRange } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
@@ -193,8 +193,26 @@ const showFormatting: BubbleMenuProps['shouldShow'] = ({ editor, state, from, to
   // whole blocks picked in the margin have the block menu instead
   return !editor.isActive('codeBlock') && !selectedBlocks(state);
 };
-const showLink: BubbleMenuProps['shouldShow'] = ({ editor, from, to }) =>
-  from === to && editor.isActive('link');
+// a link whose card was used, opened, copied or edited, keeps it closed until the cursor leaves the link
+const dismissedLinks = new WeakMap<Editor, number>();
+function linkStart(editor: Editor): number | null {
+  const type = editor.schema.marks.link;
+  if (!type) return null;
+  return getMarkRange(editor.state.selection.$from, type)?.from ?? null;
+}
+function dismissLink(editor: Editor): void {
+  const start = linkStart(editor);
+  if (start === null) return;
+  dismissedLinks.set(editor, start);
+  // an empty step makes the menu look again, and hide
+  editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false));
+}
+const showLink: BubbleMenuProps['shouldShow'] = ({ editor, view, from, to }) => {
+  const start = from === to && editor.isActive('link') ? linkStart(editor) : null;
+  const dismissed = dismissedLinks.get(editor);
+  if (dismissed !== undefined && dismissed !== start) dismissedLinks.delete(editor);
+  return start !== null && dismissed !== start && view.hasFocus();
+};
 const showTable: BubbleMenuProps['shouldShow'] = ({ editor, from, to }) =>
   editor.isEditable && from === to && editor.isActive('table');
 const TABLE_OPTIONS = { placement: 'top-start', offset: 8, flip: false, shift: { padding: 8 } } as const;
@@ -554,7 +572,13 @@ export function LinkMenu({ editor }: { editor: Editor }) {
     <BubbleMenu editor={editor} pluginKey="linkMenu" options={options} shouldShow={showLink}>
       <div className="toolbar popover link-popover">
         {editing ? (
-          <LinkInput editor={editor} onDone={() => setEditing(false)} />
+          <LinkInput
+            editor={editor}
+            onDone={() => {
+              setEditing(false);
+              dismissLink(editor);
+            }}
+          />
         ) : (
           <>
             <button
@@ -562,21 +586,32 @@ export function LinkMenu({ editor }: { editor: Editor }) {
               className="link-preview"
               title={href}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => openHref(href)}
+              onClick={() => {
+                dismissLink(editor);
+                openHref(href);
+              }}
             >
               {href.replace(/^https?:\/\//, '').replace(/^#\/page\/.*/, t('editor.morrowPage'))}
             </button>
-            <ToolButton label={t('editor.openLink')} icon={ExternalLink} onClick={() => openHref(href)} />
+            <ToolButton
+              label={t('editor.openLink')}
+              icon={ExternalLink}
+              onClick={() => {
+                dismissLink(editor);
+                openHref(href);
+              }}
+            />
             <ToolButton
               label={t('editor.copyLink')}
               icon={Copy}
-              onClick={() =>
+              onClick={() => {
+                dismissLink(editor);
                 void copyText(href).then((copied) =>
                   copied
                     ? toast(t('editor.linkCopied'), { durationMs: 2000 })
                     : toast(t('editor.couldNotCopy'), { tone: 'error' }),
-                )
-              }
+                );
+              }}
             />
             <ToolButton label={t('editor.editLink')} icon={Pencil} onClick={() => setEditing(true)} />
             <ToolButton
