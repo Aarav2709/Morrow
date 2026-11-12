@@ -401,3 +401,30 @@ describe('pasting a list', () => {
     expect(json(target).content![1]!.content![0]!.content![0]!.content![0]!.text).toBe('One');
   });
 });
+
+describe('turning a line into a toggle', () => {
+  it('folds the section under it into the toggle, up to the next heading', () => {
+    const heading = (level: number, text: string) => ({
+      type: 'heading',
+      attrs: { level },
+      content: [{ type: 'text', text }],
+    });
+    const target = make({
+      type: 'doc',
+      content: [
+        heading(2, 'Plans'),
+        p('One'),
+        heading(3, 'Detail'),
+        p('Two'),
+        heading(2, 'Next'),
+        p('Three'),
+      ],
+    });
+    turnInto(target, 0, { kind: 'toggle', level: 2 });
+    const doc = json(target);
+    expect(doc.content!.map((node) => node.type)).toEqual(['details', 'heading', 'paragraph']);
+    const inside = doc.content![0]!.content![1]!.content!.map((node) => node.type);
+    expect(inside).toEqual(['paragraph', 'heading', 'paragraph']);
+    expect(doc.content![0]!.attrs?.open).toBe(false);
+  });
+});

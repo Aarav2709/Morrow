@@ -895,8 +895,48 @@ export function turnInto(editor: Editor, pos: number, target: TurnTarget): void 
           return true;
         })
         .run();
+      foldSectionInto(
+        editor,
+        target.level ?? (node.type.name === 'heading' ? Number(node.attrs.level) : null),
+      );
       return;
   }
+}
+
+// a line turned into a toggle takes in the blocks under it, up to the next heading of the same level or
+// higher, a plain toggle up to the next heading of any level, and folds them away
+function foldSectionInto(editor: Editor, level: number | null): void {
+  const { state } = editor;
+  const { $from } = state.selection;
+  let depth = $from.depth;
+  while (depth > 0 && $from.node(depth).type.name !== 'details') depth--;
+  if (depth === 0) return;
+  const toggle = $from.node(depth);
+  const togglePos = $from.before(depth);
+  const parent = $from.node(depth - 1);
+  const index = $from.index(depth - 1);
+  const headingLevel = (node: PmNode): number | null => {
+    if (node.type.name === 'heading') return Number(node.attrs.level) || 1;
+    if (node.type.name === 'details') return Number(node.firstChild?.attrs.level) || null;
+    return null;
+  };
+  const taken: PmNode[] = [];
+  for (let next = index + 1; next < parent.childCount; next++) {
+    const block = parent.child(next);
+    const stop = headingLevel(block);
+    if (stop !== null && (level === null || stop <= level)) break;
+    taken.push(block);
+  }
+  // nothing under it but empty lines leaves the toggle as it was made
+  if (!taken.some((block) => block.textContent.trim() || block.isAtom || !block.isTextblock)) return;
+  const size = taken.reduce((sum, block) => sum + block.nodeSize, 0);
+  const after = togglePos + toggle.nodeSize;
+  const content = toggle.lastChild!;
+  const contentStart = after - 1 - content.nodeSize;
+  const tr = state.tr.delete(after, after + size);
+  tr.replaceWith(contentStart + 1, contentStart + 1 + content.content.size, taken);
+  tr.setNodeMarkup(togglePos, undefined, { ...toggle.attrs, open: false });
+  editor.view.dispatch(tr.scrollIntoView());
 }
 
 // blocks laid out side by side. one block goes in the first column with the rest left empty to write in,
