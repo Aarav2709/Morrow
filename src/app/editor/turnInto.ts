@@ -3,6 +3,7 @@ import type { Editor } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import type { Node as PMNode, Schema } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
+import type { EditorState } from '@tiptap/pm/state';
 import { liftTarget } from '@tiptap/pm/transform';
 import { getPreferences } from '../platform/preferences';
 
@@ -150,6 +151,95 @@ export function listItemAtCursor(editor: Editor): number | null {
   return $from.before($from.depth - 1);
 }
 
+// the list item the cursor starts the first line of, when the item has a list nested under it and an item
+// before it. enter at the end of an item with items under it hands them to the new line, these keys keep
+// them where they were
+function parentItemAtCursor(state: EditorState) {
+  const { $from, empty } = state.selection;
+  if (!empty || $from.depth < 2 || $from.parent.type.name !== 'paragraph') return null;
+  const item = $from.node(-1);
+  if (!LIST_ITEMS.has(item.type.name) || $from.index(-1) !== 0 || item.childCount < 2) return null;
+  const rest: PMNode[] = [];
+  item.forEach((child, _offset, index) => {
+    if (index > 0) rest.push(child);
+  });
+  const listType = rest[0]!.type;
+  if (!rest.every((child) => LISTS.has(child.type.name) && sameList(child, rest[0]!))) return null;
+  const index = $from.index(-2);
+  if (index === 0) return null;
+  const list = $from.node(-2);
+  const previous = list.child(index - 1);
+  const tail = previous.lastChild;
+  // the items under it join a list at the end of the item before, or a new one of their kind
+  if (tail && LISTS.has(tail.type.name) && !sameList(tail, rest[0]!)) return null;
+  const nested = rest.flatMap((child) => {
+    const items: PMNode[] = [];
+    child.forEach((entry) => items.push(entry));
+    return items;
+  });
+  return {
+    item,
+    itemPos: $from.before(-1),
+    previous,
+    previousPos: $from.before(-1) - previous.nodeSize,
+    nested,
+    // the previous item with these items added to the list at its end
+    withNested: (items: PMNode[]) => {
+      if (tail && LISTS.has(tail.type.name))
+        return previous.copy(
+          previous.content.replaceChild(
+            previous.childCount - 1,
+            tail.copy(tail.content.append(Fragment.from(items))),
+          ),
+        );
+      return previous.copy(previous.content.addToEnd(listType.create(rest[0]!.attrs, items)));
+    },
+  };
+}
+
+// tab on an item with items under it moves only the item in a level. the items under it keep their depth
+// and come after it, so the line stays where it is on the page
+function indentParentItem(editor: Editor): boolean {
+  const { state } = editor;
+  const found = parentItemAtCursor(state);
+  if (!found) return false;
+  const { item, itemPos, previousPos, nested, withNested } = found;
+  const offset = state.selection.from - (itemPos + 2);
+  const alone = item.copy(Fragment.from(item.firstChild!));
+  const next = withNested([alone, ...nested]);
+  const tr = state.tr.replaceWith(previousPos, itemPos + item.nodeSize, next);
+  // the line is now an item of the list at the end of the item before
+  let at = previousPos + 1;
+  tr.doc.nodesBetween(previousPos, previousPos + next.nodeSize, (node, pos) => {
+    if (node === alone) at = pos + 2 + offset;
+    return node !== alone;
+  });
+  tr.setSelection(TextSelection.create(tr.doc, at));
+  editor.view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
+// backspace or delete on the empty line enter left above the items under an item takes the line away and
+// gives the items back to the item before, at the depth they had
+function removeEmptyParentItem(editor: Editor, forward: boolean): boolean {
+  const { state } = editor;
+  const found = parentItemAtCursor(state);
+  if (!found || found.item.firstChild!.content.size > 0) return false;
+  const { item, itemPos, previous, previousPos, nested, withNested } = found;
+  const next = withNested(nested);
+  const tr = state.tr.replaceWith(previousPos, itemPos + item.nodeSize, next);
+  // backspace ends up at the end of the line before, delete at the start of the line that came up
+  const target = forward
+    ? previousPos + previous.nodeSize + 1
+    : previousPos + 1 + (previous.firstChild?.nodeSize ?? 2) - 1;
+  const selection = forward
+    ? TextSelection.findFrom(tr.doc.resolve(Math.min(target, tr.doc.content.size)), 1)
+    : TextSelection.create(tr.doc, target);
+  if (selection) tr.setSelection(selection);
+  editor.view.dispatch(tr.scrollIntoView());
+  return true;
+}
+
 // plain lines indented under a list item, the way notion has text blocks under a bullet. enter on one
 // writes another at the same depth rather than a new bullet, and enter on an empty last one steps out of
 // the list. backspace at the start of a nested item clears its bullet and keeps it where it is, and at the
@@ -181,7 +271,9 @@ export const IndentedLines = Extension.create({
         }
         return editor.commands.splitBlock();
       },
+      Tab: ({ editor }) => indentParentItem(editor),
       Backspace: ({ editor }) => {
+        if (removeEmptyParentItem(editor, false)) return true;
         const { $from, empty } = editor.state.selection;
         if (!empty || $from.parentOffset !== 0 || $from.depth < 3 || !$from.parent.isTextblock) return false;
         const item = $from.node(-1);
@@ -198,6 +290,7 @@ export const IndentedLines = Extension.create({
         return turnListItem(editor, $from.before(-1), { kind: 'paragraph' });
       },
       Delete: ({ editor }) => {
+        if (removeEmptyParentItem(editor, true)) return true;
         const { $from, empty } = editor.state.selection;
         if (!empty || !$from.parent.isTextblock || $from.parentOffset !== $from.parent.content.size)
           return false;

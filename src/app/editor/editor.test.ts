@@ -245,3 +245,53 @@ describe('turn into', () => {
     expect(json(target).content![0]!.attrs?.type).toBe('a');
   });
 });
+
+describe('nested lists', () => {
+  const item = (text: string, ...nested: unknown[]) => ({ type: 'listItem', content: [p(text), ...nested] });
+  const list = (...items: unknown[]) => ({ type: 'bulletList', content: items });
+  const press = (target: Editor, key: string) => {
+    const event = new KeyboardEvent('keydown', { key });
+    target.view.someProp('handleKeyDown', (handler) => handler(target.view, event));
+  };
+  const endOf = (target: Editor, text: string) => {
+    let at = 0;
+    target.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === text) at = pos + node.nodeSize;
+    });
+    return at;
+  };
+
+  // the json without the attributes that are all empty, to compare the shape
+  const shape = (node: DocNode): unknown => ({
+    type: node.type,
+    ...(node.text !== undefined ? { text: node.text } : {}),
+    ...(node.content?.length ? { content: node.content.map(shape) } : {}),
+  });
+  const plain = (doc: unknown) => shape(doc as DocNode);
+
+  it('indents the new line, not the item under it, when tab is pressed between them', () => {
+    const target = make({ type: 'doc', content: [list(item('One', list(item('Two'))))] });
+    target.commands.setTextSelection(endOf(target, 'One'));
+    press(target, 'Enter');
+    press(target, 'Tab');
+    expect(shape(json(target))).toEqual(
+      plain({ type: 'doc', content: [list(item('One', list(item(''), item('Two'))))] }),
+    );
+    // the cursor stays on the line that moved
+    expect(target.state.selection.$from.parent.content.size).toBe(0);
+    expect(target.state.selection.$from.depth).toBe(5);
+  });
+
+  it('takes the new line away again with backspace or delete, keeping the item under it', () => {
+    for (const key of ['Backspace', 'Delete']) {
+      const target = make({ type: 'doc', content: [list(item('One', list(item('Two'))))] });
+      target.commands.setTextSelection(endOf(target, 'One'));
+      press(target, 'Enter');
+      press(target, key);
+      expect(shape(json(target))).toEqual(
+        plain({ type: 'doc', content: [list(item('One', list(item('Two'))))] }),
+      );
+      target.destroy();
+    }
+  });
+});
