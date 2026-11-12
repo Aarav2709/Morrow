@@ -115,6 +115,37 @@ function useGlobalShortcuts() {
   }, []);
 }
 
+// the mouse pointer hides while typing and comes back when the mouse moves, the way the electron app did
+// and the system does in its own text fields. the web view on windows leaves it standing over the words
+function useHidePointerWhileTyping() {
+  useEffect(() => {
+    const root = document.documentElement;
+    let hidden = false;
+    const onKey = (event: KeyboardEvent) => {
+      if (hidden || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key.length !== 1 && !['Enter', 'Backspace', 'Delete', 'Tab'].includes(event.key)) return;
+      const target = event.target as HTMLElement | null;
+      if (!target?.isContentEditable && !(target instanceof HTMLTextAreaElement)) return;
+      hidden = true;
+      root.dataset.typing = '';
+    };
+    const onMove = (event: PointerEvent) => {
+      // a move of no distance comes with some keys and scrolling, only a real move shows it again
+      if (!hidden || (event.type === 'pointermove' && event.movementX === 0 && event.movementY === 0)) return;
+      hidden = false;
+      delete root.dataset.typing;
+    };
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerdown', onMove, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerdown', onMove, true);
+    };
+  }, []);
+}
+
 // copying text says so at the bottom of the window, the way copying a picture does. a copy that put
 // nothing on the clipboard says nothing
 function useCopyToast() {
@@ -430,6 +461,7 @@ export function App() {
   useEffect(() => startTabs(), []);
   useStartPage();
   useLifecycle();
+  useHidePointerWhileTyping();
 
   useEffect(() => {
     setUi({ mobileSidebar: false, sidebarPeek: false });

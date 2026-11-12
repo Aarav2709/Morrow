@@ -243,6 +243,12 @@ kbd,
   display: none !important;
 }
 
+/* the pointer is hidden while typing, until the mouse moves */
+:root[data-typing] .page-scroll,
+:root[data-typing] .page-scroll * {
+  cursor: none !important;
+}
+
 /* sidebar */
 
 .sidebar {
