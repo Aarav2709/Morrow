@@ -15,6 +15,8 @@ import {
   Table2,
   Trash2,
   X,
+  Download,
+  Upload,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -45,9 +47,11 @@ import type {
   ViewType,
 } from '../../../core/model';
 import { fileUrl } from '../../platform/attachments';
-import { newId } from '../../platform/files';
+import { newId, pickFiles, saveFile } from '../../platform/files';
+import { eventsToIcs, parseIcs } from '../../../core/ics';
+import { toast } from '../../ui';
 import { openPage } from '../../router';
-import { run, useWorkspace } from '../../workspace';
+import { getState, run, useWorkspace } from '../../workspace';
 import { usePreferences } from '../../platform/preferences';
 import { Menu } from '../Menu';
 import { Popover } from '../Popover';
@@ -213,6 +217,50 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       )}
     </section>
   );
+}
+
+// the rows with a date go out as a calendar file, all day events on their dates
+function exportIcs(dbId: PageId, propId: string, rows: PageMeta[]): void {
+  const page = getState().pages[dbId];
+  const events = rows.flatMap((row) => {
+    const value = row.properties[propId];
+    return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)
+      ? [
+          {
+            uid: `${row.id}@morrow`,
+            date: value.slice(0, 10),
+            time: null,
+            title: displayTitle(row),
+            description: '',
+          },
+        ]
+      : [];
+  });
+  const name = page ? displayTitle(page) : 'Calendar';
+  saveFile(`${name}.ics`, eventsToIcs(name, events), 'text/calendar');
+}
+
+// each event in a calendar file becomes a row on its date, with its notes as the row's text
+async function importIcs(dbId: PageId, propId: string): Promise<void> {
+  const [file] = await pickFiles('.ics,text/calendar', false);
+  if (!file) return;
+  const events = parseIcs(await file.text());
+  for (const event of events.slice(0, 2000)) {
+    const id = createRow(dbId, { [propId]: event.date }, event.title || event.date);
+    if (id && event.description)
+      run({
+        type: 'page.setDoc',
+        id,
+        now: Date.now(),
+        doc: {
+          type: 'doc',
+          content: event.description
+            .split('\n')
+            .map((line) => ({ type: 'paragraph', content: line ? [{ type: 'text', text: line }] : [] })),
+        },
+      });
+  }
+  toast(t('database.importedIcs', { count: events.length }));
 }
 
 function newRowAndOpen(dbId: PageId, values: Record<string, PropValue>): void {
@@ -1124,6 +1172,26 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
         >
           <ChevronRight size={15} />
         </button>
+        <span className="db-calendar-files">
+          <button
+            type="button"
+            className="button small"
+            title={t('database.exportIcsHint')}
+            onClick={() => exportIcs(dbId, prop.id, rows)}
+          >
+            <Download size={14} /> .ics
+          </button>
+          {editable && (
+            <button
+              type="button"
+              className="button small"
+              title={t('database.importIcsHint')}
+              onClick={() => void importIcs(dbId, prop.id)}
+            >
+              <Upload size={14} /> .ics
+            </button>
+          )}
+        </span>
       </header>
       <div className="db-calendar-grid" role="grid">
         {days.slice(0, 7).map((day) => (

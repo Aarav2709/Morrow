@@ -2689,3 +2689,15 @@ td:hover .prop-empty,
 .settings-note {
   margin: 4px 2px 0;
 }
+
+/* saving the calendar as an .ics file and bringing one in, at the end of the month's header */
+.db-calendar-files {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.db-calendar-files .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

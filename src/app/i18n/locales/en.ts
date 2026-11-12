@@ -1388,6 +1388,9 @@ export const en = {
     codeAria: 'Code shown on the other computer',
   },
   database: {
+    exportIcsHint: 'Save the dated rows as an .ics file for other calendar apps',
+    importIcsHint: 'Add the events in an .ics file as rows',
+    importedIcs: 'Added {count} events.',
     doesNotExist: '“{target}” does not exist',
     findOrCreateOption: 'Find or create an option',
     createOption: 'Create an option',
