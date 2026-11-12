@@ -30,7 +30,7 @@ import type { BlockMenuRequest } from './BlockHandle';
 import { registerCommit, setFocusedEditor } from './commits';
 import { pageIdFromHref } from '../../core/links';
 import { openTab } from '../tabs';
-import { BlockMenu, FormattingMenu, LinkMenu, openHref, TableMenu } from './EditorMenus';
+import { BlockMenu, FormattingMenu, LinkMenu, noteMouseButton, openHref, TableMenu } from './EditorMenus';
 import { FindBar } from './FindBar';
 import { createExtensions } from './extensions';
 import { anchorSlice, isBlockAnchor } from '../../core/anchors';
@@ -409,6 +409,14 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
         attributes: { class: 'prose', 'aria-label': 'Page content' },
         clipboardTextSerializer: (slice) => plainTextOf(slice),
         handleDOMEvents: {
+          mousedown: (_view, event) => {
+            noteMouseButton(instance, event);
+            return false;
+          },
+          keydown: (_view, event) => {
+            noteMouseButton(instance, event);
+            return false;
+          },
           // right click on a picture shows the same options as its handle, with copy and open
           contextmenu: (view, event) => {
             if (!(event.target instanceof Element) || !event.target.closest('.image-block')) return false;

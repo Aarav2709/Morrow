@@ -187,9 +187,18 @@ function LinkInput({ editor, onDone }: { editor: Editor; onDone: () => void }) {
   );
 }
 
+// a word picked by a right click belongs to the system's menu, with its spelling suggestions, so the
+// formatting bar stays away until the next left click or key
+const rightClicked = new WeakSet<Editor>();
+export function noteMouseButton(editor: Editor, event: MouseEvent | KeyboardEvent): void {
+  if (event instanceof MouseEvent && event.button === 2) rightClicked.add(editor);
+  else rightClicked.delete(editor);
+}
+
 // bubble menu props must keep their identity, new objects make tiptap dispatch and rerender in a loop
 const showFormatting: BubbleMenuProps['shouldShow'] = ({ editor, state, from, to }) => {
   if (!editor.isEditable || from === to || state.selection instanceof NodeSelection) return false;
+  if (rightClicked.has(editor)) return false;
   // whole blocks picked in the margin have the block menu instead
   return !editor.isActive('codeBlock') && !selectedBlocks(state);
 };
