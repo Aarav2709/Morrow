@@ -411,6 +411,14 @@ kbd,
   letter-spacing: 0.02em;
 }
 
+/* a heading that opens its page, the templates page from its section */
+.sidebar-heading.link-heading {
+  text-align: left;
+}
+.sidebar-heading.link-heading:hover {
+  color: var(--text-muted);
+}
+
 .sidebar-empty {
   padding: 6px 8px;
   color: var(--text-muted);

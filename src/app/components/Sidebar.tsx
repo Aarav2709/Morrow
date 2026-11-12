@@ -44,6 +44,7 @@ import {
 } from '../../core/tree';
 import { collectCards, dueCards } from '../../core/flashcards';
 import { collectTags } from '../../core/tags';
+import { findTemplatesPage, listTemplates } from '../../core/templates';
 import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { t, useTranslation } from '../i18n';
@@ -160,6 +161,9 @@ export function Sidebar() {
     () => live.filter((page) => page.favorite).sort((a, b) => displayTitle(a).localeCompare(displayTitle(b))),
     [live],
   );
+  // templates have a section of their own rather than sitting among the pages
+  const templatesPage = useMemo(() => findTemplatesPage(state), [state]);
+  const templates = useMemo(() => listTemplates(state), [state]);
   const trashCount = useMemo(() => trashedPages(state.pages).length, [state.pages]);
   const archiveCount = useMemo(() => archivedPages(state.pages).length, [state.pages]);
   const openTasks = useMemo(() => collectTasks(state).filter((task) => !task.checked).length, [state]);
@@ -351,6 +355,48 @@ export function Sidebar() {
                   </li>
                 );
               })}
+            </ul>
+          </section>
+        )}
+
+        {templatesPage && (
+          <section className="sidebar-section" aria-label={t('dialogs.templates')}>
+            <div className="sidebar-heading-row">
+              <button
+                type="button"
+                className="sidebar-heading link-heading"
+                onClick={go(() => openPage(templatesPage.id))}
+              >
+                {t('dialogs.templates')}
+              </button>
+              <button
+                type="button"
+                className="icon-button small"
+                aria-label={t('dialogs.newTemplate')}
+                title={t('dialogs.newTemplate')}
+                onClick={go(() =>
+                  createPage({ parentId: templatesPage.id, title: t('dialogs.newTemplate') }),
+                )}
+              >
+                <Plus size={15} strokeWidth={1.75} />
+              </button>
+            </div>
+            <ul className="flat-list">
+              {templates.map((page) => (
+                <li key={page.id}>
+                  <button
+                    type="button"
+                    className={`tree-row flat${activeId === page.id ? ' is-active' : ''}`}
+                    data-page-id={page.id}
+                    onClick={go(() => openPage(page.id))}
+                  >
+                    <span className="tree-icon">
+                      <PageIcon page={page} />
+                    </span>
+                    <span className="tree-title">{displayTitle(page)}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           </section>
         )}
@@ -577,7 +623,9 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
   const renderLevel = (parentId: PageId | null, depth: number): React.ReactNode => {
     // the journal stays in the vault with daily notes off, it just leaves the tree
     const all = childrenOf(state.pages, parentId).filter(
-      (page) => page.archivedAt === null && (parentId !== null || page.kind !== 'journal' || !hideJournal),
+      (page) =>
+        page.archivedAt === null &&
+        (parentId !== null || ((page.kind !== 'journal' || !hideJournal) && page.kind !== 'templates')),
     );
     if (all.length === 0) return null;
     const key = parentId ?? '';
