@@ -19,6 +19,7 @@ export interface Reminder {
 }
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
+export type WeekStart = 0 | 1 | 6;
 // the views the sidebar lists, each one can be left out, daily notes turn off everywhere with theirs
 export const SIDEBAR_MODULES = [
   'search',
@@ -86,6 +87,8 @@ export interface Preferences {
   // how much of a split tab the first side takes
   splitShare: number;
   startPage: StartPage;
+  // the day calendars start their weeks on, 0 for sunday, 1 for monday, 6 for saturday
+  weekStart: WeekStart;
   // today's note is made when morrow opens on it, off opens home instead until the note is made by hand
   autoDaily: boolean;
   // the optional assistant, off until turned on in settings
@@ -142,6 +145,7 @@ const defaults: Preferences = {
   reminders: [],
   splitShare: 0.5,
   startPage: 'today',
+  weekStart: 1,
   autoDaily: true,
   assistant: false,
   assistantOpen: false,
@@ -245,6 +249,7 @@ function read(): Preferences {
         ? parsed.startPage!
         : defaults.startPage,
       autoDaily: parsed.autoDaily !== false,
+      weekStart: ([0, 1, 6] as const).find((day) => day === parsed.weekStart) ?? 1,
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,

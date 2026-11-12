@@ -154,6 +154,7 @@ export const pt: TranslationSchema = {
         '{shortcutDaily} abre a nota de hoje, {shortcutCapture} anota nela de qualquer aplicativo.',
       autoDaily: 'Criar a nota de hoje sozinha',
       autoDailyHelp: 'Desligado, o Morrow abre no início nos dias sem nota, até você criar uma.',
+      weekStart: 'A semana começa no',
       spellcheck: 'Verificar ortografia',
       spellcheckHelp: 'Sublinha as palavras que o corretor não conhece enquanto você escreve.',
       startPages: {
@@ -170,7 +171,8 @@ export const pt: TranslationSchema = {
       groupBottom: 'Links embaixo',
       moveAria: 'Mover {name}',
       moveHint: 'Arraste para reordenar, ou use as setas',
-      conditionalHelp: 'Início, Páginas e Configurações sempre ficam. Favoritos, Modelos, Arquivo e Lixeira só aparecem quando têm algo.',
+      conditionalHelp:
+        'Início, Páginas e Configurações sempre ficam. Favoritos, Modelos, Arquivo e Lixeira só aparecem quando têm algo.',
       peek: 'Mostrar ao apontar para a borda esquerda',
       peekHelp:
         'Com a barra lateral oculta, ela aparece enquanto o ponteiro está na borda esquerda da janela.',

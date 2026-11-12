@@ -150,6 +150,7 @@ export const en = {
       whenOpensHelp: "{shortcutDaily} opens today's note, {shortcutCapture} jots into it from any app.",
       autoDaily: "Make today's note by itself",
       autoDailyHelp: 'When off, Morrow opens on home on a day without a note, until you make one.',
+      weekStart: 'Weeks start on',
       spellcheck: 'Check spelling',
       spellcheckHelp: 'Underlines words the spellchecker does not know as you type.',
       startPages: {
@@ -166,7 +167,8 @@ export const en = {
       groupBottom: 'Links at the bottom',
       moveAria: 'Move {name}',
       moveHint: 'Drag to reorder, or use the arrow keys',
-      conditionalHelp: 'Home, Pages and Settings always stay. Favourites, Templates, Archive and Trash only show once something is in them.',
+      conditionalHelp:
+        'Home, Pages and Settings always stay. Favourites, Templates, Archive and Trash only show once something is in them.',
       peek: 'Show when pointing at the left edge',
       peekHelp:
         'With the sidebar hidden, it slides in while the pointer rests at the left edge of the window.',

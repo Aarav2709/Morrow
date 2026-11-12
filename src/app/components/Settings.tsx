@@ -15,7 +15,7 @@ import { formatShortcut } from '../actions';
 import { AssistantSettings } from '../assistant/AssistantSettings';
 import { previewCustomCss, saveCustomCss, useCustomCss } from '../customCss';
 import { openHref } from '../editor/EditorMenus';
-import { SUPPORTED_LOCALES, useTranslation } from '../i18n';
+import { dateLocale, SUPPORTED_LOCALES, useTranslation } from '../i18n';
 import type { SupportedLocale, TranslationKey } from '../i18n';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
 import {
@@ -37,7 +37,7 @@ import {
   setPreferences,
   usePreferences,
 } from '../platform/preferences';
-import type { SidebarItem, SidebarModule } from '../platform/preferences';
+import type { SidebarItem, SidebarModule, WeekStart } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -67,7 +67,7 @@ const SECTIONS: SectionDef[] = [
   { id: 'about', key: 'settings.sections.about', icon: Info },
 ];
 
-function Segmented<T extends string>({
+function Segmented<T extends string | number>({
   label,
   value,
   options,
@@ -213,6 +213,18 @@ function GeneralSettings() {
           />
         </SettingRow>
       )}
+      <SettingRow label={t('settings.general.weekStart')}>
+        <Segmented<WeekStart>
+          label={t('settings.general.weekStart')}
+          value={prefs.weekStart}
+          options={([1, 0, 6] as const).map((day) => [
+            day,
+            // 2023-12-31 was a sunday
+            new Date(2023, 11, 31 + day).toLocaleDateString(dateLocale(), { weekday: 'long' }),
+          ])}
+          onChange={(weekStart) => setPreferences({ weekStart })}
+        />
+      </SettingRow>
       <SettingRow label={t('settings.general.spellcheck')} help={t('settings.general.spellcheckHelp')}>
         <Switch
           label={t('settings.general.spellcheck')}

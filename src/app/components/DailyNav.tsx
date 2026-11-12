@@ -6,6 +6,7 @@ import type { PageMeta } from '../../core/model';
 import { openToday } from '../operations';
 import { openPage } from '../router';
 import { useWorkspace } from '../workspace';
+import { usePreferences } from '../platform/preferences';
 import { Popover } from './Popover';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
@@ -76,9 +77,11 @@ export function DailyNav({ page }: { page: PageMeta }) {
   );
 }
 
-const WEEKDAYS = Array.from({ length: 7 }, (_, index) =>
-  new Date(2024, 0, 1 + index).toLocaleDateString(dateLocale(), { weekday: 'narrow' }),
-);
+// the days' first letters from the day weeks start on. 2023-12-31 was a sunday
+const weekdays = (weekStart: number) =>
+  Array.from({ length: 7 }, (_, index) =>
+    new Date(2023, 11, 31 + weekStart + index).toLocaleDateString(dateLocale(), { weekday: 'narrow' }),
+  );
 
 // a month at a time, days with a note are marked, any day opens its note and makes it if needed
 export function DailyCalendar({
@@ -93,8 +96,8 @@ export function DailyCalendar({
   const start = (selected && parseDateKey(selected)) || new Date();
   const [month, setMonth] = useState(() => new Date(start.getFullYear(), start.getMonth(), 1));
   const today = dateKey(new Date());
-  // weeks start on monday
-  const offset = (month.getDay() + 6) % 7;
+  const { weekStart } = usePreferences();
+  const offset = (month.getDay() - weekStart + 7) % 7;
   const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const cells = [
     ...Array.from({ length: offset }, () => null),
@@ -127,7 +130,7 @@ export function DailyCalendar({
         </button>
       </div>
       <div className="daily-calendar-grid" role="grid">
-        {WEEKDAYS.map((day, index) => (
+        {weekdays(weekStart).map((day, index) => (
           <span key={`w${index}`} className="daily-calendar-weekday" aria-hidden="true">
             {day}
           </span>

@@ -48,6 +48,7 @@ import { fileUrl } from '../../platform/attachments';
 import { newId } from '../../platform/files';
 import { openPage } from '../../router';
 import { run, useWorkspace } from '../../workspace';
+import { usePreferences } from '../../platform/preferences';
 import { Menu } from '../Menu';
 import { Popover } from '../Popover';
 import { Emoji } from '../Emoji';
@@ -1080,11 +1081,11 @@ function CalendarView({ dbId, database, view, rows, editable }: Omit<ViewProps, 
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [over, setOver] = useState<string | null>(null);
+  const { weekStart } = usePreferences();
   const prop = database.properties.find((candidate) => candidate.id === view.dateProp);
   if (!prop) return <p className="muted db-hint">{t('database.calendarHint')}</p>;
-  // weeks start on monday
   const start = new Date(month);
-  start.setDate(1 - ((month.getDay() + 6) % 7));
+  start.setDate(1 - ((month.getDay() - weekStart + 7) % 7));
   const days = Array.from(
     { length: 42 },
     (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i),

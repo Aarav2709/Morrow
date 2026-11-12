@@ -7,7 +7,7 @@ import { COVER_GRADIENTS, displayTitle } from '../../core/model';
 import type { PageMeta, WorkspaceState } from '../../core/model';
 import { ancestorsOf, livePages } from '../../core/tree';
 import { createPage, importMarkdown, openToday } from '../operations';
-import { usePreferences } from '../platform/preferences';
+import { getPreferences, usePreferences } from '../platform/preferences';
 import { navigate, openPage } from '../router';
 import { getSession, useWorkspace } from '../workspace';
 import { useCover } from './Cover';
@@ -83,7 +83,7 @@ const WEEKS = 53;
 // a year of writing, one square a day, filling the width like github's chart
 function Heatmap({ activity, locale }: { activity: Record<string, number>; locale: string }) {
   const { t } = useTranslation();
-  const weeks = activityWeeks(activity, new Date(), WEEKS);
+  const weeks = activityWeeks(activity, new Date(), WEEKS, getPreferences().weekStart);
   const days = weeks.flat().filter((day) => !day.future);
   const max = Math.max(1, ...days.map((day) => day.count));
   const level = (count: number) => (count === 0 ? 0 : Math.min(4, Math.ceil((count / max) * 4)));

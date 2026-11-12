@@ -22,11 +22,16 @@ export function streak(activity: Record<string, number>, today: Date): number {
   return count;
 }
 
-// columns of weeks, monday first, ending with the week that holds today
-export function activityWeeks(activity: Record<string, number>, today: Date, weeks = 26): Day[][] {
+// columns of weeks, starting on the day weeks start on, monday unless set, ending with the week of today
+export function activityWeeks(
+  activity: Record<string, number>,
+  today: Date,
+  weeks = 26,
+  weekStart = 1,
+): Day[][] {
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const start = new Date(end);
-  start.setDate(end.getDate() - ((end.getDay() + 6) % 7) - (weeks - 1) * 7);
+  start.setDate(end.getDate() - ((end.getDay() - weekStart + 7) % 7) - (weeks - 1) * 7);
   const columns: Day[][] = [];
   for (let week = 0; week < weeks; week++) {
     const column: Day[] = [];
