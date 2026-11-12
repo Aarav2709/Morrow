@@ -13,6 +13,7 @@ import { SearchView } from './components/SearchView';
 import { Sidebar } from './components/Sidebar';
 import { HomeView } from './components/Home';
 import { ArchiveView, TasksView, TrashView } from './components/Views';
+import { FilesView } from './components/FilesView';
 import { commitEditors, ownsUndo, undoRedo } from './editor/commits';
 import { ensureToday, writeAutoBackup } from './operations';
 import { dateKey, findDailyNote } from '../core/daily';
@@ -253,6 +254,8 @@ function viewFor(route: Route) {
       return <TrashView />;
     case 'archive':
       return <ArchiveView />;
+    case 'files':
+      return <FilesView />;
     case 'tags':
       return <TagsView />;
     case 'tag':

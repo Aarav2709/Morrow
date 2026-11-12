@@ -983,6 +983,17 @@ export const en = {
     emptyMessage: 'Nothing is archived. Archive a page from its page menu.',
     archivedAt: 'Archived {time}',
   },
+  files: {
+    title: 'Files',
+    subtitle: 'Pictures, sound, video and documents kept in this vault, and the pages that use them.',
+    all: 'All',
+    pictures: 'Pictures',
+    media: 'Sound and video',
+    documents: 'Documents',
+    unused: 'Not used',
+    empty: 'No files here yet.',
+    notUsed: 'Not used in any page',
+  },
   tags: {
     title: 'Tags',
     subtitle:

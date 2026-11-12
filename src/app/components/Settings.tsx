@@ -335,6 +335,8 @@ function SidebarSettings() {
         return t('sidebar.today');
       case 'templates':
         return t('dialogs.templates');
+      case 'files':
+        return t('files.title');
       case 'pages':
         return t('sidebar.pagesHeading');
       case 'settings':

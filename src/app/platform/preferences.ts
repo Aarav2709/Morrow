@@ -28,6 +28,7 @@ export const SIDEBAR_MODULES = [
   'tags',
   'review',
   'graph',
+  'files',
   'favorites',
   'templates',
   'import',
@@ -38,7 +39,7 @@ export type SidebarModule = (typeof SIDEBAR_MODULES)[number];
 // everything in the sidebar in the order it is shown, in three groups: the links at the top, the sections
 // that scroll, and the links at the bottom. home, pages and settings are always there
 export const SIDEBAR_GROUPS = {
-  top: ['search', 'home', 'daily', 'tasks', 'review', 'tags', 'graph', 'assistant'],
+  top: ['search', 'home', 'daily', 'tasks', 'review', 'tags', 'graph', 'files', 'assistant'],
   sections: ['favorites', 'templates', 'pages'],
   bottom: ['import', 'archive', 'trash', 'settings'],
 } as const;

@@ -26,6 +26,7 @@ import {
   Star,
   Table2,
   Trash2,
+  Paperclip,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Fragment, memo, useDeferredValue, useMemo, useRef, useState } from 'react';
@@ -266,6 +267,14 @@ export function Sidebar() {
         label={t('sidebar.graph')}
         active={route.name === 'graph'}
         onClick={go(() => navigate({ name: 'graph', focus: null }))}
+      />
+    ),
+    files: shown('files') && (
+      <NavItem
+        icon={Paperclip}
+        label={t('files.title')}
+        active={route.name === 'files'}
+        onClick={go(() => navigate({ name: 'files' }))}
       />
     ),
     assistant: prefs.assistant && desktop?.assistant && (

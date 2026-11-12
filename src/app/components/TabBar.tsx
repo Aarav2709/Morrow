@@ -14,6 +14,7 @@ import {
   Search,
   Trash2,
   X,
+  Paperclip,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
@@ -46,6 +47,7 @@ const VIEW_ICONS: Record<string, LucideIcon> = {
   tasks: CalendarCheck,
   trash: Trash2,
   archive: Archive,
+  files: Paperclip,
   tags: Hash,
   review: GraduationCap,
   graph: Network,
@@ -62,6 +64,8 @@ function getViewTitle(name: string): string {
       return t('sidebar.trash');
     case 'archive':
       return t('sidebar.archive');
+    case 'files':
+      return t('files.title');
     case 'tags':
       return t('sidebar.tags');
     case 'review':

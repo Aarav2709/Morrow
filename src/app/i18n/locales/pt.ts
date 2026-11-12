@@ -991,6 +991,17 @@ export const pt: TranslationSchema = {
     emptyMessage: 'Nada arquivado. Arquive uma página pelo menu da página.',
     archivedAt: 'Arquivada {time}',
   },
+  files: {
+    title: 'Arquivos',
+    subtitle: 'Imagens, som, vídeo e documentos guardados neste cofre, e as páginas que os usam.',
+    all: 'Todos',
+    pictures: 'Imagens',
+    media: 'Som e vídeo',
+    documents: 'Documentos',
+    unused: 'Sem uso',
+    empty: 'Ainda não há arquivos aqui.',
+    notUsed: 'Não usado em nenhuma página',
+  },
   tags: {
     title: 'Tags',
     subtitle:

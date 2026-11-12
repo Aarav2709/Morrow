@@ -10,6 +10,7 @@ export type Route =
   | { name: 'tasks' }
   | { name: 'trash' }
   | { name: 'archive' }
+  | { name: 'files' }
   | { name: 'tags' }
   | { name: 'tag'; tag: string }
   | { name: 'graph'; focus: PageId | null }
@@ -29,6 +30,7 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'tasks') return { name: 'tasks' };
   if (parts[0] === 'trash') return { name: 'trash' };
   if (parts[0] === 'archive') return { name: 'archive' };
+  if (parts[0] === 'files') return { name: 'files' };
   if (parts[0] === 'tags' && parts[1])
     return { name: 'tag', tag: decodeURIComponent(parts.slice(1).join('/')) };
   if (parts[0] === 'tags') return { name: 'tags' };
@@ -53,6 +55,8 @@ export function routeHash(route: Route): string {
       return '#/trash';
     case 'archive':
       return '#/archive';
+    case 'files':
+      return '#/files';
     case 'tags':
       return '#/tags';
     case 'tag':

@@ -990,6 +990,17 @@ export const es: TranslationSchema = {
     emptyMessage: 'No hay nada archivado. Archiva una página desde su menú de página.',
     archivedAt: 'Archivada {time}',
   },
+  files: {
+    title: 'Archivos',
+    subtitle: 'Imágenes, sonido, vídeo y documentos guardados en esta bóveda, y las páginas que los usan.',
+    all: 'Todos',
+    pictures: 'Imágenes',
+    media: 'Sonido y vídeo',
+    documents: 'Documentos',
+    unused: 'Sin usar',
+    empty: 'Todavía no hay archivos aquí.',
+    notUsed: 'No se usa en ninguna página',
+  },
   tags: {
     title: 'Etiquetas',
     subtitle:
