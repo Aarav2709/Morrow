@@ -843,3 +843,34 @@ html.is-printing body {
 .prose .inline-database .db-table td > * {
   margin: 0;
 }
+
+/* a youtube video before it plays: its picture with the play button over it, a link to the video */
+.youtube-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-subtle, #000);
+}
+.youtube-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.youtube-card .youtube-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  opacity: 0.9;
+  transition: opacity 120ms;
+}
+.youtube-card:hover .youtube-play {
+  opacity: 1;
+}
+.youtube-card.no-thumbnail img {
+  visibility: hidden;
+}

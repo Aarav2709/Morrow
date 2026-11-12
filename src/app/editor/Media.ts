@@ -5,7 +5,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { FileMeta } from '../../core/model';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
-import { desktop, nativeFileUrl } from '../platform/desktop';
+import { desktop, nativeFileUrl, openExternal } from '../platform/desktop';
 import { activeRoute } from '../router';
 import { selectedBlocks } from './BlockSelect';
 import { getSession } from '../workspace';
@@ -259,19 +259,33 @@ export function youtubeId(src: string): string | null {
 }
 
 // like pictures from the web, the video only loads once asked, so opening a page never contacts anyone
+// a youtube video shows as its picture with a play button, and plays in the page when clicked. it is a
+// real link to the video, so a page exported to pdf keeps it clickable
 function youtubeEmbed(dom: HTMLElement, id: string): HTMLElement {
   dom.className = 'image-block media-block media-youtube';
   dom.replaceChildren();
-  const box = document.createElement('div');
-  box.className = 'image-remote';
-  const label = document.createElement('span');
-  label.textContent = t('editor.videoFrom', { host: 'YouTube' });
-  const play = document.createElement('button');
-  play.type = 'button';
-  play.className = 'button small';
-  play.textContent = t('editor.playVideo');
-  play.addEventListener('click', (event) => {
+  const card = document.createElement('a');
+  card.className = 'youtube-card';
+  card.href = `https://www.youtube.com/watch?v=${id}`;
+  card.title = t('editor.playVideo');
+  card.setAttribute('aria-label', t('editor.videoFrom', { host: 'YouTube' }));
+  const thumb = document.createElement('img');
+  thumb.src = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+  thumb.alt = '';
+  thumb.draggable = false;
+  thumb.addEventListener('error', () => card.classList.add('no-thumbnail'));
+  const play = document.createElement('span');
+  play.className = 'youtube-play';
+  play.innerHTML =
+    '<svg viewBox="0 0 68 48" width="68" height="48" aria-hidden="true"><path d="M66.5 7.7a8.5 8.5 0 0 0-6-6C55.2.4 34 .4 34 .4s-21.2 0-26.5 1.3a8.5 8.5 0 0 0-6 6C.2 13 .2 24 .2 24s0 11 1.3 16.3a8.5 8.5 0 0 0 6 6c5.3 1.3 26.5 1.3 26.5 1.3s21.2 0 26.5-1.3a8.5 8.5 0 0 0 6-6c1.3-5.3 1.3-16.3 1.3-16.3s0-11-1.3-16.3z" fill="#f00"/><path d="M45 24 27 14v20" fill="#fff"/></svg>';
+  card.append(thumb, play);
+  card.addEventListener('click', (event) => {
     event.preventDefault();
+    // ctrl or cmd click opens it on youtube instead
+    if (event.ctrlKey || event.metaKey) {
+      openExternal(card.href);
+      return;
+    }
     const player = document.createElement('iframe');
     player.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
     player.title = 'YouTube';
@@ -280,8 +294,7 @@ function youtubeEmbed(dom: HTMLElement, id: string): HTMLElement {
     player.referrerPolicy = 'strict-origin-when-cross-origin';
     dom.replaceChildren(player);
   });
-  box.append(label, play);
-  dom.append(box);
+  dom.append(card);
   return dom;
 }
 
