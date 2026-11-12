@@ -28,6 +28,7 @@ import { targetPane, usePane } from '../tabs';
 import { getSession, getState, run } from '../workspace';
 import type { BlockMenuRequest } from './BlockHandle';
 import { registerCommit, setFocusedEditor } from './commits';
+import { revealAt } from './Blocks';
 import { pageIdFromHref } from '../../core/links';
 import { openTab } from '../tabs';
 import { BlockMenu, FormattingMenu, LinkMenu, noteMouseButton, openHref, TableMenu } from './EditorMenus';
@@ -551,6 +552,8 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     });
     const match = found as { from: number; to: number } | null;
     if (match) {
+      // a match inside a folded toggle opens the toggle, so it can be seen
+      editor.view.dispatch(revealAt(editor.state.tr, match.from));
       editor.chain().focus().setTextSelection(match).scrollIntoView().run();
     }
     navigate({ name: 'page', id: pageId, find: null }, { replace: true, pane });

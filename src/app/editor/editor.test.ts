@@ -355,3 +355,24 @@ describe('dates with a time', () => {
     expect(typedTime('today 25:00')).toBeNull();
   });
 });
+
+describe('finding words in a folded toggle', () => {
+  it('opens the toggle to show the match', async () => {
+    const { setFindQuery } = await import('./Blocks');
+    const target = make({
+      type: 'doc',
+      content: [
+        {
+          type: 'details',
+          attrs: { open: false },
+          content: [
+            { type: 'detailsSummary', content: [{ type: 'text', text: 'Title' }] },
+            { type: 'detailsContent', content: [p('hidden treasure')] },
+          ],
+        },
+      ],
+    });
+    setFindQuery(target.state, target.view.dispatch, 'treasure');
+    expect(json(target).content![0]!.attrs?.open).toBe(true);
+  });
+});

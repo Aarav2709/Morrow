@@ -138,6 +138,17 @@ function replacementFor(
   return pattern ? found.replace(new RegExp(pattern.source, 'i'), text) : text;
 }
 
+// opens every folded toggle around a position, so a match found inside one can be seen
+export function revealAt(tr: Transaction, pos: number): Transaction {
+  const $pos = tr.doc.resolve(Math.min(pos, tr.doc.content.size));
+  for (let depth = $pos.depth; depth > 0; depth--) {
+    const node = $pos.node(depth);
+    if (node.type.name === 'details' && !node.attrs.open)
+      tr.setNodeMarkup($pos.before(depth), undefined, { ...node.attrs, open: true });
+  }
+  return tr;
+}
+
 export function getFindState(state: EditorState): FindState {
   return findKey.getState(state) ?? { query: '', regex: false, matches: [], current: 0 };
 }
@@ -154,7 +165,9 @@ export function setFindQuery(
     0,
     matches.findIndex((match) => match.from >= from),
   );
-  dispatch(state.tr.setMeta(findKey, { query, regex, matches, current }));
+  const tr = state.tr.setMeta(findKey, { query, regex, matches, current });
+  const match = matches[current];
+  dispatch(match ? revealAt(tr, match.from) : tr);
 }
 
 export function stepFind(state: EditorState, dispatch: (tr: Transaction) => void, direction: 1 | -1): void {
@@ -163,7 +176,7 @@ export function stepFind(state: EditorState, dispatch: (tr: Transaction) => void
   const current = (find.current + direction + find.matches.length) % find.matches.length;
   const match = find.matches[current]!;
   dispatch(
-    state.tr
+    revealAt(state.tr, match.from)
       .setMeta(findKey, { ...find, current })
       .setSelection(TextSelection.create(state.doc, match.from, match.to))
       .scrollIntoView(),
