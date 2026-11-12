@@ -963,3 +963,15 @@
 .embed-prompt .link-input {
   flex: 1;
 }
+
+/* an empty page's offer to start from a template, above where the writing goes */
+.template-start {
+  margin: 4px 0 8px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.template-start .link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

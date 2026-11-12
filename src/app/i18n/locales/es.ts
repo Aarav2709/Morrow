@@ -550,6 +550,7 @@ export const es: TranslationSchema = {
     },
   },
   page: {
+    startFromTemplate: 'Empezar con una plantilla',
     gradient: 'Degradado {number}',
     conflictCopy:
       'Esta es una copia que guardó {app} porque “{title}” cambió en dos ordenadores a la vez. Compáralas, conserva lo que necesites en “{title}” y luego mueve esta copia a la papelera.',

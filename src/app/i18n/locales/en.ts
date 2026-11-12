@@ -544,6 +544,7 @@ export const en = {
     },
   },
   page: {
+    startFromTemplate: 'Start from a template',
     gradient: 'Gradient {number}',
     conflictCopy:
       'This is a copy {app} kept because “{title}” changed on two computers at the same time. Compare them, keep what you need in “{title}”, then move this copy to the trash.',

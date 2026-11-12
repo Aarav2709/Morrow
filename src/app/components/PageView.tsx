@@ -11,6 +11,8 @@ import {
   Smile,
   Trash2,
   ChevronRight,
+  FileText,
+  LayoutTemplate,
 } from 'lucide-react';
 import {
   lazy,
@@ -27,7 +29,7 @@ import { backlinksTo, unlinkedMentions } from '../../core/links';
 import { displayTitle, emptyDoc } from '../../core/model';
 import type { DocNode, PageId, PageMeta } from '../../core/model';
 import { childrenOf, isEffectivelyTrashed } from '../../core/tree';
-import { findTemplatesPage } from '../../core/templates';
+import { findTemplatesPage, listTemplates } from '../../core/templates';
 import { RepeatBar } from './RepeatBar';
 import { findDatabaseOf } from '../../core/database';
 import { basename, conflictOriginal, stripExtension } from '../../core/vault/paths';
@@ -39,13 +41,14 @@ import { Emoji } from './Emoji';
 import { LockedPage } from './EncryptDialog';
 import { PageProperties } from './PageProperties';
 import { PageTags } from './TagsView';
-import { deleteForever, restorePage, setArchived, trashPage } from '../operations';
+import { applyTemplateTo, deleteForever, restorePage, setArchived, trashPage } from '../operations';
 import { usePreferences } from '../platform/preferences';
 import { readingPlace, rememberPlace } from '../readingPlace';
 import { navigate, openPage, routeHash } from '../router';
 import { openSide } from '../tabs';
 import { getUi, openDialog, setUi, useUi } from '../ui';
 import { getSession, run, useWorkspace } from '../workspace';
+import { Menu } from './Menu';
 import type { MenuEntry } from './Menu';
 import { getLocale, t } from '../i18n';
 import { pageMenuEntries } from './pageMenu';
@@ -342,47 +345,50 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
             </>
           ) : (
             showText && (
-              <PageBody
-                id={id}
-                doc={doc}
-                editable={!trashed && !reading}
-                find={find}
-                anchor={anchor ?? null}
-                onDirty={setEditing}
-                onExitTop={(text) => {
-                  const title = titleRef.current;
-                  if (!title) return;
-                  const end = title.value.length;
-                  if (text && !trashed) {
-                    const joined = title.value + text;
-                    run({ type: 'page.rename', id, title: joined, now: Date.now() });
-                    // the textarea is controlled, set it now so the cursor lands between the two parts
-                    title.value = joined;
-                  }
-                  title.focus();
-                  title.setSelectionRange(end, end);
-                }}
-                onReady={(editor) => {
-                  editorRef.current = editor;
-                  editor.on('selectionUpdate', ({ editor: current }) => {
-                    if (!placed.current) return;
-                    const { from, to } = current.state.selection;
-                    rememberPlace(id, { from, to });
-                  });
-                  const startup = firstPage;
-                  firstPage = false;
-                  if (!focusWhenReady.current) {
-                    requestAnimationFrame(() => {
-                      if (!find && !anchor) restorePlace(editor, scrollRef.current, id, startup);
-                      placed.current = true;
+              <>
+                {!trashed && !reading && <TemplateStart pageId={id} doc={doc} />}
+                <PageBody
+                  id={id}
+                  doc={doc}
+                  editable={!trashed && !reading}
+                  find={find}
+                  anchor={anchor ?? null}
+                  onDirty={setEditing}
+                  onExitTop={(text) => {
+                    const title = titleRef.current;
+                    if (!title) return;
+                    const end = title.value.length;
+                    if (text && !trashed) {
+                      const joined = title.value + text;
+                      run({ type: 'page.rename', id, title: joined, now: Date.now() });
+                      // the textarea is controlled, set it now so the cursor lands between the two parts
+                      title.value = joined;
+                    }
+                    title.focus();
+                    title.setSelectionRange(end, end);
+                  }}
+                  onReady={(editor) => {
+                    editorRef.current = editor;
+                    editor.on('selectionUpdate', ({ editor: current }) => {
+                      if (!placed.current) return;
+                      const { from, to } = current.state.selection;
+                      rememberPlace(id, { from, to });
                     });
-                    return;
-                  }
-                  placed.current = true;
-                  focusWhenReady.current = false;
-                  requestAnimationFrame(() => focusStart(editor));
-                }}
-              />
+                    const startup = firstPage;
+                    firstPage = false;
+                    if (!focusWhenReady.current) {
+                      requestAnimationFrame(() => {
+                        if (!find && !anchor) restorePlace(editor, scrollRef.current, id, startup);
+                        placed.current = true;
+                      });
+                      return;
+                    }
+                    placed.current = true;
+                    focusWhenReady.current = false;
+                    requestAnimationFrame(() => focusStart(editor));
+                  }}
+                />
+              </>
             )
           )}
           {page.kind === 'database' && (
@@ -811,5 +817,35 @@ function Outline({ doc }: { doc: DocNode }) {
         )}
       </ul>
     </nav>
+  );
+}
+
+// an empty page offers the templates there are, one click fills it in
+function TemplateStart({ pageId, doc }: { pageId: PageId; doc: typeof EMPTY_DOC }) {
+  const state = useWorkspace();
+  const [menu, setMenu] = useState<HTMLElement | null>(null);
+  const templates = useMemo(() => listTemplates(state), [state]);
+  const page = state.pages[pageId];
+  const empty = isDocEmpty(doc);
+  if (!empty || templates.length === 0 || !page || page.kind !== 'page') return null;
+  if (templates.some((template) => template.id === pageId)) return null;
+  return (
+    <div className="template-start">
+      <button type="button" className="link-button" onClick={(event) => setMenu(event.currentTarget)}>
+        <LayoutTemplate size={14} /> {t('page.startFromTemplate')}
+      </button>
+      {menu && (
+        <Menu
+          anchor={menu}
+          label={t('dialogs.templates')}
+          onClose={() => setMenu(null)}
+          entries={templates.map((template) => ({
+            label: displayTitle(template),
+            icon: FileText,
+            onSelect: () => applyTemplateTo(pageId, template.id),
+          }))}
+        />
+      )}
+    </div>
   );
 }

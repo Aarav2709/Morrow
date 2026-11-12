@@ -550,6 +550,7 @@ export const pt: TranslationSchema = {
     },
   },
   page: {
+    startFromTemplate: 'Começar com um modelo',
     gradient: 'Degradê {number}',
     conflictCopy:
       'Esta é uma cópia que {app} guardou porque “{title}” mudou em dois computadores ao mesmo tempo. Compare as duas, mantenha o que precisar em “{title}” e depois mova esta cópia para a lixeira.',
