@@ -387,3 +387,37 @@ mod tests {
         assert!(stamp.starts_with("20"));
     }
 }
+
+// files copied in the file manager, which the web view on windows hands the page as a name only
+#[cfg(windows)]
+pub fn clipboard_files() -> Vec<String> {
+    use windows::Win32::System::DataExchange::{CloseClipboard, GetClipboardData, OpenClipboard};
+    use windows::Win32::UI::Shell::{DragQueryFileW, HDROP};
+    const CF_HDROP: u32 = 15;
+    let mut paths = Vec::new();
+    unsafe {
+        if OpenClipboard(None).is_err() {
+            return paths;
+        }
+        if let Ok(handle) = GetClipboardData(CF_HDROP) {
+            let drop = HDROP(handle.0);
+            let count = DragQueryFileW(drop, u32::MAX, None);
+            for index in 0..count.min(20) {
+                let length = DragQueryFileW(drop, index, None) as usize;
+                let mut buffer = vec![0u16; length + 1];
+                let written = DragQueryFileW(drop, index, Some(&mut buffer)) as usize;
+                paths.push(String::from_utf16_lossy(
+                    &buffer[..written.min(buffer.len())],
+                ));
+            }
+        }
+        let _ = CloseClipboard();
+    }
+    paths
+}
+
+// other systems give the page the copied files, or their paths as text
+#[cfg(not(windows))]
+pub fn clipboard_files() -> Vec<String> {
+    Vec::new()
+}

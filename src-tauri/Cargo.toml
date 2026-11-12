@@ -63,7 +63,7 @@ cairo-rs = { version = "0.18", features = ["png"] }
 
 [target.'cfg(windows)'.dependencies]
 webview2-com = "0.39"
-windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Globalization", "Win32_System_Com", "Win32_System_Registry", "Win32_UI_Shell"] }
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Globalization", "Win32_System_Com", "Win32_System_DataExchange", "Win32_System_Registry", "Win32_UI_Shell"] }
 windows-core = "0.62"
 
 [profile.release]

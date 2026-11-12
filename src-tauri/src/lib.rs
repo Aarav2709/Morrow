@@ -122,6 +122,42 @@ fn copy_text<R: Runtime>(app: AppHandle<R>, text: String) -> bool {
     app.clipboard().write_text(text).is_ok()
 }
 
+const CLIPBOARD_MEDIA: &[&str] = &[
+    "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif", "mp3", "wav", "ogg", "m4a", "flac",
+    "mp4", "webm", "mov", "m4v", "pdf",
+];
+
+// pictures, sound, video and pdfs copied in the file manager, by path
+#[tauri::command]
+fn clipboard_files() -> Vec<String> {
+    native::clipboard_files()
+        .into_iter()
+        .filter(|path| {
+            Path::new(path)
+                .extension()
+                .and_then(|ext| ext.to_str())
+                .is_some_and(|ext| CLIPBOARD_MEDIA.contains(&ext.to_ascii_lowercase().as_str()))
+        })
+        .collect()
+}
+
+// one of those files, read only while it is still on the clipboard, so the page can't read any other file
+#[tauri::command]
+fn read_clipboard_file(path: String) -> Res<Response> {
+    if !clipboard_files().contains(&path) {
+        return Err("Not on the clipboard.".into());
+    }
+    let size = std::fs::metadata(&path)
+        .map_err(|error| error.to_string())?
+        .len();
+    if size > 100 * 1024 * 1024 {
+        return Err("Too large.".into());
+    }
+    Ok(Response::new(
+        std::fs::read(&path).map_err(|error| error.to_string())?,
+    ))
+}
+
 // text and html together, so pictures copied with the words reach other apps too
 #[tauri::command]
 fn copy_rich<R: Runtime>(app: AppHandle<R>, text: String, html: String) -> bool {
@@ -960,6 +996,8 @@ pub fn run() {
             open_external,
             copy_text,
             copy_rich,
+            clipboard_files,
+            read_clipboard_file,
             fetch_image,
             show_data_folder,
             show_backups,

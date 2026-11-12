@@ -200,6 +200,8 @@ export interface DesktopBridge {
   ): Promise<{ ok: true; path: string } | { ok: false; error: string | null }>;
   copyText(text: string): Promise<boolean> | void;
   copyRich?(text: string, html: string): Promise<boolean>;
+  // pictures, sound and video copied in the file manager, which the web view only names
+  clipboardFiles?(): Promise<File[]>;
   setSpellcheck?(enabled: boolean): void;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
   // a file made in the app, saved where the person picks. the webview has no downloads of its own
