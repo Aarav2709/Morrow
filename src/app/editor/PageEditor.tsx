@@ -28,6 +28,8 @@ import { targetPane, usePane } from '../tabs';
 import { getSession, getState, run } from '../workspace';
 import type { BlockMenuRequest } from './BlockHandle';
 import { registerCommit, setFocusedEditor } from './commits';
+import { pageIdFromHref } from '../../core/links';
+import { openTab } from '../tabs';
 import { BlockMenu, FormattingMenu, LinkMenu, openHref, TableMenu } from './EditorMenus';
 import { FindBar } from './FindBar';
 import { createExtensions } from './extensions';
@@ -422,11 +424,13 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           },
         },
         handleClickOn: (_view, _pos, node, _nodePos, event) => {
-          // ctrl or cmd click follows links like a browser would
+          // ctrl or cmd click follows links like a browser would, a page opening in a tab behind this one
           const href = node.marks?.find((mark) => mark.type.name === 'link')?.attrs.href;
           if (href && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
-            openHref(String(href));
+            const page = pageIdFromHref(String(href));
+            if (page) openTab(`#/page/${encodeURIComponent(page)}`, { background: !event.shiftKey });
+            else openHref(String(href));
             return true;
           }
           return false;

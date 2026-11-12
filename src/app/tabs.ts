@@ -137,8 +137,8 @@ export function startTabs(): () => void {
     if (tab.hash === hash) return;
     updateActive((item) => (expected ? { ...item, hash } : { ...item, ...visit(item, hash, false) }));
   };
-  // ctrl or cmd click, or a middle click, on anything that points at a page opens it in a new tab,
-  // alt click opens it beside the page you are on
+  // ctrl or cmd click, or a middle click, on anything that points at a page opens it in a new tab behind
+  // the one you are on, with shift as well it comes to the front. alt click opens it beside the page
   const onClick = (event: MouseEvent) => {
     const newTab =
       event.type === 'auxclick' ? event.button === 1 : event.button === 0 && (event.ctrlKey || event.metaKey);
@@ -151,7 +151,7 @@ export function startTabs(): () => void {
     event.preventDefault();
     event.stopPropagation();
     const hash = `#/page/${encodeURIComponent(id)}`;
-    if (newTab) openTab(hash);
+    if (newTab) openTab(hash, { background: !event.shiftKey });
     else openSide(hash);
   };
   // a mouse's back and forward buttons. chromium only reports their press and release, never a click, and
@@ -286,16 +286,29 @@ export function goForward(pane: PaneId = targetPane()): void {
   step(pane, 'forward');
 }
 
-export function openTab(hash = '#/'): void {
+// a tab opened in the background waits beside the one you are on, which stays in front. tabs opened that
+// way one after another line up in the order they were opened
+let backgroundRun: { from: string; last: string } | null = null;
+export function openTab(hash = '#/', options: { background?: boolean } = {}): void {
   const now = current();
   if (now.tabs.length >= MAX_TABS) {
-    go(hash);
+    if (!options.background) go(hash);
     return;
   }
   const tab: Tab = { id: newTabId(), hash, back: [], forward: [], side: null };
-  const index = now.tabs.findIndex((item) => item.id === now.active);
+  const after = backgroundRun?.from === now.active ? backgroundRun.last : now.active;
+  const index = Math.max(
+    now.tabs.findIndex((item) => item.id === after),
+    now.tabs.findIndex((item) => item.id === now.active),
+  );
   const tabs = [...now.tabs];
   tabs.splice(index + 1, 0, tab);
+  if (options.background) {
+    backgroundRun = { from: now.active, last: tab.id };
+    set({ ...now, tabs });
+    return;
+  }
+  backgroundRun = null;
   set({ ...now, tabs, active: tab.id, pane: 'main' });
   go(hash);
 }

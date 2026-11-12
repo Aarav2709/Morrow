@@ -87,7 +87,7 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 - Page history with a view of what changed since each version
 - **Tabs and split panes**: back and forward in every tab (Alt + ← and →, or
   Cmd + [ and ] on a Mac, or the mouse's side buttons), Ctrl/Cmd + click to open
-  a page in a new tab, Alt + click to open it beside the page you are on,
+  a page in a tab behind the one you're on, Alt + click to open it beside the page you are on,
   Ctrl/Cmd + Shift + T to reopen a closed tab and Ctrl/Cmd + 1 to 9 to jump
 - **Drag a page** from the sidebar into another page to link it
 - **An optional assistant** that searches, reads and edits your pages in Morrow's
