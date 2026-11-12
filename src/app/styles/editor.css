@@ -952,3 +952,14 @@
   font-size: 0.75em;
   color: var(--text-faint);
 }
+
+/* the box /embed opens for a link or a path */
+.embed-prompt {
+  display: flex;
+  padding: 4px;
+  width: min(360px, calc(100vw - 16px));
+  z-index: 60;
+}
+.embed-prompt .link-input {
+  flex: 1;
+}

@@ -656,6 +656,7 @@ export const pt: TranslationSchema = {
     editDiagram: 'Editar diagrama',
     baseEmpty: 'Nenhuma página corresponde a esta vista.',
     lowercase: 'Minúsculas',
+    embedPlaceholder: 'Cole um link do YouTube ou um caminho deste computador',
     toggleHeadings: 'Título recolhível',
     columns: 'Colunas',
     defaultBackground: 'Fundo padrão',
@@ -932,6 +933,11 @@ export const pt: TranslationSchema = {
         title: 'Data',
         description: 'Mencione um dia, como @amanhã',
         keywords: 'data dia hoje amanha lembrete mencao date',
+      },
+      embedMedia: {
+        title: 'Incorporar',
+        description: 'Um vídeo do YouTube, ou uma imagem, som, vídeo ou pasta deste computador',
+        keywords: 'youtube video audio som musica imagem pasta caminho arquivo incorporar embed',
       },
       embed: {
         title: 'Incorporar página',

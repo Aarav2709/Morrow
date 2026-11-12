@@ -12,6 +12,12 @@ type PastedKind = 'youtube' | 'picture' | 'local' | 'link';
 
 const PICTURE = /\.(png|jpe?g|gif|webp|avif|svg|bmp)(\?[^\s]*)?$/i;
 
+// windows copies a path with "quotes" round it, which aren't part of it
+export function unquote(text: string): string {
+  const trimmed = text.trim();
+  return /^"[^"\n]+"$/.test(trimmed) ? trimmed.slice(1, -1) : trimmed;
+}
+
 export function pastedKind(text: string): PastedKind | null {
   if (!text || /\s/.test(text) || text.length > 2000) return null;
   if (/^https?:\/\//i.test(text)) {
@@ -124,7 +130,7 @@ export const PasteMenu = Extension.create({
         key: new PluginKey('pasteMenu'),
         props: {
           handlePaste(view, event) {
-            const text = event.clipboardData?.getData('text/plain')?.trim() ?? '';
+            const text = unquote(event.clipboardData?.getData('text/plain') ?? '');
             const kind = pastedKind(text);
             const { selection } = view.state;
             // pasting a link over selected words links them, and code stays exactly as pasted
@@ -149,3 +155,58 @@ export const PasteMenu = Extension.create({
     closeOpen?.();
   },
 });
+
+// /embed: a youtube link, a picture's address, or a picture, sound or video on this computer shows in the
+// page. a folder or any other file goes in as a link that opens it
+export function promptEmbed(editor: Editor): void {
+  closeOpen?.();
+  const at = editor.state.selection.from;
+  const box = document.createElement('form');
+  box.className = 'popover floating-layer embed-prompt';
+  const input = document.createElement('input');
+  input.className = 'link-input';
+  input.placeholder = t('editor.embedPlaceholder');
+  input.setAttribute('aria-label', t('editor.embedPlaceholder'));
+  box.append(input);
+  const where = editor.view.coordsAtPos(at);
+  box.style.position = 'fixed';
+  box.style.left = `${Math.max(8, Math.min(where.left, window.innerWidth - 360))}px`;
+  box.style.top = `${Math.min(where.bottom + 6, window.innerHeight - 60)}px`;
+  document.body.append(box);
+  input.focus();
+  const close = () => {
+    if (closeOpen !== close) return;
+    closeOpen = null;
+    box.remove();
+    window.removeEventListener('pointerdown', onPointer, true);
+  };
+  const onPointer = (event: PointerEvent) => {
+    if (!box.contains(event.target as Node)) close();
+  };
+  input.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    close();
+    editor.commands.focus();
+  });
+  box.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const text = unquote(input.value);
+    close();
+    if (!text) return editor.commands.focus();
+    const kind = pastedKind(text);
+    const chain = editor.chain().focus();
+    if (kind === 'youtube' || kind === 'picture' || kind === 'local')
+      chain.insertContentAt(at, { type: 'image', attrs: { src: text, alt: '' } }).run();
+    else
+      chain
+        .insertContentAt(at, {
+          type: 'text',
+          text: text.split(/[\\/]/).filter(Boolean).pop() || text,
+          marks: [{ type: 'link', attrs: { href: text } }],
+        })
+        .run();
+  });
+  window.addEventListener('pointerdown', onPointer, true);
+  closeOpen = close;
+}

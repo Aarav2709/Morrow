@@ -656,6 +656,7 @@ export const es: TranslationSchema = {
     editDiagram: 'Editar diagrama',
     baseEmpty: 'Ninguna página coincide con esta vista.',
     lowercase: 'Minúsculas',
+    embedPlaceholder: 'Pega un enlace de YouTube o una ruta de este ordenador',
     toggleHeadings: 'Encabezado desplegable',
     columns: 'Columnas',
     defaultBackground: 'Fondo predeterminado',
@@ -932,6 +933,11 @@ export const es: TranslationSchema = {
         title: 'Fecha',
         description: 'Menciona un día, como @mañana',
         keywords: 'fecha dia hoy manana recordatorio mencion date',
+      },
+      embedMedia: {
+        title: 'Insertar',
+        description: 'Un vídeo de YouTube, o una imagen, sonido, vídeo o carpeta de este ordenador',
+        keywords: 'youtube video audio sonido musica imagen carpeta ruta archivo insertar embed',
       },
       embed: {
         title: 'Incrustar página',

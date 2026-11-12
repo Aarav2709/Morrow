@@ -649,6 +649,7 @@ export const en = {
     editDiagram: 'Edit diagram',
     baseEmpty: 'No pages match this view.',
     lowercase: 'Lowercase',
+    embedPlaceholder: 'Paste a YouTube link or a path on this computer',
     toggleHeadings: 'Toggle heading',
     columns: 'Columns',
     defaultBackground: 'Default background',
@@ -925,6 +926,11 @@ export const en = {
         title: 'Date',
         description: 'Mention a day, like @tomorrow',
         keywords: 'date day today tomorrow reminder mention due',
+      },
+      embedMedia: {
+        title: 'Embed',
+        description: 'A YouTube video, or a picture, sound, video or folder on this computer',
+        keywords: 'youtube video audio sound music picture folder path local file embed',
       },
       embed: {
         title: 'Embed a page',

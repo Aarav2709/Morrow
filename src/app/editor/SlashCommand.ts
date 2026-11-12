@@ -30,11 +30,13 @@ import {
   Pilcrow,
   Quote,
   Table,
+  Clapperboard,
 } from 'lucide-react';
 import { foldText } from '../../core/search';
 import { t } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import { pickFiles } from '../platform/files';
+import { promptEmbed } from './PasteMenu';
 import { editMathNear } from './Extras';
 import { insertFiles } from './Media';
 import type { MenuItem } from './SuggestionMenu';
@@ -431,6 +433,17 @@ export const BLOCK_ITEMS: BlockItem[] = [
     run: (e, r) => chain(e, r).insertContent('@').run(),
   },
   {
+    id: 'embedMedia',
+    title: 'Embed',
+    description: 'A YouTube video, or a picture, sound, video or folder on this computer',
+    icon: Clapperboard,
+    keywords: 'youtube video audio sound music picture folder path local file embed',
+    run: (e, r) => {
+      chain(e, r).run();
+      promptEmbed(e);
+    },
+  },
+  {
     id: 'embed',
     title: 'Embed a page',
     description: 'Show another page inside this one',
@@ -501,7 +514,7 @@ const SECTIONS: Array<[string, string[], TranslationKey]> = [
     ],
     'slash.sections.basic',
   ],
-  ['media', ['image', 'file'], 'slash.sections.media'],
+  ['media', ['image', 'file', 'embedMedia'], 'slash.sections.media'],
   ['layout', ['columns2', 'columns3', 'columns4', 'columns5', 'table', 'toc'], 'slash.sections.layout'],
   [
     'pagesAndData',

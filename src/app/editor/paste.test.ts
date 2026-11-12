@@ -14,3 +14,11 @@ describe('pasting a link', () => {
     expect(pastedKind('two words')).toBeNull();
   });
 });
+
+describe('paths copied on windows', () => {
+  it('lose the quotes windows puts round them', async () => {
+    const { pastedKind, unquote } = await import('./PasteMenu');
+    expect(unquote('"C:\\Videos\\clip.mp4"')).toBe('C:\\Videos\\clip.mp4');
+    expect(pastedKind(unquote('"C:\\Videos\\clip.mp4"'))).toBe('local');
+  });
+});
