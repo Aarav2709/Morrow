@@ -1,4 +1,4 @@
-import { Check, Columns3, Palette, Pencil, Plus, X } from 'lucide-react';
+import { Check, Columns3, ExternalLink, Palette, Pencil, Plus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { stringify } from 'yaml';
 import { displayTitle } from '../../core/model';
@@ -383,6 +383,35 @@ function ExtraValue({
       </>
     );
   }
+  // a link opens in the browser, written without https:// it is taken as a web address
+  const openUrl = (address: string) =>
+    openExternal(/^[a-z][a-z0-9+.-]*:/i.test(address) ? address : `https://${address}`);
+  const openButton = (address: string) => (
+    <button
+      type="button"
+      className="icon-button tiny"
+      aria-label={t('editor.openLink')}
+      title={t('editor.openLink')}
+      onClick={() => openUrl(address)}
+    >
+      <ExternalLink size={12} />
+    </button>
+  );
+  if (type === 'url' && typeof value === 'string' && value.trim() && (editingUrl || autoFocus))
+    return (
+      <span className="prop-url">
+        <DraftInput
+          type="text"
+          label={label}
+          value={value}
+          editable={editable}
+          autoFocus
+          onCommit={(next) => onChange(next)}
+          onDone={() => setEditingUrl(false)}
+        />
+        {openButton(value.trim())}
+      </span>
+    );
   if (type === 'url' && typeof value === 'string' && value && !editingUrl && !autoFocus)
     return (
       <span className="prop-url">
@@ -390,11 +419,12 @@ function ExtraValue({
           href={value}
           onClick={(event) => {
             event.preventDefault();
-            openExternal(value);
+            openUrl(value.trim());
           }}
         >
           {value.replace(/^https?:\/\//i, '')}
         </a>
+        {openButton(value.trim())}
         {editable && (
           <button
             type="button"
