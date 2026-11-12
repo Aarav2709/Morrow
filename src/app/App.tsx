@@ -383,6 +383,20 @@ function ZoomLevel() {
   );
 }
 
+// true for a moment after the sidebar is shown or hidden, while it slides
+function useSidebarSlide(open: boolean): boolean {
+  const [sliding, setSliding] = useState(false);
+  const was = useRef(open);
+  useEffect(() => {
+    if (was.current === open) return;
+    was.current = open;
+    setSliding(true);
+    const timer = setTimeout(() => setSliding(false), 240);
+    return () => clearTimeout(timer);
+  }, [open]);
+  return sliding;
+}
+
 let started = false;
 function useStartPage() {
   useEffect(() => {
@@ -423,13 +437,14 @@ export function App() {
     clearPropertyHistory();
   }, [route]);
   useSidebarPeek(!prefs.sidebarOpen && prefs.sidebarPeek && ui.sidebarPeek);
+  const sliding = useSidebarSlide(prefs.sidebarOpen);
 
   const side = tabs.tabs.find((tab) => tab.id === tabs.active)?.side ?? null;
   const sideRoute = useMemo(() => (side ? parseRoute(side.hash) : null), [side]);
 
   return (
     <div
-      className={`app${prefs.sidebarOpen ? '' : ' sidebar-collapsed'}${!prefs.sidebarOpen && prefs.sidebarPeek && ui.sidebarPeek ? ' sidebar-peeking' : ''}${prefs.assistant && prefs.assistantOpen ? ' has-assistant' : ''}${ui.mobileSidebar ? ' mobile-sidebar-open' : ''}${ui.focusMode ? ' focus-mode' : ''}`}
+      className={`app${prefs.sidebarOpen ? '' : ' sidebar-collapsed'}${sliding ? ' sidebar-sliding' : ''}${!prefs.sidebarOpen && prefs.sidebarPeek && ui.sidebarPeek ? ' sidebar-peeking' : ''}${prefs.assistant && prefs.assistantOpen ? ' has-assistant' : ''}${ui.mobileSidebar ? ' mobile-sidebar-open' : ''}${ui.focusMode ? ' focus-mode' : ''}`}
     >
       <Sidebar />
       {!prefs.sidebarOpen && prefs.sidebarPeek && (

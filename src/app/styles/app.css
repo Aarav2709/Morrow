@@ -256,8 +256,17 @@ kbd,
   user-select: none;
 }
 
+/* a hidden sidebar is moved out past the window's edge, so showing and hiding it can slide */
 .sidebar-collapsed .sidebar {
-  display: none;
+  margin-left: calc(-1 * var(--sidebar-width, 264px));
+  visibility: hidden;
+}
+
+/* only while it is being shown or hidden, a sidebar peeking from the edge comes and goes on its own */
+.sidebar-sliding .sidebar {
+  transition:
+    margin-left 200ms var(--ease),
+    visibility 200ms;
 }
 
 /* the strip along the left edge that brings a hidden sidebar back while the pointer is on it */
@@ -271,6 +280,8 @@ kbd,
 
 .sidebar-collapsed.sidebar-peeking .sidebar {
   display: flex;
+  margin-left: 0;
+  visibility: visible;
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 35;
@@ -1868,6 +1879,8 @@ html.is-printing .window-controls {
     inset: 0 auto 0 0;
     z-index: 40;
     width: min(300px, 86vw);
+    margin-left: 0;
+    visibility: visible;
     transform: translateX(-102%);
     /* the sidebar is kept drawn on its own layer, so sliding it in only moves a picture that is already
        there. animating its shadow as well made a phone repaint the whole list on every frame */
