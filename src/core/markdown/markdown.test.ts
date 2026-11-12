@@ -536,6 +536,11 @@ describe('block ids and anchors', () => {
 });
 
 describe('things that used to change on a reload', () => {
+  it('keeps a date a date when that day has a note', () => {
+    const doc = markdownToDoc('Feed the cats [[2026-11-10]]', { resolvePage: () => 'daily-note' });
+    expect(doc.content![0]!.content![1]).toEqual({ type: 'dateMention', attrs: { date: '2026-11-10' } });
+  });
+
   const files = {
     resolveFile: (href: string) => ({ fileId: href, name: href, image: href.endsWith('.png') }),
   };

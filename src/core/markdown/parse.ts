@@ -660,16 +660,16 @@ function wikiNode(link: WikiLink, markup: string, options: ParseOptions, marks: 
       return [{ type: 'text', text: link.alias ?? file.name, marks: fileMarks }];
     }
   }
-  const id = link.target ? (options.resolvePage?.(link.target) ?? null) : null;
-  // [[2026-10-16]] with no page of that name is a date, it opens that day's note
+  // [[2026-10-16]] is a date, which opens that day's note. it stays a date once the note exists, rather
+  // than becoming a link titled with the day written out, which lost its reminder and could not be edited
   if (
-    !id &&
     !link.embed &&
     link.alias === null &&
     link.anchor === null &&
     /^\d{4}-\d{2}-\d{2}$/.test(link.target)
   )
     return [{ type: 'dateMention', attrs: { date: link.target } }];
+  const id = link.target ? (options.resolvePage?.(link.target) ?? null) : null;
   if (!id && options.keepUnresolved === false) {
     return [
       marks.length ? { type: 'text', text: markup, marks: [...marks] } : { type: 'text', text: markup },
