@@ -345,3 +345,13 @@ describe('the / and @ menus', () => {
     }
   });
 });
+
+describe('dates with a time', () => {
+  it('reads a time typed after a date', async () => {
+    const { typedTime } = await import('./Structure');
+    expect(typedTime('today 17:05')).toEqual({ rest: 'today', time: '17:05' });
+    expect(typedTime('friday 5pm')).toEqual({ rest: 'friday', time: '17:00' });
+    expect(typedTime('next 5')).toBeNull();
+    expect(typedTime('today 25:00')).toBeNull();
+  });
+});

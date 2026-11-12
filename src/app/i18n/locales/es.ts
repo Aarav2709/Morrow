@@ -1329,7 +1329,8 @@ export const es: TranslationSchema = {
   reminders: {
     dateMenu: 'Fecha',
     openNote: 'Abrir la nota de este día',
-    otherTime: 'A otra hora…',
+    otherTime: 'A una hora personalizada…',
+    atScheduled: 'A la hora indicada, {time}',
     inThePast: 'Esa hora ya ha pasado.',
     remind: 'Recordármelo',
     remindMe: 'Recordármelo',

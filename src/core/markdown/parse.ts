@@ -522,6 +522,22 @@ export function markdownToPage(
   return { title: fallbackTitle, doc };
 }
 
+// a time written just after a date, [[2026-11-10]] 17:05, belongs to the date
+function dateTimes(nodes: DocNode[]): DocNode[] {
+  for (let index = 0; index < nodes.length - 1; index++) {
+    const date = nodes[index]!;
+    const next = nodes[index + 1]!;
+    if (date.type !== 'dateMention' || next.type !== 'text' || next.marks?.length) continue;
+    const match = /^ (([01]\d|2[0-3]):[0-5]\d)(?![\d:])/.exec(next.text ?? '');
+    if (!match) continue;
+    date.attrs = { ...date.attrs, time: match[1] };
+    const rest = next.text!.slice(match[0].length);
+    if (rest) next.text = rest;
+    else nodes.splice(index + 1, 1);
+  }
+  return nodes;
+}
+
 function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
   const out: DocNode[] = [];
   const marks: DocMark[] = [];
@@ -635,7 +651,7 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         if (token.content) add(token.content);
     }
   }
-  return mergeText(out);
+  return dateTimes(mergeText(out));
 }
 
 // obsidian sizes a picture in its alt text: "a cat|300", "a cat|300x200", or just "300" in an embed
@@ -662,12 +678,7 @@ function wikiNode(link: WikiLink, markup: string, options: ParseOptions, marks: 
   }
   // [[2026-10-16]] is a date, which opens that day's note. it stays a date once the note exists, rather
   // than becoming a link titled with the day written out, which lost its reminder and could not be edited
-  if (
-    !link.embed &&
-    link.alias === null &&
-    link.anchor === null &&
-    /^\d{4}-\d{2}-\d{2}$/.test(link.target)
-  )
+  if (!link.embed && link.alias === null && link.anchor === null && /^\d{4}-\d{2}-\d{2}$/.test(link.target))
     return [{ type: 'dateMention', attrs: { date: link.target } }];
   const id = link.target ? (options.resolvePage?.(link.target) ?? null) : null;
   if (!id && options.keepUnresolved === false) {

@@ -536,6 +536,16 @@ describe('block ids and anchors', () => {
 });
 
 describe('things that used to change on a reload', () => {
+  it('keeps the time written with a date', () => {
+    const doc = markdownToDoc('Feed the cats [[2026-11-10]] 17:05 sharp');
+    expect(doc.content![0]!.content).toEqual([
+      { type: 'text', text: 'Feed the cats ' },
+      { type: 'dateMention', attrs: { date: '2026-11-10', time: '17:05' } },
+      { type: 'text', text: ' sharp' },
+    ]);
+    expect(docToMarkdown(doc)).toBe('Feed the cats [[2026-11-10]] 17:05 sharp\n');
+  });
+
   it('keeps a date a date when that day has a note', () => {
     const doc = markdownToDoc('Feed the cats [[2026-11-10]]', { resolvePage: () => 'daily-note' });
     expect(doc.content![0]!.content![1]).toEqual({ type: 'dateMention', attrs: { date: '2026-11-10' } });

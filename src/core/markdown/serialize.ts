@@ -342,7 +342,8 @@ function inline(nodes: DocNode[], options: SerializeOptions, inTable = false): s
     if (node.type === 'dateMention') {
       // dates are written as links to that day's note, the way obsidian names daily notes
       closeTo(0);
-      out += `${pendingSpace}[[${String(node.attrs?.date ?? '')}]]`;
+      const time = String(node.attrs?.time ?? '');
+      out += `${pendingSpace}[[${String(node.attrs?.date ?? '')}]]${/^\d{2}:\d{2}$/.test(time) ? ` ${time}` : ''}`;
       pendingSpace = '';
       continue;
     }

@@ -31,7 +31,7 @@ export interface ExtensionOptions extends PageLinkOptions {
   openTag: (tag: string) => void;
   createChild: (kind: 'database' | 'canvas') => string | null;
   openDate: (date: Date) => void;
-  dateMenu?: (date: Date, anchor: HTMLElement) => void;
+  dateMenu?: (date: Date, anchor: HTMLElement, time: string | null) => void;
 }
 
 // obsidian block ids live on paragraphs and are written back as " ^id". pressing enter at the end of one
