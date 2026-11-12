@@ -13,7 +13,8 @@
 .prose {
   outline: none;
   font-family: var(--font-serif);
-  font-size: 18px;
+  /* text size from settings scales the writing, everything in it is sized in em */
+  font-size: calc(18px * var(--text-scale, 1));
   line-height: 1.7;
   color: var(--text);
   min-height: 40vh;
@@ -25,7 +26,7 @@
 
 .font-sans .prose {
   font-family: var(--font-ui);
-  font-size: 16px;
+  font-size: calc(16px * var(--text-scale, 1));
   line-height: 1.68;
 }
 
@@ -636,7 +637,7 @@
 
 @media (max-width: 800px) {
   .prose {
-    font-size: 17px;
+    font-size: calc(17px * var(--text-scale, 1));
   }
 
   .block-handle {

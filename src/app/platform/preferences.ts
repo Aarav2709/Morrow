@@ -49,7 +49,19 @@ export type SidebarItem =
   | (typeof SIDEBAR_GROUPS.bottom)[number];
 export const SIDEBAR_FIXED: readonly SidebarItem[] = ['home', 'pages', 'settings'];
 // accent colours, each tuned for light and dark in features.css
-export const ACCENTS = ['ember', 'ocean', 'aqua', 'violet', 'forest', 'rose', 'amber', 'graphite'] as const;
+export const ACCENTS = [
+  'ember',
+  'ocean',
+  'aqua',
+  'violet',
+  'forest',
+  'rose',
+  'amber',
+  'graphite',
+  'custom',
+] as const;
+export const TEXT_SCALES = [0.9, 1, 1.1, 1.25] as const;
+export type TextScale = (typeof TEXT_SCALES)[number];
 export type Accent = (typeof ACCENTS)[number];
 // a canvas shown inside a page, width null fills the page
 export interface CanvasSize {
@@ -71,6 +83,10 @@ export interface Preferences {
   assistantWidth: number;
   expanded: string[];
   accent: Accent;
+  // a colour of your own for the accent, used while accent is custom
+  accentColor: string;
+  // how large the writing on pages is, 1 as designed
+  textScale: TextScale;
   // colourful headings, lists, icons and tags, off by default so the accent stays on buttons and links
   colorful: boolean;
   // what the home page calls you, empty for no name
@@ -137,6 +153,8 @@ const defaults: Preferences = {
   assistantWidth: 380,
   expanded: [],
   accent: 'ember',
+  accentColor: '#c0582f',
+  textScale: 1,
   colorful: false,
   name: '',
   canvasSizes: {},
@@ -210,6 +228,11 @@ function read(): Preferences {
       readingMode: parsed.readingMode === true,
       accent: ACCENTS.includes(parsed.accent as Accent) ? parsed.accent! : defaults.accent,
       colorful: parsed.colorful === true,
+      accentColor:
+        typeof parsed.accentColor === 'string' && /^#[0-9a-f]{6}$/i.test(parsed.accentColor)
+          ? parsed.accentColor
+          : defaults.accentColor,
+      textScale: TEXT_SCALES.find((scale) => scale === parsed.textScale) ?? 1,
       name: typeof parsed.name === 'string' ? parsed.name.trim().slice(0, 60) : '',
       sidebarWidth:
         typeof parsed.sidebarWidth === 'number'

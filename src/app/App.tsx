@@ -456,9 +456,14 @@ export function App() {
   const tabs = useTabs();
   useTheme(prefs.theme);
   useEffect(() => {
-    document.documentElement.dataset.accent = prefs.accent;
-    document.documentElement.dataset.colorful = prefs.colorful ? 'true' : 'false';
-  }, [prefs.accent, prefs.colorful]);
+    const root = document.documentElement;
+    root.dataset.accent = prefs.accent;
+    root.dataset.colorful = prefs.colorful ? 'true' : 'false';
+    root.style.setProperty('--text-scale', String(prefs.textScale));
+    // a custom accent sets the colour, the softer shades are mixed from it in color.css
+    if (prefs.accent === 'custom') root.style.setProperty('--custom-accent', prefs.accentColor);
+    else root.style.removeProperty('--custom-accent');
+  }, [prefs.accent, prefs.colorful, prefs.textScale, prefs.accentColor]);
   useGlobalShortcuts();
   useCopyToast();
   useEffect(() => applySpellcheck(prefs.spellcheck), [prefs.spellcheck]);

@@ -899,7 +899,7 @@ button.crumb:hover {
 }
 
 .pane[data-size='narrow'] .page-title {
-  font-size: 30px;
+  font-size: calc(30px * var(--text-scale, 1));
   margin-top: 16px;
 }
 
@@ -975,7 +975,7 @@ button.crumb:hover {
   margin: 24px 0 18px;
   background: transparent;
   font-family: var(--font-ui);
-  font-size: 40px;
+  font-size: calc(40px * var(--text-scale, 1));
   font-weight: 700;
   line-height: 1.18;
   letter-spacing: -0.022em;
@@ -994,7 +994,7 @@ button.crumb:hover {
 
 .page.font-mono .page-title {
   font-family: var(--font-mono);
-  font-size: 32px;
+  font-size: calc(32px * var(--text-scale, 1));
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -1934,7 +1934,7 @@ html.is-printing .window-controls {
   }
 
   .page-title {
-    font-size: 32px;
+    font-size: calc(32px * var(--text-scale, 1));
     margin-top: 12px;
   }
 
@@ -2164,7 +2164,7 @@ html.is-printing .window-controls {
   }
 
   .app .page-title {
-    font-size: 28px;
+    font-size: calc(28px * var(--text-scale, 1));
     margin-top: 8px;
   }
 

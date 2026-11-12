@@ -1,4 +1,17 @@
 /* accent colours, chosen in settings */
+:root[data-accent='custom'] {
+  --accent: var(--custom-accent, #c0582f);
+  --accent-strong: color-mix(in srgb, var(--accent) 82%, black);
+  --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --focus: color-mix(in srgb, var(--accent) 55%, transparent);
+  --selection: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+:root[data-accent='custom'][data-theme='dark'] {
+  --accent-strong: color-mix(in srgb, var(--accent) 80%, white);
+  --accent-soft: color-mix(in srgb, var(--accent) 16%, transparent);
+  --selection: color-mix(in srgb, var(--accent) 30%, transparent);
+}
 :root[data-accent='ember'] {
   --accent: #c0582f;
   --accent-strong: #a3451f;
@@ -188,10 +201,26 @@
   background: var(--swatch);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
-.accent-swatch[aria-checked='true'] {
+.accent-swatch[aria-checked='true'],
+.accent-swatch.accent-custom.is-picked {
   box-shadow:
     0 0 0 2px var(--bg),
     0 0 0 4px var(--swatch);
+}
+
+/* your own accent: its colour, with a rainbow edge so it reads as a picker */
+.accent-swatch.accent-custom {
+  position: relative;
+  cursor: pointer;
+  background:
+    radial-gradient(circle, var(--swatch) 55%, transparent 56%),
+    conic-gradient(#e5484d, #f5a524, #46a758, #0091ff, #8e4ec6, #e5484d);
+}
+.accent-swatch.accent-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 /* text colours and highlights, the same nine colours as select options */

@@ -37,7 +37,7 @@ import {
   setPreferences,
   usePreferences,
 } from '../platform/preferences';
-import type { SidebarItem, SidebarModule, WeekStart } from '../platform/preferences';
+import type { SidebarItem, SidebarModule, TextScale, WeekStart } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -262,6 +262,26 @@ function AppearanceSettings() {
           >
             {ACCENTS.map((accent) => {
               const label = t(`settings.appearance.accents.${accent}` as TranslationKey);
+              // a colour of your own, picked with the system's colour picker
+              if (accent === 'custom')
+                return (
+                  <label
+                    key={accent}
+                    className={`accent-swatch accent-custom${prefs.accent === 'custom' ? ' is-picked' : ''}`}
+                    title={label}
+                    style={{ '--swatch': prefs.accentColor } as React.CSSProperties}
+                  >
+                    <input
+                      type="color"
+                      aria-label={label}
+                      value={prefs.accentColor}
+                      onClick={() => setPreferences({ accent: 'custom' })}
+                      onChange={(event) =>
+                        setPreferences({ accent: 'custom', accentColor: event.target.value })
+                      }
+                    />
+                  </label>
+                );
               return (
                 <button
                   key={accent}
@@ -285,6 +305,19 @@ function AppearanceSettings() {
             label={t('settings.appearance.colourfulPages')}
             checked={prefs.colorful}
             onChange={(colorful) => setPreferences({ colorful })}
+          />
+        </SettingRow>
+        <SettingRow label={t('settings.appearance.textSize')}>
+          <Segmented<TextScale>
+            label={t('settings.appearance.textSize')}
+            value={prefs.textScale}
+            options={[
+              [0.9, t('settings.appearance.textSizes.small')],
+              [1, t('settings.appearance.textSizes.normal')],
+              [1.1, t('settings.appearance.textSizes.large')],
+              [1.25, t('settings.appearance.textSizes.larger')],
+            ]}
+            onChange={(textScale) => setPreferences({ textScale })}
           />
         </SettingRow>
       </SettingsGroup>
