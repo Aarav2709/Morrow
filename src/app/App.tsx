@@ -30,6 +30,7 @@ import { navigate, openPage, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
 import { getUi, setUi, toast, useUi } from './ui';
 import { loadCustomCss } from './customCss';
+import { loadTagColors } from './tagColors';
 import {
   activateTabAt,
   claimNavigation,
@@ -462,6 +463,8 @@ export function App() {
   useStartPage();
   useLifecycle();
   useHidePointerWhileTyping();
+  // tags keep the colours picked for them from the first page drawn
+  useEffect(() => void loadTagColors(), []);
 
   useEffect(() => {
     setUi({ mobileSidebar: false, sidebarPeek: false });

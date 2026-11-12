@@ -979,6 +979,9 @@ export const en = {
     removeTag: 'Remove tag {tag}',
     newTag: 'New tag',
     tagPlaceholder: 'tag',
+    colour: 'Colour of {tag}',
+    automaticColour: 'Automatic',
+    changeColour: 'Change colour',
   },
   review: {
     deckCardsOne: '{count} card',

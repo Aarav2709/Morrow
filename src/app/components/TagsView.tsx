@@ -1,4 +1,4 @@
-import { Hash, Plus, X } from 'lucide-react';
+import { Hash, Palette, Plus, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageMeta } from '../../core/model';
@@ -11,10 +11,14 @@ import { relativeTime, useShowMore } from './primitives';
 import { t } from '../i18n';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
+import { TagColorMenu } from './TagColorMenu';
+import { useTagColors } from '../tagColors';
 
 export function TagsView() {
   const state = useWorkspace();
   const tags = useMemo(() => collectTags(state), [state]);
+  useTagColors();
+  const [colouring, setColouring] = useState<{ tag: string; at: DOMRect } | null>(null);
   return (
     <div className="view">
       <TopBar>
@@ -39,12 +43,19 @@ export function TagsView() {
                     type="button"
                     className={`tag-chip large tag-${tagColor(entry.tag)}`}
                     onClick={() => navigate({ name: 'tag', tag: entry.tag })}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setColouring({ tag: entry.tag, at: new DOMRect(event.clientX, event.clientY, 0, 0) });
+                    }}
                   >
                     #{entry.tag} <span className="tag-count">{entry.pages.length}</span>
                   </button>
                 </li>
               ))}
             </ul>
+          )}
+          {colouring && (
+            <TagColorMenu name={colouring.tag} anchor={colouring.at} onClose={() => setColouring(null)} />
           )}
         </div>
       </div>
@@ -56,6 +67,8 @@ export function TagView({ tag }: { tag: string }) {
   const state = useWorkspace();
   const pages = useMemo(() => pagesWithTag(state, tag), [state, tag]);
   const { shown, more } = useShowMore(pages, 60);
+  useTagColors();
+  const [colouring, setColouring] = useState<HTMLElement | null>(null);
   return (
     <div className="view">
       <TopBar>
@@ -78,7 +91,19 @@ export function TagView({ tag }: { tag: string }) {
       <div className="page-scroll">
         <div className="collection">
           <header className="collection-header">
-            <h1>#{tag}</h1>
+            <div className="tag-heading">
+              <h1>
+                <span className={`tag-chip large tag-${tagColor(tag)}`}>#{tag}</span>
+              </h1>
+              <button
+                type="button"
+                className="button small"
+                onClick={(event) => setColouring(event.currentTarget)}
+              >
+                <Palette size={14} /> {t('tags.changeColour')}
+              </button>
+              {colouring && <TagColorMenu name={tag} anchor={colouring} onClose={() => setColouring(null)} />}
+            </div>
             <p className="muted">
               {pages.length === 1
                 ? t('tags.pageCountSingle')
@@ -127,6 +152,8 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [colouring, setColouring] = useState<{ tag: string; at: DOMRect } | null>(null);
+  useTagColors();
   if (page.tags.length === 0 && !editable) return null;
   const save = (tags: string[]) => setTags(page, tags);
   const add = () => {
@@ -141,7 +168,15 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
     <div className="page-tags" aria-label={t('tags.title')}>
       {page.tags.map((tag) => (
         <span key={tag} className={`tag-chip tag-${tagColor(tag)}`}>
-          <button type="button" className="tag-chip-name" onClick={() => navigate({ name: 'tag', tag })}>
+          <button
+            type="button"
+            className="tag-chip-name"
+            onClick={() => navigate({ name: 'tag', tag })}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              setColouring({ tag, at: new DOMRect(event.clientX, event.clientY, 0, 0) });
+            }}
+          >
             #{tag}
           </button>
           {editable && (
@@ -186,6 +221,9 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
             <Plus size={12} /> {page.tags.length ? t('page.tag') : t('page.addTag')}
           </button>
         ))}
+      {colouring && (
+        <TagColorMenu name={colouring.tag} anchor={colouring.at} onClose={() => setColouring(null)} />
+      )}
     </div>
   );
 }

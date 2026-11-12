@@ -57,6 +57,7 @@ import { COLORS } from '../../core/model';
 import type { ColorName } from '../../core/model';
 import { formatShortcut } from '../actions';
 import { Menu } from '../components/Menu';
+import { colourSwatch } from '../components/TagColorMenu';
 import { t } from '../i18n';
 import type { MenuEntry } from '../components/Menu';
 import { copyImageFile, downloadFile } from '../platform/attachments';
@@ -711,18 +712,6 @@ export function TableMenu({ editor }: { editor: Editor }) {
       </div>
     </BubbleMenu>
   );
-}
-
-// a square of a colour, shown beside its name in a menu
-const swatches = new Map<ColorName, LucideIcon>();
-function colourSwatch(color: ColorName): LucideIcon {
-  let icon = swatches.get(color);
-  if (!icon) {
-    const Swatch = () => <span className={`menu-swatch swatch-${color}`} />;
-    icon = Swatch as unknown as LucideIcon;
-    swatches.set(color, icon);
-  }
-  return icon;
 }
 
 // ids given to blocks this session by copying a link to them. they stay while the link is on its way to

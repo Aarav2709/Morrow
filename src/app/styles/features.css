@@ -555,6 +555,28 @@ textarea.text-input.small {
   max-height: 260px;
   overflow-y: auto;
 }
+/* an option with its colour button beside it, shown while the row is pointed at */
+.option-list li:has(> .option-colour) {
+  display: flex;
+  align-items: center;
+}
+.option-colour {
+  flex: none;
+  opacity: 0;
+}
+.option-list li:hover > .option-colour,
+.option-colour:focus-visible {
+  opacity: 1;
+}
+
+/* a tag's own page, its name with the button that changes its colour */
+.tag-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .option-row {
   display: flex;
   align-items: center;

@@ -791,7 +791,18 @@ export function Tags(open: (tag: string) => void) {
           key: tagKey,
           state: {
             init: (_config, state) => tagDecorations(state.doc),
-            apply: (tr, value) => (tr.docChanged ? updateTagDecorations(tr, value) : value),
+            apply: (tr, value, _old, next) =>
+              tr.getMeta(tagKey) === 'recolour'
+                ? tagDecorations(next.doc)
+                : tr.docChanged
+                  ? updateTagDecorations(tr, value)
+                  : value,
+          },
+          // a tag given another colour is drawn again in it
+          view: (view) => {
+            const recolour = () => view.dispatch(view.state.tr.setMeta(tagKey, 'recolour'));
+            window.addEventListener('morrow:tag-colors', recolour);
+            return { destroy: () => window.removeEventListener('morrow:tag-colors', recolour) };
           },
           props: {
             decorations: (state) => tagKey.getState(state),

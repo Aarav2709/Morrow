@@ -66,7 +66,18 @@ export function pagesWithTag(state: WorkspaceState, wanted: string): PageMeta[] 
 }
 
 // every tag keeps the same colour everywhere, picked from its name
+// colours picked for tags and options, by their name in small letters. the rest get one from their name
+let picked: Record<string, ColorName> = {};
+export function setPickedTagColors(colors: Record<string, ColorName>): void {
+  picked = colors;
+}
+
 export function tagColor(tag: string): ColorName {
+  return picked[tag.toLowerCase()] ?? autoTagColor(tag);
+}
+
+// the colour a tag has from its name alone
+export function autoTagColor(tag: string): ColorName {
   let hash = 0;
   for (const char of tag.toLowerCase().split('/')[0]!) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   // gray is left out so every tag gets a real colour

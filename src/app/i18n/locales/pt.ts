@@ -987,6 +987,9 @@ export const pt: TranslationSchema = {
     removeTag: 'Remover tag {tag}',
     newTag: 'Nova tag',
     tagPlaceholder: 'tag',
+    colour: 'Cor de {tag}',
+    automaticColour: 'Automática',
+    changeColour: 'Mudar a cor',
   },
   review: {
     deckCardsOne: '{count} cartão',
