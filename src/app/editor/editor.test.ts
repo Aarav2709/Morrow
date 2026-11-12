@@ -376,3 +376,28 @@ describe('finding words in a folded toggle', () => {
     expect(json(target).content![0]!.attrs?.open).toBe(true);
   });
 });
+
+describe('pasting a list', () => {
+  it('fills the empty line it is pasted on rather than going under it', () => {
+    const item = (text: string) => ({ type: 'listItem', content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [p('Above'), p(''), p('Below'), { type: 'bulletList', content: [item('One'), item('Two')] }],
+    });
+    const list = target.state.doc.child(3);
+    const at =
+      target.state.doc.child(0).nodeSize +
+      target.state.doc.child(1).nodeSize +
+      target.state.doc.child(2).nodeSize;
+    // copied from inside the list, the way selecting its items and copying gives it
+    const slice = target.state.doc.slice(at + 2, at + list.nodeSize - 2);
+    target.commands.setTextSelection(target.state.doc.child(0).nodeSize + 1);
+    const handled = target.view.someProp('handlePaste', (handler) =>
+      handler(target.view, new Event('paste') as ClipboardEvent, slice),
+    );
+    if (!handled) target.view.dispatch(target.state.tr.replaceSelection(slice));
+    const types = json(target).content!.map((node) => node.type);
+    expect(types.slice(0, 3)).toEqual(['paragraph', 'bulletList', 'paragraph']);
+    expect(json(target).content![1]!.content![0]!.content![0]!.content![0]!.text).toBe('One');
+  });
+});
