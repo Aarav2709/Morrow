@@ -218,8 +218,36 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
         hide();
       };
 
+      // the blocks a drag takes: the ones picked in the margin, or the lines the selected words run across,
+      // when the handle is on one of them, otherwise the block beside the handle
+      const dragRange = (pos: number): { from: number; to: number } | null => {
+        const { state } = view;
+        const picked = selectedBlocks(state);
+        if (picked && pos >= picked.from && pos < picked.to) return picked;
+        const { $from, $to, empty } = state.selection;
+        if (empty || $from.depth < 1 || $to.depth < 1 || $from.before(1) === $to.before(1)) return null;
+        const range = { from: $from.before(1), to: $to.after(1) };
+        return pos >= range.from && pos < range.to ? range : null;
+      };
+
       const onDragStart = (event: DragEvent) => {
         if (!current || !event.dataTransfer) return;
+        const range = dragRange(current.pos);
+        if (range) {
+          const slice = view.state.doc.slice(range.from, range.to);
+          const { dom, text } = view.serializeForClipboard(slice);
+          event.dataTransfer.clearData();
+          event.dataTransfer.setData('text/html', dom.innerHTML);
+          event.dataTransfer.setData('text/plain', text);
+          event.dataTransfer.effectAllowed = 'copyMove';
+          event.dataTransfer.setDragImage(current.element, 0, 0);
+          // a drop takes the blocks out of where they were, all of them rather than only the first
+          const from = range.from;
+          const to = range.to;
+          const move = { replace: (tr: Transaction) => tr.delete(from, to) } as unknown as NodeSelection;
+          view.dragging = { slice, move: true, node: move } as typeof view.dragging;
+          return;
+        }
         const selection = NodeSelection.create(view.state.doc, current.pos);
         view.dispatch(view.state.tr.setSelection(selection));
         const slice = selection.content();
