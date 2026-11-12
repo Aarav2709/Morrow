@@ -1,6 +1,8 @@
 // reminders set on a date in a page. this computer shows them when they are due, and any that came due
 // while morrow was closed as soon as it opens
+import { inlineText } from '../core/doc';
 import { displayTitle } from '../core/model';
+import type { DocNode } from '../core/model';
 import { parseDateKey } from '../core/daily';
 import { desktop } from './platform/desktop';
 import { newId } from './platform/files';
@@ -32,6 +34,32 @@ export function removeReminders(pageId: string, date: string): void {
   });
 }
 
+// the words written before the date in the page, "Food for cats" in "Food for cats @Tuesday", so the
+// notification says what the reminder is about. null when the date stands alone
+export function reminderText(doc: DocNode | undefined, date: string): string | null {
+  let found: string | null = null;
+  const visit = (node: DocNode): void => {
+    if (found !== null) return;
+    const children = node.content ?? [];
+    const at = children.findIndex((child) => child.type === 'dateMention' && child.attrs?.date === date);
+    if (at >= 0) {
+      const before = children
+        .slice(0, at)
+        .map((child) => (child.type === 'hardBreak' ? '\n' : inlineText(child)))
+        .join('')
+        .split('\n')
+        .pop()!
+        .replace(/[\s,:;–—-]+$/, '')
+        .trim();
+      found = before.slice(0, 120);
+      return;
+    }
+    children.forEach(visit);
+  };
+  if (doc) visit(doc);
+  return found || null;
+}
+
 function remind(now = Date.now()): void {
   const { reminders } = getPreferences();
   const due = reminders.filter((item) => item.at <= now);
@@ -46,7 +74,8 @@ function remind(now = Date.now()): void {
     const when = day
       ? day.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })
       : item.date;
-    desktop?.notify?.(displayTitle(page), t('reminders.body', { date: when }), page.id);
+    const text = reminderText(getState().docs[page.id], item.date);
+    desktop?.notify?.(displayTitle(page), t('reminders.body', { date: text ?? when }), page.id);
   }
 }
 
