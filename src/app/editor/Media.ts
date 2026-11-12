@@ -426,6 +426,17 @@ function bytesToBase64(data: ArrayBuffer): string {
   return btoa(binary);
 }
 
+async function pictureSize(blob: Blob): Promise<{ width: number; height: number } | null> {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const size = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return size.width && size.height ? size : null;
+  } catch {
+    return null;
+  }
+}
+
 // the browser copies pictures as references only morrow understands. once the copy is done the clipboard is
 // written again with the pictures inside it, so pasting into another app brings them along with the words
 async function copyWithImages(view: EditorView, slice: Slice): Promise<void> {
@@ -439,7 +450,18 @@ async function copyWithImages(view: EditorView, slice: Slice): Promise<void> {
   const { dom: container, text } = view.serializeForClipboard(slice);
   for (const img of container.querySelectorAll<HTMLImageElement>('img[data-file-id]')) {
     const file = await getSession().getFile(img.dataset.fileId ?? '');
-    if (file) img.src = `data:${file.meta.type};base64,${bytesToBase64(file.data)}`;
+    if (!file) continue;
+    img.src = `data:${file.meta.type};base64,${bytesToBase64(file.data)}`;
+    // a size in the html of its own, apps that read only the width drew the picture as a thin line
+    const size = await pictureSize(new Blob([file.data], { type: file.meta.type }));
+    if (size) {
+      const width = Math.min(Number(img.getAttribute('width')) || size.width, size.width, 720);
+      const height = Math.round((size.height * width) / size.width);
+      img.setAttribute('width', String(width));
+      img.setAttribute('height', String(height));
+      img.style.width = `${width}px`;
+      img.style.height = `${height}px`;
+    }
   }
   if (desktop?.copyRich) await desktop.copyRich(text, container.innerHTML);
   else
@@ -469,6 +491,29 @@ function copyBlocks(view: EditorView, event: ClipboardEvent, cut: boolean): bool
   return range !== null;
 }
 
+// a picture or video copied in the file manager reaches the page on windows as its name alone. its name is
+// held back while morrow asks the system for the file, and goes in as text if there is none
+const MEDIA_NAME =
+  /^[^\\/:*?"<>|\n]+\.(png|jpe?g|gif|webp|bmp|svg|avif|mp3|wav|ogg|m4a|flac|mp4|webm|mov|m4v|pdf)$/i;
+function pasteCopiedFiles(editor: Editor, event: ClipboardEvent): boolean {
+  const data = event.clipboardData;
+  const text = data?.getData('text/plain').trim() ?? '';
+  const names = text.split(/\r?\n/).filter(Boolean);
+  if (!desktop?.clipboardFiles || data?.getData('text/html') || !names.length) return false;
+  if (!names.every((name) => MEDIA_NAME.test(name))) return false;
+  event.preventDefault();
+  const at = editor.state.selection.from;
+  void desktop
+    .clipboardFiles()
+    .catch(() => [])
+    .then((copied) => {
+      if (editor.isDestroyed) return;
+      if (copied.length) void insertFiles(editor, copied, at);
+      else editor.chain().focus().insertContent(text).run();
+    });
+  return true;
+}
+
 export const FileDrop = Extension.create({
   name: 'fileDrop',
   addProseMirrorPlugins() {
@@ -489,7 +534,7 @@ export const FileDrop = Extension.create({
           },
           handlePaste(_view: EditorView, event: ClipboardEvent) {
             const files = filesFrom(event.clipboardData);
-            if (files.length === 0) return false;
+            if (files.length === 0) return pasteCopiedFiles(editor, event);
             // words and pictures copied together come as html, files alongside it are only copies of the pictures
             const html = event.clipboardData?.getData('text/html') ?? '';
             if (html && new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim())
