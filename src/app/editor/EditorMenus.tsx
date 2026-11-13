@@ -566,8 +566,12 @@ function selectionBlocks(editor: Editor): Omit<BlockMenuRequest, 'rect'> | null 
   // words across several items or lines turn them all
   const range = selectedTextBlocks(editor.state);
   if (range) return { pos: range.from, range };
-  for (let depth = $from.depth; depth > 0; depth--)
+  // the innermost item of a list, or block directly in a column, a toggle or the page
+  for (let depth = $from.depth; depth > 0; depth--) {
     if (['listItem', 'taskItem'].includes($from.node(depth).type.name)) return { pos: $from.before(depth) };
+    if (['doc', 'column', 'detailsContent'].includes($from.node(depth - 1).type.name))
+      return { pos: $from.before(depth) };
+  }
   return { pos: $from.before(1) };
 }
 

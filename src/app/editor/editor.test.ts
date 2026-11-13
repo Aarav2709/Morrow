@@ -460,3 +460,44 @@ describe('turning several lines at once', () => {
     expect(doc.content![0]!.content).toHaveLength(3);
   });
 });
+
+describe('blocks inside columns', () => {
+  it('turn on their own, inside a toggle in a column too', () => {
+    const item = (text: string) => ({ type: 'listItem', content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [
+        {
+          type: 'columns',
+          content: [
+            {
+              type: 'column',
+              content: [
+                {
+                  type: 'details',
+                  attrs: { open: true },
+                  content: [
+                    { type: 'detailsSummary', content: [{ type: 'text', text: 'Title' }] },
+                    {
+                      type: 'detailsContent',
+                      content: [{ type: 'bulletList', content: [item('Buy milk')] }],
+                    },
+                  ],
+                },
+              ],
+            },
+            { type: 'column', content: [p('Right')] },
+          ],
+        },
+      ],
+    });
+    let at = 0;
+    target.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'listItem') at = pos;
+    });
+    turnInto(target, at, { kind: 'taskList' });
+    const toggle = json(target).content![0]!.content![0]!.content![0]!;
+    expect(toggle.type).toBe('details');
+    expect(toggle.content![1]!.content![0]!.type).toBe('taskList');
+  });
+});

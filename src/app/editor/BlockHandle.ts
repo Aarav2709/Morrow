@@ -92,9 +92,22 @@ function contains(element: Element, y: number): boolean {
   return y >= rect.top && y < rect.bottom;
 }
 
-// every item of a list and every line inside an open toggle is a block of its own, the way notion has it,
-// so the handle picks the innermost one under the pointer rather than the whole list or toggle
-function innerBlock(element: HTMLElement, y: number): HTMLElement {
+// every item of a list, every line inside an open toggle and every block in a column is a block of its own,
+// the way notion has it, so the handle picks the innermost one under the pointer rather than the whole
+// list, toggle or row of columns
+function innerBlock(element: HTMLElement, y: number, x: number): HTMLElement {
+  if (element.hasAttribute('data-columns')) {
+    const column = Array.from(element.children).find((child): child is HTMLElement => {
+      if (!(child instanceof HTMLElement) || !child.hasAttribute('data-column')) return false;
+      const rect = child.getBoundingClientRect();
+      return x >= rect.left && x <= rect.right;
+    });
+    if (!column) return element;
+    const child = Array.from(column.children).find(
+      (candidate): candidate is HTMLElement => candidate instanceof HTMLElement && contains(candidate, y),
+    );
+    return child ? innerBlock(child, y, x) : element;
+  }
   if (element.tagName === 'UL' || element.tagName === 'OL') {
     const item = Array.from(element.children).find(
       (child): child is HTMLElement => child.tagName === 'LI' && contains(child, y),
@@ -103,7 +116,7 @@ function innerBlock(element: HTMLElement, y: number): HTMLElement {
     const nested = Array.from(item.querySelectorAll<HTMLElement>('ul, ol')).find(
       (list) => list.parentElement?.closest('li') === item && contains(list, y),
     );
-    return nested ? innerBlock(nested, y) : item;
+    return nested ? innerBlock(nested, y, x) : item;
   }
   if (element.dataset.type === 'details') {
     const content = Array.from(element.querySelectorAll<HTMLElement>('[data-type="detailsContent"]')).find(
@@ -113,7 +126,7 @@ function innerBlock(element: HTMLElement, y: number): HTMLElement {
     const child = Array.from(content.children).find(
       (candidate): candidate is HTMLElement => candidate instanceof HTMLElement && contains(candidate, y),
     );
-    return child ? innerBlock(child, y) : element;
+    return child ? innerBlock(child, y, x) : element;
   }
   return element;
 }
@@ -195,7 +208,7 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
           return event.clientY >= rect.top - 4 && event.clientY <= rect.bottom + 4;
         });
         if (!top) return;
-        let target = innerBlock(top, event.clientY);
+        let target = innerBlock(top, event.clientY, event.clientX);
         let pos = blockPosition(view, target, target === top);
         if (pos === null) {
           target = top;
