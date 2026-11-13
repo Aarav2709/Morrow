@@ -11,7 +11,7 @@ import { registerMcpTools } from './tools';
 import { registerMcpResources } from './resources';
 import { registerMcpPrompts } from './prompts';
 
-const VERSION = '1.4.0';
+const VERSION = '2.1.0';
 
 function printHelp(): void {
   process.stderr.write(`

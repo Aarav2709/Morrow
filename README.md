@@ -116,7 +116,7 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
 
 ## Status
 
-Version **2.0.0**. Morrow is now built with [Tauri](https://tauri.app) and Rust instead of
+Version **2.1.0**. Morrow is now built with [Tauri](https://tauri.app) and Rust instead of
 Electron: it uses the web view your system already has, so it is a fraction of the size, starts
 quicker and uses far less memory. Pages are files in a folder you choose. Releases are built for
 Windows (x64 and ARM64), macOS (Apple silicon and Intel) and Linux (x64).
