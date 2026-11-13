@@ -8,6 +8,7 @@ import {
   SlidersHorizontal,
   X,
   GripVertical,
+  Trash2,
   ArrowDown,
   ArrowUp,
 } from 'lucide-react';
@@ -52,6 +53,13 @@ import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } fr
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
 import { chooseVaultFolder, switchVault } from '../vaults';
+import {
+  addSection,
+  moveSection,
+  removeSection,
+  updateSection,
+  useSidebarSections,
+} from '../sidebarSections';
 import { checkForUpdate, installUpdate, useUpdateState } from '../updates';
 import { getSession } from '../workspace';
 import { Dialog, Logo, Switch } from './primitives';
@@ -423,6 +431,8 @@ function SidebarSettings() {
         return t('dialogs.templates');
       case 'files':
         return t('files.title');
+      case 'custom':
+        return t('sidebar.customSections');
       case 'pages':
         return t('sidebar.pagesHeading');
       case 'settings':
@@ -515,7 +525,10 @@ function SidebarSettings() {
                   <span className="settings-row-label sidebar-layout-label">{label(item)}</span>
                   <Switch
                     label={t('settings.sidebar.show', { name: label(item) })}
-                    checked={fixed || (module !== null && !prefs.hiddenModules.includes(module))}
+                    // your own sections are each shown or hidden below
+                    checked={
+                      fixed || item === 'custom' || (module !== null && !prefs.hiddenModules.includes(module))
+                    }
                     disabled={fixed || module === null}
                     onChange={(show) =>
                       module &&
@@ -531,8 +544,80 @@ function SidebarSettings() {
             })}
         </SettingsGroup>
       ))}
+      <CustomSections />
       <p className="muted small settings-note">{t('settings.sidebar.conditionalHelp')}</p>
     </>
+  );
+}
+
+// sections of your own in the sidebar, named, shown or hidden and put in order here, filled from a page's
+// menu with Add to a sidebar section
+function CustomSections() {
+  const { t } = useTranslation();
+  const sections = useSidebarSections();
+  return (
+    <SettingsGroup title={t('sidebar.customSections')} help={t('settings.sidebar.customHelp')}>
+      {sections.map((section, index) => (
+        <div key={section.id} className="settings-row sidebar-layout-row">
+          <input
+            className="text-input small settings-input sidebar-layout-label"
+            aria-label={t('settings.sidebar.sectionName')}
+            defaultValue={section.name}
+            onBlur={(event) => {
+              const name = event.target.value.trim();
+              if (name && name !== section.name) void updateSection(section.id, { name });
+            }}
+            onKeyDown={(event) => event.key === 'Enter' && event.currentTarget.blur()}
+          />
+          <span className="muted small">
+            {t('settings.sidebar.sectionPages', { count: section.pages.length })}
+          </span>
+          <button
+            type="button"
+            className="icon-button small"
+            aria-label={t('editor.moveUp')}
+            title={t('editor.moveUp')}
+            disabled={index === 0}
+            onClick={() => void moveSection(section.id, -1)}
+          >
+            <ArrowUp size={14} />
+          </button>
+          <button
+            type="button"
+            className="icon-button small"
+            aria-label={t('editor.moveDown')}
+            title={t('editor.moveDown')}
+            disabled={index === sections.length - 1}
+            onClick={() => void moveSection(section.id, 1)}
+          >
+            <ArrowDown size={14} />
+          </button>
+          <Switch
+            label={t('settings.sidebar.show', { name: section.name })}
+            checked={!section.hidden}
+            onChange={(show) => void updateSection(section.id, { hidden: !show })}
+          />
+          <button
+            type="button"
+            className="icon-button small"
+            aria-label={t('settings.sidebar.deleteSection', { name: section.name })}
+            title={t('settings.sidebar.deleteSection', { name: section.name })}
+            onClick={() => void removeSection(section.id)}
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      ))}
+      <SettingRow label={t('settings.sidebar.addSection')} help={t('settings.sidebar.addSectionHelp')}>
+        <button
+          type="button"
+          className="button small"
+          onClick={() => void addSection(t('pageMenu.newSectionName'))}
+        >
+          {t('pageMenu.newSection')}
+        </button>
+      </SettingRow>
+    </SettingsGroup>
   );
 }
 

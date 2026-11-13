@@ -21,6 +21,8 @@ export const en = {
     remove: 'Remove',
   },
   sidebar: {
+    removeFromSection: 'Take out of {name}',
+    customSections: 'Your sections',
     daily: 'Daily notes',
     sidebar: 'Sidebar',
     morrowHome: 'Morrow home',
@@ -169,6 +171,13 @@ export const en = {
       moveHint: 'Drag to reorder, or use the arrow keys',
       conditionalHelp:
         'Home, Pages and Settings always stay. Favourites, Templates, Archive and Trash only show once something is in them.',
+      customHelp:
+        'Sections of your own, shown like Favourites. Put a page in one from its menu, Add to a sidebar section.',
+      sectionName: 'Section name',
+      sectionPages: '{count} pages',
+      deleteSection: 'Delete section {name}',
+      addSection: 'Add a section',
+      addSectionHelp: 'The pages stay where they are, a section only lists them.',
       peek: 'Show when pointing at the left edge',
       peekHelp:
         'With the sidebar hidden, it slides in while the pointer rests at the left edge of the window.',
@@ -395,6 +404,9 @@ export const en = {
     },
   },
   pageMenu: {
+    addToSection: 'Add to a sidebar section',
+    newSection: 'New section',
+    newSectionName: 'New section',
     fullWidth: 'Full width',
     showOutline: 'Show On this page',
     width: 'Page width',

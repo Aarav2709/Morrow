@@ -27,6 +27,7 @@ import {
   Table2,
   Trash2,
   Paperclip,
+  X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Fragment, memo, useDeferredValue, useMemo, useRef, useState } from 'react';
@@ -46,6 +47,7 @@ import {
 import { collectCards, dueCards } from '../../core/flashcards';
 import { collectTags } from '../../core/tags';
 import { findTemplatesPage, listTemplates } from '../../core/templates';
+import { togglePageInSection, useSidebarSections } from '../sidebarSections';
 import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { t, useTranslation } from '../i18n';
@@ -162,6 +164,7 @@ export function Sidebar() {
     () => live.filter((page) => page.favorite).sort((a, b) => displayTitle(a).localeCompare(displayTitle(b))),
     [live],
   );
+  const customSections = useSidebarSections();
   // templates have a section of their own rather than sitting among the pages
   const templatesPage = useMemo(() => findTemplatesPage(state), [state]);
   const templates = useMemo(() => listTemplates(state), [state]);
@@ -325,6 +328,50 @@ export function Sidebar() {
         </ul>
       </section>
     ),
+    // sections of your own, each a list of pages like favourites, shown once a page is in one
+    custom: customSections
+      .filter((section) => !section.hidden)
+      .map((section) => {
+        const pages = section.pages
+          .map((id) => state.pages[id])
+          .filter((page): page is PageMeta => !!page && page.trashedAt === null);
+        if (pages.length === 0) return null;
+        return (
+          <section key={section.id} className="sidebar-section" aria-label={section.name}>
+            <h2 className="sidebar-heading">{section.name}</h2>
+            <ul className="flat-list">
+              {pages.map((page) => (
+                <li key={page.id}>
+                  <button
+                    type="button"
+                    className={`tree-row flat${activeId === page.id ? ' is-active' : ''}`}
+                    data-page-id={page.id}
+                    onClick={go(() => openPage(page.id))}
+                  >
+                    <span className="tree-icon">
+                      <PageIcon page={page} />
+                    </span>
+                    <span className="tree-title">{displayTitle(page)}</span>
+                    <span
+                      role="button"
+                      tabIndex={-1}
+                      className="favorite-mark"
+                      title={t('sidebar.removeFromSection', { name: section.name })}
+                      aria-label={t('sidebar.removeFromSection', { name: section.name })}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void togglePageInSection(section.id, page.id);
+                      }}
+                    >
+                      <X size={12} />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      }),
     templates: shown('templates') && templatesPage && (
       <section className="sidebar-section" aria-label={t('dialogs.templates')}>
         <div className="sidebar-heading-row">

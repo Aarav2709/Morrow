@@ -23,6 +23,8 @@ export const es: TranslationSchema = {
     remove: 'Eliminar',
   },
   sidebar: {
+    removeFromSection: 'Quitar de {name}',
+    customSections: 'Tus secciones',
     daily: 'Notas diarias',
     sidebar: 'Barra lateral',
     morrowHome: 'Inicio de Morrow',
@@ -173,6 +175,13 @@ export const es: TranslationSchema = {
       moveHint: 'Arrastra para reordenar, o usa las flechas',
       conditionalHelp:
         'Inicio, Páginas y Ajustes siempre están. Favoritos, Plantillas, Archivo y Papelera solo aparecen cuando tienen algo.',
+      customHelp:
+        'Secciones propias, como Favoritos. Pon una página en una desde su menú, Añadir a una sección de la barra lateral.',
+      sectionName: 'Nombre de la sección',
+      sectionPages: '{count} páginas',
+      deleteSection: 'Eliminar la sección {name}',
+      addSection: 'Añadir una sección',
+      addSectionHelp: 'Las páginas se quedan donde están, una sección solo las lista.',
       peek: 'Mostrar al señalar el borde izquierdo',
       peekHelp:
         'Con la barra lateral oculta, aparece mientras el puntero está en el borde izquierdo de la ventana.',
@@ -399,6 +408,9 @@ export const es: TranslationSchema = {
     },
   },
   pageMenu: {
+    addToSection: 'Añadir a una sección de la barra lateral',
+    newSection: 'Nueva sección',
+    newSectionName: 'Nueva sección',
     fullWidth: 'Ancho completo',
     showOutline: 'Mostrar En esta página',
     width: 'Ancho de página',

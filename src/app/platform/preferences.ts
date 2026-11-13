@@ -40,7 +40,7 @@ export type SidebarModule = (typeof SIDEBAR_MODULES)[number];
 // that scroll, and the links at the bottom. home, pages and settings are always there
 export const SIDEBAR_GROUPS = {
   top: ['search', 'home', 'daily', 'tasks', 'review', 'tags', 'graph', 'files', 'assistant'],
-  sections: ['favorites', 'templates', 'pages'],
+  sections: ['favorites', 'custom', 'templates', 'pages'],
   bottom: ['import', 'archive', 'trash', 'settings'],
 } as const;
 export type SidebarItem =
