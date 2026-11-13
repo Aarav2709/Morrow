@@ -433,6 +433,19 @@ async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> O
         .map(|path| path.to_string_lossy().into_owned())
 }
 
+// what another app shared with morrow on android, nothing anywhere else
+#[cfg(target_os = "android")]
+#[tauri::command]
+async fn take_shared<R: Runtime>(app: AppHandle<R>) -> Option<String> {
+    device::take_shared(&app).await
+}
+
+#[cfg(not(target_os = "android"))]
+#[tauri::command]
+fn take_shared() -> Option<String> {
+    None
+}
+
 // on android a folder that is already on the phone can be opened, once morrow may read files outside its own
 // storage. the person is asked for that here, the first time a folder is opened
 #[cfg(target_os = "android")]
@@ -1019,6 +1032,7 @@ pub fn run() {
             vault_select,
             vault_forget,
             vault_reorder,
+            take_shared,
             vault_open,
             vault_close,
             vault_scan,

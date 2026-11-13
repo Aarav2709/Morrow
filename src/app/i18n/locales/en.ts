@@ -1120,6 +1120,7 @@ export const en = {
     },
   },
   toasts: {
+    sharedSaved: "Saved to today's note.",
     legacyWriteFailed: 'The pages could not be written to the folder.',
     importTooLarge: 'Files larger than 500 MB are not imported.',
     noMarkdownFound: 'No Markdown files were found.',

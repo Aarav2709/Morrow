@@ -15,7 +15,7 @@ import { HomeView } from './components/Home';
 import { ArchiveView, TasksView, TrashView } from './components/Views';
 import { FilesView } from './components/FilesView';
 import { commitEditors, ownsUndo, undoRedo } from './editor/commits';
-import { ensureToday, writeAutoBackup } from './operations';
+import { captureToToday, ensureToday, writeAutoBackup } from './operations';
 import { dateKey, findDailyNote } from '../core/daily';
 import { startAutoSync, syncWith } from './sync';
 import { startUpdateChecks } from './updates';
@@ -144,6 +144,27 @@ function useHidePointerWhileTyping() {
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('pointermove', onMove, true);
       window.removeEventListener('pointerdown', onMove, true);
+    };
+  }, []);
+}
+
+// links and words shared from another app on a phone go into today's note, when morrow opens from the share
+// sheet or comes back to the front
+function useSharedText() {
+  useEffect(() => {
+    if (!desktop?.takeShared) return;
+    const take = () => {
+      if (document.visibilityState !== 'visible') return;
+      void desktop?.takeShared?.().then((text) => {
+        if (text && captureToToday(text)) toast(t('toasts.sharedSaved'), { durationMs: 3000 });
+      });
+    };
+    take();
+    document.addEventListener('visibilitychange', take);
+    window.addEventListener('focus', take);
+    return () => {
+      document.removeEventListener('visibilitychange', take);
+      window.removeEventListener('focus', take);
     };
   }, []);
 }
@@ -471,6 +492,7 @@ export function App() {
   useStartPage();
   useLifecycle();
   useHidePointerWhileTyping();
+  useSharedText();
   // the first time morrow opens on this computer it says hello and asks how it should look
   useEffect(() => {
     if (!getPreferences().onboarded) openDialog({ kind: 'welcome' });

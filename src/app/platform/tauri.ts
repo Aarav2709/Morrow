@@ -156,6 +156,7 @@ export function tauriBridge(): DesktopBridge | null {
       : {}),
     copyText: (text) => invoke<boolean>('copy_text', { text }),
     copyRich: (text, html) => invoke<boolean>('copy_rich', { text, html }),
+    takeShared: () => invoke<string | null>('take_shared').catch(() => null),
     async clipboardFiles() {
       const paths = await invoke<string[]>('clipboard_files').catch(() => []);
       const files: File[] = [];

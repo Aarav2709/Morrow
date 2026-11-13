@@ -125,6 +125,15 @@ class DevicePlugin(private val activity: Activity) : Plugin(activity) {
     }
   }
 
+  // what was shared with morrow from another app since the page last asked, once
+  @Command
+  fun takeShared(invoke: Invoke) {
+    val result = JSObject()
+    result.put("text", MainActivity.shared)
+    MainActivity.shared = null
+    invoke.resolve(result)
+  }
+
   @Command
   fun deviceName(invoke: Invoke) {
     val result = JSObject()

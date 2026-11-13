@@ -204,6 +204,8 @@ export interface DesktopBridge {
   copyRich?(text: string, html: string): Promise<boolean>;
   // pictures, sound and video copied in the file manager, which the web view only names
   clipboardFiles?(): Promise<File[]>;
+  // a link or words another app shared with morrow on a phone, once
+  takeShared?(): Promise<string | null>;
   setSpellcheck?(enabled: boolean): void;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
   // a file made in the app, saved where the person picks. the webview has no downloads of its own

@@ -69,6 +69,17 @@ pub async fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String
     Ok(picked.path)
 }
 
+#[derive(Deserialize)]
+struct Shared {
+    text: Option<String>,
+}
+
+// a link or words another app shared with morrow, once
+pub async fn take_shared<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+    let shared: Shared = call(app, "takeShared", json!({})).await.ok()?;
+    shared.text.filter(|text| !text.trim().is_empty())
+}
+
 pub async fn name<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     let named: Named = call(app, "deviceName", json!({})).await.ok()?;
     named.name.filter(|name| !name.trim().is_empty())

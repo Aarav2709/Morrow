@@ -1129,6 +1129,7 @@ export const pt: TranslationSchema = {
     },
   },
   toasts: {
+    sharedSaved: 'Salvo na nota de hoje.',
     legacyWriteFailed: 'Não foi possível gravar as páginas na pasta.',
     importTooLarge: 'Arquivos maiores que 500 MB não são importados.',
     noMarkdownFound: 'Nenhum arquivo Markdown foi encontrado.',
