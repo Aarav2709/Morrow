@@ -17,6 +17,8 @@ export interface DesktopVaultApi {
   createDefault(): Promise<string>;
   select(dir: string): Promise<{ ok: boolean; error?: string }>;
   forget(dir: string): Promise<void>;
+  // the vaults known to morrow in the order to list them
+  reorder?(order: string[]): Promise<void>;
   open(): Promise<{ ok: boolean; root: string | null }>;
   close(): Promise<void>;
   scan(): Promise<unknown>;

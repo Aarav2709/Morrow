@@ -229,6 +229,15 @@ export const pt: TranslationSchema = {
       customCssFailed: 'Não foi possível salvar o CSS.',
     },
     vault: {
+      knownTitle: 'Seus cofres',
+      knownHelp:
+        'Os cofres que o Morrow conhece neste computador, na ordem do menu de cofres. Esquecer um só o tira desta lista, a pasta e os arquivos ficam onde estão.',
+      open: 'Aberto',
+      missing: 'Pasta não encontrada',
+      forget: 'Esquecer',
+      forgetTitle: 'Esquecer “{name}”?',
+      forgetBody:
+        'Ele sai desta lista. A pasta e todos os arquivos ficam no seu computador, e você pode abri-lo de novo quando quiser.',
       groupHelp:
         'Cada página é um arquivo Markdown nesta pasta. Abra em qualquer app ou faça backup como preferir.',
       currentFolder: 'Pasta do cofre',

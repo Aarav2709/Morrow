@@ -477,6 +477,11 @@ async fn vault_forget(dir: String) -> Res<()> {
 }
 
 #[tauri::command]
+async fn vault_reorder(order: Vec<String>) -> Res<()> {
+    blocking(move || vault::reorder(&order)).await?
+}
+
+#[tauri::command]
 async fn vault_open<R: Runtime>(app: AppHandle<R>) -> Res<Value> {
     blocking(move || {
         let state = vault::state();
@@ -1013,6 +1018,7 @@ pub fn run() {
             vault_create_default,
             vault_select,
             vault_forget,
+            vault_reorder,
             vault_open,
             vault_close,
             vault_scan,

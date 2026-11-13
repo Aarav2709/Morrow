@@ -136,6 +136,18 @@ pub fn select(dir: &str) -> Value {
     }
 }
 
+// the vaults in the order they were dragged into in settings, any left out keep their place after them
+pub fn reorder(order: &[String]) -> Result<()> {
+    let mut list = read_list();
+    list.recent.sort_by_key(|(path, _)| {
+        order
+            .iter()
+            .position(|item| item == path)
+            .unwrap_or(usize::MAX)
+    });
+    write_list(&list)
+}
+
 pub fn forget(dir: &str) -> Result<()> {
     let mut list = read_list();
     list.recent.retain(|(path, _)| path != dir);

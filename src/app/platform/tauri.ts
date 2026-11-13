@@ -215,6 +215,7 @@ export function tauriBridge(): DesktopBridge | null {
       createDefault: () => invoke('vault_create_default'),
       select: (dir) => invoke('vault_select', { dir }),
       forget: (dir) => invoke('vault_forget', { dir }),
+      reorder: (order) => invoke('vault_reorder', { order }),
       open: () => invoke('vault_open'),
       close: () => invoke('vault_close'),
       scan: () => invoke('vault_scan'),

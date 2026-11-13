@@ -229,6 +229,15 @@ export const es: TranslationSchema = {
       customCssFailed: 'No se pudo guardar el CSS.',
     },
     vault: {
+      knownTitle: 'Tus bóvedas',
+      knownHelp:
+        'Las bóvedas que Morrow conoce en este ordenador, en el orden del menú de bóvedas. Olvidar una solo la quita de esta lista, su carpeta y sus archivos se quedan donde están.',
+      open: 'Abierta',
+      missing: 'Carpeta no encontrada',
+      forget: 'Olvidar',
+      forgetTitle: '¿Olvidar «{name}»?',
+      forgetBody:
+        'Sale de esta lista. Su carpeta y todos sus archivos se quedan en tu ordenador, y puedes volver a abrirla cuando quieras.',
       groupHelp:
         'Cada página es un archivo Markdown en esta carpeta. Ábrela en cualquier app o haz copias de seguridad como quieras.',
       currentFolder: 'Carpeta de la bóveda',

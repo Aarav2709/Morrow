@@ -2800,3 +2800,28 @@ td:hover .prop-empty,
   align-items: center;
   gap: 6px;
 }
+
+/* a vault in the list of those morrow knows */
+.known-vault .settings-row-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.known-vault .badge {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.known-vault .badge.is-muted {
+  background: var(--hover);
+  color: var(--text-muted);
+}
+.known-vault-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}

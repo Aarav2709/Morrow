@@ -225,6 +225,15 @@ export const en = {
       customCssFailed: 'Could not save the CSS.',
     },
     vault: {
+      knownTitle: 'Your vaults',
+      knownHelp:
+        'The vaults Morrow knows on this computer, in the order the vault menu lists them. Forgetting one only takes it off this list, its folder and files stay where they are.',
+      open: 'Open',
+      missing: 'Folder not found',
+      forget: 'Forget',
+      forgetTitle: 'Forget “{name}”?',
+      forgetBody:
+        'It leaves this list. Its folder and every file in it stay on your computer, and you can open it again any time.',
       groupHelp:
         'Every page is a Markdown file in this folder. Open it in any app or back it up however you like.',
       currentFolder: 'Vault folder',

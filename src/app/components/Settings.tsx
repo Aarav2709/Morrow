@@ -8,6 +8,8 @@ import {
   SlidersHorizontal,
   X,
   GripVertical,
+  ArrowDown,
+  ArrowUp,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -39,9 +41,9 @@ import {
 } from '../platform/preferences';
 import type { SidebarItem, SidebarModule, TextScale, WeekStart } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
-import { closeDialog, openDialog, toast } from '../ui';
+import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
-import { chooseVaultFolder } from '../vaults';
+import { chooseVaultFolder, switchVault } from '../vaults';
 import { checkForUpdate, installUpdate, useUpdateState } from '../updates';
 import { getSession } from '../workspace';
 import { Dialog, Logo, Switch } from './primitives';
@@ -555,6 +557,85 @@ function CustomCss() {
   );
 }
 
+// every vault morrow knows on this computer, in the order the vault menu lists them. one can be moved up or
+// down, or forgotten, which takes it off the list and leaves its folder and files where they are
+function KnownVaults() {
+  const { t } = useTranslation();
+  const current = getSession().location;
+  const [vaults, setVaults] = useState<Array<{ path: string; name: string; exists: boolean }>>([]);
+  const refresh = () => void desktop?.vault?.state().then((state) => setVaults(state.recent));
+  useEffect(refresh, []);
+  const move = (index: number, by: -1 | 1) => {
+    const next = [...vaults];
+    const [item] = next.splice(index, 1);
+    next.splice(index + by, 0, item!);
+    setVaults(next);
+    void desktop?.vault?.reorder?.(next.map((vault) => vault.path));
+  };
+  const forget = (path: string, name: string) =>
+    confirmAction({
+      title: t('settings.vault.forgetTitle', { name }),
+      body: t('settings.vault.forgetBody'),
+      confirmLabel: t('settings.vault.forget'),
+      danger: true,
+      onConfirm: () => {
+        void desktop?.vault?.forget(path).then(async () => {
+          if (path !== current) return;
+          // the open vault goes, morrow moves to the next one it knows, or asks for a folder
+          const other = vaults.find((vault) => vault.path !== path && vault.exists);
+          if (other) await switchVault(other.path);
+          else window.location.reload();
+        });
+      },
+    });
+  if (vaults.length === 0) return null;
+  return (
+    <SettingsGroup title={t('settings.vault.knownTitle')} help={t('settings.vault.knownHelp')}>
+      {vaults.map((vault, index) => (
+        <div key={vault.path} className="settings-row known-vault">
+          <div className="settings-row-text">
+            <span className="settings-row-label">
+              {vault.name}
+              {vault.path === current && <span className="badge">{t('settings.vault.open')}</span>}
+              {!vault.exists && <span className="badge is-muted">{t('settings.vault.missing')}</span>}
+            </span>
+            <span className="settings-row-help settings-path">{vault.path}</span>
+          </div>
+          <div className="known-vault-actions">
+            <button
+              type="button"
+              className="icon-button small"
+              aria-label={t('editor.moveUp')}
+              title={t('editor.moveUp')}
+              disabled={index === 0}
+              onClick={() => move(index, -1)}
+            >
+              <ArrowUp size={14} />
+            </button>
+            <button
+              type="button"
+              className="icon-button small"
+              aria-label={t('editor.moveDown')}
+              title={t('editor.moveDown')}
+              disabled={index === vaults.length - 1}
+              onClick={() => move(index, 1)}
+            >
+              <ArrowDown size={14} />
+            </button>
+            <button
+              type="button"
+              className="button small is-danger"
+              onClick={() => forget(vault.path, vault.name)}
+            >
+              {t('settings.vault.forget')}
+            </button>
+          </div>
+        </div>
+      ))}
+    </SettingsGroup>
+  );
+}
+
 function VaultSettings() {
   const { t, tp } = useTranslation();
   const prefs = usePreferences();
@@ -618,6 +699,7 @@ function VaultSettings() {
           </SettingRow>
         )}
       </SettingsGroup>
+      {desktop?.vault && <KnownVaults />}
       <SettingsGroup title={t('settings.vault.filesTitle')}>
         <SettingRow label={t('settings.vault.exportBackup')} help={t('settings.vault.exportBackupHelp')}>
           <button type="button" className="button small" onClick={() => void exportBackup()}>
