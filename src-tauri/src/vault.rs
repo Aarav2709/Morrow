@@ -651,7 +651,16 @@ pub fn is_synced_path(relative: &str) -> bool {
     if relative.is_empty() || relative.contains(TEMP_MARK) || relative.contains(".morrow-move-") {
         return false;
     }
-    if relative == ".morrow/workspace.json" || relative == ".morrow/review.json" {
+    // what the vault keeps about itself goes to the other computers too: page order, flashcard progress,
+    // the types picked for properties, tag colours and the sidebar's own sections
+    if matches!(
+        relative,
+        ".morrow/workspace.json"
+            | ".morrow/review.json"
+            | ".morrow/property-types.json"
+            | ".morrow/tag-colors.json"
+            | ".morrow/sidebar-sections.json"
+    ) {
         return true;
     }
     !is_hidden(relative)
@@ -1067,6 +1076,8 @@ mod tests {
         assert!(is_hidden("a/.trash/x"));
         assert!(is_synced_path(".morrow/workspace.json"));
         assert!(!is_synced_path(".morrow/recent.json"));
+        assert!(is_synced_path(".morrow/tag-colors.json"));
+        assert!(is_synced_path(".morrow/sidebar-sections.json"));
         assert!(is_synced_path("Notes/Page.md"));
     }
 
