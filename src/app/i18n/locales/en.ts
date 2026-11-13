@@ -365,7 +365,8 @@ export const en = {
         'Allows external AI agents and assistants like Cursor, Claude Desktop, or Antigravity to browse and manage your vault via the MCP protocol.',
       mcpSwitch: 'Enable MCP Server',
       mcpConfigTitle: 'Agent Configuration (JSON)',
-      mcpConfigHelp: 'Copy this configuration block into your agent configuration file to connect to Morrow.',
+      mcpConfigHelp:
+        "Copy this configuration block into your agent configuration file to connect to Morrow. It runs the server with Node, so Morrow itself doesn't open. Set up with Morrow 1.x? Copy it again, the old one started the Morrow app.",
       mcpCopyButton: 'Copy JSON',
       mcpCopied: 'Copied!',
     },
