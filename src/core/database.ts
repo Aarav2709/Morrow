@@ -446,3 +446,22 @@ export function databaseFromTable(header: string[], rows: string[][], newId: () 
     database.views.push(newView('calendar', database, newId));
   return database;
 }
+
+// the columns of a view in the order they were dragged into: the title and the properties shown. any not
+// in the saved order keep the database's order after the ones that are
+export function viewColumns(view: ViewDef, props: PropDef[]): Array<typeof TITLE_PROP | PropDef> {
+  const all: Array<typeof TITLE_PROP | PropDef> = [TITLE_PROP, ...props];
+  const keyOf = (column: typeof TITLE_PROP | PropDef) => (column === TITLE_PROP ? TITLE_PROP : column.id);
+  const order = view.columns ?? [];
+  const placed = order.flatMap((key) => all.filter((column) => keyOf(column) === key));
+  return [...placed, ...all.filter((column) => !order.includes(keyOf(column)))];
+}
+
+// moves one key before another in a list of keys, for dragging columns and views
+export function moveKey(keys: string[], key: string, before: string): string[] {
+  if (key === before) return keys;
+  const rest = keys.filter((item) => item !== key);
+  const at = rest.indexOf(before);
+  rest.splice(at < 0 ? rest.length : at, 0, key);
+  return rest;
+}

@@ -27,6 +27,8 @@ import {
   propType,
   rowsOf,
   TITLE_PROP,
+  moveKey,
+  viewColumns,
   VIEW_LABELS,
   visibleRows,
   newView,
@@ -92,6 +94,7 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
     [allRows, view, database],
   );
   const [tabMenu, setTabMenu] = useState<{ view: ViewDef; anchor: HTMLElement } | null>(null);
+  const [movingView, setMovingView] = useState<string | null>(null);
   const [addMenu, setAddMenu] = useState<HTMLElement | null>(null);
 
   const choose = (id: string) => {
@@ -110,7 +113,10 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
   }, [editable, database.views.length, page.id]);
 
   if (!view) return null;
-  const visible = database.properties.filter((prop) => !view.hidden.includes(prop.id));
+  // properties in the order of the view's columns, for cards and lists as well as the table
+  const visible = viewColumns(view, database.properties).filter(
+    (column): column is PropDef => column !== TITLE_PROP && !view.hidden.includes(column.id),
+  );
 
   return (
     <section className="database" aria-label={t('sidebar.database')}>
@@ -124,8 +130,34 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
                 type="button"
                 role="tab"
                 aria-selected={candidate.id === view.id}
-                className={`db-tab${candidate.id === view.id ? ' is-active' : ''}`}
+                className={`db-tab${candidate.id === view.id ? ' is-active' : ''}${movingView === candidate.id ? ' is-moving' : ''}`}
                 onClick={() => choose(candidate.id)}
+                // a view is dragged along the tabs to another place
+                draggable={editable}
+                onDragStart={(event) => {
+                  event.dataTransfer.effectAllowed = 'move';
+                  event.dataTransfer.setData('text/x-morrow-view', candidate.id);
+                  setMovingView(candidate.id);
+                }}
+                onDragEnd={() => setMovingView(null)}
+                onDragOver={(event) => movingView && event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const moved = movingView;
+                  setMovingView(null);
+                  if (!moved || moved === candidate.id) return;
+                  updateDatabase(page.id, (current) => {
+                    const order = moveKey(
+                      current.views.map((item) => item.id),
+                      moved,
+                      candidate.id,
+                    );
+                    return {
+                      ...current,
+                      views: order.map((id) => current.views.find((item) => item.id === id)!),
+                    };
+                  });
+                }}
                 onContextMenu={(event) => {
                   if (!editable) return;
                   event.preventDefault();
@@ -856,6 +888,15 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
   const [focusNew, setFocusNew] = useState<string | null>(null);
   // the width being dragged, saved to the view once the drag ends
   const [dragging, setDragging] = useState<{ key: string; width: number } | null>(null);
+  // the column being dragged to another place
+  const [moving, setMoving] = useState<string | null>(null);
+  const columns = viewColumns(view, props);
+  const keyOf = (column: (typeof columns)[number]) => (column === TITLE_PROP ? TITLE_PROP : column.id);
+  const moveColumn = (key: string, before: string) =>
+    updateView(dbId, view.id, (current) => ({
+      ...current,
+      columns: moveKey(viewColumns(current, database.properties).map(keyOf), key, before),
+    }));
   const widthOf = (key: string) =>
     dragging?.key === key
       ? dragging.width
@@ -884,32 +925,63 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
     <div className="db-table-wrap">
       <table className={`db-table${editable ? ' is-filled' : ''}`} style={{ width: total }}>
         <colgroup>
-          <col style={{ width: widthOf(TITLE_PROP) }} />
-          {props.map((prop) => (
-            <col key={prop.id} style={{ width: widthOf(prop.id) }} />
+          {columns.map((column) => (
+            <col key={keyOf(column)} style={{ width: widthOf(keyOf(column)) }} />
           ))}
           {/* the add column takes whatever room is left, so the others keep the width they were given */}
           {editable && <col />}
         </colgroup>
         <thead>
           <tr>
-            <th scope="col" className="db-col-title">
-              {t('database.name')}
-              {resizer(TITLE_PROP)}
-            </th>
-            {props.map((prop) => (
-              <th key={prop.id} scope="col">
-                <button
-                  type="button"
-                  className="db-header"
-                  disabled={!editable}
-                  onClick={(event) => setHeader({ prop, anchor: event.currentTarget })}
-                >
-                  {prop.name}
-                </button>
-                {resizer(prop.id)}
-              </th>
-            ))}
+            {columns.map((column) => {
+              const key = keyOf(column);
+              // a column is dragged by its header to another place, the name column too
+              const drag = editable
+                ? {
+                    draggable: true,
+                    onDragStart: (event: React.DragEvent) => {
+                      if ((event.target as HTMLElement).closest('.db-resize')) return event.preventDefault();
+                      event.dataTransfer.effectAllowed = 'move';
+                      event.dataTransfer.setData('text/x-morrow-column', key);
+                      setMoving(key);
+                    },
+                    onDragEnd: () => setMoving(null),
+                    onDragOver: (event: React.DragEvent) => {
+                      if (moving) event.preventDefault();
+                    },
+                    onDrop: (event: React.DragEvent) => {
+                      event.preventDefault();
+                      if (moving) moveColumn(moving, key);
+                      setMoving(null);
+                    },
+                  }
+                : {};
+              if (column === TITLE_PROP)
+                return (
+                  <th
+                    key={key}
+                    scope="col"
+                    className={`db-col-title${moving === key ? ' is-moving' : ''}`}
+                    {...drag}
+                  >
+                    {t('database.name')}
+                    {resizer(TITLE_PROP)}
+                  </th>
+                );
+              return (
+                <th key={key} scope="col" className={moving === key ? 'is-moving' : undefined} {...drag}>
+                  <button
+                    type="button"
+                    className="db-header"
+                    disabled={!editable}
+                    onClick={(event) => setHeader({ prop: column, anchor: event.currentTarget })}
+                  >
+                    {column.name}
+                  </button>
+                  {resizer(column.id)}
+                </th>
+              );
+            })}
             {editable && (
               <th className="db-col-add">
                 <button
@@ -927,14 +999,17 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              <td className="db-col-title">
-                <RowTitle row={row} editable={editable} autoFocus={focusNew === row.id} />
-              </td>
-              {props.map((prop) => (
-                <td key={prop.id}>
-                  <PropertyInput dbId={dbId} prop={prop} row={row} editable={editable} />
-                </td>
-              ))}
+              {columns.map((column) =>
+                column === TITLE_PROP ? (
+                  <td key={TITLE_PROP} className="db-col-title">
+                    <RowTitle row={row} editable={editable} autoFocus={focusNew === row.id} />
+                  </td>
+                ) : (
+                  <td key={column.id}>
+                    <PropertyInput dbId={dbId} prop={column} row={row} editable={editable} />
+                  </td>
+                ),
+              )}
               {editable && <td />}
             </tr>
           ))}

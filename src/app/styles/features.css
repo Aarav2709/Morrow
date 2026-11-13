@@ -2825,3 +2825,12 @@ td:hover .prop-empty,
   gap: 2px;
   flex-shrink: 0;
 }
+
+/* a database column or view tab being dragged to another place */
+.db-table th[draggable='true'] {
+  cursor: grab;
+}
+.db-table th.is-moving,
+.db-tab.is-moving {
+  opacity: 0.45;
+}

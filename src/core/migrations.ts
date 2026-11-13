@@ -186,6 +186,13 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
     dateProp: propRef(raw.dateProp),
     hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((id): id is string => propRef(id) !== null) : [],
     ...(isRecord(raw.widths) ? { widths: normalizeWidths(raw.widths) } : {}),
+    ...(Array.isArray(raw.columns)
+      ? {
+          columns: raw.columns
+            .filter((key): key is string => typeof key === 'string' && key.length > 0 && key.length <= 64)
+            .slice(0, 200),
+        }
+      : {}),
   };
 }
 

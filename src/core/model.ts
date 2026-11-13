@@ -91,6 +91,8 @@ export interface ViewDef {
   hidden: string[];
   // table column widths in pixels, by property id or title, missing means the default width
   widths?: Record<string, number>;
+  // the order of the table's columns by property id, title among them, missing keeps the database's order
+  columns?: string[];
 }
 
 export interface DatabaseDef {
