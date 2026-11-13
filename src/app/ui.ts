@@ -6,6 +6,7 @@ export type SettingsSection = 'general' | 'appearance' | 'assistant' | 'sync' | 
 export type Dialog =
   | { kind: 'settings'; section?: SettingsSection }
   | { kind: 'shortcuts' }
+  | { kind: 'welcome' }
   | { kind: 'move'; pageId: PageId }
   | { kind: 'history'; pageId: PageId }
   | { kind: 'icon'; pageId: PageId }

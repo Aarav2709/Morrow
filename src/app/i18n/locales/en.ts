@@ -991,6 +991,23 @@ export const en = {
     emptyMessage: 'Nothing is archived. Archive a page from its page menu.',
     archivedAt: 'Archived {time}',
   },
+  welcome: {
+    title: 'Welcome to Morrow',
+    intro:
+      'Morrow keeps your notes as plain Markdown files on this computer. A few questions first, all of them can be changed later in Settings.',
+    nameQuestion: 'What should Morrow call you?',
+    lookTitle: 'How it looks',
+    tipsTitle: 'Good to know',
+    tipSlash: 'Type / on a line for headings, lists, tables, toggles and every other block.',
+    tipLinks: 'Type [[ to link to another page, links show up as backlinks on that page.',
+    tipDates: 'Type @ for dates like @today or @friday 17:00, a date can remind you.',
+    tipSearch: '{shortcut} searches everything and runs any command.',
+    tipToday: '{shortcut} opens today’s note.',
+    tipFiles: 'Every page is a .md file in your vault folder, other apps can open them too.',
+    back: 'Back',
+    next: 'Next',
+    start: 'Start writing',
+  },
   files: {
     title: 'Files',
     subtitle: 'Pictures, sound, video and documents kept in this vault, and the pages that use them.',

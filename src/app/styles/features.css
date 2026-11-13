@@ -2765,3 +2765,38 @@ td:hover .prop-empty,
 .file-card:focus-within .file-card-actions {
   opacity: 1;
 }
+
+/* the welcome the first time morrow opens */
+.welcome-step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 180px;
+}
+.welcome-label {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin-top: 6px;
+}
+.welcome-tips {
+  margin: 0;
+  padding-left: 1.2em;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.5;
+}
+.welcome-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.welcome-footer > :first-child {
+  margin-right: auto;
+}
+.welcome-footer .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

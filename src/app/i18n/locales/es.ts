@@ -998,6 +998,23 @@ export const es: TranslationSchema = {
     emptyMessage: 'No hay nada archivado. Archiva una página desde su menú de página.',
     archivedAt: 'Archivada {time}',
   },
+  welcome: {
+    title: 'Te damos la bienvenida a Morrow',
+    intro:
+      'Morrow guarda tus notas como archivos Markdown en este ordenador. Primero unas preguntas, todo se puede cambiar luego en Ajustes.',
+    nameQuestion: '¿Cómo quieres que te llame Morrow?',
+    lookTitle: 'Su aspecto',
+    tipsTitle: 'Bueno saber',
+    tipSlash: 'Escribe / en una línea para títulos, listas, tablas, desplegables y cualquier otro bloque.',
+    tipLinks: 'Escribe [[ para enlazar otra página, los enlaces aparecen como referencias en esa página.',
+    tipDates: 'Escribe @ para fechas como @hoy o @viernes 17:00, una fecha puede recordártelo.',
+    tipSearch: '{shortcut} busca en todo y ejecuta cualquier comando.',
+    tipToday: '{shortcut} abre la nota de hoy.',
+    tipFiles: 'Cada página es un archivo .md en la carpeta de tu bóveda, otras apps también pueden abrirlo.',
+    back: 'Atrás',
+    next: 'Siguiente',
+    start: 'Empezar a escribir',
+  },
   files: {
     title: 'Archivos',
     subtitle: 'Imágenes, sonido, vídeo y documentos guardados en esta bóveda, y las páginas que los usan.',

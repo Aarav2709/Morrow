@@ -18,6 +18,7 @@ import { useTranslation } from '../i18n';
 import { SourceDialog } from './SourceDialog';
 import { PairDialog } from './SyncSettings';
 import { TemplateDialog } from './TemplateDialog';
+import { WelcomeDialog } from './WelcomeDialog';
 
 function PageIconPicker({ pageId }: { pageId: PageId }) {
   const { t } = useTranslation();
@@ -41,6 +42,8 @@ export function Dialogs() {
       return <SettingsDialog section={dialog.section} />;
     case 'shortcuts':
       return <ShortcutsDialog />;
+    case 'welcome':
+      return <WelcomeDialog />;
     case 'move':
       return <MoveDialog pageId={dialog.pageId} />;
     case 'history':

@@ -29,7 +29,7 @@ import {
 } from './platform/preferences';
 import { navigate, openPage, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
-import { getUi, setUi, toast, useUi } from './ui';
+import { getUi, openDialog, setUi, toast, useUi } from './ui';
 import { loadCustomCss } from './customCss';
 import { loadTagColors } from './tagColors';
 import {
@@ -471,6 +471,10 @@ export function App() {
   useStartPage();
   useLifecycle();
   useHidePointerWhileTyping();
+  // the first time morrow opens on this computer it says hello and asks how it should look
+  useEffect(() => {
+    if (!getPreferences().onboarded) openDialog({ kind: 'welcome' });
+  }, []);
   // tags keep the colours picked for them from the first page drawn
   useEffect(() => void loadTagColors(), []);
 

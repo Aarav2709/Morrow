@@ -999,6 +999,23 @@ export const pt: TranslationSchema = {
     emptyMessage: 'Nada arquivado. Arquive uma página pelo menu da página.',
     archivedAt: 'Arquivada {time}',
   },
+  welcome: {
+    title: 'Boas-vindas ao Morrow',
+    intro:
+      'O Morrow guarda suas notas como arquivos Markdown neste computador. Primeiro algumas perguntas, tudo pode ser mudado depois em Configurações.',
+    nameQuestion: 'Como o Morrow deve chamar você?',
+    lookTitle: 'A aparência',
+    tipsTitle: 'Bom saber',
+    tipSlash: 'Digite / numa linha para títulos, listas, tabelas, recolhíveis e qualquer outro bloco.',
+    tipLinks: 'Digite [[ para ligar outra página, os links aparecem como referências nessa página.',
+    tipDates: 'Digite @ para datas como @hoje ou @sexta 17:00, uma data pode lembrar você.',
+    tipSearch: '{shortcut} busca em tudo e executa qualquer comando.',
+    tipToday: '{shortcut} abre a nota de hoje.',
+    tipFiles: 'Cada página é um arquivo .md na pasta do seu cofre, outros apps também podem abri-lo.',
+    back: 'Voltar',
+    next: 'Próximo',
+    start: 'Começar a escrever',
+  },
   files: {
     title: 'Arquivos',
     subtitle: 'Imagens, som, vídeo e documentos guardados neste cofre, e as páginas que os usam.',

@@ -104,6 +104,8 @@ export interface Preferences {
   // how much of a split tab the first side takes
   splitShare: number;
   startPage: StartPage;
+  // the welcome steps were gone through, or morrow was in use before they existed
+  onboarded: boolean;
   // the day calendars start their weeks on, 0 for sunday, 1 for monday, 6 for saturday
   weekStart: WeekStart;
   // today's note is made when morrow opens on it, off opens home instead until the note is made by hand
@@ -164,6 +166,7 @@ const defaults: Preferences = {
   reminders: [],
   splitShare: 0.5,
   startPage: 'today',
+  onboarded: false,
   weekStart: 1,
   autoDaily: true,
   assistant: false,
@@ -272,6 +275,8 @@ function read(): Preferences {
       startPage: ['today', 'home', 'last'].includes(parsed.startPage as string)
         ? parsed.startPage!
         : defaults.startPage,
+      // preferences saved before the welcome existed mean morrow is already in use
+      onboarded: parsed.onboarded !== false,
       autoDaily: parsed.autoDaily !== false,
       weekStart: ([0, 1, 6] as const).find((day) => day === parsed.weekStart) ?? 1,
       assistant: parsed.assistant === true,
