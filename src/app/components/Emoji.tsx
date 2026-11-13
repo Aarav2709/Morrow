@@ -1,4 +1,7 @@
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import { EMOJI_FILES } from 'virtual:morrow-emoji';
+import { FlatIcon, parseFlatIcon } from './flatIcons';
 
 // the image for an emoji, trying the spellings the image set uses for variation selectors and keycaps
 export function emojiSrc(emoji: string): string | null {
@@ -16,6 +19,8 @@ export function emojiSrc(emoji: string): string | null {
 
 // page icons and other emoji in the interface, drawn the same on every system
 export function Emoji({ emoji, className }: { emoji: string; className?: string }) {
+  const flat = parseFlatIcon(emoji);
+  if (flat) return <FlatIcon name={flat.name} filled={flat.filled} className={className} />;
   const src = emojiSrc(emoji);
   if (!src) return <span className={`emoji-text${className ? ` ${className}` : ''}`}>{emoji}</span>;
   return (
@@ -32,6 +37,13 @@ export function Emoji({ emoji, className }: { emoji: string; className?: string 
 
 // the same for code that builds dom by hand, such as editor node views
 export function emojiElement(emoji: string): HTMLElement {
+  const flat = parseFlatIcon(emoji);
+  if (flat) {
+    const span = document.createElement('span');
+    span.className = 'flat-icon-holder';
+    flushSync(() => createRoot(span).render(<FlatIcon name={flat.name} filled={flat.filled} />));
+    return span;
+  }
   const src = emojiSrc(emoji);
   if (!src) {
     const span = document.createElement('span');

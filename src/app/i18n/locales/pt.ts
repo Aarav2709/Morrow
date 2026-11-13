@@ -1307,6 +1307,11 @@ export const pt: TranslationSchema = {
     madeThisDay: 'Criado neste dia',
   },
   emoji: {
+    icons: 'Ícones',
+    searchIcons: 'Buscar um ícone',
+    iconStyle: 'Estilo do ícone',
+    outline: 'Contorno',
+    filled: 'Preenchido',
     noMatch: 'Nenhum emoji corresponde a “{query}”.',
     smileys: 'Carinhas',
     people: 'Pessoas',

@@ -1295,6 +1295,11 @@ export const en = {
     madeThisDay: 'Made this day',
   },
   emoji: {
+    icons: 'Icons',
+    searchIcons: 'Find an icon',
+    iconStyle: 'Icon style',
+    outline: 'Outline',
+    filled: 'Filled',
     noMatch: 'No emoji match “{query}”.',
     smileys: 'Smileys',
     people: 'People',

@@ -1402,6 +1402,40 @@ button.home-stat:hover {
   height: 18px;
 }
 
+/* flat icons a page can have instead of an emoji, sized the way emoji are where they show */
+.flat-icon {
+  width: 1.2em;
+  height: 1.2em;
+  vertical-align: -0.22em;
+  color: var(--text-muted);
+}
+.tree-icon .flat-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+.page-icon .flat-icon {
+  width: 60px;
+  height: 60px;
+  color: var(--text);
+}
+.emoji-choice .flat-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--text);
+}
+.home-card-icon .flat-icon {
+  width: 20px;
+  height: 20px;
+}
+.callout-icon .flat-icon {
+  width: 18px;
+  height: 18px;
+}
+.emoji-tabs {
+  margin-bottom: 10px;
+}
+
 /* canvas drawing */
 
 .canvas-view.tool-pen,

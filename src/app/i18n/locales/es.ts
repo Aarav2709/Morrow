@@ -1308,6 +1308,11 @@ export const es: TranslationSchema = {
     madeThisDay: 'Creado este día',
   },
   emoji: {
+    icons: 'Iconos',
+    searchIcons: 'Buscar un icono',
+    iconStyle: 'Estilo del icono',
+    outline: 'Contorno',
+    filled: 'Relleno',
     noMatch: 'Ningún emoji coincide con “{query}”.',
     smileys: 'Caras',
     people: 'Personas',
