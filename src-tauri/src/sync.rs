@@ -772,6 +772,20 @@ pub fn stop_pairing() {
     });
 }
 
+// a request that never reached the other device says what usually stands in the way, rather than only
+// that sending failed
+fn unreachable(error: reqwest::Error, address: &str, port: u16) -> String {
+    if !(error.is_connect() || error.is_timeout()) {
+        return error.to_string();
+    }
+    format!(
+        "Couldn't reach the other device at {address}:{port}. Keep Morrow open and in front on it with sync \
+         turned on. On Windows the network has to be set to Private, or Morrow allowed on public networks in \
+         Windows Firewall. Guest networks, and some routers, keep devices on Wi-Fi apart from each other or \
+         from wired ones. A VPN can do the same."
+    )
+}
+
 fn http() -> reqwest::Client {
     reqwest::Client::builder()
         .no_proxy()
@@ -803,7 +817,7 @@ async fn pair_inner(target: Value, code: String) -> Result<String, String> {
             .timeout(Duration::from_secs(8))
             .send()
             .await
-            .map_err(|error| error.to_string())?;
+            .map_err(|error| unreachable(error, &address, port))?;
         if !answer.status().is_success() {
             return Err("That computer is not waiting to pair.".into());
         }
@@ -838,7 +852,7 @@ async fn pair_inner(target: Value, code: String) -> Result<String, String> {
         .timeout(Duration::from_secs(20))
         .send()
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| unreachable(error, &address, port))?;
     let ok = response.status().is_success();
     let answer: Value = response.json().await.unwrap_or(Value::Null);
     if !ok {

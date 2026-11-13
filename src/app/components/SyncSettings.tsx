@@ -2,9 +2,9 @@ import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2, TriangleAlert } from 'l
 import { useCallback, useEffect, useState } from 'react';
 import { commitEditors } from '../editor/commits';
 import { useTranslation } from '../i18n';
-import { desktop, isMobile } from '../platform/desktop';
+import { copyText, desktop, isMobile } from '../platform/desktop';
 import type { CloudFolder, SyncStatus } from '../platform/desktop';
-import { copyVaultFrom, syncWith } from '../sync';
+import { copyVaultFrom, noteSyncProblem, syncDiagnostics, syncWith } from '../sync';
 import { switchVault } from '../vaults';
 import { getSession } from '../workspace';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
@@ -50,7 +50,10 @@ export function NetworkSettings() {
           ? t('settings.sync.upToDate', { name: peerName })
           : tp('settings.sync.receivedChanges', result.received, { name: peerName }),
       );
-    else toast(result.error ?? t('settings.sync.syncFailed'), { tone: 'error', durationMs: 10_000 });
+    else {
+      noteSyncProblem(`Syncing with ${peerName} failed: ${result.error ?? 'no answer'}`);
+      toast(result.error ?? t('settings.sync.syncFailed'), { tone: 'error', durationMs: 10_000 });
+    }
   };
 
   const copyHere = async (peerId: string) => {
@@ -134,6 +137,23 @@ export function NetworkSettings() {
           </button>
         </SettingRow>
       ))}
+      <SettingRow label={t('settings.sync.diagnostics')} help={t('settings.sync.diagnosticsHelp')}>
+        <button
+          type="button"
+          className="button small"
+          onClick={() =>
+            void syncDiagnostics()
+              .then((text) => copyText(text))
+              .then((copied) =>
+                copied
+                  ? toast(t('settings.sync.diagnosticsCopied'))
+                  : toast(t('editor.couldNotCopy'), { tone: 'error' }),
+              )
+          }
+        >
+          {t('settings.sync.copyDiagnostics')}
+        </button>
+      </SettingRow>
       <SettingRow label={t('settings.sync.addComputer')} help={t('settings.sync.addComputerHelp')}>
         <button type="button" className="button small" onClick={() => openDialog({ kind: 'pair' })}>
           <Link2 size={13} /> {t('settings.sync.pairButton')}
@@ -297,7 +317,12 @@ export function PairDialog() {
     if (result?.ok) {
       toast(t('toasts.pairedWithTurnSync', { name: result.name ?? '' }));
       closeDialog();
-    } else setError(result?.error ?? 'Pairing failed.');
+    } else {
+      setError(result?.error ?? 'Pairing failed.');
+      noteSyncProblem(
+        `Pairing with ${chosen.address}:${chosen.port ?? ''} failed: ${result?.error ?? 'no answer'}`,
+      );
+    }
   };
 
   return (

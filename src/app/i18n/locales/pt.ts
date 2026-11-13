@@ -288,6 +288,11 @@ export const pt: TranslationSchema = {
         'Sem contas, sem rastreamento e sem anúncios. Nada sai deste computador a menos que você ative o assistente, a sincronização ou a verificação de atualizações.',
     },
     sync: {
+      diagnostics: 'Diagnóstico',
+      diagnosticsHelp:
+        'Quando dois aparelhos não pareiam ou sincronizam, copie isto nos dois e cole numa issue do GitHub.',
+      copyDiagnostics: 'Copiar diagnóstico',
+      diagnosticsCopied: 'Copiado o que a sincronização sabe deste aparelho.',
       networkTitle: 'Seus computadores',
       networkHelp:
         'Criptografado e direto, sem servidor intermediário. Se uma página mudar em ambos, ambas as versões são mantidas.',

@@ -284,6 +284,11 @@ export const en = {
         'No accounts, no tracking and no ads. Nothing leaves this computer unless you turn on the assistant, sync or update checks.',
     },
     sync: {
+      diagnostics: 'Diagnostics',
+      diagnosticsHelp:
+        'When two devices won’t pair or sync, copy this on both and paste it into an issue on GitHub.',
+      copyDiagnostics: 'Copy diagnostics',
+      diagnosticsCopied: 'Copied what sync knows about this device.',
       networkTitle: 'Your computers',
       networkHelp:
         'Encrypted and direct, with no server. When a page changed on both, both versions are kept.',

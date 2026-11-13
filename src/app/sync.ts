@@ -20,6 +20,35 @@ export interface SyncResult {
 let running: Promise<SyncResult> | null = null;
 
 // one pull from one computer, then that computer is asked to pull from this one
+// the last things that went wrong with sync on this device, for the diagnostics copied from settings
+const log: string[] = [];
+export function noteSyncProblem(message: string): void {
+  log.push(`${new Date().toISOString()} ${message}`);
+  if (log.length > 30) log.shift();
+}
+
+// what someone helping with a sync problem needs to know about this device, as text to paste
+export async function syncDiagnostics(): Promise<string> {
+  const status = await desktop?.sync?.status().catch(() => null);
+  const lines = [
+    `Morrow ${status?.version ?? '?'} on ${desktop?.platform ?? 'web'}`,
+    `Sync: ${status?.enabled ? 'on' : 'off'}, name "${status?.name ?? ''}"`,
+    `Listening on port ${status?.port ?? '?'} at ${(status?.addresses ?? []).join(', ') || 'no address found'}`,
+    `Pairing: ${status?.pairingCode ? 'waiting for a code' : 'not pairing'}`,
+    ...(status?.peers ?? []).map(
+      (peer) =>
+        `Paired: ${peer.name}, ${peer.online ? 'seen on the network' : 'not seen lately'}, version ${peer.version ?? '?'}, last sync ${peer.lastSync ? new Date(peer.lastSync).toISOString() : 'never'}`,
+    ),
+    ...(status?.waiting ?? []).map(
+      (device) =>
+        `Waiting to pair: ${device.name} at ${device.address}:${device.port}, version ${device.version ?? '?'}`,
+    ),
+    'Problems:',
+    ...(log.length ? log : ['none']),
+  ];
+  return lines.join('\n');
+}
+
 export async function syncWith(peerId: string, options: { askBack?: boolean } = {}): Promise<SyncResult> {
   running ??= pullFrom(peerId, options.askBack !== false).finally(() => (running = null));
   return running;
