@@ -378,16 +378,6 @@ pub async fn capture<R: Runtime>(
     Err("Saving a picture of the canvas is not available on this system yet.".into())
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn stamps_sort_in_time_order() {
-        let stamp = super::iso_stamp();
-        assert_eq!(stamp.len(), "2026-11-10T08-41-00-123Z".len());
-        assert!(stamp.starts_with("20"));
-    }
-}
-
 // files copied in the file manager, which the web view on windows hands the page as a name only
 #[cfg(windows)]
 pub fn clipboard_files() -> Vec<String> {
@@ -420,4 +410,14 @@ pub fn clipboard_files() -> Vec<String> {
 #[cfg(not(windows))]
 pub fn clipboard_files() -> Vec<String> {
     Vec::new()
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn stamps_sort_in_time_order() {
+        let stamp = super::iso_stamp();
+        assert_eq!(stamp.len(), "2026-11-10T08-41-00-123Z".len());
+        assert!(stamp.starts_with("20"));
+    }
 }
