@@ -156,6 +156,16 @@ function firstTextMiddle(block: HTMLElement): number | null {
   return null;
 }
 
+// the blocks the selected words run across, when they run across more than one: the items of a list, the
+// lines in a toggle, or blocks on the page
+export function selectedTextBlocks(state: EditorState): { from: number; to: number } | null {
+  const { $from, $to, empty } = state.selection;
+  if (empty) return null;
+  const range = $from.blockRange($to);
+  if (!range || range.endIndex - range.startIndex < 2) return null;
+  return { from: range.start, to: range.end };
+}
+
 function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
   return new Plugin({
     key: new PluginKey('blockHandle'),
@@ -224,10 +234,8 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
         const { state } = view;
         const picked = selectedBlocks(state);
         if (picked && pos >= picked.from && pos < picked.to) return picked;
-        const { $from, $to, empty } = state.selection;
-        if (empty || $from.depth < 1 || $to.depth < 1 || $from.before(1) === $to.before(1)) return null;
-        const range = { from: $from.before(1), to: $to.after(1) };
-        return pos >= range.from && pos < range.to ? range : null;
+        const range = selectedTextBlocks(state);
+        return range && pos >= range.from && pos < range.to ? range : null;
       };
 
       const onDragStart = (event: DragEvent) => {
@@ -262,12 +270,17 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
 
       const onClick = () => {
         if (!current) return;
-        // a block among several picked in the margin opens the menu for all of them
-        const picked = selectedBlocks(view.state);
-        if (!picked || current.pos < picked.from || current.pos >= picked.to)
+        // a block among several picked in the margin, or among the lines the selected words run across,
+        // opens the menu for all of them
+        const range = dragRange(current.pos);
+        if (!range)
           view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, current.pos)));
         view.focus();
-        onMenu({ pos: current.pos, rect: handle.getBoundingClientRect() });
+        onMenu({
+          pos: current.pos,
+          rect: handle.getBoundingClientRect(),
+          ...(range && !selectedBlocks(view.state) ? { range } : {}),
+        });
       };
 
       host?.addEventListener('mousemove', onMove);

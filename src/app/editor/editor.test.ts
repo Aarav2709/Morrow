@@ -428,3 +428,35 @@ describe('turning a line into a toggle', () => {
     expect(doc.content![0]!.attrs?.open).toBe(false);
   });
 });
+
+describe('turning several blocks at once', () => {
+  it('turns every selected item of a list into a checklist', async () => {
+    const { selectedTextBlocks } = await import('./BlockHandle');
+    const { turnBlocks } = await import('./EditorMenus');
+    const item = (text: string) => ({ type: 'listItem', content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [{ type: 'bulletList', content: [item('One'), item('Two'), item('Three')] }],
+    });
+    target.commands.setTextSelection({ from: 3, to: target.state.doc.content.size - 3 });
+    const range = selectedTextBlocks(target.state)!;
+    expect(range).not.toBeNull();
+    turnBlocks(target, range, { kind: 'taskList' });
+    const doc = json(target);
+    expect(doc.content!.map((node) => node.type)).toEqual(['taskList']);
+    expect(doc.content![0]!.content).toHaveLength(3);
+  });
+});
+
+describe('turning several lines at once', () => {
+  it('makes one list of them', async () => {
+    const { selectedTextBlocks } = await import('./BlockHandle');
+    const { turnBlocks } = await import('./EditorMenus');
+    const target = make({ type: 'doc', content: [p('One'), p('Two'), p('Three')] });
+    target.commands.setTextSelection({ from: 2, to: target.state.doc.content.size - 2 });
+    turnBlocks(target, selectedTextBlocks(target.state)!, { kind: 'bulletList' });
+    const doc = json(target);
+    expect(doc.content!.map((node) => node.type)).toEqual(['bulletList']);
+    expect(doc.content![0]!.content).toHaveLength(3);
+  });
+});

@@ -65,7 +65,7 @@ import { copyText, desktop, openExternal } from '../platform/desktop';
 import { attachSelection } from '../assistant/selection';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import { activeRoute, openPage } from '../router';
-import { moveBlock } from './BlockHandle';
+import { moveBlock, selectedTextBlocks } from './BlockHandle';
 import { editMathNear } from './Extras';
 import type { BlockMenuRequest } from './BlockHandle';
 import { clearBlockSelection, selectedBlocks } from './BlockSelect';
@@ -561,15 +561,14 @@ function toEquation(editor: Editor): void {
 
 // the blocks the selected words are in, for the turn into menu the toolbar opens
 function selectionBlocks(editor: Editor): Omit<BlockMenuRequest, 'rect'> | null {
-  const { $from, $to } = editor.state.selection;
-  if ($from.depth < 1 || $to.depth < 1) return null;
-  // words in one block turn that block, or the list item they are in
-  if ($from.before(1) === $to.before(1)) {
-    for (let depth = $from.depth; depth > 0; depth--)
-      if (['listItem', 'taskItem'].includes($from.node(depth).type.name)) return { pos: $from.before(depth) };
-    return { pos: $from.before(1) };
-  }
-  return { pos: $from.before(1), range: { from: $from.before(1), to: $to.after(1) } };
+  const { $from } = editor.state.selection;
+  if ($from.depth < 1) return null;
+  // words across several items or lines turn them all
+  const range = selectedTextBlocks(editor.state);
+  if (range) return { pos: range.from, range };
+  for (let depth = $from.depth; depth > 0; depth--)
+    if (['listItem', 'taskItem'].includes($from.node(depth).type.name)) return { pos: $from.before(depth) };
+  return { pos: $from.before(1) };
 }
 
 export function LinkMenu({ editor }: { editor: Editor }) {
@@ -985,7 +984,7 @@ export function setBlockBackground(editor: Editor, positions: number[], color: C
 
 // several blocks picked in the margin turn one by one from the last, so the ones before keep their place.
 // a list stands for its items, each of them turns the way one item on its own would
-function turnBlocks(editor: Editor, range: BlockRange, target: TurnTarget): void {
+export function turnBlocks(editor: Editor, range: BlockRange, target: TurnTarget): void {
   if (target.kind === 'columns') {
     intoColumns(editor, range.from, range.to, target.count);
     return;
@@ -999,25 +998,47 @@ function turnBlocks(editor: Editor, range: BlockRange, target: TurnTarget): void
     editor.chain().focus().setTextSelection({ from: $from.pos, to: $to.pos }).setCallout().run();
     return;
   }
+  // the blocks side by side in the range, wherever they sit: on the page, in a toggle, in a column or
+  // items of one list. a whole list in it stands for its items
   const positions: number[] = [];
-  editor.state.doc.nodesBetween(range.from, range.to, (node, pos) => {
-    if (['bulletList', 'orderedList', 'taskList'].includes(node.type.name)) return true;
-    positions.push(pos);
-    return false;
-  });
-  // lines becoming a list join into one list rather than a list each
-  const list = target.kind === 'bulletList' || target.kind === 'orderedList' || target.kind === 'taskList';
-  for (const pos of positions.reverse()) {
-    turnInto(editor, pos, target);
-    if (!list) continue;
-    const { state } = editor;
-    const $at = state.doc.resolve(Math.min(pos, state.doc.content.size));
-    const index = $at.index(0);
-    const here = state.doc.maybeChild(index);
-    const next = state.doc.maybeChild(index + 1);
-    if (here && next && here.type === next.type && here.type.name === target.kind)
-      editor.view.dispatch(state.tr.join($at.posAtIndex(index + 1, 0)));
+  const $start = editor.state.doc.resolve(range.from);
+  const parent = $start.parent;
+  let pos = range.from;
+  for (let index = $start.index(); index < parent.childCount && pos < range.to; index++) {
+    const node = parent.child(index);
+    if (['bulletList', 'orderedList', 'taskList'].includes(node.type.name))
+      node.forEach((_item, offset) => positions.push(pos + 1 + offset));
+    else positions.push(pos);
+    pos += node.nodeSize;
   }
+  for (const at of positions.reverse()) turnInto(editor, at, target);
+  // lines and items becoming a list join into one list rather than a list each
+  const list = ['bulletList', 'orderedList', 'taskList', 'letteredList'].includes(target.kind);
+  if (!list) return;
+  // items of one list end up as lists beside each other where that list was
+  const depth = ['bulletList', 'orderedList', 'taskList'].includes(parent.type.name)
+    ? $start.depth - 1
+    : $start.depth;
+  const { state } = editor;
+  const $parentAt = state.doc.resolve(Math.min(range.from, state.doc.content.size));
+  if ($parentAt.depth < depth) return;
+  const container = $parentAt.node(depth);
+  const start = depth === 0 ? 0 : $parentAt.start(depth);
+  const tr = state.tr;
+  const joins: number[] = [];
+  let offset = start;
+  for (let index = 0; index < container.childCount - 1; index++) {
+    const here = container.child(index);
+    const next = container.child(index + 1);
+    offset += here.nodeSize;
+    const sameKind =
+      here.type === next.type &&
+      ['bulletList', 'orderedList', 'taskList'].includes(here.type.name) &&
+      (here.attrs.type ?? null) === (next.attrs.type ?? null);
+    if (sameKind) joins.push(offset);
+  }
+  for (const at of joins.reverse()) tr.join(at);
+  if (tr.docChanged) editor.view.dispatch(tr);
 }
 
 // what a block is now, so the menu can tick it. a list item counts as its list
