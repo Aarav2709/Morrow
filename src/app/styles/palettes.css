@@ -1,0 +1,143 @@
+/* colour themes, picked in settings. each changes the page, the sidebar, text and lines in light and in dark,
+   the accent stays the one picked beside it */
+
+:root[data-palette='paper'] {
+  --bg: #fbf8f1;
+  --bg-sidebar: #f3eee3;
+  --surface: #fdfbf6;
+  --popover: #fffdf8;
+  --text: #2b2620;
+  --text-muted: #6b6255;
+  --text-faint: #9a907f;
+  --border: #e9e2d3;
+  --border-strong: #ddd3c0;
+  --hover: rgba(80, 60, 20, 0.06);
+  --active: rgba(80, 60, 20, 0.1);
+  --code-bg: #f1ebdd;
+}
+:root[data-palette='paper'][data-theme='dark'] {
+  --bg: #1f1c17;
+  --bg-sidebar: #26221c;
+  --surface: #2a261f;
+  --popover: #2e2a22;
+  --text: #ece4d4;
+  --text-muted: #b9ae9a;
+  --text-faint: #8d836f;
+  --border: #363025;
+  --border-strong: #463e30;
+  --hover: rgba(255, 240, 210, 0.06);
+  --active: rgba(255, 240, 210, 0.1);
+  --code-bg: #29241d;
+}
+
+:root[data-palette='sepia'] {
+  --bg: #f4ecd8;
+  --bg-sidebar: #ebe0c6;
+  --surface: #f7f0df;
+  --popover: #faf4e6;
+  --text: #3d2f1f;
+  --text-muted: #6f5b43;
+  --text-faint: #9a8565;
+  --border: #e0d2b2;
+  --border-strong: #d2c09a;
+  --hover: rgba(90, 60, 20, 0.07);
+  --active: rgba(90, 60, 20, 0.12);
+  --code-bg: #ebdfc3;
+}
+:root[data-palette='sepia'][data-theme='dark'] {
+  --bg: #241d16;
+  --bg-sidebar: #2b231a;
+  --surface: #30271d;
+  --popover: #352b20;
+  --text: #e9dcc4;
+  --text-muted: #bba88a;
+  --text-faint: #8f7d61;
+  --border: #3b3024;
+  --border-strong: #4b3d2d;
+  --hover: rgba(255, 230, 190, 0.06);
+  --active: rgba(255, 230, 190, 0.1);
+  --code-bg: #2e251c;
+}
+
+:root[data-palette='nord'] {
+  --bg: #eceff4;
+  --bg-sidebar: #e5e9f0;
+  --surface: #f2f4f8;
+  --popover: #f6f8fb;
+  --text: #2e3440;
+  --text-muted: #4c566a;
+  --text-faint: #7b8597;
+  --border: #d8dee9;
+  --border-strong: #c7cfdd;
+  --hover: rgba(46, 52, 64, 0.06);
+  --active: rgba(46, 52, 64, 0.1);
+  --code-bg: #e2e7ef;
+}
+:root[data-palette='nord'][data-theme='dark'] {
+  --bg: #2e3440;
+  --bg-sidebar: #3b4252;
+  --surface: #353c4a;
+  --popover: #3b4252;
+  --text: #eceff4;
+  --text-muted: #c5ccd8;
+  --text-faint: #8f99ab;
+  --border: #434c5e;
+  --border-strong: #4c566a;
+  --hover: rgba(236, 239, 244, 0.06);
+  --active: rgba(236, 239, 244, 0.1);
+  --code-bg: #333a47;
+}
+
+:root[data-palette='forest'] {
+  --bg: #f4f7f2;
+  --bg-sidebar: #ebf0e7;
+  --surface: #f7faf5;
+  --popover: #fafcf8;
+  --text: #1f2a1f;
+  --text-muted: #4d5e4b;
+  --text-faint: #7d8f7a;
+  --border: #dde6d8;
+  --border-strong: #cbd8c4;
+  --hover: rgba(30, 60, 30, 0.06);
+  --active: rgba(30, 60, 30, 0.1);
+  --code-bg: #e8efe4;
+}
+:root[data-palette='forest'][data-theme='dark'] {
+  --bg: #171d18;
+  --bg-sidebar: #1d241e;
+  --surface: #212922;
+  --popover: #252e26;
+  --text: #e2eadf;
+  --text-muted: #a9b8a5;
+  --text-faint: #7d8c79;
+  --border: #2b352c;
+  --border-strong: #374437;
+  --hover: rgba(220, 240, 215, 0.06);
+  --active: rgba(220, 240, 215, 0.1);
+  --code-bg: #1f2720;
+}
+
+/* the deepest dark there is, black on screens that turn black pixels off, a cool grey in light */
+:root[data-palette='midnight'] {
+  --bg: #f5f6f8;
+  --bg-sidebar: #eceef2;
+  --surface: #f9fafb;
+  --popover: #ffffff;
+  --border: #e1e4ea;
+  --border-strong: #d0d5de;
+  --code-bg: #eceef2;
+}
+:root[data-palette='midnight'][data-theme='dark'] {
+  --bg: #000000;
+  --bg-sidebar: #0b0b0c;
+  --surface: #111113;
+  --popover: #161618;
+  --text: #e8e8ea;
+  --text-muted: #a5a5ab;
+  --text-faint: #75757c;
+  --border: #1f1f22;
+  --border-strong: #2c2c30;
+  --hover: rgba(255, 255, 255, 0.06);
+  --active: rgba(255, 255, 255, 0.1);
+  --code-bg: #121214;
+}

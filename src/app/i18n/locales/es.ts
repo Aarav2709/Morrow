@@ -184,6 +184,15 @@ export const es: TranslationSchema = {
         light: 'Claro',
         dark: 'Oscuro',
       },
+      colourTheme: 'Tema de color',
+      palettes: {
+        default: 'Predeterminado',
+        paper: 'Papel',
+        sepia: 'Sepia',
+        nord: 'Nord',
+        forest: 'Bosque',
+        midnight: 'Medianoche',
+      },
       accentColour: 'Color de acento',
       accents: {
         ember: 'Ámbar rojizo',

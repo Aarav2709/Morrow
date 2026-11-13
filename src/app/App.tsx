@@ -27,6 +27,7 @@ import {
   setPreferences,
   usePreferences,
 } from './platform/preferences';
+import type { Palette } from './platform/preferences';
 import { navigate, openPage, parseRoute, routeHash, useRoute } from './router';
 import type { Route } from './router';
 import { getUi, openDialog, setUi, toast, useUi } from './ui';
@@ -57,20 +58,24 @@ const GraphView = lazy(() =>
   import('./components/GraphView').then((module) => ({ default: module.GraphView })),
 );
 
-function useTheme(theme: 'system' | 'light' | 'dark') {
+function useTheme(theme: 'system' | 'light' | 'dark', palette: Palette) {
   useEffect(() => {
     const apply = () => {
       const resolved = resolvedTheme(theme);
-      document.documentElement.dataset.theme = resolved;
-      document.documentElement.style.colorScheme = resolved;
-      desktop?.setTheme(resolved);
+      const root = document.documentElement;
+      root.dataset.theme = resolved;
+      root.dataset.palette = palette;
+      root.style.colorScheme = resolved;
+      // the window behind the page, and on a phone the strips around it, take the page's colour
+      const page = getComputedStyle(root).getPropertyValue('--bg').trim();
+      desktop?.setTheme(resolved, /^#[0-9a-f]{6}$/i.test(page) ? page : undefined);
     };
     watchTitleBar();
     apply();
     const media = matchMedia('(prefers-color-scheme: dark)');
     media.addEventListener('change', apply);
     return () => media.removeEventListener('change', apply);
-  }, [theme]);
+  }, [theme, palette]);
 }
 
 function useGlobalShortcuts() {
@@ -475,7 +480,7 @@ export function App() {
   const ui = useUi();
   const prefs = usePreferences();
   const tabs = useTabs();
-  useTheme(prefs.theme);
+  useTheme(prefs.theme, prefs.palette);
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.accent = prefs.accent;

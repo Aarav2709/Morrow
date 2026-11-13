@@ -92,15 +92,30 @@ fn close_ready<R: Runtime>(app: AppHandle<R>) {
 }
 
 #[tauri::command]
-fn set_theme<R: Runtime>(window: WebviewWindow<R>, theme: String) {
-    let color = if theme == "dark" { DARK } else { LIGHT };
-    let _ = window.set_background_color(Some(color));
+fn set_theme<R: Runtime>(window: WebviewWindow<R>, theme: String, color: Option<String>) {
+    // the page's own colour when it sends one, a colour theme changes it
+    let page = color.filter(|hex| {
+        hex.len() == 7 && hex.starts_with('#') && hex[1..].chars().all(|c| c.is_ascii_hexdigit())
+    });
+    let background = page
+        .as_deref()
+        .and_then(|hex| {
+            let channel = |at: usize| u8::from_str_radix(&hex[at..at + 2], 16).ok();
+            Some(tauri::window::Color(
+                channel(1)?,
+                channel(3)?,
+                channel(5)?,
+                0xff,
+            ))
+        })
+        .unwrap_or(if theme == "dark" { DARK } else { LIGHT });
+    let _ = window.set_background_color(Some(background));
     #[cfg(target_os = "android")]
     {
         let dark = theme == "dark";
         // the colour of the page itself, so the strips beside the notch and behind the status bar read as
         // part of it
-        let hex = if dark { "#191919" } else { "#ffffff" };
+        let hex = page.unwrap_or_else(|| if dark { "#191919" } else { "#ffffff" }.to_string());
         device::set_theme(window.app_handle(), dark, hex);
     }
 }

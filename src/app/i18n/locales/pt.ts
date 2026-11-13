@@ -184,6 +184,15 @@ export const pt: TranslationSchema = {
         light: 'Claro',
         dark: 'Escuro',
       },
+      colourTheme: 'Tema de cor',
+      palettes: {
+        default: 'Padrão',
+        paper: 'Papel',
+        sepia: 'Sépia',
+        nord: 'Nord',
+        forest: 'Floresta',
+        midnight: 'Meia-noite',
+      },
       accentColour: 'Cor de destaque',
       accents: {
         ember: 'Brasa',

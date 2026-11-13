@@ -7,6 +7,7 @@ import './app/styles/app.css';
 import './app/styles/editor.css';
 import './app/styles/features.css';
 import './app/styles/color.css';
+import './app/styles/palettes.css';
 import './app/styles/blocks.css';
 import 'katex/dist/katex.min.css';
 import { StrictMode, useEffect, useState } from 'react';

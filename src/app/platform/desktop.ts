@@ -187,7 +187,8 @@ export interface DesktopBridge {
   dataPath: string;
   onCommand(listener: (id: string) => void): () => void;
   onZoom?(listener: (percent: number) => void): () => void;
-  setTheme(theme: 'light' | 'dark'): void;
+  // the colour of the page, for the window behind it
+  setTheme(theme: 'light' | 'dark', color?: string): void;
   // the native window buttons of the electron versions, which took the colours under them
   paintTitleBar?(color: string, symbolColor: string): void;
   openExternal(url: string): Promise<void>;

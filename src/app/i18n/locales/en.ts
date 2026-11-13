@@ -180,6 +180,15 @@ export const en = {
         light: 'Light',
         dark: 'Dark',
       },
+      colourTheme: 'Colour theme',
+      palettes: {
+        default: 'Default',
+        paper: 'Paper',
+        sepia: 'Sepia',
+        nord: 'Nord',
+        forest: 'Forest',
+        midnight: 'Midnight',
+      },
       accentColour: 'Accent colour',
       accents: {
         ember: 'Ember',

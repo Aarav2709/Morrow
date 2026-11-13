@@ -60,6 +60,9 @@ export const ACCENTS = [
   'graphite',
   'custom',
 ] as const;
+// colour themes for the page and sidebar, each with a light and a dark version
+export const PALETTES = ['default', 'paper', 'sepia', 'nord', 'forest', 'midnight'] as const;
+export type Palette = (typeof PALETTES)[number];
 export const TEXT_SCALES = [0.9, 1, 1.1, 1.25] as const;
 export type TextScale = (typeof TEXT_SCALES)[number];
 export type Accent = (typeof ACCENTS)[number];
@@ -72,6 +75,7 @@ export interface CanvasSize {
 export interface Preferences {
   locale: SupportedLocale;
   theme: ThemePreference;
+  palette: Palette;
   font: WritingFont;
   width: PageWidth;
   sidebarOpen: boolean;
@@ -146,6 +150,7 @@ function defaultLocale(): SupportedLocale {
 const defaults: Preferences = {
   locale: defaultLocale(),
   theme: 'system',
+  palette: 'default',
   font: 'sans',
   width: 'comfortable',
   sidebarOpen: true,
@@ -224,6 +229,7 @@ function read(): Preferences {
         ? (parsed.locale as SupportedLocale)
         : defaults.locale,
       theme: ['system', 'light', 'dark'].includes(parsed.theme as string) ? parsed.theme! : defaults.theme,
+      palette: PALETTES.find((palette) => palette === parsed.palette) ?? 'default',
       font: ['serif', 'sans', 'mono'].includes(parsed.font as string) ? parsed.font! : defaults.font,
       width: PAGE_WIDTHS.find((width) => width === parsed.width) ?? 'comfortable',
       sidebarOpen: parsed.sidebarOpen !== false,

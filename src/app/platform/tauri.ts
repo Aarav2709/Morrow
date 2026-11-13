@@ -141,7 +141,7 @@ export function tauriBridge(): DesktopBridge | null {
       zoomListeners.add(listener);
       return () => zoomListeners.delete(listener);
     },
-    setTheme: (theme) => void invoke('set_theme', { theme }),
+    setTheme: (theme, color) => void invoke('set_theme', { theme, color: color ?? null }),
     openExternal: (url) => invoke('open_external', { url }),
     showDataFolder: () => invoke('show_data_folder'),
     showBackupsFolder: () => invoke('show_backups'),

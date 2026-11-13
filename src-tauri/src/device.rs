@@ -85,7 +85,7 @@ pub async fn name<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     named.name.filter(|name| !name.trim().is_empty())
 }
 
-pub fn set_theme<R: Runtime>(app: &AppHandle<R>, dark: bool, color: &'static str) {
+pub fn set_theme<R: Runtime>(app: &AppHandle<R>, dark: bool, color: String) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let _: Result<serde_json::Value, _> =

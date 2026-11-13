@@ -33,13 +33,21 @@ import { formatBytes } from '../platform/attachments';
 import { canOpenFolders, desktop, isMobile } from '../platform/desktop';
 import {
   ACCENTS,
+  PALETTES,
+  resolvedTheme,
   SIDEBAR_FIXED,
   SIDEBAR_GROUPS,
   SIDEBAR_MODULES,
   setPreferences,
   usePreferences,
 } from '../platform/preferences';
-import type { SidebarItem, SidebarModule, TextScale, WeekStart } from '../platform/preferences';
+import type {
+  Palette as PaletteName,
+  SidebarItem,
+  SidebarModule,
+  TextScale,
+  WeekStart,
+} from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -256,6 +264,39 @@ function AppearanceSettings() {
             onChange={(theme) => setPreferences({ theme })}
           />
         </SettingRow>
+        <SettingRow label={t('settings.appearance.colourTheme')}>
+          <div
+            className="palette-swatches"
+            role="radiogroup"
+            aria-label={t('settings.appearance.colourTheme')}
+          >
+            {PALETTES.map((palette) => {
+              const label = t(`settings.appearance.palettes.${palette}` as TranslationKey);
+              const [page, side, text] = PALETTE_PREVIEW[palette][resolvedTheme(prefs.theme)]!;
+              return (
+                <button
+                  key={palette}
+                  type="button"
+                  role="radio"
+                  aria-checked={prefs.palette === palette}
+                  aria-label={label}
+                  title={label}
+                  className="palette-swatch"
+                  onClick={() => setPreferences({ palette })}
+                >
+                  <span className="palette-preview" style={{ background: page }}>
+                    <span style={{ background: side }} />
+                    <span className="palette-lines">
+                      <i style={{ background: text }} />
+                      <i style={{ background: text }} />
+                    </span>
+                  </span>
+                  <span className="palette-name">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </SettingRow>
         <SettingRow label={t('settings.appearance.accentColour')}>
           <div
             className="accent-swatches"
@@ -356,6 +397,16 @@ function AppearanceSettings() {
 }
 
 // which views the sidebar lists
+// what each colour theme looks like in light and in dark: the page, the sidebar and the text, as in palettes.css
+const PALETTE_PREVIEW: Record<PaletteName, Record<'light' | 'dark', [string, string, string]>> = {
+  default: { light: ['#ffffff', '#f8f8f7', '#1d1d1f'], dark: ['#191919', '#202020', '#ececec'] },
+  paper: { light: ['#fbf8f1', '#f3eee3', '#2b2620'], dark: ['#1f1c17', '#26221c', '#ece4d4'] },
+  sepia: { light: ['#f4ecd8', '#ebe0c6', '#3d2f1f'], dark: ['#241d16', '#2b231a', '#e9dcc4'] },
+  nord: { light: ['#eceff4', '#e5e9f0', '#2e3440'], dark: ['#2e3440', '#3b4252', '#eceff4'] },
+  forest: { light: ['#f4f7f2', '#ebf0e7', '#1f2a1f'], dark: ['#171d18', '#1d241e', '#e2eadf'] },
+  midnight: { light: ['#f5f6f8', '#eceef2', '#1d1d1f'], dark: ['#000000', '#0b0b0c', '#e8e8ea'] },
+};
+
 function SidebarSettings() {
   const { t } = useTranslation();
   const prefs = usePreferences();
