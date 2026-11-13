@@ -229,6 +229,9 @@ export function toggleLevel(value: unknown): 1 | 2 | 3 | 4 | 5 | 6 | null {
 }
 
 export const HEADER_COLUMN = '<!-- header-column -->';
+// a table's column widths in pixels, a comment above it like the header column, other apps leave it out
+export const COLUMN_WIDTHS = (widths: number[]) => `<!-- column-widths: ${widths.join(' ')} -->`;
+export const COLUMN_WIDTHS_PATTERN = /^<!--\s*column-widths:\s*([\d ]+?)\s*-->$/;
 
 // a block's background colour is a comment on the line above it, other apps hide it and show the block as is
 export const BACKGROUND_COMMENT = (color: ColorName) => `<!-- background: ${color} -->`;
@@ -298,7 +301,13 @@ function table(node: DocNode, options: SerializeOptions): string {
   // with a header cell when it is on
   const later = (node.content ?? []).slice(1);
   const headerColumn = later.length > 0 && later.every((row) => row.content?.[0]?.type === 'tableHeader');
-  return [...(headerColumn ? [HEADER_COLUMN] : []), ...lines].join('\n');
+  // the widths columns were dragged to, by the first row's cells, 0 for one left to fit
+  const widths = (node.content?.[0]?.content ?? []).map((cell) => {
+    const width = Array.isArray(cell.attrs?.colwidth) ? Number(cell.attrs.colwidth[0]) : 0;
+    return Number.isFinite(width) && width > 0 ? Math.round(width) : 0;
+  });
+  const sized = widths.some((width) => width > 0) ? [COLUMN_WIDTHS(widths)] : [];
+  return [...(headerColumn ? [HEADER_COLUMN] : []), ...sized, ...lines].join('\n');
 }
 
 export function wikiLink(node: DocNode, options: SerializeOptions, inTable = false): string {

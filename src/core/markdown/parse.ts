@@ -11,6 +11,7 @@ import {
   imageWidth,
   toggleLevel,
 } from './serialize';
+import { COLUMN_WIDTHS_PATTERN } from './serialize';
 
 export interface ParseOptions {
   // resolves a [[wiki link]] target, a title or a path inside the vault, to a page id
@@ -211,9 +212,15 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
   // set by the comment morrow writes above a table whose first column is a header
   let headerColumn = false;
   let tableHasHeaderColumn = false;
+  // the widths from a comment above a table, for its cells
+  let columnWidths: number[] = [];
+  let tableWidths: number[] = [];
 
   for (const token of tokens) {
-    if (token.type !== 'table_open' && token.type !== 'html_block') headerColumn = false;
+    if (token.type !== 'table_open' && token.type !== 'html_block') {
+      headerColumn = false;
+      columnWidths = [];
+    }
     switch (token.type) {
       case 'paragraph_open':
         open({ type: 'paragraph', content: [] });
@@ -238,6 +245,8 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
       case 'table_open':
         tableHasHeaderColumn = headerColumn;
         headerColumn = false;
+        tableWidths = columnWidths;
+        columnWidths = [];
         open({ type: 'table', content: [] });
         break;
       case 'tr_open':
@@ -245,9 +254,14 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         break;
       case 'th_open':
       case 'td_open': {
-        const first = (top().content ?? []).length === 0;
-        const header = token.type === 'th_open' || (tableHasHeaderColumn && first);
-        open({ type: header ? 'tableHeader' : 'tableCell', content: [] });
+        const index = (top().content ?? []).length;
+        const header = token.type === 'th_open' || (tableHasHeaderColumn && index === 0);
+        const width = tableWidths[index] ?? 0;
+        open({
+          type: header ? 'tableHeader' : 'tableCell',
+          ...(width > 0 ? { attrs: { colwidth: [width] } } : {}),
+          content: [],
+        });
         open({ type: 'paragraph', content: [] });
         break;
       }
@@ -298,6 +312,13 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         if (token.content.trim() === HEADER_COLUMN) {
           headerColumn = true;
           break;
+        }
+        {
+          const widths = COLUMN_WIDTHS_PATTERN.exec(token.content.trim())?.[1];
+          if (widths) {
+            columnWidths = widths.split(/\s+/).map((width) => Math.min(2000, Number(width) || 0));
+            break;
+          }
         }
         {
           const color = BACKGROUND_PATTERN.exec(token.content.trim())?.[1];

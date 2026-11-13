@@ -584,3 +584,28 @@ describe('things that used to change on a reload', () => {
     expect(settles('- parent\n  - <br>\n  - b\n')).toBe('- parent\n  - <br>\n  - b\n');
   });
 });
+
+describe('table column widths', () => {
+  it('keeps the widths columns were dragged to in a comment above the table', () => {
+    const cell = (type: string, words: string, width?: number) => ({
+      type,
+      ...(width ? { attrs: { colwidth: [width] } } : {}),
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: words }] }],
+    });
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'table',
+          content: [
+            { type: 'tableRow', content: [cell('tableHeader', 'Name', 240), cell('tableHeader', 'Note')] },
+            { type: 'tableRow', content: [cell('tableCell', 'Ada', 240), cell('tableCell', 'Hi')] },
+          ],
+        },
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out.startsWith('<!-- column-widths: 240 0 -->\n| Name | Note |')).toBe(true);
+    expect(markdownToDoc(out)).toEqual(doc);
+  });
+});

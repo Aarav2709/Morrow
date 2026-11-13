@@ -256,6 +256,29 @@
   line-height: 1.5;
 }
 
+/* a column dragged to a width keeps it, the table can then be wider than the page and scrolls */
+.prose .tableWrapper {
+  overflow-x: auto;
+}
+.prose th,
+.prose td {
+  position: relative;
+}
+.prose .column-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: -1px;
+  right: -2px;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 2;
+}
+.prose.resize-cursor,
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
 .prose th,
 .prose td {
   border: 1px solid var(--border-strong);

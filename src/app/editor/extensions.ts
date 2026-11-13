@@ -241,7 +241,8 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     IndentedLines,
     LineEdges,
     KeepTab,
-    Table.configure({ resizable: false }),
+    // columns are dragged wider or narrower at their edges, the widths are kept in the file
+    Table.configure({ resizable: true, cellMinWidth: 60, lastColumnResizable: false }),
     TableRow,
     TableHeader,
     TableCell,
