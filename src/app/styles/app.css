@@ -311,12 +311,15 @@ kbd,
   align-items: center;
   justify-content: space-between;
   padding: 12px 10px 6px 12px;
+  /* the vault's name is sized by how wide the sidebar is */
+  container-type: inline-size;
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   padding: 4px 6px;
   border-radius: var(--radius);
   color: var(--text);
@@ -326,11 +329,21 @@ kbd,
   background: var(--hover);
 }
 
+.brand > svg,
+.sidebar-header > .icon-button {
+  flex-shrink: 0;
+}
+
+/* a long vault name gets smaller in a narrow sidebar, then ends in … rather than pushing the button out */
 .brand-name {
   font-family: var(--font-ui);
-  font-size: 17px;
+  font-size: clamp(13px, calc(6px + 4cqi), 17px);
   font-weight: 600;
   letter-spacing: -0.01em;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-nav {
