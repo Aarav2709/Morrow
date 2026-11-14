@@ -44,6 +44,11 @@ document.documentElement.dataset.accent = getPreferences().accent;
 document.documentElement.dataset.colorful = getPreferences().colorful ? 'true' : 'false';
 // the desktop window has no title bar, styles use this to make room for the native buttons
 if (desktop) document.documentElement.dataset.desktop = desktop.platform;
+// the window never scrolls, only the panes inside it. scrolling a heading or a find match into view
+// would otherwise also scroll the window and push the tab bar off the top
+window.addEventListener('scroll', () => {
+  if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
+});
 
 async function openWorkspace(): Promise<BootState> {
   // morrow is a desktop app, pages are files in a folder the person chooses

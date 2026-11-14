@@ -1,12 +1,13 @@
 // a web view too old for morrow, like the one an android 9 emulator ships with, would show a blank window.
 // this check is old style javascript that any web view runs, and says what to update
 (function () {
-  var modern = true;
-  try {
-    new Function('var a = {}; return a?.b ?? Object.hasOwn(a, "b") || [1].at(-1)')();
-  } catch (error) {
-    modern = false;
-  }
+  // new Function would be simpler, but the app's content security policy blocks it and every web view
+  // looked too old. these are the newest things the app leans on, checked without running new syntax
+  var modern =
+    typeof Object.hasOwn === 'function' &&
+    typeof Array.prototype.at === 'function' &&
+    typeof String.prototype.replaceAll === 'function' &&
+    typeof structuredClone === 'function';
   if (modern) return;
   var lang = (navigator.language || 'en').slice(0, 2);
   var text = {
