@@ -15,7 +15,7 @@ import { canvasDoc, emptyCanvas } from '../core/canvas';
 import type { Command } from '../core/commands';
 import { defaultDatabase } from '../core/database';
 import { displayTitle } from '../core/model';
-import type { FileId, FileMeta, PageId, PageKind, Snapshot } from '../core/model';
+import type { FileId, FileMeta, PageId, PageKind, PropValue, Snapshot } from '../core/model';
 import { databaseFromSubpages, fieldsForMove, releaseRow } from '../core/properties';
 import { buildSite } from '../core/site';
 import {
@@ -204,6 +204,7 @@ export function ensureToday(date = new Date()): PageId | null {
     ...(templateDoc ? { doc: applyTemplate(templateDoc, { title, date }) } : {}),
   });
   if (!result.ok) return null;
+  if (template) carryTemplateFields(id, template.id, { title, date });
   expandPage(journal.id);
   return id;
 }
@@ -280,6 +281,46 @@ export function createTemplatesPage(): PageId | null {
   return id;
 }
 
+// a template's other properties, its frontmatter and its cover, go to a page made from it. text in them
+// fills in {{date}} and {{title}} like the body does. what the page already has is kept
+function carryTemplateFields(
+  pageId: PageId,
+  templateId: PageId,
+  values: { title: string; date: Date },
+): void {
+  const state = getState();
+  const page = state.pages[pageId];
+  const template = state.pages[templateId];
+  if (!page || !template) return;
+  const now = Date.now();
+  const fill = (value: unknown): unknown =>
+    typeof value === 'string' ? fillTemplate(value, values) : Array.isArray(value) ? value.map(fill) : value;
+  const extra = {
+    ...Object.fromEntries(Object.entries(template.extra).map(([key, value]) => [key, fill(value)])),
+    ...page.extra,
+  };
+  // database values only mean something in the same database, a template kept beside its rows
+  const parent = page.parentId ? state.pages[page.parentId] : null;
+  const known = new Set(parent?.database?.properties.map((property) => property.id) ?? []);
+  const carried = Object.fromEntries(
+    Object.entries(template.properties).filter(
+      ([key]) => known.has(key) && page.properties[key] === undefined,
+    ),
+  );
+  const properties = { ...carried, ...page.properties };
+  const extraChanged = Object.keys(extra).length !== Object.keys(page.extra).length;
+  const propertiesChanged = Object.keys(carried).length > 0;
+  if (extraChanged || propertiesChanged)
+    run({
+      type: 'page.setFields',
+      id: pageId,
+      ...(extraChanged ? { extra } : {}),
+      ...(propertiesChanged ? { properties: properties as Record<string, PropValue> } : {}),
+      now,
+    });
+  if (!page.cover && template.cover) run({ type: 'page.setCover', id: pageId, cover: template.cover, now });
+}
+
 // a new page that starts as a copy of a template, with its date and title fields filled in
 // an empty page takes on a template, its text and its icon and tags where it has none of its own
 export function applyTemplateTo(pageId: PageId, templateId: PageId): boolean {
@@ -288,15 +329,17 @@ export function applyTemplateTo(pageId: PageId, templateId: PageId): boolean {
   const page = state.pages[pageId];
   const template = state.pages[templateId];
   if (!page || !template) return false;
-  const doc = applyTemplate(state.docs[templateId] ?? { type: 'doc', content: [{ type: 'paragraph' }] }, {
-    title: displayTitle(page),
-    date: new Date(),
-  });
+  const values = { title: displayTitle(page), date: new Date() };
+  const doc = applyTemplate(
+    state.docs[templateId] ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+    values,
+  );
   const now = Date.now();
   if (!run({ type: 'page.setDoc', id: pageId, doc, now }).ok) return false;
   if (!page.icon && template.icon) run({ type: 'page.setIcon', id: pageId, icon: template.icon, now });
   if (page.tags.length === 0 && template.tags.length)
     run({ type: 'page.setTags', id: pageId, tags: template.tags, now });
+  carryTemplateFields(pageId, templateId, values);
   return true;
 }
 
@@ -329,6 +372,7 @@ export function createFromTemplate(templateId: PageId, parentId: PageId | null):
       : {}),
   });
   if (!result.ok) return null;
+  carryTemplateFields(id, templateId, { title: displayTitle({ title }), date: now });
   expandPage(parentId);
   setUi({ focusTitle: id, mobileSidebar: false });
   openPage(id);
@@ -353,6 +397,12 @@ export function saveAsTemplate(id: PageId): void {
     tags: page.tags,
     doc: state.docs[id] ?? { type: 'doc', content: [{ type: 'paragraph' }] },
   });
+  // the template keeps the page's other properties and cover as they are, filled in when it's used
+  if (result.ok) {
+    const now = Date.now();
+    if (Object.keys(page.extra).length) run({ type: 'page.setFields', id: copy, extra: page.extra, now });
+    if (page.cover) run({ type: 'page.setCover', id: copy, cover: page.cover, now });
+  }
   if (result.ok)
     toast(t('toasts.savedAsTemplate', { title: displayTitle(page) }), {
       action: { label: t('toasts.open'), run: () => openPage(copy) },
