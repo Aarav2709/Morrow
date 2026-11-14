@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { findParentNode, getMarkRange } from '@tiptap/core';
 import type { Node as PmNode } from '@tiptap/pm/model';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
+import type { Transaction } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import type { BubbleMenuProps } from '@tiptap/react/menus';
@@ -214,8 +215,8 @@ function dismissLink(editor: Editor): void {
   const start = linkStart(editor);
   if (start === null) return;
   dismissedLinks.set(editor, start);
-  // an empty step makes the menu look again, and hide
-  editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false));
+  // the menu only looks again when the page or the cursor changed, so it is told to hide
+  editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false).setMeta('linkMenu', 'hide'));
 }
 const showLink: BubbleMenuProps['shouldShow'] = ({ editor, view, from, to }) => {
   const start = from === to && editor.isActive('link') ? linkStart(editor) : null;
@@ -372,6 +373,7 @@ export function FormattingMenu({
   const [headings, setHeadings] = useState(false);
   const marks = useMarks(editor);
   const { assistant } = usePreferences();
+  const shown = useRef(false);
   const [options] = useState(
     () =>
       ({
@@ -379,13 +381,32 @@ export function FormattingMenu({
         offset: 8,
         flip: true,
         shift: { padding: 8 },
+        onShow: () => {
+          shown.current = true;
+        },
         onHide: () => {
+          shown.current = false;
           setEditingLink(false);
           setColoring(false);
           setHeadings(false);
         },
       }) as const,
   );
+
+  // words picked and then deleted or typed over leave nothing to format. the bar waits a moment before it
+  // looks again after a change, and could stay over the empty space, so it is told to hide right away
+  useEffect(() => {
+    const hide = ({ transaction }: { transaction: Transaction }) => {
+      if (!shown.current || !transaction.docChanged || !editor.state.selection.empty) return;
+      queueMicrotask(() => {
+        if (!editor.isDestroyed) editor.view.dispatch(editor.state.tr.setMeta('formattingMenu', 'hide'));
+      });
+    };
+    editor.on('transaction', hide);
+    return () => {
+      editor.off('transaction', hide);
+    };
+  }, [editor]);
 
   useEffect(() => {
     // capture the node now, the editor can be destroyed before this cleanup runs

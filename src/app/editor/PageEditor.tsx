@@ -333,6 +333,17 @@ function dropUnlinkedBlockIds(editor: Editor, pageId: PageId): void {
 export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onDirty, onReady }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
+  // the blocks a menu was opened for can be deleted from the keyboard while it is open, then it closes
+  useEffect(() => {
+    if (!editor || !blockMenu) return;
+    const close = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+      if (transaction.docChanged) setBlockMenu(null);
+    };
+    editor.on('transaction', close);
+    return () => {
+      editor.off('transaction', close);
+    };
+  }, [editor, blockMenu]);
   const [dateMenu, setDateMenu] = useState<{
     date: Date;
     anchor: HTMLElement;
