@@ -101,14 +101,32 @@ function restorePlace(editor: Editor, scroller: HTMLElement | null, id: string, 
     ),
   );
   if (focus) editor.view.dom.focus({ preventScroll: true });
+  if (!scroller) return;
+  // at start the page can be filled in again after it was put back, the same page open on both sides of a
+  // split is, so the scroll is held until it has stayed put for a while. scrolling by hand lets go at once
+  restoring.add(scroller);
   let frames = 0;
+  let held = 0;
+  const done = () => {
+    restoring.delete(scroller);
+    for (const type of STOP_RESTORING) scroller.removeEventListener(type, done);
+  };
+  for (const type of STOP_RESTORING) scroller.addEventListener(type, done, { passive: true, once: true });
   const apply = () => {
-    if (!scroller?.isConnected) return;
-    scroller.scrollTop = place.scroll;
-    if (Math.abs(scroller.scrollTop - place.scroll) > 2 && ++frames < 60) requestAnimationFrame(apply);
+    if (!scroller.isConnected || !restoring.has(scroller)) return done();
+    if (Math.abs(scroller.scrollTop - place.scroll) > 2) {
+      scroller.scrollTop = place.scroll;
+      held = 0;
+    } else held++;
+    if (held < 20 && ++frames < 180) requestAnimationFrame(apply);
+    else done();
   };
   apply();
 }
+
+// pages being scrolled back to where they were left, their scrolling until then isn't a new place
+const restoring = new WeakSet<HTMLElement>();
+const STOP_RESTORING = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const;
 
 export function PageView({ id, find, anchor }: { id: PageId; find: string | null; anchor?: string | null }) {
   const state = useWorkspace();
@@ -224,7 +242,9 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
         className="page-scroll"
         ref={scrollRef}
         onScroll={(event) =>
-          placed.current && rememberPlace(placeKey, { scroll: event.currentTarget.scrollTop })
+          placed.current &&
+          !restoring.has(event.currentTarget) &&
+          rememberPlace(placeKey, { scroll: event.currentTarget.scrollTop })
         }
       >
         {trashed && (
