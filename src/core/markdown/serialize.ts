@@ -187,8 +187,12 @@ function listItems(
           children = children.slice(1);
         }
       }
+      // an item's own background is a comment at the end of its first line, other apps hide it
+      const background = blockBackground(item);
       children.forEach((child, childIndex) => {
-        const text = block(child, options) ?? '';
+        let text = block(child, options) ?? '';
+        if (childIndex === 0 && background && !text.includes('\n'))
+          text = `${text} ${BACKGROUND_COMMENT(background)}`;
         if (childIndex === 0 && parts.length === 0) parts.push(text);
         else parts.push((isList(child) ? '\n' : '\n\n') + text);
       });

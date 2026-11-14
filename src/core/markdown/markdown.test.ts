@@ -441,6 +441,34 @@ describe('colours', () => {
     expect(markdownToDoc(out)).toEqual(doc);
   });
 
+  it('round trips a background on one item of a list at the end of its line', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'bulletList',
+          content: [
+            { type: 'listItem', attrs: { backgroundColor: 'red' }, content: [p(text('One'))] },
+            { type: 'listItem', content: [p(text('Two'))] },
+          ],
+        },
+        {
+          type: 'taskList',
+          content: [
+            {
+              type: 'taskItem',
+              attrs: { checked: false, backgroundColor: 'blue' },
+              content: [p(text('Do'))],
+            },
+          ],
+        },
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe('- One <!-- background: red -->\n- Two\n\n- [ ] Do <!-- background: blue -->\n');
+    expect(markdownToDoc(out)).toEqual(doc);
+  });
+
   it('keeps a list counted in letters, numbered in the file', () => {
     const item = (words: string) => ({ type: 'listItem', content: [p(text(words))] });
     const doc: DocNode = {

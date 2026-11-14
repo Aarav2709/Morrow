@@ -323,43 +323,54 @@
   background: var(--c-red);
 }
 
-/* a whole block's background, from the colour in its Turn into menu */
+/* a whole block's background, from the colour in its Turn into menu. it reaches a little past the block
+   with a shadow of the same colour rather than padding, so colouring a line never moves the lines around it */
 .prose .block-bg {
   border-radius: 4px;
-  padding: 2px 6px;
+  padding-left: 6px;
+  padding-right: 6px;
   margin-left: -6px;
   margin-right: -6px;
+  background: var(--block-bg);
+  box-shadow: 0 0 0 2px var(--block-bg);
 }
 .prose ul.block-bg,
 .prose ol.block-bg {
   padding-left: calc(1.45em + 6px);
 }
+/* an item of a list on its own is coloured where its text is, its bullet and its words stay put */
+.prose li.block-bg {
+  padding-left: 0;
+  padding-right: 0;
+  margin-left: 0;
+  margin-right: 0;
+}
 .prose .block-bg-gray {
-  background: var(--c-gray);
+  --block-bg: var(--c-gray);
 }
 .prose .block-bg-brown {
-  background: var(--c-brown);
+  --block-bg: var(--c-brown);
 }
 .prose .block-bg-orange {
-  background: var(--c-orange);
+  --block-bg: var(--c-orange);
 }
 .prose .block-bg-yellow {
-  background: var(--c-yellow);
+  --block-bg: var(--c-yellow);
 }
 .prose .block-bg-green {
-  background: var(--c-green);
+  --block-bg: var(--c-green);
 }
 .prose .block-bg-blue {
-  background: var(--c-blue);
+  --block-bg: var(--c-blue);
 }
 .prose .block-bg-purple {
-  background: var(--c-purple);
+  --block-bg: var(--c-purple);
 }
 .prose .block-bg-pink {
-  background: var(--c-pink);
+  --block-bg: var(--c-pink);
 }
 .prose .block-bg-red {
-  background: var(--c-red);
+  --block-bg: var(--c-red);
 }
 .color-dot.text-gray {
   color: var(--c-gray-text);

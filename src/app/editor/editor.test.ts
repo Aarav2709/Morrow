@@ -239,6 +239,19 @@ describe('turn into', () => {
     expect(json(target).content![0]!.attrs?.backgroundColor ?? null).toBeNull();
   });
 
+  it('colours one item of a list on its own', () => {
+    const item = (text: string) => ({ type: 'listItem', content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [{ type: 'bulletList', content: [item('One'), item('Two')] }],
+    });
+    setBlockBackground(target, [1], 'red');
+    const list = json(target).content![0]!;
+    expect(list.attrs?.backgroundColor ?? null).toBeNull();
+    expect(list.content![0]!.attrs?.backgroundColor).toBe('red');
+    expect(list.content![1]!.attrs?.backgroundColor ?? null).toBeNull();
+  });
+
   it('starts a lettered list from a. and a space', () => {
     const target = make({ type: 'doc', content: [p('')] });
     target.commands.setTextSelection(1);

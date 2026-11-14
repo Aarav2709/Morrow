@@ -286,6 +286,19 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
         break;
       case 'inline': {
         const cell = stack[stack.length - 2];
+        // a list item with a background of its own ends its first line with the comment for it
+        if (cell?.type === 'listItem' && (cell.content ?? []).length === 1) {
+          const children = token.children ?? [];
+          const last = children[children.length - 1];
+          const color =
+            last?.type === 'html_inline' ? BACKGROUND_PATTERN.exec(last.content.trim())?.[1] : null;
+          if (color && (COLORS as readonly string[]).includes(color)) {
+            cell.attrs = { ...cell.attrs, backgroundColor: color };
+            children.pop();
+            const before = children[children.length - 1];
+            if (before?.type === 'text') before.content = before.content.replace(/\s+$/, '');
+          }
+        }
         if (cell && (cell.type === 'tableCell' || cell.type === 'tableHeader'))
           cellInline(token.children ?? [], options, cell, top());
         else (top().content ??= []).push(...inlineNodes(token.children ?? [], options));
@@ -916,7 +929,10 @@ function toTaskItem(item: DocNode): DocNode | null {
   const inline = [...(rest ? [{ ...lead, text: rest }] : []), ...(first.content ?? []).slice(1)];
   return {
     type: 'taskItem',
-    attrs: { checked: /x/i.test(match[1]!) },
+    attrs: {
+      checked: /x/i.test(match[1]!),
+      ...(item.attrs?.backgroundColor ? { backgroundColor: item.attrs.backgroundColor } : {}),
+    },
     content: [{ ...first, content: inline }, ...(item.content ?? []).slice(1)],
   };
 }

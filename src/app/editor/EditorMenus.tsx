@@ -958,21 +958,21 @@ function intoColumns(editor: Editor, from: number, to: number, count: number): v
   editor.view.focus();
 }
 
-// a background on the whole block, not only its words. an item of a list colours its list
+// a background on the whole block, not only its words. an item of a list gets one of its own, the list
+// around it keeps what it had. a whole list coloured takes the colour off its items so it shows evenly
 export function setBlockBackground(editor: Editor, positions: number[], color: ColorName | null): void {
   const { tr, doc } = editor.state;
   const done = new Set<number>();
-  for (const at of positions) {
-    let pos = at;
-    let node = doc.nodeAt(pos);
-    if (node && ['listItem', 'taskItem'].includes(node.type.name)) {
-      const $pos = doc.resolve(pos);
-      pos = $pos.before();
-      node = $pos.parent;
-    }
+  for (const pos of positions) {
+    const node = doc.nodeAt(pos);
     if (!node || done.has(pos) || !('backgroundColor' in node.attrs)) continue;
     done.add(pos);
     tr.setNodeMarkup(pos, undefined, { ...node.attrs, backgroundColor: color });
+    if (['bulletList', 'orderedList', 'taskList'].includes(node.type.name))
+      node.forEach((item, offset) => {
+        if (item.attrs.backgroundColor)
+          tr.setNodeMarkup(pos + 1 + offset, undefined, { ...item.attrs, backgroundColor: null });
+      });
   }
   if (tr.docChanged) editor.view.dispatch(tr);
   clearBlockSelection(editor);
@@ -1080,23 +1080,21 @@ export function BlockMenu({
   const colourable = range !== null || (block !== null && block.textContent.trim() !== '');
   const blockPositions = () => {
     if (!range) return [request.pos];
+    // the picked blocks side by side, items of a list when only some of its items were picked
     const positions: number[] = [];
-    editor.state.doc.nodesBetween(range.from, range.to, (_node, pos) => {
+    const $start = editor.state.doc.resolve(range.from);
+    const parent = $start.parent;
+    let pos = range.from;
+    for (let index = $start.index(); index < parent.childCount && pos < range.to; index++) {
       positions.push(pos);
-      return false;
-    });
+      pos += parent.child(index).nodeSize;
+    }
     return positions;
   };
   const background = range
     ? null
-    : (() => {
-        const node = editor.state.doc.nodeAt(request.pos);
-        const owner =
-          node && ['listItem', 'taskItem'].includes(node.type.name)
-            ? editor.state.doc.resolve(request.pos).parent
-            : node;
-        return (owner?.attrs.backgroundColor as ColorName | null | undefined) ?? null;
-      })();
+    : ((editor.state.doc.nodeAt(request.pos)?.attrs.backgroundColor as ColorName | null | undefined) ??
+      null);
   const entries: MenuEntry[] = [
     { heading: t('editor.turnInto') },
     {

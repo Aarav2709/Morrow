@@ -93,7 +93,17 @@ const BlockBackground = Extension.create({
   addGlobalAttributes() {
     return [
       {
-        types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'taskList', 'details'],
+        types: [
+          'paragraph',
+          'heading',
+          'blockquote',
+          'bulletList',
+          'orderedList',
+          'taskList',
+          'listItem',
+          'taskItem',
+          'details',
+        ],
         attributes: {
           backgroundColor: {
             default: null,
