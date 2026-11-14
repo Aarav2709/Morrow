@@ -21,6 +21,7 @@ export const en = {
     remove: 'Remove',
   },
   sidebar: {
+    sectionEmpty: "Drag pages here, or add them from a page's menu",
     removeFromSection: 'Take out of {name}',
     customSections: 'Your sections',
     daily: 'Daily notes',

@@ -23,6 +23,7 @@ export const pt: TranslationSchema = {
     remove: 'Remover',
   },
   sidebar: {
+    sectionEmpty: 'Arraste páginas para cá ou adicione pelo menu de uma página',
     removeFromSection: 'Tirar de {name}',
     customSections: 'Suas seções',
     daily: 'Notas diárias',

@@ -47,7 +47,7 @@ import {
 import { collectCards, dueCards } from '../../core/flashcards';
 import { collectTags } from '../../core/tags';
 import { findTemplatesPage, listTemplates } from '../../core/templates';
-import { togglePageInSection, useSidebarSections } from '../sidebarSections';
+import { addPageToSection, togglePageInSection, useSidebarSections } from '../sidebarSections';
 import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { t, useTranslation } from '../i18n';
@@ -165,6 +165,7 @@ export function Sidebar() {
     [live],
   );
   const customSections = useSidebarSections();
+  const [dropSection, setDropSection] = useState<string | null>(null);
   // templates have a section of their own rather than sitting among the pages
   const templatesPage = useMemo(() => findTemplatesPage(state), [state]);
   const templates = useMemo(() => listTemplates(state), [state]);
@@ -328,17 +329,38 @@ export function Sidebar() {
         </ul>
       </section>
     ),
-    // sections of your own, each a list of pages like favourites, shown once a page is in one
+    // sections of your own, each a list of pages like favourites. an empty one shows too, so a page can be
+    // dragged into it from the tree
     custom: customSections
       .filter((section) => !section.hidden)
       .map((section) => {
         const pages = section.pages
           .map((id) => state.pages[id])
           .filter((page): page is PageMeta => !!page && page.trashedAt === null);
-        if (pages.length === 0) return null;
         return (
-          <section key={section.id} className="sidebar-section" aria-label={section.name}>
+          <section
+            key={section.id}
+            className={`sidebar-section${dropSection === section.id ? ' is-drop-target' : ''}`}
+            aria-label={section.name}
+            onDragOver={(event) => {
+              if (!event.dataTransfer.types.includes(PAGE_DRAG_TYPE)) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'link';
+              setDropSection(section.id);
+            }}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropSection(null);
+            }}
+            onDrop={(event) => {
+              const id = event.dataTransfer.getData(PAGE_DRAG_TYPE);
+              setDropSection(null);
+              if (!id) return;
+              event.preventDefault();
+              void addPageToSection(section.id, id);
+            }}
+          >
             <h2 className="sidebar-heading">{section.name}</h2>
+            {pages.length === 0 && <p className="sidebar-section-hint">{t('sidebar.sectionEmpty')}</p>}
             <ul className="flat-list">
               {pages.map((page) => (
                 <li key={page.id}>

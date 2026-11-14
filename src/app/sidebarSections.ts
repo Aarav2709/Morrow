@@ -117,3 +117,10 @@ export function togglePageInSection(id: string, pageId: PageId): Promise<void> {
     ),
   );
 }
+
+// a page dropped on a section from the page tree goes in at the end, a page already there stays put
+export function addPageToSection(id: string, pageId: PageId): Promise<void> {
+  const section = sections.find((item) => item.id === id);
+  if (!section || section.pages.includes(pageId)) return Promise.resolve();
+  return updateSection(id, { pages: [...section.pages, pageId] });
+}

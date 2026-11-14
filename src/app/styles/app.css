@@ -409,6 +409,20 @@ kbd,
   margin-top: 14px;
 }
 
+/* an empty section of your own says how to fill it, and lights up while a page is dragged over it */
+.sidebar-section-hint {
+  margin: 0;
+  padding: 2px 8px 6px;
+  font-size: var(--text-xs);
+  color: var(--text-faint);
+}
+
+.sidebar-section.is-drop-target {
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-line);
+}
+
 .sidebar-heading-row {
   display: flex;
   align-items: center;
