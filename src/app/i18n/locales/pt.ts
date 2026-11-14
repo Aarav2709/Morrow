@@ -1431,9 +1431,9 @@ export const pt: TranslationSchema = {
     inThePast: 'Esse horário já passou.',
     remind: 'Lembrar-me',
     remindMe: 'Lembrar-me',
-    atHour: 'Às {time} nesse dia',
+    atHour: 'Às {time} deste dia',
     remove: 'Remover lembrete',
-    set: 'O Morrow vai lembrar você às {time} nesse dia.',
+    set: 'O Morrow vai lembrar você às {time} deste dia.',
     body: 'Um lembrete para {date}',
   },
   repeat: {

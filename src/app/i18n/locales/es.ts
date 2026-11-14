@@ -1432,9 +1432,9 @@ export const es: TranslationSchema = {
     inThePast: 'Esa hora ya ha pasado.',
     remind: 'Recordármelo',
     remindMe: 'Recordármelo',
-    atHour: 'A las {time} ese día',
+    atHour: 'A las {time} de este día',
     remove: 'Quitar recordatorio',
-    set: 'Morrow te lo recordará a las {time} ese día.',
+    set: 'Morrow te lo recordará a las {time} de este día.',
     body: 'Un recordatorio para el {date}',
   },
   repeat: {

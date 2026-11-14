@@ -1418,9 +1418,9 @@ export const en = {
     inThePast: 'That time has already passed.',
     remind: 'Remind me',
     remindMe: 'Remind me',
-    atHour: 'At {time} that day',
+    atHour: 'At {time} on this day',
     remove: 'Remove reminder',
-    set: 'Morrow will remind you at {time} that day.',
+    set: 'Morrow will remind you at {time} on this day.',
     body: 'A reminder for {date}',
   },
   repeat: {
