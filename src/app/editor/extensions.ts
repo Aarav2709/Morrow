@@ -17,7 +17,7 @@ import { EmojiSuggest } from './EmojiSuggest';
 import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, TextColor } from './Extras';
 import { FileAttachment, FileDrop, Image } from './Media';
 import type { BlockMenuRequest } from './BlockHandle';
-import { MarkdownPaste, PasteOnEmptyLine } from './MarkdownPaste';
+import { CopyFromInside, MarkdownPaste, PasteOnEmptyLine } from './MarkdownPaste';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
@@ -289,6 +289,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     ToggleSummary,
     DetailsContent,
     FindReplace,
+    CopyFromInside,
     PasteOnEmptyLine,
     PasteMenu,
     ClickBelow,

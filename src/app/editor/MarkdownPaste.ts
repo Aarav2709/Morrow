@@ -86,6 +86,38 @@ export const MarkdownPaste = Extension.create<{ resolvePage: (title: string) => 
   },
 });
 
+// blocks that only hold other blocks. a copy made inside one of them, with both of its ends inside, is just
+// the copied blocks, so a line copied out of a toggle pastes as that line rather than a new toggle around it
+const HOLDERS = new Set(['details', 'detailsContent', 'callout', 'columns', 'column']);
+
+export function unwrapHolders(slice: Slice): Slice {
+  let { content, openStart, openEnd } = slice;
+  while (openStart > 0 && openEnd > 0 && content.childCount === 1) {
+    const only = content.firstChild!;
+    if (!HOLDERS.has(only.type.name)) break;
+    content = only.content;
+    openStart -= 1;
+    openEnd -= 1;
+  }
+  return content === slice.content ? slice : new Slice(content, openStart, openEnd);
+}
+
+export const CopyFromInside = Extension.create({
+  name: 'copyFromInside',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('copyFromInside'),
+        props: {
+          transformCopied: (slice) => unwrapHolders(slice),
+          // a copy made before this, or in another morrow window, is unwrapped as it comes in
+          transformPasted: (slice) => unwrapHolders(slice),
+        },
+      }),
+    ];
+  },
+});
+
 // blocks pasted on an empty line take that line's place, a list copied in morrow used to land under it and
 // leave the empty line above
 export const PasteOnEmptyLine = Extension.create({

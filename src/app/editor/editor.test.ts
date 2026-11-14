@@ -402,6 +402,36 @@ describe('pasting a list', () => {
   });
 });
 
+describe('copying from inside a toggle', () => {
+  it('pastes the copied line, not a new toggle around it', async () => {
+    const { unwrapHolders } = await import('./MarkdownPaste');
+    const target = make({
+      type: 'doc',
+      content: [
+        p('Above'),
+        {
+          type: 'details',
+          content: [
+            { type: 'detailsSummary', content: [{ type: 'text', text: 'Title' }] },
+            { type: 'detailsContent', content: [p('Inside one'), p('Inside two')] },
+          ],
+        },
+      ],
+    });
+    let from = 0;
+    let to = 0;
+    target.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'Inside one') from = pos;
+      if (node.isText && node.text === 'Inside two') to = pos + node.nodeSize;
+    });
+    const slice = unwrapHolders(target.state.doc.slice(from, to));
+    expect(slice.content.firstChild!.type.name).toBe('paragraph');
+    target.commands.setTextSelection(3);
+    target.view.dispatch(target.state.tr.replaceSelection(slice));
+    expect(json(target).content!.filter((node) => node.type === 'details')).toHaveLength(1);
+  });
+});
+
 describe('turning a line into a toggle', () => {
   it('folds the section under it into the toggle, up to the next heading', () => {
     const heading = (level: number, text: string) => ({
