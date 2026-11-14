@@ -76,6 +76,13 @@ export function tagColor(tag: string): ColorName {
   return picked[tag.toLowerCase()] ?? autoTagColor(tag);
 }
 
+// the classes a #tag chip is drawn with. a colour picked for it shows whether or not colourful is on,
+// the automatic one only with colourful
+export function tagClass(tag: string): string {
+  const own = picked[tag.toLowerCase()];
+  return own ? `tag-${own} tag-picked` : `tag-${autoTagColor(tag)}`;
+}
+
 // the colour a tag has from its name alone
 export function autoTagColor(tag: string): ColorName {
   let hash = 0;

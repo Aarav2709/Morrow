@@ -2,7 +2,7 @@ import { Hash, Palette, Plus, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import type { PageMeta } from '../../core/model';
-import { collectTags, pagesWithTag, tagColor } from '../../core/tags';
+import { collectTags, pagesWithTag, tagClass } from '../../core/tags';
 import { ancestorsOf } from '../../core/tree';
 import { normalizeTag } from '../../core/vault/frontmatter';
 import { navigate, openPage } from '../router';
@@ -41,7 +41,7 @@ export function TagsView() {
                 <li key={entry.tag}>
                   <button
                     type="button"
-                    className={`tag-chip large tag-${tagColor(entry.tag)}`}
+                    className={`tag-chip large ${tagClass(entry.tag)}`}
                     onClick={() => navigate({ name: 'tag', tag: entry.tag })}
                     onContextMenu={(event) => {
                       event.preventDefault();
@@ -93,7 +93,7 @@ export function TagView({ tag }: { tag: string }) {
           <header className="collection-header">
             <div className="tag-heading">
               <h1>
-                <span className={`tag-chip large tag-${tagColor(tag)}`}>#{tag}</span>
+                <span className={`tag-chip large ${tagClass(tag)}`}>#{tag}</span>
               </h1>
               <button
                 type="button"
@@ -167,7 +167,7 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
   return (
     <div className="page-tags" aria-label={t('tags.title')}>
       {page.tags.map((tag) => (
-        <span key={tag} className={`tag-chip tag-${tagColor(tag)}`}>
+        <span key={tag} className={`tag-chip ${tagClass(tag)}`}>
           <button
             type="button"
             className="tag-chip-name"

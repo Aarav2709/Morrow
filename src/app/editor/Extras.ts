@@ -21,7 +21,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import { common, createLowlight } from 'lowlight';
 import { CALLOUT_TONES, calloutTone, COLORS } from '../../core/model';
 import type { CalloutTone, ColorName } from '../../core/model';
-import { tagColor } from '../../core/tags';
+import { tagClass } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
 import { getPreferences, setPreferences } from '../platform/preferences';
 import { openDialog } from '../ui';
@@ -723,7 +723,7 @@ function tagsInBlock(block: PmNode, start: number, out: Decoration[]): void {
       const from = pos + match.index + match[1]!.length;
       const to = from + match[2]!.length + 1;
       out.push(
-        Decoration.inline(from, to, { class: `tag-chip tag-${tagColor(match[2]!)}`, 'data-tag': match[2]! }),
+        Decoration.inline(from, to, { class: `tag-chip ${tagClass(match[2]!)}`, 'data-tag': match[2]! }),
       );
     }
     return true;

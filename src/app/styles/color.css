@@ -496,6 +496,44 @@
   color: #fff;
 }
 
+/* a colour picked for a tag shows without colourful too, softly like a select option */
+.tag-chip.tag-picked.tag-gray {
+  background: var(--c-gray);
+  color: var(--c-gray-text);
+}
+.tag-chip.tag-picked.tag-brown {
+  background: var(--c-brown);
+  color: var(--c-brown-text);
+}
+.tag-chip.tag-picked.tag-orange {
+  background: var(--c-orange);
+  color: var(--c-orange-text);
+}
+.tag-chip.tag-picked.tag-yellow {
+  background: var(--c-yellow);
+  color: var(--c-yellow-text);
+}
+.tag-chip.tag-picked.tag-green {
+  background: var(--c-green);
+  color: var(--c-green-text);
+}
+.tag-chip.tag-picked.tag-blue {
+  background: var(--c-blue);
+  color: var(--c-blue-text);
+}
+.tag-chip.tag-picked.tag-purple {
+  background: var(--c-purple);
+  color: var(--c-purple-text);
+}
+.tag-chip.tag-picked.tag-pink {
+  background: var(--c-pink);
+  color: var(--c-pink-text);
+}
+.tag-chip.tag-picked.tag-red {
+  background: var(--c-red);
+  color: var(--c-red-text);
+}
+
 /* page covers, gradients drawn in css so they weigh nothing */
 
 .cover-gradient-1 {
