@@ -1797,6 +1797,10 @@ td:hover .prop-empty,
   font: var(--text-sm) var(--font-ui);
   color: var(--text-muted);
 }
+/* under the add icon, cover and property row the day's buttons keep the room a title has there */
+.page-header-actions + .daily-nav {
+  margin-top: 24px;
+}
 .daily-nav button {
   display: inline-flex;
   align-items: center;
