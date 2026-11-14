@@ -238,8 +238,11 @@ function useMarks(editor: Editor) {
       strike: current.isActive('strike'),
       code: current.isActive('code'),
       highlight: current.isActive('highlight'),
+      colour: current.isActive('textColor') || current.isActive('highlight'),
       link: current.isActive('link'),
       heading: headingLevel(current) !== null,
+      // words in a list's items, a heading there would take the line out of its list
+      inList: current.isActive('listItem') || current.isActive('taskItem'),
       href: String(current.getAttributes('link').href ?? ''),
     }),
   });
@@ -435,7 +438,12 @@ export function FormattingMenu({
           <HeadingPanel editor={editor} onDone={() => setHeadings(false)} />
         ) : (
           <>
-            <ToolButton label={t('editor.colour')} icon={Palette} onClick={() => setColoring(true)} />
+            <ToolButton
+              label={t('editor.colour')}
+              icon={Palette}
+              active={marks.colour}
+              onClick={() => setColoring(true)}
+            />
             <span className="toolbar-divider" />
             <ToolButton
               label={t('editor.bold')}
@@ -491,7 +499,7 @@ export function FormattingMenu({
               onClick={() => editor.chain().focus().toggleCode().run()}
             />
             <ToolButton label={t('editor.equation')} icon={Sigma} onClick={() => toEquation(editor)} />
-            {!inTable && (
+            {!inTable && !marks.inList && (
               <ToolButton
                 label={t('editor.heading')}
                 icon={Heading}
@@ -504,6 +512,10 @@ export function FormattingMenu({
               icon={RemoveFormatting}
               onClick={() => editor.chain().focus().unsetAllMarks().run()}
             />
+            {/* the assistant and more options sit together at the end, past one divider */}
+            {((assistant && desktop?.assistant && pageId) || onBlockMenu) && (
+              <span className="toolbar-divider" />
+            )}
             {/* only while the assistant is turned on, a workspace without it shows no trace of it */}
             {assistant && desktop?.assistant && pageId && (
               <ToolButton
@@ -516,18 +528,17 @@ export function FormattingMenu({
               />
             )}
             {onBlockMenu && (
-              <>
-                <span className="toolbar-divider" />
-                <ToolButton
-                  label={t('editor.moreOptions')}
-                  icon={Ellipsis}
-                  onClick={(event) => {
-                    const request = selectionBlocks(editor);
-                    if (request)
-                      onBlockMenu({ ...request, rect: event.currentTarget.getBoundingClientRect() });
-                  }}
-                />
-              </>
+              <ToolButton
+                label={t('editor.moreOptions')}
+                icon={Ellipsis}
+                onClick={(event) => {
+                  const request = selectionBlocks(editor);
+                  if (!request) return;
+                  onBlockMenu({ ...request, rect: event.currentTarget.getBoundingClientRect() });
+                  // the turn into menu takes the bar's place rather than opening on top of it
+                  editor.view.dispatch(editor.state.tr.setMeta('formattingMenu', 'hide'));
+                }}
+              />
             )}
           </>
         )}
