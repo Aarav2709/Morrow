@@ -33,6 +33,9 @@ interface DialogProps {
   hideTitle?: boolean;
 }
 
+// the dialogs on screen, the last one on top
+const openDialogs: HTMLElement[] = [];
+
 export function Dialog({
   title,
   onClose,
@@ -57,6 +60,8 @@ export function Dialog({
     );
     (focusable ?? element)?.focus();
     const onKey = (event: KeyboardEvent) => {
+      // a dialog open over this one, a question asked from settings, takes the keys first
+      if (openDialogs[openDialogs.length - 1] !== element) return;
       // a menu or dropdown open over the dialog closes first
       if ((event.target as HTMLElement | null)?.closest?.('.floating-layer')) return;
       if (event.key === 'Escape') {
@@ -81,9 +86,11 @@ export function Dialog({
       }
     };
     document.addEventListener('keydown', onKey, true);
+    if (element) openDialogs.push(element);
     const closed = dialogOpened();
     return () => {
       closed();
+      if (element) openDialogs.splice(openDialogs.indexOf(element), 1);
       document.removeEventListener('keydown', onKey, true);
       if (previous?.isConnected) previous.focus({ preventScroll: true });
     };

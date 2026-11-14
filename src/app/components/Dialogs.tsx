@@ -5,7 +5,8 @@ import { foldText } from '../../core/search';
 import { ancestorsOf, childrenOf, flattenTree, isDescendantOf } from '../../core/tree';
 import { allActions, formatShortcut } from '../actions';
 import { expandPage, movePage } from '../operations';
-import { closeDialog, useUi } from '../ui';
+import { closeConfirm, closeDialog, useUi } from '../ui';
+import type { Confirm } from '../ui';
 import { run, useWorkspace } from '../workspace';
 import { CaptureDialog } from './CaptureDialog';
 import { EmojiPicker } from './EmojiPicker';
@@ -34,9 +35,47 @@ function PageIconPicker({ pageId }: { pageId: PageId }) {
 }
 
 export function Dialogs() {
+  const { dialog, confirm } = useUi();
+  return (
+    <>
+      {dialog && <OpenDialog dialog={dialog} />}
+      {confirm && <ConfirmDialog confirm={confirm} />}
+    </>
+  );
+}
+
+function ConfirmDialog({ confirm }: { confirm: Confirm }) {
   const { t } = useTranslation();
-  const { dialog } = useUi();
-  if (!dialog) return null;
+  return (
+    <Dialog
+      title={confirm.title}
+      size="small"
+      onClose={closeConfirm}
+      footer={
+        <>
+          <button type="button" className="button" onClick={closeConfirm}>
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            className={`button ${confirm.danger ? 'danger-solid' : 'primary'}`}
+            data-autofocus
+            onClick={() => {
+              closeConfirm();
+              confirm.onConfirm();
+            }}
+          >
+            {confirm.confirmLabel}
+          </button>
+        </>
+      }
+    >
+      <p>{confirm.body}</p>
+    </Dialog>
+  );
+}
+
+function OpenDialog({ dialog }: { dialog: NonNullable<ReturnType<typeof useUi>['dialog']> }) {
   switch (dialog.kind) {
     case 'settings':
       return <SettingsDialog section={dialog.section} />;
@@ -79,34 +118,6 @@ export function Dialogs() {
       return <PairDialog />;
     case 'capture':
       return <CaptureDialog />;
-    case 'confirm':
-      return (
-        <Dialog
-          title={dialog.title}
-          size="small"
-          onClose={closeDialog}
-          footer={
-            <>
-              <button type="button" className="button" onClick={closeDialog}>
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className={`button ${dialog.danger ? 'danger-solid' : 'primary'}`}
-                data-autofocus
-                onClick={() => {
-                  closeDialog();
-                  dialog.onConfirm();
-                }}
-              >
-                {dialog.confirmLabel}
-              </button>
-            </>
-          }
-        >
-          <p>{dialog.body}</p>
-        </Dialog>
-      );
   }
 }
 

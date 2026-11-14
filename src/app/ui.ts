@@ -33,15 +33,17 @@ export type Dialog =
   | { kind: 'template'; parentId: PageId | null }
   | { kind: 'encrypt'; pageId: PageId }
   | { kind: 'pair' }
-  | { kind: 'capture' }
-  | {
-      kind: 'confirm';
-      title: string;
-      body: string;
-      confirmLabel: string;
-      danger?: boolean;
-      onConfirm: () => void;
-    };
+  | { kind: 'capture' };
+
+// a question asked before something that can't be undone. it opens over whatever dialog is showing, such
+// as settings, which is still there once it is answered
+export interface Confirm {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+}
 
 export interface Toast {
   id: number;
@@ -55,6 +57,7 @@ export interface UiState {
   // the palette was opened to choose the page for the new side of a split
   paletteForSide: boolean;
   dialog: Dialog | null;
+  confirm: Confirm | null;
   toasts: Toast[];
   mobileSidebar: boolean;
   // the hidden sidebar shown over the page while the pointer is on it
@@ -72,6 +75,7 @@ let state: UiState = {
   palette: false,
   paletteForSide: false,
   dialog: null,
+  confirm: null,
   toasts: [],
   mobileSidebar: false,
   sidebarPeek: false,
@@ -110,8 +114,12 @@ export function closeDialog(): void {
   setUi({ dialog: null });
 }
 
-export function confirmAction(options: Omit<Extract<Dialog, { kind: 'confirm' }>, 'kind'>): void {
-  openDialog({ kind: 'confirm', ...options });
+export function confirmAction(options: Confirm): void {
+  setUi({ confirm: options, palette: false });
+}
+
+export function closeConfirm(): void {
+  setUi({ confirm: null });
 }
 
 export function toast(
