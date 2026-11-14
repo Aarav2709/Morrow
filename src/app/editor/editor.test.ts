@@ -433,7 +433,7 @@ describe('copying from inside a toggle', () => {
 });
 
 describe('turning a line into a toggle', () => {
-  it('folds the section under it into the toggle, up to the next heading', () => {
+  it('folds the blocks under it into the toggle, stopping at the next heading of any level', () => {
     const heading = (level: number, text: string) => ({
       type: 'heading',
       attrs: { level },
@@ -452,9 +452,15 @@ describe('turning a line into a toggle', () => {
     });
     turnInto(target, 0, { kind: 'toggle', level: 2 });
     const doc = json(target);
-    expect(doc.content!.map((node) => node.type)).toEqual(['details', 'heading', 'paragraph']);
+    expect(doc.content!.map((node) => node.type)).toEqual([
+      'details',
+      'heading',
+      'paragraph',
+      'heading',
+      'paragraph',
+    ]);
     const inside = doc.content![0]!.content![1]!.content!.map((node) => node.type);
-    expect(inside).toEqual(['paragraph', 'heading', 'paragraph']);
+    expect(inside).toEqual(['paragraph']);
     expect(doc.content![0]!.attrs?.open).toBe(false);
   });
 });

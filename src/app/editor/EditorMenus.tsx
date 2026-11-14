@@ -898,17 +898,14 @@ export function turnInto(editor: Editor, pos: number, target: TurnTarget): void 
           return true;
         })
         .run();
-      foldSectionInto(
-        editor,
-        target.level ?? (node.type.name === 'heading' ? Number(node.attrs.level) : null),
-      );
+      foldSectionInto(editor);
       return;
   }
 }
 
-// a line turned into a toggle takes in the blocks under it, up to the next heading of the same level or
-// higher, a plain toggle up to the next heading of any level, and folds them away
-function foldSectionInto(editor: Editor, level: number | null): void {
+// a line turned into a toggle takes in the blocks under it, up to the next heading of any level or toggle
+// heading, and folds them away. a smaller heading under a toggle heading starts its own part and stays out
+function foldSectionInto(editor: Editor): void {
   const { state } = editor;
   const { $from } = state.selection;
   let depth = $from.depth;
@@ -918,16 +915,12 @@ function foldSectionInto(editor: Editor, level: number | null): void {
   const togglePos = $from.before(depth);
   const parent = $from.node(depth - 1);
   const index = $from.index(depth - 1);
-  const headingLevel = (node: PmNode): number | null => {
-    if (node.type.name === 'heading') return Number(node.attrs.level) || 1;
-    if (node.type.name === 'details') return Number(node.firstChild?.attrs.level) || null;
-    return null;
-  };
+  const isHeading = (node: PmNode): boolean =>
+    node.type.name === 'heading' || (node.type.name === 'details' && !!node.firstChild?.attrs.level);
   const taken: PmNode[] = [];
   for (let next = index + 1; next < parent.childCount; next++) {
     const block = parent.child(next);
-    const stop = headingLevel(block);
-    if (stop !== null && (level === null || stop <= level)) break;
+    if (isHeading(block)) break;
     taken.push(block);
   }
   // nothing under it but empty lines leaves the toggle as it was made
