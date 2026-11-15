@@ -1340,6 +1340,18 @@ export const en = {
     madeThisDay: 'Made this day',
   },
   emoji: {
+    iconGroups: {
+      work: 'Work',
+      money: 'Money',
+      learning: 'Learning',
+      tech: 'Technology',
+      media: 'Media and art',
+      life: 'Life',
+      food: 'Food and drink',
+      travel: 'Travel',
+      nature: 'Nature',
+      shapes: 'Shapes',
+    },
     defaultColour: 'Default colour',
     icons: 'Icons',
     searchIcons: 'Find an icon',

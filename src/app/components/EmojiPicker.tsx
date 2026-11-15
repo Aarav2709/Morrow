@@ -2,7 +2,8 @@ import { Shuffle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { closeDialog } from '../ui';
 import { Emoji, emojiSrc } from './Emoji';
-import { FLAT_ICONS, FlatIcon, flatIconValue, parseFlatIcon } from './flatIcons';
+import { FLAT_ICON_GROUPS, FLAT_ICONS, FlatIcon, flatIconValue, parseFlatIcon } from './flatIcons';
+import type { FlatIconGroup } from './flatIcons';
 import { COLORS } from '../../core/model';
 import type { ColorName } from '../../core/model';
 import { colorLabel } from '../i18n/labels';
@@ -256,6 +257,21 @@ function IconGrid({
   const [query, setQuery] = useState('');
   const names = Object.keys(FLAT_ICONS).filter((name) => name.includes(query.trim().toLowerCase()));
   const value = (name: string) => flatIconValue(name, filled, colour);
+  const searching = query.trim() !== '';
+  const choice = (name: string) => (
+    <button
+      key={name}
+      type="button"
+      role="option"
+      aria-selected={current === value(name)}
+      title={name}
+      aria-label={name}
+      className={`emoji-choice${current === value(name) ? ' is-active' : ''}`}
+      onClick={() => onPick(value(name))}
+    >
+      <FlatIcon name={name} filled={filled} color={colour} />
+    </button>
+  );
   return (
     <>
       <div className="emoji-top">
@@ -313,21 +329,18 @@ function IconGrid({
           </button>
         ))}
       </div>
-      <div className="emoji-grid emoji-all" role="listbox" aria-label={t('emoji.icons')}>
-        {names.map((name) => (
-          <button
-            key={name}
-            type="button"
-            role="option"
-            aria-selected={current === value(name)}
-            title={name}
-            aria-label={name}
-            className={`emoji-choice${current === value(name) ? ' is-active' : ''}`}
-            onClick={() => onPick(value(name))}
-          >
-            <FlatIcon name={name} filled={filled} color={colour} />
-          </button>
-        ))}
+      {/* in groups with a heading each, a search shows every match in one grid */}
+      <div className="emoji-all" role="listbox" aria-label={t('emoji.icons')}>
+        {searching ? (
+          <div className="emoji-grid">{names.map(choice)}</div>
+        ) : (
+          (Object.keys(FLAT_ICON_GROUPS) as FlatIconGroup[]).map((group) => (
+            <section key={group} aria-label={t(`emoji.iconGroups.${group}`)}>
+              <p className="emoji-section">{t(`emoji.iconGroups.${group}`)}</p>
+              <div className="emoji-grid">{FLAT_ICON_GROUPS[group].map(choice)}</div>
+            </section>
+          ))
+        )}
         {names.length === 0 && <p className="muted">{t('emoji.noMatch', { query })}</p>}
       </div>
     </>

@@ -1352,6 +1352,18 @@ export const pt: TranslationSchema = {
     madeThisDay: 'Criado neste dia',
   },
   emoji: {
+    iconGroups: {
+      work: 'Trabalho',
+      money: 'Dinheiro',
+      learning: 'Aprendizado',
+      tech: 'Tecnologia',
+      media: 'Mídia e arte',
+      life: 'Vida',
+      food: 'Comida e bebida',
+      travel: 'Viagem',
+      nature: 'Natureza',
+      shapes: 'Formas',
+    },
     defaultColour: 'Cor padrão',
     icons: 'Ícones',
     searchIcons: 'Buscar um ícone',
