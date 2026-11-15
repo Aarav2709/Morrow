@@ -208,6 +208,10 @@ export interface DesktopBridge {
   // a link or words another app shared with morrow on a phone, once
   takeShared?(): Promise<string | null>;
   setSpellcheck?(enabled: boolean): void;
+  // the languages spelling is checked in: the ones picked, and the system's own for when none are
+  spellLanguages?(): Promise<{ chosen: string[]; system: string[]; automatic: boolean }>;
+  // true when they only apply once morrow opens again
+  setSpellLanguages?(languages: string[]): Promise<boolean>;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
   // a file made in the app, saved where the person picks. the webview has no downloads of its own
   saveFile?(

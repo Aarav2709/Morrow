@@ -120,6 +120,32 @@ fn set_theme<R: Runtime>(window: WebviewWindow<R>, theme: String, color: Option<
     }
 }
 
+#[derive(serde::Serialize)]
+struct SpellLanguages {
+    chosen: Vec<String>,
+    system: Vec<String>,
+    // the system checks in all its languages by itself and there is nothing to pick, as on macos
+    automatic: bool,
+}
+
+#[tauri::command]
+fn spell_languages() -> SpellLanguages {
+    SpellLanguages {
+        chosen: native::chosen_spell_languages(),
+        system: native::system_spell_languages(),
+        automatic: !cfg!(any(target_os = "linux", windows)),
+    }
+}
+
+// true when the languages only apply once morrow opens again
+#[tauri::command]
+fn set_spell_languages<R: Runtime>(
+    window: WebviewWindow<R>,
+    languages: Vec<String>,
+) -> Result<bool, String> {
+    native::set_spell_languages(&window, &languages)
+}
+
 #[tauri::command]
 fn set_zoom<R: Runtime>(window: WebviewWindow<R>, factor: f64) {
     let _ = window.set_zoom(factor.clamp(0.3, 5.0));
@@ -923,6 +949,10 @@ fn create_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let builder = builder.decorations(cfg!(target_os = "macos"));
     #[cfg(windows)]
     let builder = builder.additional_browser_args(&native::browser_args());
+    #[cfg(windows)]
+    if let Ok(profile) = app.path().app_local_data_dir() {
+        native::prepare_spelling(&profile);
+    }
     #[cfg(target_os = "macos")]
     let builder = builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
@@ -1026,6 +1056,8 @@ pub fn run() {
             close_ready,
             set_theme,
             set_zoom,
+            spell_languages,
+            set_spell_languages,
             open_external,
             copy_text,
             copy_rich,

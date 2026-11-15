@@ -20,6 +20,9 @@ export interface Reminder {
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
 export type WeekStart = 0 | 1 | 6;
+// how a date in a page reads: today or fri 21 nov, the date in full, short, or in numbers in one order
+export const DATE_FORMATS = ['relative', 'full', 'short', 'mdy', 'dmy', 'ymd'] as const;
+export type DateFormat = (typeof DATE_FORMATS)[number];
 // the views the sidebar lists, each one can be left out, daily notes turn off everywhere with theirs
 export const SIDEBAR_MODULES = [
   'search',
@@ -112,6 +115,9 @@ export interface Preferences {
   onboarded: boolean;
   // the day calendars start their weeks on, 0 for sunday, 1 for monday, 6 for saturday
   weekStart: WeekStart;
+  dateFormat: DateFormat;
+  // the time zone reminders go off in, null for the one this computer is in
+  timeZone: string | null;
   // today's note is made when morrow opens on it, off opens home instead until the note is made by hand
   autoDaily: boolean;
   // the optional assistant, off until turned on in settings
@@ -173,6 +179,8 @@ const defaults: Preferences = {
   startPage: 'today',
   onboarded: false,
   weekStart: 1,
+  dateFormat: 'relative',
+  timeZone: null,
   autoDaily: true,
   assistant: false,
   assistantOpen: false,
@@ -285,6 +293,9 @@ function read(): Preferences {
       onboarded: parsed.onboarded !== false,
       autoDaily: parsed.autoDaily !== false,
       weekStart: ([0, 1, 6] as const).find((day) => day === parsed.weekStart) ?? 1,
+      dateFormat: DATE_FORMATS.find((format) => format === parsed.dateFormat) ?? 'relative',
+      timeZone:
+        typeof parsed.timeZone === 'string' && validTimeZone(parsed.timeZone) ? parsed.timeZone : null,
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,
@@ -351,4 +362,13 @@ export function resolvedTheme(theme: ThemePreference): 'light' | 'dark' {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
     : 'light';
+}
+
+export function validTimeZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en', { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
 }

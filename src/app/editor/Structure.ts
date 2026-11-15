@@ -9,6 +9,8 @@ import { dateKey, parseDateKey } from '../../core/daily';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
 import { dateLocale, t } from '../i18n';
+import { getPreferences } from '../platform/preferences';
+import type { DateFormat } from '../platform/preferences';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -222,9 +224,30 @@ export interface DateMentionOptions {
 
 const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
-export function describeDate(key: string, today = new Date()): string {
+// a date in the format picked in settings. relative reads today, tomorrow or a weekday when it's close
+export function describeDate(
+  key: string,
+  today = new Date(),
+  format: DateFormat = getPreferences().dateFormat,
+): string {
   const date = parseDateKey(key);
   if (!date) return key;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const [year, month, day] = [String(date.getFullYear()), pad(date.getMonth() + 1), pad(date.getDate())];
+  switch (format) {
+    case 'full':
+      return date.toLocaleDateString(dateLocale(), { dateStyle: 'full' });
+    case 'short':
+      return date.toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+    case 'mdy':
+      return `${month}/${day}/${year}`;
+    case 'dmy':
+      return `${day}/${month}/${year}`;
+    case 'ymd':
+      return `${year}/${month}/${day}`;
+    default:
+      break;
+  }
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const days = Math.round((date.getTime() - start.getTime()) / 86_400_000);
   if (days === 0) return t('daily.today');

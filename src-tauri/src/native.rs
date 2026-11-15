@@ -72,6 +72,173 @@ pub fn crop_png(png: &[u8], area: [f64; 4], viewport_width: f64) -> Res<Vec<u8>>
     Ok(out.into_inner())
 }
 
+// the languages picked for spelling in settings, kept beside morrow's other files. none picked means the
+// languages the system is set to
+const SPELL_FILE: &str = "spell-languages.json";
+
+fn valid_language(code: &str) -> bool {
+    !code.is_empty()
+        && code.len() <= 16
+        && code
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+pub fn chosen_spell_languages() -> Vec<String> {
+    std::fs::read_to_string(crate::paths::data_dir().join(SPELL_FILE))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Vec<String>>(&text).ok())
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|code| valid_language(code))
+        .take(8)
+        .collect()
+}
+
+fn save_spell_languages(languages: &[String]) -> Res<()> {
+    let clean: Vec<&String> = languages
+        .iter()
+        .filter(|code| valid_language(code))
+        .take(8)
+        .collect();
+    let text = serde_json::to_string(&clean).map_err(|error| error.to_string())?;
+    std::fs::write(crate::paths::data_dir().join(SPELL_FILE), text)
+        .map_err(|error| error.to_string())
+}
+
+// the languages spelling uses on this system: the ones picked, or the system's own
+pub fn spell_languages() -> Vec<String> {
+    let chosen = chosen_spell_languages();
+    if chosen.is_empty() {
+        system_spell_languages()
+    } else {
+        chosen
+    }
+}
+
+#[cfg(target_os = "linux")]
+pub fn system_spell_languages() -> Vec<String> {
+    let mut languages: Vec<String> = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"]
+        .iter()
+        .filter_map(|name| std::env::var(name).ok())
+        .flat_map(|value| value.split(':').map(String::from).collect::<Vec<_>>())
+        .map(|value| {
+            value
+                .split('.')
+                .next()
+                .unwrap_or_default()
+                .replace('_', "-")
+        })
+        .filter(|value| !value.is_empty() && value != "C" && value != "POSIX")
+        .collect();
+    languages.dedup();
+    if languages.is_empty() {
+        languages.push("en-US".into());
+    }
+    languages.truncate(3);
+    languages
+}
+
+#[cfg(windows)]
+pub fn system_spell_languages() -> Vec<String> {
+    windows_languages()
+}
+
+// macos and phones check spelling in every language the system has, by themselves
+#[cfg(not(any(target_os = "linux", windows)))]
+pub fn system_spell_languages() -> Vec<String> {
+    Vec::new()
+}
+
+// keeps the picked languages. linux checks in them at once, the web view on windows reads them as it
+// starts, so they apply the next time morrow opens. true when that restart is needed
+pub fn set_spell_languages<R: Runtime>(
+    window: &WebviewWindow<R>,
+    languages: &[String],
+) -> Res<bool> {
+    save_spell_languages(languages)?;
+    #[cfg(target_os = "linux")]
+    {
+        let languages = spell_languages();
+        let _ = window.with_webview(move |webview| {
+            use webkit2gtk::{WebContextExt, WebViewExt};
+            if let Some(context) = webview.inner().context() {
+                let codes: Vec<String> = languages
+                    .iter()
+                    .map(|code| code.replace('-', "_"))
+                    .collect();
+                let refs: Vec<&str> = codes.iter().map(String::as_str).collect();
+                context.set_spell_checking_languages(&refs);
+            }
+        });
+        Ok(false)
+    }
+    #[cfg(windows)]
+    {
+        let _ = window;
+        Ok(true)
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
+    {
+        let _ = window;
+        Ok(false)
+    }
+}
+
+// webview2 keeps the languages it checks spelling in with its profile, set once when the profile was first
+// made, and --accept-lang only counts for a new one. so a profile made while windows had one language kept
+// checking only that one. the profile's preferences are written with the languages before it starts, the
+// same keys edge's language settings write
+#[cfg(windows)]
+pub fn prepare_spelling(profile_dir: &Path) {
+    let languages = spell_languages();
+    if languages.is_empty() {
+        return;
+    }
+    let file = profile_dir
+        .join("EBWebView")
+        .join("Default")
+        .join("Preferences");
+    let mut preferences: serde_json::Value = std::fs::read_to_string(&file)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .filter(serde_json::Value::is_object)
+        .unwrap_or_else(|| serde_json::json!({}));
+    let root = preferences.as_object_mut().expect("an object");
+    let section = |root: &mut serde_json::Map<String, serde_json::Value>, name: &str| {
+        let entry = root
+            .entry(name.to_string())
+            .or_insert_with(|| serde_json::json!({}));
+        if !entry.is_object() {
+            *entry = serde_json::json!({});
+        }
+        entry.as_object_mut().expect("an object").clone()
+    };
+    let mut spellcheck = section(root, "spellcheck");
+    spellcheck.insert("dictionaries".into(), serde_json::json!(languages));
+    spellcheck.insert("dictionary".into(), serde_json::json!(""));
+    root.insert("spellcheck".into(), serde_json::Value::Object(spellcheck));
+    let mut browser = section(root, "browser");
+    browser.insert("enable_spellchecking".into(), serde_json::json!(true));
+    root.insert("browser".into(), serde_json::Value::Object(browser));
+    let mut intl = section(root, "intl");
+    intl.insert(
+        "accept_languages".into(),
+        serde_json::json!(languages.join(",")),
+    );
+    intl.insert(
+        "selected_languages".into(),
+        serde_json::json!(languages.join(",")),
+    );
+    root.insert("intl".into(), serde_json::Value::Object(intl));
+    if let Some(parent) = file.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(text) = serde_json::to_string(&preferences) {
+        let _ = std::fs::write(&file, text);
+    }
+}
+
 #[cfg(target_os = "linux")]
 pub fn setup_webview<R: Runtime>(window: &WebviewWindow<R>) {
     let _ = window.with_webview(|webview| {
@@ -79,19 +246,13 @@ pub fn setup_webview<R: Runtime>(window: &WebviewWindow<R>) {
         let Some(context) = webview.inner().context() else {
             return;
         };
-        // webkitgtk leaves spelling off, it is checked in the languages this computer is set to
-        let mut languages: Vec<String> = ["LC_ALL", "LC_MESSAGES", "LANG", "LANGUAGE"]
+        // webkitgtk leaves spelling off, it is checked in the languages picked in settings, or the ones
+        // this computer is set to
+        let languages: Vec<String> = spell_languages()
             .iter()
-            .filter_map(|name| std::env::var(name).ok())
-            .flat_map(|value| value.split(':').map(String::from).collect::<Vec<_>>())
-            .map(|value| value.split('.').next().unwrap_or_default().to_string())
-            .filter(|value| !value.is_empty() && value != "C" && value != "POSIX")
+            .map(|code| code.replace('-', "_"))
             .collect();
-        languages.dedup();
-        if languages.is_empty() {
-            languages.push("en_US".into());
-        }
-        let refs: Vec<&str> = languages.iter().map(String::as_str).take(3).collect();
+        let refs: Vec<&str> = languages.iter().map(String::as_str).collect();
         context.set_spell_checking_languages(&refs);
         context.set_spell_checking_enabled(true);
         // drawing on the graphics card keeps scrolling and typing smooth in long pages
@@ -184,7 +345,7 @@ pub fn setup_webview<R: Runtime>(_window: &WebviewWindow<R>) {}
 pub fn browser_args() -> String {
     // wry's own arguments, which giving any replaces
     let mut args = String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection");
-    let languages = windows_languages();
+    let languages = spell_languages();
     if !languages.is_empty() {
         args.push_str(" --accept-lang=");
         args.push_str(&languages.join(","));

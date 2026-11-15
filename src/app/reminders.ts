@@ -10,6 +10,7 @@ import { getPreferences, setPreferences } from './platform/preferences';
 import type { Reminder } from './platform/preferences';
 import { dateLocale, t } from './i18n';
 import { getState } from './workspace';
+import { zonedMoment } from './zones';
 
 const CHECK_EVERY_MS = 30_000;
 
@@ -21,7 +22,8 @@ export function remindersFor(pageId: string, date: string): Reminder[] {
 export function addReminder(pageId: string, date: string, hour: number, minute = 0): void {
   const day = parseDateKey(date);
   if (!day) return;
-  const at = new Date(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute).getTime();
+  // in the time zone picked in settings, or this computer's
+  const at = zonedMoment(day.getFullYear(), day.getMonth(), day.getDate(), hour, minute);
   const reminders = getPreferences().reminders.filter(
     (item) => !(item.pageId === pageId && item.date === date),
   );

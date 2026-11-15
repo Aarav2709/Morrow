@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import type { PageId } from '../core/model';
 
-export type SettingsSection = 'general' | 'appearance' | 'assistant' | 'sync' | 'vault' | 'plugins' | 'about';
+export type SettingsSection =
+  'general' | 'language' | 'appearance' | 'assistant' | 'sync' | 'vault' | 'plugins' | 'about';
 
 export type Dialog =
   | { kind: 'settings'; section?: SettingsSection }

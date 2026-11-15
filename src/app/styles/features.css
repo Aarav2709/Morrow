@@ -2902,3 +2902,17 @@ td:hover .prop-empty,
   color: var(--text-faint);
   font-size: var(--text-xs);
 }
+
+/* the languages spelling is checked in, each with a button to take it off, then one to add another */
+.spell-languages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.spell-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 2px;
+}

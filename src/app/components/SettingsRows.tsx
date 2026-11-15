@@ -41,3 +41,33 @@ export function SettingRow({
     </div>
   );
 }
+
+// a few choices side by side, one picked
+export function Segmented<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<[T, string]>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="segmented" role="radiogroup" aria-label={label}>
+      {options.map(([option, text]) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={value === option}
+          className={value === option ? 'is-active' : ''}
+          onClick={() => onChange(option)}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}
