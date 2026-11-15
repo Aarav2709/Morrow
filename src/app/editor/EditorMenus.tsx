@@ -51,6 +51,7 @@ import {
   CaseUpper,
   Sparkles,
 } from 'lucide-react';
+import { ListLettered } from './icons';
 import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pageIdFromHref } from '../../core/links';
@@ -1125,8 +1126,7 @@ export function BlockMenu({
   };
   const background = range
     ? null
-    : ((editor.state.doc.nodeAt(request.pos)?.attrs.backgroundColor as ColorName | null | undefined) ??
-      null);
+    : ((editor.state.doc.nodeAt(request.pos)?.attrs.backgroundColor as ColorName | null | undefined) ?? null);
   const entries: MenuEntry[] = [
     { heading: t('editor.turnInto') },
     {
@@ -1158,7 +1158,7 @@ export function BlockMenu({
     },
     {
       label: t('slash.items.lettered.title'),
-      icon: ListOrdered,
+      icon: ListLettered,
       checked: is('letteredList'),
       onSelect: turn({ kind: 'letteredList' }),
     },

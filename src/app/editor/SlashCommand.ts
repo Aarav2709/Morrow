@@ -32,6 +32,7 @@ import {
   Table,
   Clapperboard,
 } from 'lucide-react';
+import { ListLettered } from './icons';
 import { foldText } from '../../core/search';
 import { t } from '../i18n';
 import type { TranslationKey } from '../i18n';
@@ -169,7 +170,7 @@ export const BLOCK_ITEMS: BlockItem[] = [
     id: 'lettered',
     title: 'Lettered list',
     description: 'List counted a, b, c',
-    icon: ListOrdered,
+    icon: ListLettered,
     hint: 'a.',
     keywords: 'alphabetical letters outline abc',
     run: (e, r) =>
