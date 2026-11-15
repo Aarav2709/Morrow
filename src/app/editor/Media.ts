@@ -4,6 +4,7 @@ import type { Node as ProseNode, Slice } from '@tiptap/pm/model';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import type { FileMeta } from '../../core/model';
+import { mimeType } from '../../core/importer';
 import { downloadFile, fileUrl, formatBytes, storeFiles } from '../platform/attachments';
 import { desktop, nativeFileUrl, openExternal } from '../platform/desktop';
 import { activeRoute } from '../router';
@@ -376,7 +377,9 @@ function filesFrom(data: DataTransfer | null): File[] {
   return data ? Array.from(data.files) : [];
 }
 
-const PASTED_IMAGE = /^(https?:\/\/|data:image\/)/i;
+// pictures pasted by address: on the web, held in the address itself, or a file on this computer the way
+// word and libreoffice put the pictures among the words they copy
+const PASTED_IMAGE = /^(https?:\/\/|data:image\/|file:\/\/)/i;
 
 // the bytes of a picture pasted by its address, or held in the address itself
 async function pastedImage(src: string): Promise<File | null> {
@@ -389,6 +392,12 @@ async function pastedImage(src: string): Promise<File | null> {
       return new File([bytes], `image.${type.split('/')[1]!.replace('svg+xml', 'svg')}`, { type });
     }
     if (src.startsWith('data:')) return null;
+    if (/^file:/i.test(src)) {
+      const bytes = await desktop?.readPastedPicture?.(src);
+      if (!bytes) return null;
+      const name = decodeURIComponent(src.split(/[\\/]/).pop() ?? '') || 'image.png';
+      return new File([bytes.slice().buffer as ArrayBuffer], name, { type: mimeType(name) });
+    }
     const fetched = desktop?.fetchImage ? await desktop.fetchImage(src) : null;
     if (!fetched) return null;
     const name = decodeURIComponent(new URL(src).pathname.split('/').pop() ?? '') || 'image';
@@ -492,16 +501,27 @@ function copyBlocks(view: EditorView, event: ClipboardEvent, cut: boolean): bool
   const range = selectedBlocks(view.state);
   const slice = range ? view.state.doc.slice(range.from, range.to) : view.state.selection.content();
   if (!range && view.state.selection.empty) return false;
-  if (range && event.clipboardData) {
+  let pictures = false;
+  slice.content.descendants((node) => {
+    if (node.type.name === 'image' && node.attrs.fileId) pictures = true;
+    return !pictures;
+  });
+  // blocks picked in the margin, or words with pictures among them, are written here rather than left to
+  // the web view, so the copy with the pictures inside it that follows is the only other write
+  if ((range || pictures) && event.clipboardData) {
     const { dom, text } = view.serializeForClipboard(slice);
     event.clipboardData.clearData();
     event.clipboardData.setData('text/html', dom.innerHTML);
     event.clipboardData.setData('text/plain', text);
     event.preventDefault();
-    if (cut) view.dispatch(view.state.tr.delete(range.from, range.to).scrollIntoView());
+    if (cut) {
+      const from = range?.from ?? view.state.selection.from;
+      const to = range?.to ?? view.state.selection.to;
+      view.dispatch(view.state.tr.delete(from, to).scrollIntoView());
+    }
   }
-  void copyWithImages(view, slice).catch(() => {});
-  return range !== null;
+  if (pictures) setTimeout(() => void copyWithImages(view, slice).catch(() => {}), 0);
+  return range !== null || pictures;
 }
 
 // a picture or video copied in the file manager reaches the page on windows as its name alone. its name is

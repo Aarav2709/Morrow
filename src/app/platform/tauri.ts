@@ -170,6 +170,7 @@ export function tauriBridge(): DesktopBridge | null {
     },
     // the webview checks spelling itself, a page without spellcheck turns it off
     setSpellcheck: () => undefined,
+    readPastedPicture: (src) => bytesOrNull('read_pasted_picture', { src }),
     spellLanguages: () => invoke('spell_languages'),
     setSpellLanguages: (languages) => invoke<boolean>('set_spell_languages', { languages }),
     async fetchImage(url) {

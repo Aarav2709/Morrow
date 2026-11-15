@@ -2690,6 +2690,7 @@ name = "morrow"
 version = "2.1.0"
 dependencies = [
  "aes-gcm",
+ "arboard",
  "base64 0.22.1",
  "cairo-rs",
  "dirs 5.0.1",

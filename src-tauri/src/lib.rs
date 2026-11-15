@@ -199,10 +199,61 @@ fn read_clipboard_file(path: String) -> Res<Response> {
     ))
 }
 
-// text and html together, so pictures copied with the words reach other apps too
+// text and html together, so pictures copied with the words reach other apps too. this comes just after
+// the web view wrote its own copy, and on windows the clipboard can still be held by it for a moment, so a
+// write that fails is tried again rather than leaving the copy without its pictures
 #[tauri::command]
-fn copy_rich<R: Runtime>(app: AppHandle<R>, text: String, html: String) -> bool {
-    app.clipboard().write_html(html, Some(text)).is_ok()
+async fn copy_rich<R: Runtime>(app: AppHandle<R>, text: String, html: String) -> bool {
+    for _ in 0..12 {
+        if app
+            .clipboard()
+            .write_html(html.clone(), Some(text.clone()))
+            .is_ok()
+        {
+            return true;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(40)).await;
+    }
+    false
+}
+
+// a picture another app put on the clipboard as a file on this computer, the way word, outlook and
+// libreoffice copy the pictures among words. read only when the clipboard's html names that very file, so
+// the page can't read any other one
+#[tauri::command]
+fn read_pasted_picture(src: String) -> Res<Response> {
+    let html = arboard::Clipboard::new()
+        .and_then(|mut clipboard| clipboard.get().html())
+        .map_err(|error| error.to_string())?;
+    if !html.contains(&src) && !html.contains(&src.replace('&', "&amp;")) {
+        return Err("Not on the clipboard.".into());
+    }
+    let path = url::Url::parse(&src)
+        .ok()
+        .filter(|url| url.scheme() == "file")
+        .and_then(|url| url.to_file_path().ok())
+        .ok_or_else(|| "Not a file.".to_string())?;
+    let picture = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| {
+            [
+                "png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif", "tif", "tiff",
+            ]
+            .contains(&ext.to_ascii_lowercase().as_str())
+        });
+    if !picture {
+        return Err("Not a picture.".into());
+    }
+    let size = std::fs::metadata(&path)
+        .map_err(|error| error.to_string())?
+        .len();
+    if size as usize > MAX_PASTED_IMAGE_BYTES {
+        return Err("Too large.".into());
+    }
+    Ok(Response::new(
+        std::fs::read(&path).map_err(|error| error.to_string())?,
+    ))
 }
 
 // a picture pasted from the web or another app is saved into the vault, so it stays when its link expires.
@@ -1063,6 +1114,7 @@ pub fn run() {
             copy_rich,
             clipboard_files,
             read_clipboard_file,
+            read_pasted_picture,
             fetch_image,
             show_data_folder,
             show_backups,

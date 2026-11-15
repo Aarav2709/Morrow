@@ -588,3 +588,19 @@ describe('dragging a block by its handle', () => {
     host.remove();
   });
 });
+
+describe('pasting words and pictures from another app', () => {
+  it('keeps a picture word or libreoffice put on the clipboard as a file', async () => {
+    const { DOMParser: PmParser } = await import('@tiptap/pm/model');
+    const target = make({ type: 'doc', content: [p('')] });
+    const html = new window.DOMParser().parseFromString(
+      '<p>Before</p><img src="file:///C:/Users/me/AppData/Local/Temp/msohtmlclip1/01/clip_image001.png"><p>After</p>',
+      'text/html',
+    );
+    const doc = PmParser.fromSchema(target.schema).parse(html.body);
+    const types: string[] = [];
+    doc.forEach((node) => types.push(node.type.name));
+    expect(types).toEqual(['paragraph', 'image', 'paragraph']);
+    expect(String(doc.child(1).attrs.src)).toMatch(/^file:\/\/\//);
+  });
+});
