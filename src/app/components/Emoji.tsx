@@ -20,7 +20,8 @@ export function emojiSrc(emoji: string): string | null {
 // page icons and other emoji in the interface, drawn the same on every system
 export function Emoji({ emoji, className }: { emoji: string; className?: string }) {
   const flat = parseFlatIcon(emoji);
-  if (flat) return <FlatIcon name={flat.name} filled={flat.filled} className={className} />;
+  if (flat)
+    return <FlatIcon name={flat.name} filled={flat.filled} color={flat.color} className={className} />;
   const src = emojiSrc(emoji);
   if (!src) return <span className={`emoji-text${className ? ` ${className}` : ''}`}>{emoji}</span>;
   return (
@@ -41,7 +42,9 @@ export function emojiElement(emoji: string): HTMLElement {
   if (flat) {
     const span = document.createElement('span');
     span.className = 'flat-icon-holder';
-    flushSync(() => createRoot(span).render(<FlatIcon name={flat.name} filled={flat.filled} />));
+    flushSync(() =>
+      createRoot(span).render(<FlatIcon name={flat.name} filled={flat.filled} color={flat.color} />),
+    );
     return span;
   }
   const src = emojiSrc(emoji);

@@ -1580,3 +1580,67 @@ button.home-stat:hover {
 .palette-swatch[aria-checked='true'] {
   color: var(--text);
 }
+
+/* a flat page icon in a colour of its own, picked with the icon */
+.flat-icon.has-colour.flat-icon-gray,
+.icon-colour-dot.flat-icon-gray {
+  color: var(--c-gray-text);
+}
+.flat-icon.has-colour.flat-icon-brown,
+.icon-colour-dot.flat-icon-brown {
+  color: var(--c-brown-text);
+}
+.flat-icon.has-colour.flat-icon-orange,
+.icon-colour-dot.flat-icon-orange {
+  color: var(--c-orange-text);
+}
+.flat-icon.has-colour.flat-icon-yellow,
+.icon-colour-dot.flat-icon-yellow {
+  color: var(--c-yellow-text);
+}
+.flat-icon.has-colour.flat-icon-green,
+.icon-colour-dot.flat-icon-green {
+  color: var(--c-green-text);
+}
+.flat-icon.has-colour.flat-icon-blue,
+.icon-colour-dot.flat-icon-blue {
+  color: var(--c-blue-text);
+}
+.flat-icon.has-colour.flat-icon-purple,
+.icon-colour-dot.flat-icon-purple {
+  color: var(--c-purple-text);
+}
+.flat-icon.has-colour.flat-icon-pink,
+.icon-colour-dot.flat-icon-pink {
+  color: var(--c-pink-text);
+}
+.flat-icon.has-colour.flat-icon-red,
+.icon-colour-dot.flat-icon-red {
+  color: var(--c-red-text);
+}
+.icon-colours {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 0 8px;
+}
+.icon-colour {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+}
+.icon-colour:hover {
+  background: var(--hover);
+}
+.icon-colour.is-active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.icon-colour-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  background: currentColor;
+}

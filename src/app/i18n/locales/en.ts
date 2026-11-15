@@ -1340,6 +1340,7 @@ export const en = {
     madeThisDay: 'Made this day',
   },
   emoji: {
+    defaultColour: 'Default colour',
     icons: 'Icons',
     searchIcons: 'Find an icon',
     iconStyle: 'Icon style',

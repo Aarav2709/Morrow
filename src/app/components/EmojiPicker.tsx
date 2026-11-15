@@ -2,7 +2,10 @@ import { Shuffle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { closeDialog } from '../ui';
 import { Emoji, emojiSrc } from './Emoji';
-import { FLAT_ICONS, FlatIcon } from './flatIcons';
+import { FLAT_ICONS, FlatIcon, flatIconValue, parseFlatIcon } from './flatIcons';
+import { COLORS } from '../../core/model';
+import type { ColorName } from '../../core/model';
+import { colorLabel } from '../i18n/labels';
 import { Dialog } from './primitives';
 import { t } from '../i18n';
 import type { TranslationKey } from '../i18n';
@@ -83,7 +86,9 @@ export function EmojiPicker({ title, current, onPick }: Props) {
   const [recent] = useState(readRecent);
   // flat icons sit beside the emoji, outlined or filled
   const [tab, setTab] = useState<'emoji' | 'icons'>(() => (current?.startsWith('icon:') ? 'icons' : 'emoji'));
-  const [filled, setFilled] = useState(() => Boolean(current?.endsWith(':fill')));
+  const picked = current ? parseFlatIcon(current) : null;
+  const [filled, setFilled] = useState(() => picked?.filled ?? false);
+  const [colour, setColour] = useState<ColorName | null>(() => picked?.color ?? null);
 
   useEffect(() => {
     let live = true;
@@ -133,7 +138,14 @@ export function EmojiPicker({ title, current, onPick }: Props) {
         </button>
       </div>
       {tab === 'icons' ? (
-        <IconGrid current={current} filled={filled} setFilled={setFilled} onPick={pick} />
+        <IconGrid
+          current={current}
+          filled={filled}
+          setFilled={setFilled}
+          colour={colour}
+          setColour={setColour}
+          onPick={pick}
+        />
       ) : (
         <>
           <div className="emoji-top">
@@ -230,16 +242,20 @@ function IconGrid({
   current,
   filled,
   setFilled,
+  colour,
+  setColour,
   onPick,
 }: {
   current: string | null;
   filled: boolean;
   setFilled: (filled: boolean) => void;
+  colour: ColorName | null;
+  setColour: (colour: ColorName | null) => void;
   onPick: (icon: string | null) => void;
 }) {
   const [query, setQuery] = useState('');
   const names = Object.keys(FLAT_ICONS).filter((name) => name.includes(query.trim().toLowerCase()));
-  const value = (name: string) => `icon:${name}${filled ? ':fill' : ''}`;
+  const value = (name: string) => flatIconValue(name, filled, colour);
   return (
     <>
       <div className="emoji-top">
@@ -280,6 +296,23 @@ function IconGrid({
           </button>
         )}
       </div>
+      {/* the icons are drawn in the colour picked here, the page's icon too */}
+      <div className="icon-colours" role="radiogroup" aria-label={t('editor.colour')}>
+        {[null, ...COLORS].map((color) => (
+          <button
+            key={color ?? 'default'}
+            type="button"
+            role="radio"
+            aria-checked={colour === color}
+            aria-label={color ? colorLabel(color) : t('emoji.defaultColour')}
+            title={color ? colorLabel(color) : t('emoji.defaultColour')}
+            className={`icon-colour${colour === color ? ' is-active' : ''}`}
+            onClick={() => setColour(color)}
+          >
+            <span className={color ? `icon-colour-dot flat-icon-${color}` : 'icon-colour-dot'} />
+          </button>
+        ))}
+      </div>
       <div className="emoji-grid emoji-all" role="listbox" aria-label={t('emoji.icons')}>
         {names.map((name) => (
           <button
@@ -292,7 +325,7 @@ function IconGrid({
             className={`emoji-choice${current === value(name) ? ' is-active' : ''}`}
             onClick={() => onPick(value(name))}
           >
-            <FlatIcon name={name} filled={filled} />
+            <FlatIcon name={name} filled={filled} color={colour} />
           </button>
         ))}
         {names.length === 0 && <p className="muted">{t('emoji.noMatch', { query })}</p>}

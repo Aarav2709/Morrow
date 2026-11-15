@@ -115,8 +115,11 @@ import {
   Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { COLORS } from '../../core/model';
+import type { ColorName } from '../../core/model';
 
-// flat icons a page can have in place of an emoji, written as icon:name, or icon:name:fill for a filled one
+// flat icons a page can have in place of an emoji, written as icon:name, or icon:name:fill for a filled one.
+// a colour of its own goes last, icon:name:red or icon:name:fill:red
 export const FLAT_ICONS: Record<string, LucideIcon> = {
   anchor: Anchor,
   apple: Apple,
@@ -234,16 +237,38 @@ export const FLAT_ICONS: Record<string, LucideIcon> = {
   zap: Zap,
 };
 
-export function parseFlatIcon(icon: string): { name: string; filled: boolean } | null {
-  const match = /^icon:([a-z0-9-]+)(:fill)?$/.exec(icon);
-  return match && FLAT_ICONS[match[1]!] ? { name: match[1]!, filled: Boolean(match[2]) } : null;
+export interface ParsedFlatIcon {
+  name: string;
+  filled: boolean;
+  color: ColorName | null;
 }
 
-export function FlatIcon({ name, filled, className }: { name: string; filled: boolean; className?: string }) {
+export function parseFlatIcon(icon: string): ParsedFlatIcon | null {
+  const match = /^icon:([a-z0-9-]+)(:fill)?(?::([a-z]+))?$/.exec(icon);
+  if (!match || !FLAT_ICONS[match[1]!]) return null;
+  const color = (COLORS as readonly string[]).includes(match[3] ?? '') ? (match[3] as ColorName) : null;
+  return { name: match[1]!, filled: Boolean(match[2]), color };
+}
+
+export function flatIconValue(name: string, filled: boolean, color: ColorName | null): string {
+  return `icon:${name}${filled ? ':fill' : ''}${color ? `:${color}` : ''}`;
+}
+
+export function FlatIcon({
+  name,
+  filled,
+  color = null,
+  className,
+}: {
+  name: string;
+  filled: boolean;
+  color?: ColorName | null;
+  className?: string;
+}) {
   const Icon = FLAT_ICONS[name] ?? File;
   return (
     <Icon
-      className={`flat-icon${filled ? ' is-filled' : ''}${className ? ` ${className}` : ''}`}
+      className={`flat-icon${filled ? ' is-filled' : ''}${color ? ` has-colour flat-icon-${color}` : ''}${className ? ` ${className}` : ''}`}
       strokeWidth={1.75}
       fill={filled ? 'currentColor' : 'none'}
       fillOpacity={filled ? 0.25 : undefined}

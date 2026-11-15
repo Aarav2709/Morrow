@@ -1353,6 +1353,7 @@ export const es: TranslationSchema = {
     madeThisDay: 'Creado este día',
   },
   emoji: {
+    defaultColour: 'Color predeterminado',
     icons: 'Iconos',
     searchIcons: 'Buscar un icono',
     iconStyle: 'Estilo del icono',

@@ -1352,6 +1352,7 @@ export const pt: TranslationSchema = {
     madeThisDay: 'Criado neste dia',
   },
   emoji: {
+    defaultColour: 'Cor padrão',
     icons: 'Ícones',
     searchIcons: 'Buscar um ícone',
     iconStyle: 'Estilo do ícone',
