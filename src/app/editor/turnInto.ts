@@ -1,8 +1,8 @@
 import { Extension } from '@tiptap/core';
-import type { Editor, KeyboardShortcutCommand } from '@tiptap/core';
+import type { Editor } from '@tiptap/core';
 import { Fragment } from '@tiptap/pm/model';
 import type { Node as PMNode, Schema } from '@tiptap/pm/model';
-import { Selection, TextSelection } from '@tiptap/pm/state';
+import { Plugin, PluginKey, Selection, TextSelection } from '@tiptap/pm/state';
 import type { EditorState } from '@tiptap/pm/state';
 import { liftTarget } from '@tiptap/pm/transform';
 import { isMac } from '../platform/desktop';
@@ -342,19 +342,7 @@ function lineEdge(editor: Editor, forward: boolean, extend: boolean, page: boole
     if (!$head.parent.isTextblock) return false;
     const start = $head.start();
     const end = $head.end();
-    target = forward ? end : start;
-    try {
-      const caret = view.coordsAtPos(head, forward ? -1 : 1);
-      const block = view.nodeDOM($head.before());
-      const box = block instanceof HTMLElement ? block.getBoundingClientRect() : null;
-      if (box) {
-        const top = (caret.top + caret.bottom) / 2;
-        const found = view.posAtCoords({ left: forward ? box.right - 1 : box.left + 1, top });
-        if (found && found.pos >= start && found.pos <= end) target = found.pos;
-      }
-    } catch {
-      // no layout to measure, such as a hidden page, so the edge of the whole line will do
-    }
+    target = nativeLineEdge(editor, forward, start, end) ?? measuredLineEdge(editor, forward, start, end);
   }
   const anchor = extend ? selection.anchor : target;
   const next = TextSelection.between(state.doc.resolve(anchor), state.doc.resolve(target));
@@ -362,20 +350,67 @@ function lineEdge(editor: Editor, forward: boolean, extend: boolean, page: boole
   return true;
 }
 
+// the web view's own idea of where the line on screen starts or ends, asked by moving a copy of the cursor
+// there. the selection is put back as it was, the editor then moves it itself
+function nativeLineEdge(editor: Editor, forward: boolean, start: number, end: number): number | null {
+  const { view } = editor;
+  const dom = view.dom.ownerDocument.getSelection?.();
+  if (!dom || typeof dom.modify !== 'function' || !dom.focusNode) return null;
+  try {
+    const head = view.domAtPos(editor.state.selection.head);
+    dom.collapse(head.node, head.offset);
+    dom.modify('move', forward ? 'forward' : 'backward', 'lineboundary');
+    if (!dom.focusNode || !view.dom.contains(dom.focusNode)) return null;
+    const pos = view.posAtDOM(dom.focusNode, dom.focusOffset);
+    return pos >= start && pos <= end ? pos : null;
+  } catch {
+    return null;
+  }
+}
+
+// the same found from the layout: the position at the far side of the block, at the height of the cursor
+function measuredLineEdge(editor: Editor, forward: boolean, start: number, end: number): number {
+  const { view, state } = editor;
+  const head = state.selection.head;
+  let target = forward ? end : start;
+  try {
+    const caret = view.coordsAtPos(head, forward ? -1 : 1);
+    const block = view.nodeDOM(state.doc.resolve(head).before());
+    const box = block instanceof HTMLElement ? block.getBoundingClientRect() : null;
+    if (box) {
+      const top = (caret.top + caret.bottom) / 2;
+      const found = view.posAtCoords({ left: forward ? box.right - 1 : box.left + 1, top });
+      if (found && found.pos >= start && found.pos <= end) target = found.pos;
+    }
+  } catch {
+    // no layout to measure, such as a hidden page, so the edge of the whole line will do
+  }
+  return target;
+}
+
+// taken as the key goes down in the page, ahead of every other key handler, so nothing else can let the
+// keys through to a web view that ignores them
 export const LineEdges = Extension.create({
   name: 'lineEdges',
-  addKeyboardShortcuts(): Record<string, KeyboardShortcutCommand> {
-    // a mac has its own keys for this and home and end scroll there
-    if (isMac) return {};
-    return {
-      Home: ({ editor }) => lineEdge(editor, false, false, false),
-      End: ({ editor }) => lineEdge(editor, true, false, false),
-      'Shift-Home': ({ editor }) => lineEdge(editor, false, true, false),
-      'Shift-End': ({ editor }) => lineEdge(editor, true, true, false),
-      'Mod-Home': ({ editor }) => lineEdge(editor, false, false, true),
-      'Mod-End': ({ editor }) => lineEdge(editor, true, false, true),
-      'Mod-Shift-Home': ({ editor }) => lineEdge(editor, false, true, true),
-      'Mod-Shift-End': ({ editor }) => lineEdge(editor, true, true, true),
-    };
+  priority: 1200,
+  addProseMirrorPlugins() {
+    const editor = this.editor;
+    return [
+      new Plugin({
+        key: new PluginKey('lineEdges'),
+        props: {
+          handleDOMEvents: {
+            keydown: (_view, event) => {
+              // a mac has its own keys for this and home and end scroll there
+              if (isMac || event.altKey || event.metaKey || event.isComposing) return false;
+              if (event.key !== 'Home' && event.key !== 'End') return false;
+              const handled = lineEdge(editor, event.key === 'End', event.shiftKey, event.ctrlKey);
+              if (handled) event.preventDefault();
+              return handled;
+            },
+          },
+        },
+      }),
+    ];
   },
 });

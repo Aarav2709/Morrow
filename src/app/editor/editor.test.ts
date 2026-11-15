@@ -315,9 +315,7 @@ describe('home and end', () => {
     const target = make({ type: 'doc', content: [p('Hello world'), p('Next')] });
     target.commands.setTextSelection(4);
     const press = (key: string, shiftKey = false, ctrlKey = false) =>
-      target.view.someProp('handleKeyDown', (handler) =>
-        handler(target.view, new KeyboardEvent('keydown', { key, shiftKey, ctrlKey })),
-      );
+      target.view.dom.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, ctrlKey, bubbles: true }));
     press('End');
     expect(target.state.selection.head).toBe(12);
     press('Home', true);
