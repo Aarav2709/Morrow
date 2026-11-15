@@ -1045,6 +1045,13 @@ export const en = {
     next: 'Next',
     start: 'Start writing',
   },
+  templatesView: {
+    subtitle: 'Pages to start new pages from. Search by name, or by tag with #.',
+    search: 'Search templates',
+    empty: 'No templates yet. Make one here, or save a page as a template from its menu.',
+    noMatch: 'No template matches that.',
+    use: 'Use',
+  },
   files: {
     title: 'Files',
     subtitle: 'Pictures, sound, video and documents kept in this vault, and the pages that use them.',

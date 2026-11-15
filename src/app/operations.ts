@@ -269,15 +269,12 @@ export function captureToToday(text: string): boolean {
 }
 
 export function createTemplatesPage(): PageId | null {
-  const existing = findTemplatesPage(getState());
-  if (existing) {
-    openPage(existing.id);
-    return existing.id;
-  }
-  const id = createPage({ title: TEMPLATES_TITLE, kind: 'templates', open: false });
+  // templates have a view of their own, with every template and a search
+  const id =
+    findTemplatesPage(getState())?.id ??
+    createPage({ title: TEMPLATES_TITLE, kind: 'templates', open: false });
   if (!id) return null;
-  expandPage(id);
-  openPage(id);
+  navigate({ name: 'templates' });
   return id;
 }
 
@@ -409,7 +406,7 @@ export function saveAsTemplate(id: PageId): void {
     });
 }
 
-function createTemplatesPageQuietly(): PageId | null {
+export function createTemplatesPageQuietly(): PageId | null {
   return createPage({ title: TEMPLATES_TITLE, kind: 'templates', open: false });
 }
 

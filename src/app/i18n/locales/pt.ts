@@ -1053,6 +1053,13 @@ export const pt: TranslationSchema = {
     next: 'Próximo',
     start: 'Começar a escrever',
   },
+  templatesView: {
+    subtitle: 'Páginas para começar páginas novas. Busque pelo nome, ou pela tag com #.',
+    search: 'Buscar modelos',
+    empty: 'Ainda não há modelos. Crie um aqui ou salve uma página como modelo pelo menu dela.',
+    noMatch: 'Nenhum modelo corresponde.',
+    use: 'Usar',
+  },
   files: {
     title: 'Arquivos',
     subtitle: 'Imagens, som, vídeo e documentos guardados neste cofre, e as páginas que os usam.',

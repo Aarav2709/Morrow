@@ -1052,6 +1052,13 @@ export const es: TranslationSchema = {
     next: 'Siguiente',
     start: 'Empezar a escribir',
   },
+  templatesView: {
+    subtitle: 'Páginas desde las que empezar páginas nuevas. Busca por nombre, o por etiqueta con #.',
+    search: 'Buscar plantillas',
+    empty: 'Aún no hay plantillas. Crea una aquí o guarda una página como plantilla desde su menú.',
+    noMatch: 'Ninguna plantilla coincide.',
+    use: 'Usar',
+  },
   files: {
     title: 'Archivos',
     subtitle: 'Imágenes, sonido, vídeo y documentos guardados en esta bóveda, y las páginas que los usan.',

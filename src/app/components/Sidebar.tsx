@@ -168,7 +168,7 @@ export function Sidebar() {
   const [dropSection, setDropSection] = useState<string | null>(null);
   // templates have a section of their own rather than sitting among the pages
   const templatesPage = useMemo(() => findTemplatesPage(state), [state]);
-  const templates = useMemo(() => listTemplates(state), [state]);
+  const templateCount = useMemo(() => listTemplates(state).length, [state]);
   const trashCount = useMemo(() => trashedPages(state.pages).length, [state.pages]);
   const archiveCount = useMemo(() => archivedPages(state.pages).length, [state.pages]);
   const openTasks = useMemo(() => collectTasks(state).filter((task) => !task.checked).length, [state]);
@@ -247,6 +247,16 @@ export function Sidebar() {
         onClick={go(() => navigate({ name: 'tasks' }))}
       />
     ),
+    // templates open a view of their own with a search, so dozens of them never crowd the sidebar
+    templates: shown('templates') && (
+      <NavItem
+        icon={LayoutTemplate}
+        label={t('dialogs.templates')}
+        active={route.name === 'templates' || (!!templatesPage && activeId === templatesPage.id)}
+        count={templateCount || undefined}
+        onClick={go(() => navigate({ name: 'templates' }))}
+      />
+    ),
     tags: shown('tags') && (
       <NavItem
         icon={Hash}
@@ -290,7 +300,7 @@ export function Sidebar() {
       />
     ),
   };
-  // favourites and templates only show once there is something in them
+  // favourites only show once there is something in them
   const sectionItems: Record<SectionItem, React.ReactNode> = {
     favorites: shown('favorites') && favorites.length > 0 && (
       <section className="sidebar-section" aria-label={t('sidebar.favorites')}>
@@ -394,45 +404,6 @@ export function Sidebar() {
           </section>
         );
       }),
-    templates: shown('templates') && templatesPage && (
-      <section className="sidebar-section" aria-label={t('dialogs.templates')}>
-        <div className="sidebar-heading-row">
-          <button
-            type="button"
-            className="sidebar-heading link-heading"
-            onClick={go(() => openPage(templatesPage.id))}
-          >
-            {t('dialogs.templates')}
-          </button>
-          <button
-            type="button"
-            className="icon-button small"
-            aria-label={t('dialogs.newTemplate')}
-            title={t('dialogs.newTemplate')}
-            onClick={go(() => createPage({ parentId: templatesPage.id, title: t('dialogs.newTemplate') }))}
-          >
-            <Plus size={15} strokeWidth={1.75} />
-          </button>
-        </div>
-        <ul className="flat-list">
-          {templates.map((page) => (
-            <li key={page.id}>
-              <button
-                type="button"
-                className={`tree-row flat${activeId === page.id ? ' is-active' : ''}`}
-                data-page-id={page.id}
-                onClick={go(() => openPage(page.id))}
-              >
-                <span className="tree-icon">
-                  <PageIcon page={page} />
-                </span>
-                <span className="tree-title">{displayTitle(page)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ),
     pages: (
       <section className="sidebar-section" aria-label={t('sidebar.pagesHeading')}>
         <div className="sidebar-heading-row">

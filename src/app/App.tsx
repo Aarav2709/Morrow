@@ -13,6 +13,7 @@ import { SearchView } from './components/SearchView';
 import { Sidebar } from './components/Sidebar';
 import { HomeView } from './components/Home';
 import { ArchiveView, TasksView, TrashView } from './components/Views';
+import { TemplatesView } from './components/TemplatesView';
 import { FilesView } from './components/FilesView';
 import { commitEditors, ownsUndo, undoRedo } from './editor/commits';
 import { captureToToday, ensureToday, writeAutoBackup } from './operations';
@@ -276,6 +277,8 @@ function viewFor(route: Route) {
       return <PageView key={route.id} id={route.id} find={route.find} anchor={route.anchor ?? null} />;
     case 'tasks':
       return <TasksView />;
+    case 'templates':
+      return <TemplatesView />;
     case 'trash':
       return <TrashView />;
     case 'archive':

@@ -2848,3 +2848,22 @@ td:hover .prop-empty,
 .db-tab.is-moving {
   opacity: 0.45;
 }
+
+/* the templates view, a search beside the button for a new one, and each template's tags under its name */
+.templates-view-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+.templates-view-bar .search-field {
+  flex: 1;
+  min-width: 0;
+}
+.templates-view-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: var(--text-xs);
+}
