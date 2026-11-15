@@ -2867,3 +2867,38 @@ td:hover .prop-empty,
   margin-top: 2px;
   font-size: var(--text-xs);
 }
+
+/* tags already in the vault, offered while a page's tag is typed */
+.tag-input-holder {
+  position: relative;
+  display: inline-flex;
+}
+.tag-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 180px;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+}
+.tag-suggestions button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+}
+.tag-suggestions button.is-active,
+.tag-suggestions button:hover {
+  background: var(--hover);
+}
+.tag-suggestions .tag-count {
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}

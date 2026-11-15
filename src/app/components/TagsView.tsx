@@ -153,16 +153,33 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const [colouring, setColouring] = useState<{ tag: string; at: DOMRect } | null>(null);
+  const [active, setActive] = useState(0);
+  const state = useWorkspace();
   useTagColors();
+  // tags used elsewhere in the vault that start with what is typed, the most used first
+  const known = useMemo(() => (adding ? collectTags(state) : []), [adding, state]);
+  const typed = draft.trim().replace(/^#/, '').toLowerCase();
+  const suggestions = typed
+    ? known
+        .filter(
+          (entry) =>
+            entry.tag.toLowerCase().startsWith(typed) &&
+            entry.tag.toLowerCase() !== typed &&
+            !page.tags.some((tag) => tag.toLowerCase() === entry.tag.toLowerCase()),
+        )
+        .sort((a, b) => b.pages.length - a.pages.length)
+        .slice(0, 8)
+    : [];
   if (page.tags.length === 0 && !editable) return null;
   const save = (tags: string[]) => setTags(page, tags);
-  const add = () => {
-    const tags = draft
+  const add = (picked?: string) => {
+    const tags = (picked ?? draft)
       .split(/[,\s]+/)
       .map((tag) => normalizeTag(tag))
       .filter((tag): tag is string => tag !== null);
     if (tags.length) save([...page.tags, ...tags]);
     setDraft('');
+    setActive(0);
   };
   return (
     <div className="page-tags" aria-label={t('tags.title')}>
@@ -193,29 +210,66 @@ export function PageTags({ page, editable }: { page: PageMeta; editable: boolean
       ))}
       {editable &&
         (adding ? (
-          <input
-            ref={inputRef}
-            className="tag-input"
-            autoFocus
-            aria-label={t('tags.newTag')}
-            placeholder={t('tags.tagPlaceholder')}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => {
-              add();
-              setAdding(false);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' || event.key === ',') {
-                event.preventDefault();
+          <span className="tag-input-holder">
+            <input
+              ref={inputRef}
+              className="tag-input"
+              autoFocus
+              aria-label={t('tags.newTag')}
+              aria-autocomplete="list"
+              aria-expanded={suggestions.length > 0}
+              placeholder={t('tags.tagPlaceholder')}
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setActive(0);
+              }}
+              onBlur={() => {
                 add();
-              } else if (event.key === 'Escape') {
-                setDraft('');
                 setAdding(false);
-              } else if (event.key === 'Backspace' && !draft && page.tags.length)
-                save(page.tags.slice(0, -1));
-            }}
-          />
+              }}
+              onKeyDown={(event) => {
+                const suggestion = suggestions[Math.min(active, suggestions.length - 1)];
+                if (event.key === 'ArrowDown' && suggestions.length) {
+                  event.preventDefault();
+                  setActive((active + 1) % suggestions.length);
+                } else if (event.key === 'ArrowUp' && suggestions.length) {
+                  event.preventDefault();
+                  setActive((active - 1 + suggestions.length) % suggestions.length);
+                } else if ((event.key === 'Enter' || event.key === 'Tab') && suggestion) {
+                  event.preventDefault();
+                  add(suggestion.tag);
+                } else if (event.key === 'Enter' || event.key === ',') {
+                  event.preventDefault();
+                  add();
+                } else if (event.key === 'Escape') {
+                  setDraft('');
+                  setAdding(false);
+                } else if (event.key === 'Backspace' && !draft && page.tags.length)
+                  save(page.tags.slice(0, -1));
+              }}
+            />
+            {suggestions.length > 0 && (
+              <ul className="tag-suggestions popover" role="listbox" aria-label={t('tags.title')}>
+                {suggestions.map((entry, index) => (
+                  <li key={entry.tag} role="option" aria-selected={index === active}>
+                    <button
+                      type="button"
+                      className={index === active ? 'is-active' : ''}
+                      // picked before the input loses focus, which would add what was typed instead
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        add(entry.tag);
+                      }}
+                    >
+                      <span className={`tag-chip ${tagClass(entry.tag)}`}>#{entry.tag}</span>
+                      <span className="tag-count">{entry.pages.length}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </span>
         ) : (
           <button type="button" className="add-tag" onClick={() => setAdding(true)}>
             <Plus size={12} /> {page.tags.length ? t('page.tag') : t('page.addTag')}
