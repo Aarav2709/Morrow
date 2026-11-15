@@ -147,7 +147,7 @@ function FileCard({ file, pages }: { file: FileMeta; pages: PageMeta[] }) {
                 type="button"
                 className="link-button small"
                 data-page-id={page.id}
-                onClick={() => openPage(page.id)}
+                onClick={() => openPage(page.id, null, `file:${file.id}`)}
               >
                 {displayTitle(page)}
               </button>

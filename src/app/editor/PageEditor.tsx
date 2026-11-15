@@ -597,15 +597,21 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     navigate({ name: 'page', id: pageId, find: null }, { replace: true, pane });
   }, [editor, find, pageId, pane]);
 
-  // opens at the heading or block a link pointed at, briefly lit so the eye finds it
+  // opens at the heading or block a link pointed at, briefly lit so the eye finds it. file:id opens at the
+  // picture or file it names, from the pages listed under a file in Files
   useEffect(() => {
     if (!editor || !anchor) return;
     let target: number | null = null;
+    const fileId = anchor.startsWith('file:') ? anchor.slice(5) : null;
+    const usesFile = (node: ProseNode): boolean =>
+      ['image', 'fileAttachment'].includes(node.type.name) && node.attrs.fileId === fileId;
     editor.state.doc.descendants((node, pos) => {
       if (target !== null) return false;
-      const hit = isBlockAnchor(anchor)
-        ? node.attrs.blockId === anchor.slice(1)
-        : node.type.name === 'heading' && foldText(node.textContent.trim()) === foldText(anchor.trim());
+      const hit = fileId
+        ? usesFile(node)
+        : isBlockAnchor(anchor)
+          ? node.attrs.blockId === anchor.slice(1)
+          : node.type.name === 'heading' && foldText(node.textContent.trim()) === foldText(anchor.trim());
       if (hit) target = pos;
       return !hit;
     });
