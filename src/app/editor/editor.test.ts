@@ -550,3 +550,43 @@ describe('blocks inside columns', () => {
     expect(toggle.content![1]!.content![0]!.type).toBe('taskList');
   });
 });
+
+describe('dragging a block by its handle', () => {
+  it('moves the block to where the pointer lets go', async () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const target = new Editor({
+      element: host,
+      extensions: createExtensions({
+        onBlockMenu: () => {},
+        resolvePage: () => null,
+        openTag: () => {},
+        createChild: () => null,
+        openDate: () => {},
+        pages: () => [],
+        findPages: () => [],
+        createPage: () => null,
+        renderEmbed: () => {},
+      } as never),
+      content: { type: 'doc', content: [p('One'), p('Two'), p('Three')] } as never,
+    });
+    editor = target;
+    // the page has no layout here, every block sits at the top, so the pointer is over the first
+    target.view.dom.parentElement!.dispatchEvent(
+      new MouseEvent('mousemove', { clientX: 0, clientY: 0, bubbles: true }),
+    );
+    const end = target.state.doc.content.size;
+    target.view.posAtCoords = () => ({ pos: end, inside: -1 });
+    const handle = host.querySelector<HTMLElement>('.block-handle')!;
+    handle.dispatchEvent(
+      new PointerEvent('pointerdown', { button: 0, clientX: 0, clientY: 0, bubbles: true }),
+    );
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 40, clientY: 40, bubbles: true }));
+    expect(document.querySelector('.block-drag-ghost')?.textContent).toBe('One');
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+    window.dispatchEvent(new PointerEvent('pointerup', { clientX: 40, clientY: 40, bubbles: true }));
+    expect(json(target).content!.map((node) => node.content![0]!.text)).toEqual(['Two', 'Three', 'One']);
+    expect(document.querySelector('.block-drag-ghost')).toBeNull();
+    host.remove();
+  });
+});

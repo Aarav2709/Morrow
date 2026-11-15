@@ -999,3 +999,54 @@
   align-items: center;
   gap: 6px;
 }
+
+/* a block dragged by its handle: a light copy under the pointer, the blocks faded where they were, and a line
+   where they will land. both are moved with transforms, once a frame */
+.block-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  max-width: 320px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--popover);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-popover);
+  color: var(--text);
+  font: var(--text-sm) / 1.4 var(--font-ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.92;
+  pointer-events: none;
+  will-change: transform;
+}
+.block-drag-ghost[data-count]::after {
+  content: attr(data-count);
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-size: var(--text-xs);
+}
+.block-drop-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 199;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  will-change: transform;
+}
+.is-drag-source {
+  opacity: 0.4;
+}
+html.is-dragging-blocks,
+html.is-dragging-blocks * {
+  cursor: grabbing !important;
+  user-select: none;
+}
