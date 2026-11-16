@@ -1,4 +1,4 @@
-import { FilePlus2, LayoutTemplate, Plus, Search } from 'lucide-react';
+import { FilePlus2, LayoutTemplate, MoreHorizontal, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { displayTitle } from '../../core/model';
 import { foldText } from '../../core/search';
@@ -12,6 +12,9 @@ import { useWorkspace } from '../workspace';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
+import { Menu } from './Menu';
+import { pageMenuEntries } from './pageMenu';
+import { setUi } from '../ui';
 
 // every template in one place, like tasks or review, so dozens of them never crowd the sidebar. the search
 // matches a template's name, and words starting with # match its tags
@@ -34,6 +37,8 @@ export function TemplatesView() {
     });
   }, [templates, query]);
   const listed = useShowMore(matching, 60);
+  // a template's own menu, the same as a page's in the sidebar, from a right click or its ... button
+  const [menu, setMenu] = useState<{ id: string; anchor: HTMLElement | DOMRect } | null>(null);
 
   const newTemplate = () => {
     const container = findTemplatesPage(state)?.id ?? createTemplatesPageQuietly();
@@ -87,7 +92,16 @@ export function TemplatesView() {
               <ul className="link-list">
                 {listed.shown.map((page) => (
                   <li key={page.id} className="trash-row">
-                    <button type="button" className="link-row" onClick={() => openPage(page.id)}>
+                    <button
+                      type="button"
+                      className="link-row"
+                      data-page-id={page.id}
+                      onClick={() => openPage(page.id)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        setMenu({ id: page.id, anchor: new DOMRect(event.clientX, event.clientY, 0, 0) });
+                      }}
+                    >
                       <span className="tree-icon">
                         <PageIcon page={page} />
                       </span>
@@ -113,12 +127,34 @@ export function TemplatesView() {
                       >
                         <FilePlus2 size={14} /> {t('templatesView.use')}
                       </button>
+                      <button
+                        type="button"
+                        className="icon-button small"
+                        aria-label={t('pageMenu.pageOptions')}
+                        title={t('pageMenu.pageOptions')}
+                        aria-haspopup="menu"
+                        onClick={(event) => setMenu({ id: page.id, anchor: event.currentTarget })}
+                      >
+                        <MoreHorizontal size={15} />
+                      </button>
                     </div>
                   </li>
                 ))}
               </ul>
               {listed.more}
             </>
+          )}
+          {menu && (
+            <Menu
+              anchor={menu.anchor}
+              label={t('pageMenu.pageOptions')}
+              entries={pageMenuEntries(menu.id, () => {
+                // renamed in the page itself, its title takes the cursor
+                setUi({ focusTitle: menu.id });
+                openPage(menu.id);
+              })}
+              onClose={() => setMenu(null)}
+            />
           )}
         </div>
       </div>
