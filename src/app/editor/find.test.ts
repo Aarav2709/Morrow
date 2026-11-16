@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { Schema } from '@tiptap/pm/model';
 import { EditorState } from '@tiptap/pm/state';
@@ -38,5 +39,35 @@ describe('find in page', () => {
     // with match case only the word as typed counts
     expect(findMatches(state, 'Tomatoes', false, true)).toHaveLength(1);
     expect(findMatches(state, 'T.m', true, true)).toHaveLength(1);
+  });
+});
+
+describe('replacing some of the matches', () => {
+  it('replaces only the matches from one number to another', async () => {
+    const { Editor } = await import('@tiptap/core');
+    const { createExtensions } = await import('./extensions');
+    const { replaceAll, setFindQuery } = await import('./Blocks');
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: createExtensions({
+        onBlockMenu: () => {},
+        resolvePage: () => null,
+        openTag: () => {},
+        createChild: () => null,
+        openDate: () => {},
+        pages: () => [],
+        findPages: () => [],
+        createPage: () => null,
+        renderEmbed: () => {},
+      } as never),
+      content: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a a a a a a a a' }] }],
+      },
+    });
+    setFindQuery(editor.state, editor.view.dispatch, 'a');
+    expect(replaceAll(editor.state, editor.view.dispatch, 'b', 4, 7)).toBe(4);
+    expect(editor.state.doc.textContent).toBe('a a a b b b b a');
+    editor.destroy();
   });
 });

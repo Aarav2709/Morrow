@@ -211,16 +211,20 @@ export function replaceCurrent(
   );
 }
 
-// one transaction, so a single undo brings every replaced match back
+// one transaction, so a single undo brings every replaced match back. first and last, counted from 1 as the
+// find bar shows them, replace only the matches from one to the other, 4 to 7 say
 export function replaceAll(
   state: EditorState,
   dispatch: (tr: Transaction) => void,
   replacement: string,
+  first = 1,
+  last = Number.POSITIVE_INFINITY,
 ): number {
   const find = getFindState(state);
-  if (find.matches.length === 0) return 0;
+  const picked = find.matches.slice(Math.max(0, first - 1), Math.max(0, last));
+  if (picked.length === 0) return 0;
   const tr = state.tr;
-  for (const match of [...find.matches].reverse())
+  for (const match of [...picked].reverse())
     tr.insertText(replacementFor(state, find, match, replacement), match.from, match.to);
   dispatch(
     tr.setMeta(findKey, {
@@ -229,7 +233,7 @@ export function replaceAll(
       current: 0,
     }),
   );
-  return find.matches.length;
+  return picked.length;
 }
 
 export const FindReplace = Extension.create({

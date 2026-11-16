@@ -675,6 +675,11 @@ export const en = {
     pressEnterToAdd: 'Press Enter to add',
   },
   editor: {
+    replaceMatches: 'Matches',
+    replaceTo: 'to',
+    replaceFrom: 'First match to replace',
+    replaceUntil: 'Last match to replace',
+    replaceThese: 'Replace these',
     diagramMistake: 'This diagram has a mistake: {error}',
     imageFrom: 'Image from {host}',
     imageNotFound: 'Image not found: {src}',

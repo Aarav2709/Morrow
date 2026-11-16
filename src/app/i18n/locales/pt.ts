@@ -683,6 +683,11 @@ export const pt: TranslationSchema = {
     pressEnterToAdd: 'Pressione Enter para adicionar',
   },
   editor: {
+    replaceMatches: 'Ocorrências',
+    replaceTo: 'a',
+    replaceFrom: 'Primeira ocorrência a substituir',
+    replaceUntil: 'Última ocorrência a substituir',
+    replaceThese: 'Substituir estas',
     diagramMistake: 'Este diagrama tem um erro: {error}',
     imageFrom: 'Imagem de {host}',
     imageNotFound: 'Imagem não encontrada: {src}',

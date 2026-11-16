@@ -1050,3 +1050,14 @@ html.is-dragging-blocks * {
   cursor: grabbing !important;
   user-select: none;
 }
+
+/* replacing only some of the matches, from one number to another */
+.find-range-label {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.find-input.find-number {
+  flex: 0 0 56px;
+  width: 56px;
+}
