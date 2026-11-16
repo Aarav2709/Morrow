@@ -17,6 +17,8 @@ export interface SaveQueueOptions {
   snapshotsFor?: (docIds: PageId[], state: WorkspaceState) => Snapshot[];
   onSnapshotsWritten?: (snapshots: Snapshot[]) => void;
   delayMs?: number;
+  // how long a quiet change, such as when a page was last opened, waits before it is written
+  quietDelayMs?: number;
   maxRetryMs?: number;
   now?: () => number;
 }
@@ -35,13 +37,18 @@ export class SaveQueue {
   private readonly now: () => number;
   private readonly options: SaveQueueOptions;
   private writing = new Set<PageId>();
+  // pages whose only change is a quiet one. they are written later, without showing as saving
+  private readonly quiet = new Set<PageId>();
+  private readonly quietDelayMs: number;
 
   constructor(
     private readonly writer: { write(batch: WriteBatch): Promise<void> },
     private readonly getState: () => WorkspaceState,
     options: SaveQueueOptions = {},
   ) {
-    this.delayMs = options.delayMs ?? 300;
+    // a moment after the last edit rather than at every pause between words
+    this.delayMs = options.delayMs ?? 1500;
+    this.quietDelayMs = options.quietDelayMs ?? Math.max(this.delayMs, 20_000);
     this.maxRetryMs = options.maxRetryMs ?? 30_000;
     this.now = options.now ?? Date.now;
     this.options = options;
@@ -58,6 +65,8 @@ export class SaveQueue {
 
   // true while the page has changes that are not on disk yet, edits made elsewhere must not replace them
   isDirty(id: PageId): boolean {
+    // a page that was only opened has nothing of its own to keep
+    if (this.quiet.has(id)) return false;
     return this.dirtyPages.has(id) || this.dirtyDocs.has(id) || this.removed.has(id) || this.writing.has(id);
   }
 
@@ -65,7 +74,21 @@ export class SaveQueue {
     return this.dirtyPages.size + this.dirtyDocs.size + this.removed.size > 0 || this.inFlight !== null;
   }
 
-  enqueue(changes: Changes): void {
+  // a quiet change, like a page being opened, is written with the next real save or after a while, and the
+  // save status never shows it, opening pages is not editing them
+  enqueue(changes: Changes, quiet = false): void {
+    if (quiet) {
+      let added = false;
+      for (const id of changes.pages)
+        if (!this.isDirty(id)) {
+          this.dirtyPages.add(id);
+          this.quiet.add(id);
+          added = true;
+        }
+      if (added && this.timer === null && this.inFlight === null) this.schedule(this.quietDelayMs);
+      return;
+    }
+    for (const id of [...changes.pages, ...changes.docs, ...changes.removed]) this.quiet.delete(id);
     for (const id of changes.pages) this.dirtyPages.add(id);
     for (const id of changes.docs) this.dirtyDocs.add(id);
     for (const id of changes.removed) {
@@ -102,7 +125,9 @@ export class SaveQueue {
     this.dirtyDocs.clear();
     this.removed.clear();
     this.writing = new Set([...pages, ...docs, ...removed]);
-    this.setStatus({ ...this.current, state: 'saving' });
+    const quietOnly = docs.length === 0 && removed.length === 0 && pages.every((id) => this.quiet.has(id));
+    this.quiet.clear();
+    if (!quietOnly) this.setStatus({ ...this.current, state: 'saving' });
 
     const state = this.getState();
     const batch: WriteBatch = { pages: [], docs: [], removed: [], state };
@@ -126,12 +151,13 @@ export class SaveQueue {
       this.writing.clear();
       this.inFlight = null;
       const more = this.dirtyPages.size + this.dirtyDocs.size + this.removed.size > 0;
-      this.setStatus({
-        state: more ? 'pending' : 'saved',
-        lastSavedAt: this.now(),
-        error: null,
-        failures: 0,
-      });
+      if (!quietOnly || this.current.state === 'error')
+        this.setStatus({
+          state: more ? 'pending' : 'saved',
+          lastSavedAt: this.now(),
+          error: null,
+          failures: 0,
+        });
       if (more) this.schedule(this.delayMs);
     } catch (error) {
       // put the ids back so the next attempt writes the latest version of each record

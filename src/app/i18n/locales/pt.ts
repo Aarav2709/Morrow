@@ -60,6 +60,8 @@ export const pt: TranslationSchema = {
     showVaultFolder: 'Mostrar pasta do cofre',
   },
   topBar: {
+    unsaved: 'Editado',
+    unsavedHelp: 'É salvo um instante depois que você para de digitar',
     saveError:
       '{error}. Suas alterações ficam na memória e serão tentadas de novo. Clique para tentar agora.',
     unknownError: 'Erro desconhecido',

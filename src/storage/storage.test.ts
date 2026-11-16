@@ -183,3 +183,26 @@ describe('session', () => {
     await session.close();
   });
 });
+
+describe('opening a page', () => {
+  it('is written later and quietly, without showing as saving', async () => {
+    vi.useFakeTimers();
+    const writes: WriteBatch[] = [];
+    const writer = {
+      async write(batch: WriteBatch) {
+        writes.push(batch);
+      },
+    };
+    const state = { pages: { a: newPageMeta({ id: 'a', parentId: null }) }, docs: {} };
+    const queue = new SaveQueue(writer, () => state, { delayMs: 10, quietDelayMs: 1000 });
+    queue.enqueue({ pages: new Set(['a']), docs: new Set(), removed: new Set() }, true);
+    expect(queue.status.state).toBe('saved');
+    expect(queue.isDirty('a')).toBe(false);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(writes).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(600);
+    expect(writes).toHaveLength(1);
+    expect(queue.status.state).toBe('saved');
+    vi.useRealTimers();
+  });
+});

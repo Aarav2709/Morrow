@@ -58,6 +58,8 @@ export const en = {
     showVaultFolder: 'Show vault folder',
   },
   topBar: {
+    unsaved: 'Edited',
+    unsavedHelp: 'Saved a moment after you stop typing',
     saveError: '{error}. Your changes are kept in memory and will be retried. Click to retry now.',
     unknownError: 'Unknown error',
     savedAt: 'Saved {time}',

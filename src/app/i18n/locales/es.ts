@@ -60,6 +60,8 @@ export const es: TranslationSchema = {
     showVaultFolder: 'Mostrar carpeta de la bóveda',
   },
   topBar: {
+    unsaved: 'Editado',
+    unsavedHelp: 'Se guarda un momento después de que dejes de escribir',
     saveError:
       '{error}. Tus cambios se conservan en memoria y se volverá a intentar. Haz clic para reintentar ahora.',
     unknownError: 'Error desconocido',

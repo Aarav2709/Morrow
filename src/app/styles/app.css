@@ -2208,3 +2208,12 @@ html.is-printing .window-controls {
     max-height: calc(100vh - 16px);
   }
 }
+
+/* edits not on disk yet, saved a moment after the typing stops */
+.save-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--text-faint);
+}

@@ -215,7 +215,7 @@ export class WorkspaceSession {
     const { state, changes } = result.value;
     if (state === this.state) return ok(state);
     this.state = state;
-    this.queue.enqueue(changes);
+    this.queue.enqueue(changes, command.type === 'page.markOpened');
     for (const listener of this.listeners) listener();
     return ok(state);
   }

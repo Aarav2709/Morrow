@@ -177,10 +177,20 @@ export function SaveIndicator({ editing }: { editing: boolean }) {
       </button>
     );
   }
-  if (editing || status.state === 'pending' || status.state === 'saving') {
+  // the spinner only shows while the file is being written. between edits it says the page was edited and
+  // is saved a moment after the typing stops
+  if (status.state === 'saving') {
     return (
       <span className="save-status is-saving">
         <Loader2 size={13} className="spin" /> <span className="save-label">{t('topBar.saving')}</span>
+      </span>
+    );
+  }
+  if (editing || status.state === 'pending') {
+    return (
+      <span className="save-status is-pending" title={t('topBar.unsavedHelp')}>
+        <span className="save-dot" aria-hidden="true" />{' '}
+        <span className="save-label">{t('topBar.unsaved')}</span>
       </span>
     );
   }
