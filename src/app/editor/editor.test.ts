@@ -621,3 +621,18 @@ describe('picking words in several places', () => {
     expect(allPieces(target.state)).toHaveLength(0);
   });
 });
+
+describe('columns', () => {
+  it('move a column to another place among the others', async () => {
+    const { moveColumn } = await import('./ColumnGrip');
+    const column = (text: string) => ({ type: 'column', content: [p(text)] });
+    const target = make({
+      type: 'doc',
+      content: [{ type: 'columns', content: [column('A'), column('B'), column('C')] }],
+    });
+    // a position inside the first column
+    moveColumn(target.state, target.view.dispatch, 2, 2);
+    const texts = json(target).content![0]!.content!.map((item) => item.content![0]!.content![0]!.text);
+    expect(texts).toEqual(['B', 'C', 'A']);
+  });
+});

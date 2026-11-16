@@ -675,6 +675,9 @@ export const en = {
     pressEnterToAdd: 'Press Enter to add',
   },
   editor: {
+    dragColumn: 'Drag to move this column',
+    moveColumnLeft: 'Move column left',
+    moveColumnRight: 'Move column right',
     replaceMatches: 'Matches',
     replaceTo: 'to',
     replaceFrom: 'First match to replace',

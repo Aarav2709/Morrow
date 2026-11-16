@@ -1067,3 +1067,38 @@ html.is-dragging-blocks * {
   background: var(--selection);
   border-radius: 2px;
 }
+
+/* the grip on top of a column, dragged left or right to put the column in another place */
+.column-grip {
+  position: absolute;
+  z-index: 5;
+  width: 22px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  opacity: 0;
+  pointer-events: none;
+  cursor: grab;
+  transition: opacity 120ms var(--ease);
+}
+.column-grip.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.column-grip:hover {
+  background: var(--hover);
+  color: var(--text-muted);
+}
+.prose .column.is-column-drop-before {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.prose .column.is-column-drop-after {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+@media (pointer: coarse) {
+  .column-grip {
+    display: none;
+  }
+}

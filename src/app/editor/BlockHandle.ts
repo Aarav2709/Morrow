@@ -210,6 +210,21 @@ function handlePlugin(onMenu: (request: BlockMenuRequest) => void) {
 
       const onMove = (event: MouseEvent) => {
         if (!view.editable || !host || drag?.started) return;
+        // the pointer on its way to the handle stays with the block the handle is for. a block in the second
+        // column has its handle over the first, which would otherwise take the handle back to itself
+        if (event.target instanceof Node && handle.contains(event.target)) return;
+        // and so does the pointer crossing the gap between the block and its handle
+        if (current?.element.isConnected && handle.classList.contains('is-visible')) {
+          const box = current.element.getBoundingClientRect();
+          const grip = handle.getBoundingClientRect();
+          if (
+            event.clientX >= grip.left - 4 &&
+            event.clientX < box.left &&
+            event.clientY >= Math.min(box.top, grip.top) - 4 &&
+            event.clientY <= Math.max(grip.bottom, Math.min(box.bottom, grip.bottom + 24)) + 4
+          )
+            return;
+        }
         const children = Array.from(view.dom.children) as HTMLElement[];
         const top = children.find((child) => {
           if (child.classList.contains('ProseMirror-gapcursor')) return false;

@@ -8,6 +8,8 @@ import { BubbleMenu } from '@tiptap/react/menus';
 import type { BubbleMenuProps } from '@tiptap/react/menus';
 import {
   ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   ArrowUp,
   Bold,
   ChevronRight,
@@ -52,6 +54,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ListLettered } from './icons';
+import { columnAt, moveColumn } from './ColumnGrip';
 import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { pageIdFromHref } from '../../core/links';
@@ -1242,6 +1245,31 @@ export function BlockMenu({
           { separator: true as const },
         ]
       : []),
+    // a block inside columns can move its whole column left or right among the others
+    ...(() => {
+      const column = range ? null : columnAt(editor.state, request.pos);
+      if (!column) return [];
+      return [
+        ...(column.index > 0
+          ? [
+              {
+                label: t('editor.moveColumnLeft'),
+                icon: ArrowLeft,
+                onSelect: () => moveColumn(editor.state, editor.view.dispatch, request.pos, column.index - 1),
+              },
+            ]
+          : []),
+        ...(column.index < column.columns.childCount - 1
+          ? [
+              {
+                label: t('editor.moveColumnRight'),
+                icon: ArrowRight,
+                onSelect: () => moveColumn(editor.state, editor.view.dispatch, request.pos, column.index + 1),
+              },
+            ]
+          : []),
+      ];
+    })(),
     {
       label: t('editor.moveUp'),
       icon: ArrowUp,

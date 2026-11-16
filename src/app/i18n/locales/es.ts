@@ -683,6 +683,9 @@ export const es: TranslationSchema = {
     pressEnterToAdd: 'Pulsa Enter para añadir',
   },
   editor: {
+    dragColumn: 'Arrastra para mover esta columna',
+    moveColumnLeft: 'Mover columna a la izquierda',
+    moveColumnRight: 'Mover columna a la derecha',
     replaceMatches: 'Coincidencias',
     replaceTo: 'a',
     replaceFrom: 'Primera coincidencia a reemplazar',
