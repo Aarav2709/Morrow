@@ -2916,3 +2916,30 @@ td:hover .prop-empty,
   gap: 2px;
   padding-right: 2px;
 }
+
+/* the journal, daily notes folded into stretches of time, each with a heading that opens and closes it */
+.journal-group {
+  margin-top: 14px;
+}
+.journal-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 2px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: left;
+}
+.journal-group-head:hover {
+  color: var(--text);
+}
+.journal-group-chevron {
+  transition: transform 120ms var(--ease);
+}
+.journal-group-head.is-open .journal-group-chevron {
+  transform: rotate(90deg);
+}
+.journal-folder {
+  margin-top: 18px;
+}

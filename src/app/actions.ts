@@ -362,6 +362,14 @@ export const ACTIONS: Action[] = [
     run: () => navigate({ name: 'home' }),
   },
   {
+    id: 'go.journal',
+    label: 'Go to journal',
+    group: 'General',
+    icon: BookOpen,
+    keywords: 'daily notes diary days',
+    run: () => navigate({ name: 'journal' }),
+  },
+  {
     id: 'go.tasks',
     label: 'Go to tasks',
     group: 'General',

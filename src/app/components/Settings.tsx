@@ -43,12 +43,7 @@ import {
   setPreferences,
   usePreferences,
 } from '../platform/preferences';
-import type {
-  Palette as PaletteName,
-  SidebarItem,
-  SidebarModule,
-  TextScale,
-} from '../platform/preferences';
+import type { Palette as PaletteName, SidebarItem, SidebarModule, TextScale } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -369,7 +364,7 @@ function SidebarSettings() {
       case 'home':
         return t('settings.general.startPages.home');
       case 'daily':
-        return t('sidebar.today');
+        return t('journal.title');
       case 'templates':
         return t('dialogs.templates');
       case 'files':

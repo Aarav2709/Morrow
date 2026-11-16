@@ -14,6 +14,7 @@ import { Sidebar } from './components/Sidebar';
 import { HomeView } from './components/Home';
 import { ArchiveView, TasksView, TrashView } from './components/Views';
 import { TemplatesView } from './components/TemplatesView';
+import { JournalView } from './components/JournalView';
 import { FilesView } from './components/FilesView';
 import { commitEditors, ownsUndo, undoRedo } from './editor/commits';
 import { captureToToday, ensureToday, writeAutoBackup } from './operations';
@@ -279,6 +280,8 @@ function viewFor(route: Route) {
       return <TasksView />;
     case 'templates':
       return <TemplatesView />;
+    case 'journal':
+      return <JournalView />;
     case 'trash':
       return <TrashView />;
     case 'archive':

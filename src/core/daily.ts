@@ -69,3 +69,35 @@ export function daysWithNotes(state: WorkspaceState): Set<string> {
   for (const page of livePages(state.pages)) if (page.dailyDate) days.add(page.dailyDate);
   return days;
 }
+
+export type JournalGroup = 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'older';
+
+// daily notes newest first, in the stretches of time the journal folds them into. a day can only be in one,
+// this week wins over this month, and notes for days still to come go with this week
+export function journalGroups(
+  notes: PageMeta[],
+  today: Date,
+  weekStart: number,
+): Array<{ group: JournalGroup; notes: PageMeta[] }> {
+  const day = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const week = new Date(day);
+  week.setDate(day.getDate() - ((day.getDay() - weekStart + 7) % 7));
+  const lastWeek = new Date(week);
+  lastWeek.setDate(week.getDate() - 7);
+  const bounds: Array<[JournalGroup, string]> = [
+    ['thisWeek', dateKey(week)],
+    ['lastWeek', dateKey(lastWeek)],
+    ['thisMonth', dateKey(new Date(day.getFullYear(), day.getMonth(), 1))],
+    ['lastMonth', dateKey(new Date(day.getFullYear(), day.getMonth() - 1, 1))],
+    ['older', ''],
+  ];
+  const groups = bounds.map(([group]) => ({ group, notes: [] as PageMeta[] }));
+  const sorted = notes
+    .filter((page) => page.dailyDate)
+    .sort((a, b) => (a.dailyDate! < b.dailyDate! ? 1 : a.dailyDate! > b.dailyDate! ? -1 : 0));
+  for (const page of sorted) {
+    const index = bounds.findIndex(([, from]) => page.dailyDate! >= from);
+    groups[index]!.notes.push(page);
+  }
+  return groups.filter((entry) => entry.notes.length > 0);
+}

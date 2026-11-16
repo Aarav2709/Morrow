@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Fragment, memo, useDeferredValue, useMemo, useRef, useState } from 'react';
-import { dateKey } from '../../core/daily';
 import { displayTitle } from '../../core/model';
 import type { PageId, PageMeta, WorkspaceState } from '../../core/model';
 import { collectTasks } from '../../core/tasks';
@@ -55,15 +54,7 @@ import { canOpenFolders, desktop } from '../platform/desktop';
 import { vaultName } from '../platform/vault';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
-import {
-  createPage,
-  expandPage,
-  importMarkdown,
-  movePage,
-  openToday,
-  toggleFavorite,
-  trashPage,
-} from '../operations';
+import { createPage, expandPage, importMarkdown, movePage, toggleFavorite, trashPage } from '../operations';
 import { getPreferences, setPreferences, SIDEBAR_GROUPS, usePreferences } from '../platform/preferences';
 import type { SidebarItem, SidebarModule } from '../platform/preferences';
 import { navigate, openPage, useActiveRoute } from '../router';
@@ -182,8 +173,10 @@ export function Sidebar() {
     recent: Array<{ path: string; name: string; exists: boolean }>;
   } | null>(null);
   const location = getSession().location;
-  const todayKey = dateKey(new Date());
-  const isToday = activeId !== null && state.pages[activeId]?.dailyDate === todayKey;
+  // the journal is lit for its own view and for any daily note open
+  const inJournal =
+    route.name === 'journal' ||
+    (activeId !== null && (!!state.pages[activeId]?.dailyDate || state.pages[activeId]?.kind === 'journal'));
   const resizing = useRef(false);
 
   const startResize = (event: React.PointerEvent) => {
@@ -230,12 +223,13 @@ export function Sidebar() {
         onClick={go(() => navigate({ name: 'home' }))}
       />
     ),
+    // daily notes live in a view of their own, which writes today's note with one click
     daily: shown('daily') && (
       <NavItem
-        icon={CalendarDays}
-        label={t('sidebar.today')}
-        active={isToday}
-        onClick={go(() => openToday())}
+        icon={BookOpen}
+        label={t('journal.title')}
+        active={inJournal}
+        onClick={go(() => navigate({ name: 'journal' }))}
       />
     ),
     tasks: shown('tasks') && (
@@ -606,7 +600,6 @@ const SUBPAGES_SHOWN = 50;
 
 const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps) {
   const ui = useUi();
-  const hideJournal = usePreferences().hiddenModules.includes('daily');
   const [drop, setDrop] = useState<{ id: PageId; zone: DropZone } | null>(null);
   const [menu, setMenu] = useState<{ id: PageId; anchor: HTMLElement } | null>(null);
   const dragging = useRef<PageId | null>(null);
@@ -703,11 +696,11 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
   };
 
   const renderLevel = (parentId: PageId | null, depth: number): React.ReactNode => {
-    // the journal stays in the vault with daily notes off, it just leaves the tree
+    // daily notes are in the journal's own view, so the journal and the templates leave the tree
     const all = childrenOf(state.pages, parentId).filter(
       (page) =>
         page.archivedAt === null &&
-        (parentId !== null || ((page.kind !== 'journal' || !hideJournal) && page.kind !== 'templates')),
+        (parentId !== null || (page.kind !== 'journal' && page.kind !== 'templates')),
     );
     if (all.length === 0) return null;
     const key = parentId ?? '';
