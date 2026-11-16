@@ -138,6 +138,12 @@ const BOXED_INSET = 6;
 // the middle of a block's first line of text, which sits lower than its top in a callout, quote or
 // code block with padding around it. null for a block with no text, such as a picture
 function firstTextMiddle(block: HTMLElement): number | null {
+  // a database or canvas shown in the page lines up with its title, not the line it sits in
+  const head = block.querySelector('.page-embed.is-live .inline-database-head');
+  if (head) {
+    const rect = head.getBoundingClientRect();
+    return rect.top + rect.height / 2;
+  }
   // a table lines up with its first row, the header, whatever is written in it
   const row = block.matches('table, .tableWrapper') ? block.querySelector('tr') : null;
   if (row) {

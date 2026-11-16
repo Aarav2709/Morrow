@@ -1,5 +1,5 @@
 import { InputRule, mergeAttributes, Node } from '@tiptap/core';
-import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state';
 import Suggestion from '@tiptap/suggestion';
 import { FilePlus2, FileText } from 'lucide-react';
 import { parseWikiLink } from '../../core/markdown/parse';
@@ -109,6 +109,22 @@ export const PageLink = Node.create<PageLinkOptions>({
 
   renderText({ node }) {
     return String(node.attrs.alias ?? node.attrs.label ?? '');
+  },
+
+  // a database or canvas shown in the page is picked by the first backspace or delete beside it and only
+  // goes with the second, so a key pressed on the line it sits in never takes it away unseen
+  addKeyboardShortcuts() {
+    const pick = (forward: boolean) => () => {
+      const { state, view } = this.editor;
+      const { $from, empty } = state.selection;
+      if (!empty) return false;
+      const node = forward ? $from.nodeAfter : $from.nodeBefore;
+      if (node?.type.name !== this.name || node.attrs.embed !== true) return false;
+      const pos = forward ? $from.pos : $from.pos - node.nodeSize;
+      view.dispatch(state.tr.setSelection(NodeSelection.create(state.doc, pos)));
+      return true;
+    };
+    return { Backspace: pick(false), Delete: pick(true) };
   },
 
   addNodeView() {
