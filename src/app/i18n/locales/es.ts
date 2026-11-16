@@ -148,6 +148,18 @@ export const es: TranslationSchema = {
       failed: 'No se pudo iniciar: {error}',
       installed: 'En esta bóveda',
     },
+    pageParts: {
+      title: 'Partes de una página',
+      help: 'Para todas las páginas. El esquema se puede activar o desactivar en una página desde su menú.',
+      outline: 'Esquema junto a las páginas largas',
+      outlineHelp: 'Los encabezados de una página larga, listados a un lado.',
+      open: 'Abierto',
+      folded: 'Plegado',
+      hidden: 'Oculto',
+      backlinks: 'Enlazada desde',
+      mentions: 'Buscar menciones',
+      mentionsHelp: 'El botón del final que busca el título de la página escrito en otras páginas.',
+    },
     language: {
       region: 'Fechas y hora',
       spellLanguages: 'Idiomas de ortografía',

@@ -3153,3 +3153,22 @@ td:hover .prop-empty,
   font-size: var(--text-xs);
   white-space: nowrap;
 }
+
+/* the heading of a list at the bottom of a page folds it away */
+.section-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: inherit;
+  color: inherit;
+  margin-left: -17px;
+}
+.section-fold:hover {
+  color: var(--text-muted);
+}
+.section-fold-chevron {
+  transition: transform 120ms var(--ease);
+}
+.section-fold-chevron.is-open {
+  transform: rotate(90deg);
+}

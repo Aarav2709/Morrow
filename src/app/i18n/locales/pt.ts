@@ -148,6 +148,18 @@ export const pt: TranslationSchema = {
       failed: 'Não foi possível iniciar: {error}',
       installed: 'Neste cofre',
     },
+    pageParts: {
+      title: 'Partes de uma página',
+      help: 'Para todas as páginas. O sumário ainda pode ser ligado ou desligado numa página pelo menu dela.',
+      outline: 'Sumário ao lado de páginas longas',
+      outlineHelp: 'Os títulos de uma página longa, listados ao lado.',
+      open: 'Aberto',
+      folded: 'Recolhido',
+      hidden: 'Oculto',
+      backlinks: 'Vinculada de',
+      mentions: 'Encontrar menções',
+      mentionsHelp: 'O botão no final que procura o título da página escrito em outras páginas.',
+    },
     language: {
       region: 'Datas e hora',
       spellLanguages: 'Idiomas da ortografia',

@@ -43,7 +43,13 @@ import {
   setPreferences,
   usePreferences,
 } from '../platform/preferences';
-import type { Palette as PaletteName, SidebarItem, SidebarModule, TextScale } from '../platform/preferences';
+import type {
+  Palette as PaletteName,
+  SidebarItem,
+  SidebarModule,
+  TextScale,
+  FooterSection,
+} from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import type { SettingsSection } from '../ui';
@@ -336,9 +342,55 @@ function AppearanceSettings() {
           />
         </SettingRow>
       </SettingsGroup>
+      <PageParts />
       <SidebarSettings />
       <CustomCss />
     </>
+  );
+}
+
+// the outline beside a page and the lists at its bottom, for every page
+function PageParts() {
+  const { t } = useTranslation();
+  const prefs = usePreferences();
+  const sections: Array<[FooterSection, string]> = [
+    ['open', t('settings.pageParts.open')],
+    ['folded', t('settings.pageParts.folded')],
+    ['hidden', t('settings.pageParts.hidden')],
+  ];
+  return (
+    <SettingsGroup title={t('settings.pageParts.title')} help={t('settings.pageParts.help')}>
+      <SettingRow label={t('settings.pageParts.outline')} help={t('settings.pageParts.outlineHelp')}>
+        <Switch
+          label={t('settings.pageParts.outline')}
+          checked={prefs.outlines}
+          onChange={(outlines) => setPreferences({ outlines })}
+        />
+      </SettingRow>
+      <SettingRow label={t('page.subpages')}>
+        <Segmented<FooterSection>
+          label={t('page.subpages')}
+          value={prefs.subpagesSection}
+          options={sections}
+          onChange={(subpagesSection) => setPreferences({ subpagesSection })}
+        />
+      </SettingRow>
+      <SettingRow label={t('settings.pageParts.backlinks')}>
+        <Segmented<FooterSection>
+          label={t('settings.pageParts.backlinks')}
+          value={prefs.backlinksSection}
+          options={sections}
+          onChange={(backlinksSection) => setPreferences({ backlinksSection })}
+        />
+      </SettingRow>
+      <SettingRow label={t('settings.pageParts.mentions')} help={t('settings.pageParts.mentionsHelp')}>
+        <Switch
+          label={t('settings.pageParts.mentions')}
+          checked={prefs.mentionsButton}
+          onChange={(mentionsButton) => setPreferences({ mentionsButton })}
+        />
+      </SettingRow>
+    </SettingsGroup>
   );
 }
 

@@ -42,7 +42,8 @@ import { LockedPage } from './EncryptDialog';
 import { PageProperties } from './PageProperties';
 import { PageTags } from './TagsView';
 import { applyTemplateTo, deleteForever, restorePage, setArchived, trashPage } from '../operations';
-import { usePreferences } from '../platform/preferences';
+import { outlineShown, usePreferences } from '../platform/preferences';
+import type { FooterSection } from '../platform/preferences';
 import { readingPlace, rememberPlace } from '../readingPlace';
 import { navigate, openPage, routeHash } from '../router';
 import { openSide, usePane } from '../tabs';
@@ -274,9 +275,7 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
             </button>
           </div>
         )}
-        {page.kind !== 'database' && !unreadable && !prefs.hiddenOutlines.includes(page.id) && (
-          <Outline doc={doc} />
-        )}
+        {page.kind !== 'database' && !unreadable && outlineShown(prefs, page.id) && <Outline doc={doc} />}
         <CoverBanner page={page} editable={!trashed && !reading} />
         <article
           className={`page font-${prefs.font} width-${prefs.pageWidths[page.id] ?? prefs.width}${page.cover ? ' has-cover' : ''}`}
@@ -421,9 +420,11 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
               <DatabaseView page={page} editable={!trashed && !unreadable} />
             </Suspense>
           )}
-          {page.kind !== 'database' && <Subpages parentId={id} />}
+          {page.kind !== 'database' && prefs.subpagesSection !== 'hidden' && (
+            <Subpages parentId={id} folded={prefs.subpagesSection === 'folded'} />
+          )}
           {page.dailyDate && <MadeThisDay dailyDate={page.dailyDate} />}
-          <Backlinks id={id} />
+          <Backlinks id={id} mode={prefs.backlinksSection} mentions={prefs.mentionsButton} />
         </article>
       </div>
     </div>
@@ -594,33 +595,80 @@ function TitleField({
   );
 }
 
-function Subpages({ parentId }: { parentId: PageId }) {
+// a list at the bottom of a page folds under its heading. whether it starts folded comes from settings,
+// a click on the heading is remembered for that page while morrow is open
+const foldedSections = new Map<string, boolean>();
+function useFold(key: string, start: boolean): [boolean, () => void] {
+  const [, redraw] = useState(0);
+  const folded = foldedSections.get(key) ?? start;
+  return [
+    folded,
+    () => {
+      foldedSections.set(key, !folded);
+      redraw((n) => n + 1);
+    },
+  ];
+}
+
+function FoldHeading({
+  folded,
+  onToggle,
+  children,
+}: {
+  folded: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <h2 className="section-label">
+      <button type="button" className="section-fold" aria-expanded={!folded} onClick={onToggle}>
+        <ChevronRight size={13} className={`section-fold-chevron${folded ? '' : ' is-open'}`} />
+        {children}
+      </button>
+    </h2>
+  );
+}
+
+function Subpages({ parentId, folded: startFolded }: { parentId: PageId; folded: boolean }) {
   const state = useDeferredValue(useWorkspace());
   const children = useMemo(() => childrenOf(state.pages, parentId), [state.pages, parentId]);
+  const [folded, toggle] = useFold(`subpages:${parentId}`, startFolded);
   if (children.length === 0) return null;
   return (
     <section className="page-section" aria-label={t('page.subpages')}>
-      <h2 className="section-label">{t('page.subpages')}</h2>
-      <ul className="link-list">
-        {children.map((child) => {
-          return (
-            <li key={child.id}>
-              <button type="button" className="link-row" onClick={() => openPage(child.id)}>
-                <span className="tree-icon">
-                  <PageIcon page={child} />
-                </span>
-                <span className="link-row-title">{displayTitle(child)}</span>
-                <span className="link-row-meta">{relativeTime(child.updatedAt)}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      <FoldHeading folded={folded} onToggle={toggle}>
+        {t('page.subpages')} <span className="section-count">{children.length}</span>
+      </FoldHeading>
+      {!folded && (
+        <ul className="link-list">
+          {children.map((child) => {
+            return (
+              <li key={child.id}>
+                <button type="button" className="link-row" onClick={() => openPage(child.id)}>
+                  <span className="tree-icon">
+                    <PageIcon page={child} />
+                  </span>
+                  <span className="link-row-title">{displayTitle(child)}</span>
+                  <span className="link-row-meta">{relativeTime(child.updatedAt)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
 
-function Backlinks({ id }: { id: PageId }) {
+function Backlinks({
+  id,
+  mode,
+  mentions: findMentions,
+}: {
+  id: PageId;
+  mode: FooterSection;
+  mentions: boolean;
+}) {
   // links from other pages are worked out after typing, never in its way
   const state = useDeferredValue(useWorkspace());
   const backlinks = useMemo(() => backlinksTo(state, id), [state, id]);
@@ -631,7 +679,8 @@ function Backlinks({ id }: { id: PageId }) {
     [state, id, showMentions],
   );
   const title = displayTitle(state.pages[id]);
-  const mentionsSection = (
+  const [folded, toggle] = useFold(`backlinks:${id}`, mode === 'folded');
+  const mentionsSection = !findMentions ? null : (
     <section className="page-section" aria-label={t('page.unlinkedMentionsAria')}>
       <button
         type="button"
@@ -664,28 +713,30 @@ function Backlinks({ id }: { id: PageId }) {
         ))}
     </section>
   );
-  if (backlinks.length === 0) return mentionsSection;
+  if (backlinks.length === 0 || mode === 'hidden') return mentionsSection;
   return (
     <>
       <section className="page-section" aria-label={t('page.backlinksAria')}>
-        <h2 className="section-label">
+        <FoldHeading folded={folded} onToggle={toggle}>
           {backlinks.length === 1
             ? t('page.linkedFromSingular')
             : t('page.linkedFromPlural', { count: backlinks.length })}
-        </h2>
-        <ul className="link-list">
-          {linked.shown.map(({ source, contexts }) => (
-            <li key={source.id}>
-              <button type="button" className="link-row backlink" onClick={() => openPage(source.id)}>
-                <span className="link-row-title">
-                  {displayTitle(source)} <ArrowUpRight size={13} />
-                </span>
-                {contexts[0] && <span className="backlink-context">{contexts[0]}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-        {linked.more}
+        </FoldHeading>
+        {!folded && (
+          <ul className="link-list">
+            {linked.shown.map(({ source, contexts }) => (
+              <li key={source.id}>
+                <button type="button" className="link-row backlink" onClick={() => openPage(source.id)}>
+                  <span className="link-row-title">
+                    {displayTitle(source)} <ArrowUpRight size={13} />
+                  </span>
+                  {contexts[0] && <span className="backlink-context">{contexts[0]}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!folded && linked.more}
       </section>
       {mentionsSection}
     </>

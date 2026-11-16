@@ -20,6 +20,8 @@ export interface Reminder {
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
 export type WeekStart = 0 | 1 | 6;
+export type FooterSection = 'open' | 'folded' | 'hidden';
+const FOOTER_SECTIONS: readonly FooterSection[] = ['open', 'folded', 'hidden'];
 // how a date in a page reads: today or fri 21 nov, the date in full, short, or in numbers in one order
 export const DATE_FORMATS = ['relative', 'full', 'short', 'mdy', 'dmy', 'ymd'] as const;
 export type DateFormat = (typeof DATE_FORMATS)[number];
@@ -104,6 +106,15 @@ export interface Preferences {
   pageWidths: Record<string, PageWidth>;
   // pages that leave out the On this page list of headings
   hiddenOutlines: string[];
+  // whether long pages show their outline beside them unless turned off for one, off shows it only on the
+  // pages it was turned on for
+  outlines: boolean;
+  shownOutlines: string[];
+  // the lists at the bottom of a page: open, folded under their heading until clicked, or left out
+  subpagesSection: FooterSection;
+  backlinksSection: FooterSection;
+  // the button that looks for this page's title written in other pages without a link
+  mentionsButton: boolean;
   // pages in the trash longer than this many days are deleted for good, 0 keeps them until emptied
   trashDays: TrashDays;
   // reminders set on dates in pages, shown by this computer when they are due
@@ -173,6 +184,11 @@ const defaults: Preferences = {
   canvasSizes: {},
   pageWidths: {},
   hiddenOutlines: [],
+  outlines: true,
+  shownOutlines: [],
+  subpagesSection: 'open',
+  backlinksSection: 'open',
+  mentionsButton: true,
   trashDays: 0,
   reminders: [],
   splitShare: 0.5,
@@ -276,6 +292,13 @@ function read(): Preferences {
             .slice(0, 500)
         : [],
       trashDays: ([30, 60, 90] as const).find((days) => days === parsed.trashDays) ?? 0,
+      outlines: parsed.outlines !== false,
+      shownOutlines: Array.isArray(parsed.shownOutlines)
+        ? parsed.shownOutlines.filter((id): id is string => typeof id === 'string').slice(0, 2000)
+        : [],
+      subpagesSection: FOOTER_SECTIONS.find((value) => value === parsed.subpagesSection) ?? 'open',
+      backlinksSection: FOOTER_SECTIONS.find((value) => value === parsed.backlinksSection) ?? 'open',
+      mentionsButton: parsed.mentionsButton !== false,
       hiddenOutlines: Array.isArray(parsed.hiddenOutlines)
         ? parsed.hiddenOutlines.filter((id): id is string => typeof id === 'string').slice(0, 2000)
         : [],
@@ -371,4 +394,16 @@ export function validTimeZone(zone: string): boolean {
   } catch {
     return false;
   }
+}
+
+// whether a page shows its outline: the default for every page, unless switched for this one
+export function outlineShown(prefs: Preferences, pageId: string): boolean {
+  return prefs.outlines ? !prefs.hiddenOutlines.includes(pageId) : prefs.shownOutlines.includes(pageId);
+}
+
+export function toggleOutline(pageId: string): void {
+  const prefs = getPreferences();
+  const key = prefs.outlines ? 'hiddenOutlines' : 'shownOutlines';
+  const list = prefs[key];
+  setPreferences({ [key]: list.includes(pageId) ? list.filter((id) => id !== pageId) : [...list, pageId] });
 }

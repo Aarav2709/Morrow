@@ -145,6 +145,18 @@ export const en = {
       failed: 'Could not start: {error}',
       installed: 'In this vault',
     },
+    pageParts: {
+      title: 'Parts of a page',
+      help: 'For every page. The outline can still be turned on or off for one page from its menu.',
+      outline: 'Outline beside long pages',
+      outlineHelp: 'The headings of a long page, listed at its side.',
+      open: 'Open',
+      folded: 'Folded',
+      hidden: 'Hidden',
+      backlinks: 'Linked from',
+      mentions: 'Find mentions',
+      mentionsHelp: "The button at the bottom that looks for the page's title written in other pages.",
+    },
     language: {
       region: 'Dates and time',
       spellLanguages: 'Spelling languages',
