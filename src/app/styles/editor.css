@@ -1061,3 +1061,9 @@ html.is-dragging-blocks * {
   flex: 0 0 56px;
   width: 56px;
 }
+
+/* words kept picked while more are picked elsewhere with ctrl held, shown like the selection */
+.prose .is-extra-selection {
+  background: var(--selection);
+  border-radius: 2px;
+}

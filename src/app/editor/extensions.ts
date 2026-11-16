@@ -18,6 +18,7 @@ import { CodeBlock, Highlight, mathExtensions, MathViewTracker, RawBlock, Tags, 
 import { FileAttachment, FileDrop, Image } from './Media';
 import type { BlockMenuRequest } from './BlockHandle';
 import { CopyFromInside, MarkdownPaste, PasteOnEmptyLine } from './MarkdownPaste';
+import { MultiSelect } from './MultiSelect';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
@@ -305,6 +306,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     ClickBelow,
     BlockHandle.configure({ onMenu: options.onBlockMenu }),
     BlockSelect,
+    MultiSelect,
     MarkdownPaste.configure({ resolvePage: options.resolvePage }),
   ];
 }

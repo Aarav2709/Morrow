@@ -604,3 +604,20 @@ describe('pasting words and pictures from another app', () => {
     expect(String(doc.child(1).attrs.src)).toMatch(/^file:\/\/\//);
   });
 });
+
+describe('picking words in several places', () => {
+  it('copies every piece kept with ctrl, in page order', async () => {
+    const { allPieces, keepPiece, piecesForClipboard } = await import('./MultiSelect');
+    const target = make({ type: 'doc', content: [p('Alpha beta'), p('Gamma delta'), p('Epsilon')] });
+    // "beta" picked first, then "Epsilon" with ctrl held
+    target.view.dispatch(keepPiece(target.state.tr, { from: 7, to: 11 }, target.state));
+    const end = target.state.doc.content.size - 1;
+    target.commands.setTextSelection({ from: end - 7, to: end });
+    const pieces = allPieces(target.state);
+    expect(pieces).toHaveLength(2);
+    expect(piecesForClipboard(target.view, pieces).text).toBe('beta\nEpsilon');
+    // an edit lets the kept pieces go
+    target.commands.insertContent('!');
+    expect(allPieces(target.state)).toHaveLength(0);
+  });
+});
