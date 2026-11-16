@@ -24,3 +24,31 @@ describe('the journal', () => {
     ]);
   });
 });
+
+describe('tasks on a calendar', () => {
+  it('puts a task on the day of its @date, or of the daily note it is in', async () => {
+    const { tasksInDoc, tasksByDay } = await import('./tasks');
+    const task = (text: string, date?: string, time?: string) => ({
+      type: 'taskItem',
+      attrs: { checked: false },
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            { type: 'text', text },
+            ...(date ? [{ type: 'dateMention', attrs: { date, time: time ?? null } }] : []),
+          ],
+        },
+      ],
+    });
+    const doc = {
+      type: 'doc',
+      content: [{ type: 'taskList', content: [task('Call', '2026-11-20', '09:30'), task('Shop')] }],
+    };
+    const page = newPageMeta({ id: 'p', parentId: null, dailyDate: '2026-11-18' });
+    const state = { pages: { p: page }, docs: { p: doc } } as never;
+    const days = tasksByDay(state, tasksInDoc('p', doc));
+    expect(days.get('2026-11-20')!.map((item) => [item.text, item.time])).toEqual([['Call', '09:30']]);
+    expect(days.get('2026-11-18')!.map((item) => item.text)).toEqual(['Shop']);
+  });
+});

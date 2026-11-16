@@ -217,6 +217,44 @@ async fn copy_rich<R: Runtime>(app: AppHandle<R>, text: String, html: String) ->
     false
 }
 
+// a calendar subscribed to by its address, such as the secret .ics link google calendar or outlook give.
+// fetched here rather than in the page, which those servers refuse. webcal:// is the same as https://
+#[tauri::command]
+async fn fetch_calendar(url: String) -> Res<String> {
+    let lower = url.to_ascii_lowercase();
+    let url = if lower.starts_with("webcal://") {
+        format!("https://{}", &url["webcal://".len()..])
+    } else if lower.starts_with("https://") || lower.starts_with("http://") {
+        url
+    } else {
+        return Err("Not allowed.".into());
+    };
+    let client = reqwest::Client::builder()
+        .user_agent(concat!("Morrow/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    if !response.status().is_success() {
+        return Err(format!("The calendar answered {}.", response.status()));
+    }
+    if response.content_length().unwrap_or(0) > 8 * 1024 * 1024 {
+        return Err("Too large.".into());
+    }
+    let bytes = response.bytes().await.map_err(|error| error.to_string())?;
+    if bytes.len() > 8 * 1024 * 1024 {
+        return Err("Too large.".into());
+    }
+    let text = String::from_utf8_lossy(&bytes).into_owned();
+    if !text.trim_start().starts_with("BEGIN:VCALENDAR") {
+        return Err("Not a calendar.".into());
+    }
+    Ok(text)
+}
+
 // a picture another app put on the clipboard as a file on this computer, the way word, outlook and
 // libreoffice copy the pictures among words. read only when the clipboard's html names that very file, so
 // the page can't read any other one
@@ -1115,6 +1153,7 @@ pub fn run() {
             clipboard_files,
             read_clipboard_file,
             read_pasted_picture,
+            fetch_calendar,
             fetch_image,
             show_data_folder,
             show_backups,

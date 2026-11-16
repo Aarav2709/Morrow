@@ -217,11 +217,11 @@ export function openToday(date = new Date()): void {
 }
 
 // a quick note from anywhere, added to the end of today's note with the time, a line starting [ ] becomes a task
-export function captureToToday(text: string): boolean {
+export function captureToToday(text: string, date = new Date()): boolean {
   const clean = text.trim();
   if (!clean) return false;
   commitEditors();
-  const id = ensureToday();
+  const id = ensureToday(date);
   if (!id) return false;
   const doc = getState().docs[id] ?? { type: 'doc', content: [] };
   const time = new Date().toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });

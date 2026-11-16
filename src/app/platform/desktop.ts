@@ -208,6 +208,8 @@ export interface DesktopBridge {
   // a link or words another app shared with morrow on a phone, once
   takeShared?(): Promise<string | null>;
   setSpellcheck?(enabled: boolean): void;
+  // an .ics calendar by its address, https or webcal
+  fetchCalendar?(url: string): Promise<string>;
   // a picture file another app put among the words it copied, by its file:// address
   readPastedPicture?(src: string): Promise<Uint8Array | null>;
   // the languages spelling is checked in: the ones picked, and the system's own for when none are
