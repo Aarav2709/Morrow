@@ -106,3 +106,33 @@ pub async fn local_network<R: Runtime>(app: &AppHandle<R>, request: bool) -> boo
         .map(|access| access.granted)
         .unwrap_or(true)
 }
+
+#[derive(Deserialize)]
+struct Opened {
+    #[serde(default)]
+    opened: bool,
+    #[serde(default)]
+    private: bool,
+}
+
+// a folder on the phone shown in its file manager, the way show in folder does on a computer
+pub async fn open_folder<R: Runtime>(
+    app: &AppHandle<R>,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    let opened: Opened = call(app, "openFolder", json!({ "path": path.to_string_lossy() })).await?;
+    if opened.private {
+        return Err(
+            "This vault is kept in Morrow's own storage on the phone, which other apps can't open. Move it \
+             to a folder of your own from Settings, Vault, to see its files."
+                .into(),
+        );
+    }
+    if !opened.opened {
+        return Err(format!(
+            "No app on this phone opens folders. The vault is in {}.",
+            path.to_string_lossy()
+        ));
+    }
+    Ok(())
+}

@@ -701,11 +701,15 @@ async fn vault_list(path: String) -> Res<Vec<Value>> {
 }
 
 #[tauri::command]
-fn vault_reveal<R: Runtime>(app: AppHandle<R>, path: Option<String>) -> Res<()> {
+async fn vault_reveal<R: Runtime>(app: AppHandle<R>, path: Option<String>) -> Res<()> {
     let target = match path.filter(|path| !path.is_empty()) {
         Some(path) => vault::resolve(&path)?,
         None => vault::current().ok_or("No vault is open.")?,
     };
+    // a phone has no file manager to reveal a file in, the folder opens in the one it has
+    #[cfg(target_os = "android")]
+    return device::open_folder(&app, &target).await;
+    #[cfg(not(target_os = "android"))]
     app.opener()
         .reveal_item_in_dir(target)
         .map_err(|error| error.to_string())

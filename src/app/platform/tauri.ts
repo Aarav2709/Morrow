@@ -230,7 +230,12 @@ export function tauriBridge(): DesktopBridge | null {
       createFile: (path, data) => invoke('vault_create_file', new Uint8Array(data), pathHeader(path)),
       exists: (path) => invoke('vault_exists', { path }),
       list: (path) => invoke('vault_list', { path }),
-      reveal: (path) => invoke('vault_reveal', { path: path ?? null }),
+      // a folder that can't be shown, such as a phone's own storage, says why rather than doing nothing
+      reveal: (path) =>
+        invoke<void>('vault_reveal', { path: path ?? null }).catch(async (error: unknown) => {
+          const { toast } = await import('../ui');
+          toast(String(error), { tone: 'error' });
+        }),
       openFile: (path) => invoke('vault_open_file', { path }),
       openLink: (href, pagePath) => invoke('vault_open_link', { href, pagePath }),
       copyImage: (path) => invoke('vault_copy_image', { path }),

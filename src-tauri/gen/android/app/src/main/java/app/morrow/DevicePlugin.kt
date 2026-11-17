@@ -25,6 +25,11 @@ import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 
 @InvokeArg
+class FolderArgs {
+  var path: String = ""
+}
+
+@InvokeArg
 class ThemeArgs {
   var dark: Boolean = false
   var color: String = "#f8f8f7"
@@ -165,6 +170,44 @@ class DevicePlugin(private val activity: Activity) : Plugin(activity) {
     } catch (ex: Exception) {
       invoke.reject(ex.message ?: "Could not read the folder that was picked.")
     }
+  }
+
+  // a folder on the phone opened in its file manager. folders inside morrow's own storage can't be shown
+  // by other apps, those answer that it is private
+  @Command
+  fun openFolder(invoke: Invoke) {
+    val args = invoke.parseArgs(FolderArgs::class.java)
+    val result = JSObject()
+    val file = java.io.File(args.path)
+    val folder = (if (file.isDirectory) file else file.parentFile)?.absolutePath ?: args.path
+    val root = Environment.getExternalStorageDirectory().absolutePath
+    if (!folder.startsWith(root)) {
+      result.put("opened", false)
+      result.put("private", true)
+      invoke.resolve(result)
+      return
+    }
+    val relative = folder.removePrefix(root).trimStart('/')
+    val uri = DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:$relative")
+    val tries = listOf(
+      Intent(Intent.ACTION_VIEW).setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR),
+      Intent(Intent.ACTION_VIEW, uri),
+      Intent("android.provider.action.BROWSE", uri)
+    )
+    var opened = false
+    for (intent in tries) {
+      intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+      try {
+        activity.startActivity(intent)
+        opened = true
+        break
+      } catch (ex: Exception) {
+        // the next way of asking, some file managers only answer one of them
+      }
+    }
+    result.put("opened", opened)
+    result.put("private", false)
+    invoke.resolve(result)
   }
 
   // what was shared with morrow from another app since the page last asked, once
