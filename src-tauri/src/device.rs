@@ -69,15 +69,19 @@ pub async fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Result<Option<String
     Ok(picked.path)
 }
 
-#[derive(Deserialize)]
-struct Shared {
-    text: Option<String>,
+#[derive(Deserialize, serde::Serialize, Default)]
+pub struct Shared {
+    pub text: Option<String>,
+    // files copied into morrow's cache from the app that shared them
+    #[serde(default)]
+    pub files: Vec<String>,
 }
 
-// a link or words another app shared with morrow, once
-pub async fn take_shared<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
-    let shared: Shared = call(app, "takeShared", json!({})).await.ok()?;
-    shared.text.filter(|text| !text.trim().is_empty())
+// a link, words or files another app shared with morrow, once
+pub async fn take_shared<R: Runtime>(app: &AppHandle<R>) -> Shared {
+    let mut shared: Shared = call(app, "takeShared", json!({})).await.unwrap_or_default();
+    shared.text = shared.text.filter(|text| !text.trim().is_empty());
+    shared
 }
 
 pub async fn name<R: Runtime>(app: &AppHandle<R>) -> Option<String> {

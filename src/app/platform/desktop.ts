@@ -206,7 +206,7 @@ export interface DesktopBridge {
   // pictures, sound and video copied in the file manager, which the web view only names
   clipboardFiles?(): Promise<File[]>;
   // a link or words another app shared with morrow on a phone, once
-  takeShared?(): Promise<string | null>;
+  takeShared?(): Promise<{ text: string | null; files: File[] }>;
   setSpellcheck?(enabled: boolean): void;
   // an .ics calendar by its address, https or webcal
   fetchCalendar?(url: string): Promise<string>;

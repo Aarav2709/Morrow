@@ -42,6 +42,7 @@ import {
 import type { BackupFile } from '../core/portability';
 import { childrenOf, descendantsOf, isEffectivelyTrashed, livePages } from '../core/tree';
 import { commitEditors } from './editor/commits';
+import { storeFiles } from './platform/attachments';
 import { desktop } from './platform/desktop';
 import { newId, pickFiles, saveFile, stamp } from './platform/files';
 import { getPreferences, setPreferences } from './platform/preferences';
@@ -266,6 +267,32 @@ export function captureToToday(text: string, date = new Date()): boolean {
     doc: { ...doc, content: [...existing, ...blocks] },
   });
   return result.ok;
+}
+
+// files shared from another app, such as a pdf, saved into the vault and added to the end of today's note,
+// a picture shown as itself and anything else as an attachment
+export async function captureFilesToToday(files: File[]): Promise<number> {
+  const stored = await storeFiles(files);
+  if (!stored.length) return 0;
+  commitEditors();
+  const id = ensureToday();
+  if (!id) return 0;
+  const doc = getState().docs[id] ?? { type: 'doc', content: [] };
+  const blocks = stored.map((file) =>
+    file.type.startsWith('image/')
+      ? { type: 'image', attrs: { fileId: file.id, alt: file.name } }
+      : { type: 'fileAttachment', attrs: { fileId: file.id, name: file.name, size: file.size } },
+  );
+  const existing = (doc.content ?? []).filter(
+    (node, _index, all) => !(all.length === 1 && node.type === 'paragraph' && !node.content?.length),
+  );
+  const result = run({
+    type: 'page.setDoc',
+    id,
+    now: Date.now(),
+    doc: { ...doc, content: [...existing, ...blocks] },
+  });
+  return result.ok ? stored.length : 0;
 }
 
 export function createTemplatesPage(): PageId | null {

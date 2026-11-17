@@ -578,14 +578,36 @@ async fn vault_choose<R: Runtime>(app: AppHandle<R>, start: Option<String>) -> O
 // what another app shared with morrow on android, nothing anywhere else
 #[cfg(target_os = "android")]
 #[tauri::command]
-async fn take_shared<R: Runtime>(app: AppHandle<R>) -> Option<String> {
-    device::take_shared(&app).await
+async fn take_shared<R: Runtime>(app: AppHandle<R>) -> Value {
+    let shared = device::take_shared(&app).await;
+    json!({ "text": shared.text, "files": shared.files })
 }
 
 #[cfg(not(target_os = "android"))]
 #[tauri::command]
-fn take_shared() -> Option<String> {
-    None
+fn take_shared() -> Value {
+    json!({ "text": null, "files": [] })
+}
+
+// a file shared from another app, read once from where the phone copied it and then let go. only files in
+// that one folder of morrow's cache can be read this way
+#[tauri::command]
+fn read_shared_file<R: Runtime>(app: AppHandle<R>, path: String) -> Res<Response> {
+    let folder = app
+        .path()
+        .app_cache_dir()
+        .map_err(|error| error.to_string())?
+        .join("shared");
+    let file = Path::new(&path);
+    let inside = file.parent().is_some_and(|parent| {
+        parent.canonicalize().ok() == folder.canonicalize().ok() && folder.exists()
+    });
+    if !inside || !file.is_file() {
+        return Err("Not a shared file.".into());
+    }
+    let bytes = std::fs::read(file).map_err(|error| error.to_string())?;
+    let _ = std::fs::remove_file(file);
+    Ok(Response::new(bytes))
 }
 
 // on android a folder that is already on the phone can be opened, once morrow may read files outside its own
@@ -1212,6 +1234,7 @@ pub fn run() {
             vault_forget,
             vault_reorder,
             take_shared,
+            read_shared_file,
             vault_open,
             vault_close,
             vault_scan,

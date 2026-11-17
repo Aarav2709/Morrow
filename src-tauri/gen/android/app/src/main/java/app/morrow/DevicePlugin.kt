@@ -227,6 +227,10 @@ class DevicePlugin(private val activity: Activity) : Plugin(activity) {
     val result = JSObject()
     result.put("text", MainActivity.shared)
     MainActivity.shared = null
+    val files = app.tauri.plugin.JSArray()
+    MainActivity.sharedFiles.forEach { files.put(it) }
+    MainActivity.sharedFiles.clear()
+    result.put("files", files)
     invoke.resolve(result)
   }
 

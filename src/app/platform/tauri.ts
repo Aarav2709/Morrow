@@ -156,7 +156,18 @@ export function tauriBridge(): DesktopBridge | null {
       : {}),
     copyText: (text) => invoke<boolean>('copy_text', { text }),
     copyRich: (text, html) => invoke<boolean>('copy_rich', { text, html }),
-    takeShared: () => invoke<string | null>('take_shared').catch(() => null),
+    // a pdf, picture or other file shared from another app comes with the words, read once from the cache
+    async takeShared() {
+      const shared = await invoke<{ text: string | null; files: string[] }>('take_shared').catch(() => null);
+      const files: File[] = [];
+      for (const path of shared?.files ?? []) {
+        const data = await bytesOrNull('read_shared_file', { path });
+        const name = path.split(/[\\/]/).pop() || 'file';
+        if (data)
+          files.push(new File([data.slice().buffer as ArrayBuffer], name, { type: mimeOfName(name) }));
+      }
+      return { text: shared?.text ?? null, files };
+    },
     async clipboardFiles() {
       const paths = await invoke<string[]>('clipboard_files').catch(() => []);
       const files: File[] = [];
