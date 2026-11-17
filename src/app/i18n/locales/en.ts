@@ -295,6 +295,9 @@ export const en = {
         'It leaves this list. Its folder and every file in it stay on your computer, and you can open it again any time.',
       groupHelp:
         'Every page is a Markdown file in this folder. Open it in any app or back it up however you like.',
+      moveOnPhone: 'Move to a folder on the phone',
+      moveOnPhoneHelp:
+        'A copy goes into the folder you pick, such as Documents, where a file manager can reach it, and opens there. The old one stays until you delete it.',
       currentFolder: 'Vault folder',
       showFolder: 'Show',
       chooseAnother: 'Open another',
@@ -376,6 +379,8 @@ export const en = {
       receivedChangesOne: 'Received {count} change from {name}.',
       syncFailed: 'Sync failed.',
       vaultCopyFailed: 'The vault could not be copied.',
+      copyToDocuments: "In the phone's Documents folder",
+      copyToPicked: 'In a folder I pick…',
       cloudTitle: 'Cloud folder',
       cloudHelp:
         'Their app does the syncing, Morrow never connects to it. Conflicted copies get a banner to compare them.',

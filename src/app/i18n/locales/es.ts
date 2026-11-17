@@ -300,6 +300,9 @@ export const es: TranslationSchema = {
         'Sale de esta lista. Su carpeta y todos sus archivos se quedan en tu ordenador, y puedes volver a abrirla cuando quieras.',
       groupHelp:
         'Cada página es un archivo Markdown en esta carpeta. Ábrela en cualquier app o haz copias de seguridad como quieras.',
+      moveOnPhone: 'Mover a una carpeta del teléfono',
+      moveOnPhoneHelp:
+        'Una copia va a la carpeta que elijas, como Documentos, donde un gestor de archivos la alcanza, y se abre allí. La anterior se queda hasta que la borres.',
       currentFolder: 'Carpeta de la bóveda',
       showFolder: 'Mostrar',
       chooseAnother: 'Abrir otra',
@@ -381,6 +384,8 @@ export const es: TranslationSchema = {
       receivedChangesOne: 'Se recibió {count} cambio de {name}.',
       syncFailed: 'Error al sincronizar.',
       vaultCopyFailed: 'No se pudo copiar la bóveda.',
+      copyToDocuments: 'En la carpeta Documentos del teléfono',
+      copyToPicked: 'En una carpeta que elija…',
       cloudTitle: 'Carpeta en la nube',
       cloudHelp:
         'Su propia aplicación se encarga de sincronizar; Morrow nunca se conecta a ella. Los conflictos muestran un aviso para compararlos.',

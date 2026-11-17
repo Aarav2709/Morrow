@@ -124,7 +124,7 @@ pub async fn open_folder<R: Runtime>(
     if opened.private {
         return Err(
             "This vault is kept in Morrow's own storage on the phone, which other apps can't open. Move it \
-             to a folder of your own from Settings, Vault, to see its files."
+             to a folder on the phone from Settings, Vault, to see its files."
                 .into(),
         );
     }
@@ -135,4 +135,15 @@ pub async fn open_folder<R: Runtime>(
         ));
     }
     Ok(())
+}
+
+#[derive(Deserialize)]
+struct Folder {
+    path: Option<String>,
+}
+
+// the phone's documents folder, which a file manager and a computer over usb can both reach
+pub async fn documents_folder<R: Runtime>(app: &AppHandle<R>) -> Option<std::path::PathBuf> {
+    let folder: Folder = call(app, "documentsFolder", json!({})).await.ok()?;
+    folder.path.map(std::path::PathBuf::from)
 }

@@ -300,6 +300,9 @@ export const pt: TranslationSchema = {
         'Ele sai desta lista. A pasta e todos os arquivos ficam no seu computador, e você pode abri-lo de novo quando quiser.',
       groupHelp:
         'Cada página é um arquivo Markdown nesta pasta. Abra em qualquer app ou faça backup como preferir.',
+      moveOnPhone: 'Mover para uma pasta do telefone',
+      moveOnPhoneHelp:
+        'Uma cópia vai para a pasta que você escolher, como Documentos, onde um gerenciador de arquivos alcança, e abre lá. A antiga fica até você apagar.',
       currentFolder: 'Pasta do cofre',
       showFolder: 'Mostrar',
       chooseAnother: 'Abrir outro',
@@ -381,6 +384,8 @@ export const pt: TranslationSchema = {
       receivedChangesOne: '{count} alteração recebida de {name}.',
       syncFailed: 'Falha na sincronização.',
       vaultCopyFailed: 'O cofre não pôde ser copiado.',
+      copyToDocuments: 'Na pasta Documentos do telefone',
+      copyToPicked: 'Numa pasta que eu escolher…',
       cloudTitle: 'Pasta na nuvem',
       cloudHelp:
         'O aplicativo deles cuida da sincronização; o Morrow nunca se conecta a ele. Conflitos recebem um aviso para comparação.',

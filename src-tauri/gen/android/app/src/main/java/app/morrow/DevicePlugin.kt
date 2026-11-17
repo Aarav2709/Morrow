@@ -210,6 +210,17 @@ class DevicePlugin(private val activity: Activity) : Plugin(activity) {
     invoke.resolve(result)
   }
 
+  // the phone's own documents folder, where new vaults go once morrow may keep files outside its storage
+  @Command
+  fun documentsFolder(invoke: Invoke) {
+    val result = JSObject()
+    result.put(
+      "path",
+      Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).absolutePath
+    )
+    invoke.resolve(result)
+  }
+
   // what was shared with morrow from another app since the page last asked, once
   @Command
   fun takeShared(invoke: Invoke) {

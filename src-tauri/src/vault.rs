@@ -158,7 +158,11 @@ pub fn forget(dir: &str) -> Result<()> {
 }
 
 pub fn create_default() -> Result<String> {
-    let documents = paths::documents_dir();
+    create_default_in(&paths::documents_dir())
+}
+
+// a new vault named Morrow, or Morrow 2 and so on when that is taken, in the given folder
+pub fn create_default_in(documents: &Path) -> Result<String> {
     let mut candidate = documents.join("Morrow");
     let mut n = 2;
     while exists(&candidate) {

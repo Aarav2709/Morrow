@@ -19,6 +19,7 @@ import { formatShortcut } from '../actions';
 import { AssistantSettings } from '../assistant/AssistantSettings';
 import { previewCustomCss, saveCustomCss, useCustomCss } from '../customCss';
 import { openHref } from '../editor/EditorMenus';
+import { commitEditors } from '../editor/commits';
 import { useTranslation } from '../i18n';
 import type { TranslationKey } from '../i18n';
 import { copyLegacyInto, legacyPageCount } from '../legacy';
@@ -347,6 +348,26 @@ function AppearanceSettings() {
       <CustomCss />
     </>
   );
+}
+
+// the open vault copied into a folder picked on the phone, which then opens. the old copy is left as it was
+async function moveVaultOnPhone(): Promise<void> {
+  const vault = desktop?.vault;
+  const dir = await vault?.choose().catch(() => null);
+  if (!vault || !dir) return;
+  confirmAction({
+    title: t('settings.sync.moveConfirmTitle', { where: t('settings.sync.thatFolder') }),
+    body: t('settings.sync.moveConfirmBody', { dir }),
+    confirmLabel: t('settings.sync.copyAndOpenButton'),
+    onConfirm: () =>
+      void (async () => {
+        commitEditors();
+        await getSession().flush();
+        const result = await vault.copyInto(dir);
+        if (result.ok && result.path) await switchVault(result.path);
+        else toast(result.error ?? t('settings.sync.vaultCopyFailed'), { tone: 'error' });
+      })(),
+  });
 }
 
 // the outline beside a page and the lists at its bottom, for every page
@@ -803,6 +824,14 @@ function VaultSettings() {
             </button>
           )}
         </SettingRow>
+        {/* a vault made on a phone used to go in morrow's own storage, out of reach of its file manager */}
+        {desktop?.platform === 'android' && (
+          <SettingRow label={t('settings.vault.moveOnPhone')} help={t('settings.vault.moveOnPhoneHelp')}>
+            <button type="button" className="button small" onClick={() => void moveVaultOnPhone()}>
+              {t('settings.sync.chooseFolder')}
+            </button>
+          </SettingRow>
+        )}
         {legacy > 0 && (
           <SettingRow
             label={t('settings.vault.copyLegacy')}

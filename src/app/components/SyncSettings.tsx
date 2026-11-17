@@ -1,4 +1,14 @@
-import { Check, Cloud, Laptop, Link2, RefreshCw, Trash2, TriangleAlert } from 'lucide-react';
+import {
+  Check,
+  Cloud,
+  FolderOpen,
+  FolderPlus,
+  Laptop,
+  Link2,
+  RefreshCw,
+  Trash2,
+  TriangleAlert,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { commitEditors } from '../editor/commits';
 import { useTranslation } from '../i18n';
@@ -10,6 +20,7 @@ import { getSession } from '../workspace';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import { Dialog, relativeTime, Switch } from './primitives';
 import { SettingRow, SettingsGroup } from './SettingsRows';
+import { Menu } from './Menu';
 
 function useSyncStatus(poll = 3000): [SyncStatus | null, () => void] {
   const [status, setStatus] = useState<SyncStatus | null>(null);
@@ -37,6 +48,7 @@ export function NetworkSettings() {
   const [status, refresh] = useSyncStatus();
   const [busy, setBusy] = useState<string | null>(null);
   const [name, setName] = useState<string | null>(null);
+  const [copyMenu, setCopyMenu] = useState<{ peerId: string; anchor: HTMLElement } | null>(null);
   if (!desktop?.sync || !status) return null;
 
   const syncNow = async (peerId: string, peerName: string) => {
@@ -56,12 +68,16 @@ export function NetworkSettings() {
     }
   };
 
-  const copyHere = async (peerId: string) => {
-    // a phone makes a new vault in its own storage for the copy
-    const dir = isMobile ? await desktop?.vault?.createDefault() : await desktop?.vault?.choose();
+  // a phone asks where the copy goes: a new vault in its documents folder, or a folder picked there
+  const copyTo = async (peerId: string, pick: boolean) => {
+    const dir = pick ? await desktop?.vault?.choose() : await desktop?.vault?.createDefault();
     if (!dir) return;
     const result = await copyVaultFrom(peerId, dir);
     if (!result.ok) toast(result.error ?? t('settings.sync.vaultCopyFailed'), { tone: 'error' });
+  };
+  const copyHere = async (peerId: string, anchor: HTMLElement) => {
+    if (isMobile) setCopyMenu({ peerId, anchor });
+    else await copyTo(peerId, true);
   };
 
   return (
@@ -122,7 +138,7 @@ export function NetworkSettings() {
             className="button small"
             disabled={!peer.reachable || !status.enabled}
             title={t('settings.sync.copyVaultTitle')}
-            onClick={() => void copyHere(peer.id)}
+            onClick={(event) => void copyHere(peer.id, event.currentTarget)}
           >
             {t('settings.sync.copyVault')}
           </button>
@@ -159,6 +175,25 @@ export function NetworkSettings() {
           <Link2 size={13} /> {t('settings.sync.pairButton')}
         </button>
       </SettingRow>
+      {copyMenu && (
+        <Menu
+          anchor={copyMenu.anchor}
+          label={t('settings.sync.copyVault')}
+          onClose={() => setCopyMenu(null)}
+          entries={[
+            {
+              label: t('settings.sync.copyToDocuments'),
+              icon: FolderPlus,
+              onSelect: () => void copyTo(copyMenu.peerId, false),
+            },
+            {
+              label: t('settings.sync.copyToPicked'),
+              icon: FolderOpen,
+              onSelect: () => void copyTo(copyMenu.peerId, true),
+            },
+          ]}
+        />
+      )}
     </SettingsGroup>
   );
 }

@@ -617,7 +617,16 @@ async fn vault_copy_into(dir: String) -> Res<Value> {
 }
 
 #[tauri::command]
-async fn vault_create_default() -> Res<String> {
+async fn vault_create_default<R: Runtime>(app: AppHandle<R>) -> Res<String> {
+    // on a phone a new vault goes in its documents folder, where a file manager and a computer can reach it,
+    // once morrow is allowed files outside its own storage. it asks, and keeps to its own storage if not
+    #[cfg(target_os = "android")]
+    if device::storage_access(&app, true).await.unwrap_or(false) {
+        if let Some(documents) = device::documents_folder(&app).await {
+            return blocking(move || vault::create_default_in(&documents)).await?;
+        }
+    }
+    let _ = &app;
     blocking(vault::create_default).await?
 }
 
