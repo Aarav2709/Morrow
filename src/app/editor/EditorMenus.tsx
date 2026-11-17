@@ -8,6 +8,9 @@ import { BubbleMenu } from '@tiptap/react/menus';
 import type { BubbleMenuProps } from '@tiptap/react/menus';
 import {
   ArrowDown,
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
@@ -1336,6 +1339,29 @@ export function BlockMenu({
   const blockType = editor.state.doc.nodeAt(request.pos)?.type.name;
   const fileId = editor.state.doc.nodeAt(request.pos)?.attrs.fileId as string | null | undefined;
   const vault = desktop?.vault;
+  if (blockType === 'image') {
+    // a picture narrower than the page can sit at either side or in the middle
+    const current = editor.state.doc.nodeAt(request.pos)?.attrs.align ?? null;
+    const align = (value: 'left' | 'right' | null, label: string, icon: LucideIcon): MenuEntry => ({
+      label,
+      icon,
+      checked: current === value,
+      onSelect: () => {
+        const node = editor.state.doc.nodeAt(request.pos);
+        if (node)
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(request.pos, undefined, { ...node.attrs, align: value }),
+          );
+      },
+    });
+    entries.unshift(
+      { heading: t('editor.alignPicture') },
+      align('left', t('editor.alignLeft'), AlignLeft),
+      align(null, t('editor.alignCentre'), AlignCenter),
+      align('right', t('editor.alignRight'), AlignRight),
+      { separator: true },
+    );
+  }
   if (blockType === 'image' && fileId) {
     entries.unshift(
       { heading: t('slash.items.image.title') },

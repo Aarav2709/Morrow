@@ -697,6 +697,10 @@ export const es: TranslationSchema = {
     pressEnterToAdd: 'Pulsa Enter para añadir',
   },
   editor: {
+    alignPicture: 'Posición',
+    alignLeft: 'Izquierda',
+    alignCentre: 'Centro',
+    alignRight: 'Derecha',
     dragColumn: 'Arrastra para mover esta columna',
     moveColumnLeft: 'Mover columna a la izquierda',
     moveColumnRight: 'Mover columna a la derecha',

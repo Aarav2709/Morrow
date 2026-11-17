@@ -63,6 +63,9 @@ function blocks(nodes: DocNode[], options: SerializeOptions): string {
     const notes = [
       ...(background ? [BACKGROUND_COMMENT(background)] : []),
       ...(node.type === 'orderedList' && node.attrs?.type === 'a' ? [LETTERS_COMMENT] : []),
+      ...(node.type === 'image' && (node.attrs?.align === 'left' || node.attrs?.align === 'right')
+        ? [ALIGN_COMMENT(String(node.attrs.align))]
+        : []),
     ];
     parts.push([...notes, text].join('\n'));
   }
@@ -240,6 +243,9 @@ export const COLUMN_WIDTHS_PATTERN = /^<!--\s*column-widths:\s*([\d ]+?)\s*-->$/
 // a block's background colour is a comment on the line above it, other apps hide it and show the block as is
 export const BACKGROUND_COMMENT = (color: ColorName) => `<!-- background: ${color} -->`;
 export const BACKGROUND_PATTERN = /^<!--\s*background:\s*([a-z]+)\s*-->$/;
+// a picture set to one side of the page, a comment above it like the background
+export const ALIGN_COMMENT = (side: string) => `<!-- align: ${side} -->`;
+export const ALIGN_PATTERN = /^<!--\s*align:\s*(left|right)\s*-->$/;
 // a numbered list counted a, b, c. markdown only has numbers, so other apps show it numbered
 export const LETTERS_COMMENT = '<!-- letters -->';
 

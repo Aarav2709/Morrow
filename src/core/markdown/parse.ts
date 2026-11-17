@@ -4,6 +4,7 @@ import { BACKGROUND_HEX, calloutTone, COLORS, emptyDoc, nearestColor, TEXT_HEX }
 import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
 import {
+  ALIGN_PATTERN,
   BACKGROUND_PATTERN,
   calloutIcon,
   LETTERS_COMMENT,
@@ -337,6 +338,11 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
           const color = BACKGROUND_PATTERN.exec(token.content.trim())?.[1];
           if (color && (COLORS as readonly string[]).includes(color)) {
             note({ backgroundColor: color });
+            break;
+          }
+          const side = ALIGN_PATTERN.exec(token.content.trim())?.[1];
+          if (side) {
+            note({ align: side });
             break;
           }
           if (token.content.trim() === LETTERS_COMMENT) {
@@ -832,11 +838,13 @@ function liftMedia(node: DocNode): DocNode[] {
     }
     run = [];
   };
+  // a picture set to one side keeps that side once it leaves its paragraph
+  const align = node.attrs?.align;
   for (const child of children) {
     const embed = fileRefOf(child);
     if (child.type === 'image') {
       flush();
-      out.push(child);
+      out.push(align ? { ...child, attrs: { ...child.attrs, align } } : child);
     } else if (embed?.embed) {
       flush();
       out.push(mediaBlock(embed));

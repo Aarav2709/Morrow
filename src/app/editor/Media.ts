@@ -25,6 +25,15 @@ export const Image = Node.create({
       // an image on the web or at a path morrow could not find, kept as written
       src: { default: null, parseHTML: (element) => element.getAttribute('data-src') },
       alt: { default: '', parseHTML: (element) => element.getAttribute('alt') ?? '' },
+      // where a picture narrower than the page sits, null for the middle
+      align: {
+        default: null,
+        parseHTML: (element) => {
+          const value = element.getAttribute('data-align');
+          return value === 'left' || value === 'right' ? value : null;
+        },
+        renderHTML: (attributes) => (attributes.align ? { 'data-align': attributes.align } : {}),
+      },
       // the width the picture was dragged to, null to fit the page
       width: {
         default: null,
@@ -74,7 +83,10 @@ export const Image = Node.create({
       dom.appendChild(frame);
       const width = typeof node.attrs.width === 'number' ? node.attrs.width : null;
       if (width) img.style.width = `${width}px`;
-      // the picture's sides drag to make it smaller or larger. it stays centred, so it grows both ways
+      const align = node.attrs.align === 'left' || node.attrs.align === 'right' ? node.attrs.align : null;
+      if (align) dom.classList.add(`is-align-${align}`);
+      // the picture's sides drag to make it smaller or larger. a centred one grows both ways, one set to a
+      // side grows from that side
       if (editor.isEditable)
         for (const side of ['left', 'right'] as const) {
           const handle = document.createElement('span');
@@ -87,7 +99,7 @@ export const Image = Node.create({
             const most = dom.getBoundingClientRect().width;
             let next = start;
             const onMove = (move: PointerEvent) => {
-              const delta = (move.clientX - startX) * (side === 'right' ? 2 : -2);
+              const delta = (move.clientX - startX) * (side === 'right' ? 1 : -1) * (align ? 1 : 2);
               next = Math.round(Math.min(most, Math.max(60, start + delta)));
               img.style.width = `${next}px`;
             };

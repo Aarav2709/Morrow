@@ -689,6 +689,10 @@ export const en = {
     pressEnterToAdd: 'Press Enter to add',
   },
   editor: {
+    alignPicture: 'Place',
+    alignLeft: 'Left',
+    alignCentre: 'Centre',
+    alignRight: 'Right',
     dragColumn: 'Drag to move this column',
     moveColumnLeft: 'Move column left',
     moveColumnRight: 'Move column right',

@@ -1102,3 +1102,15 @@ html.is-dragging-blocks * {
     display: none;
   }
 }
+
+/* a picture set to one side of the page */
+.prose .image-block.is-align-left {
+  text-align: left;
+}
+.prose .image-block.is-align-right {
+  text-align: right;
+}
+.prose .image-block.is-align-left img,
+.prose .image-block.is-align-right img {
+  margin: 0;
+}

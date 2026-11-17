@@ -469,6 +469,21 @@ describe('colours', () => {
     expect(markdownToDoc(out)).toEqual(doc);
   });
 
+  it('round trips a picture set to one side as a comment above it', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        {
+          type: 'image',
+          attrs: { fileId: null, src: 'https://example.org/a.png', alt: 'a', width: 300, align: 'right' },
+        },
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe('<!-- align: right -->\n![a|300](https://example.org/a.png)\n');
+    expect(markdownToDoc(out).content![0]!.attrs?.align).toBe('right');
+  });
+
   it('keeps a list counted in letters, numbered in the file', () => {
     const item = (words: string) => ({ type: 'listItem', content: [p(text(words))] });
     const doc: DocNode = {
