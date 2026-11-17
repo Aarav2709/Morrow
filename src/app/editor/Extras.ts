@@ -24,6 +24,7 @@ import type { CalloutTone, ColorName } from '../../core/model';
 import { tagClass } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
 import { getPreferences, setPreferences } from '../platform/preferences';
+import { desktop } from '../platform/desktop';
 import { openDialog } from '../ui';
 import { calloutIcon } from '../../core/markdown/serialize';
 import { t } from '../i18n';
@@ -323,10 +324,14 @@ let diagramTheme: string | null = null;
 function configureMermaid(mermaid: Mermaid): void {
   const dark = document.documentElement.dataset.theme === 'dark';
   // the base theme tinted with morrow's colours, so diagrams belong on the page
+  // webkit, the web view on macos and linux, draws the html mermaid puts in its boxes in the wrong place or
+  // cut off, labels drawn as svg text come out right there
+  const webkit = desktop?.platform === 'darwin' || /AppleWebKit(?!.*Chrome)/.test(navigator.userAgent);
   mermaid.initialize({
     startOnLoad: false,
     securityLevel: 'strict',
     theme: 'base',
+    ...(webkit ? { htmlLabels: false, flowchart: { htmlLabels: false } } : {}),
     fontFamily: 'Inter Variable, system-ui, sans-serif',
     themeVariables: dark
       ? {
@@ -375,6 +380,8 @@ export async function renderMermaid(source: string): Promise<{ html: string; err
       diagramTheme = theme;
       configureMermaid(mermaid);
     }
+    // boxes are sized to their words, measured in the page's font once it has loaded
+    await document.fonts?.ready;
     const { svg } = await mermaid.render(`morrow-diagram-${++diagramCount}`, source);
     return { html: svg, error: false };
   } catch (error) {
