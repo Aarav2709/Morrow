@@ -440,11 +440,19 @@ export const en = {
         'Exposes Morrow notes, tags, and tools via the Model Context Protocol for external AI agents and assistants.',
       mcpRow: 'MCP Server',
       mcpRowHelp:
-        'Allows external AI agents and assistants like Cursor, Claude Desktop, or Antigravity to browse and manage your vault via the MCP protocol.',
+        'Allows external AI agents and assistants like Opencode, Claude Code, Codex, Cursor or Claude Desktop to browse and manage your vault via the MCP protocol.',
       mcpSwitch: 'Enable MCP Server',
-      mcpConfigTitle: 'Agent Configuration (JSON)',
+      mcpConfigTitle: 'Agent setup',
       mcpConfigHelp:
         "Copy this configuration block into your agent configuration file to connect to Morrow. It runs the server with Node, so Morrow itself doesn't open. Set up with Morrow 1.x? Copy it again, the old one started the Morrow app.",
+      mcpAgent: 'Agent',
+      mcpWhere: {
+        json: "Goes in the app's MCP settings file, such as claude_desktop_config.json or .cursor/mcp.json.",
+        opencode:
+          'Goes in opencode.json in your project, or in ~/.config/opencode/opencode.json for every project.',
+        claudeCode: 'Run this once in a terminal.',
+        codex: 'Goes in ~/.codex/config.toml.',
+      },
       mcpCopyButton: 'Copy JSON',
       mcpCopied: 'Copied!',
     },

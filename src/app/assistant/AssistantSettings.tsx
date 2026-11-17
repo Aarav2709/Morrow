@@ -30,6 +30,14 @@ type Connection =
   | { state: 'error'; message: string };
 
 // the assistant section of settings: off by default, nothing is sent anywhere until you turn it on
+type AgentKind = 'json' | 'opencode' | 'claudeCode' | 'codex';
+const AGENT_KINDS: Array<[AgentKind, string]> = [
+  ['json', 'Claude Desktop, Cursor'],
+  ['opencode', 'Opencode'],
+  ['claudeCode', 'Claude Code'],
+  ['codex', 'Codex'],
+];
+
 export function AssistantSettings() {
   const { t, tp } = useTranslation();
   const prefs = usePreferences();
@@ -42,6 +50,7 @@ export function AssistantSettings() {
 
   const [mcpCopied, setMcpCopied] = useState(false);
   const [mcpLaunch, setMcpLaunch] = useState<McpLaunch | null>(null);
+  const [agent, setAgent] = useState<AgentKind>('json');
 
   useEffect(() => {
     if (desktop?.mcp?.setEnabled) {
@@ -107,17 +116,33 @@ export function AssistantSettings() {
     ...models,
   ];
 
-  const mcpJson = JSON.stringify(
-    {
-      mcpServers: {
-        morrow: mcpLaunch?.available
-          ? { command: mcpLaunch.command, args: [mcpLaunch.script] }
-          : { command: 'morrow-mcp' },
-      },
-    },
-    null,
-    2,
-  );
+  // the same server set up the way each kind of agent reads it: the mcpServers json most apps share,
+  // opencode's own config, a command for claude code, and codex's toml
+  const command = mcpLaunch?.available ? [mcpLaunch.command, mcpLaunch.script] : ['morrow-mcp'];
+  const quote = (part: string) => (/[\s"']/.test(part) ? JSON.stringify(part) : part);
+  const mcpJson =
+    agent === 'opencode'
+      ? JSON.stringify(
+          {
+            $schema: 'https://opencode.ai/config.json',
+            mcp: { morrow: { type: 'local', command, enabled: true } },
+          },
+          null,
+          2,
+        )
+      : agent === 'claudeCode'
+        ? `claude mcp add morrow -- ${command.map(quote).join(' ')}`
+        : agent === 'codex'
+          ? `[mcp_servers.morrow]\ncommand = ${JSON.stringify(command[0])}\nargs = ${JSON.stringify(command.slice(1))}`
+          : JSON.stringify(
+              {
+                mcpServers: {
+                  morrow: { command: command[0], ...(command.length > 1 ? { args: command.slice(1) } : {}) },
+                },
+              },
+              null,
+              2,
+            );
 
   const handleCopy = async () => {
     const success = await copyText(mcpJson);
@@ -347,6 +372,25 @@ export function AssistantSettings() {
             stacked
           >
             <div className="mcp-setup">
+              <div
+                className="segmented mcp-agents"
+                role="radiogroup"
+                aria-label={t('settings.assistant.mcpAgent')}
+              >
+                {AGENT_KINDS.map(([kind, label]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    role="radio"
+                    aria-checked={agent === kind}
+                    className={agent === kind ? 'is-active' : ''}
+                    onClick={() => setAgent(kind)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="muted small mcp-where">{t(`settings.assistant.mcpWhere.${agent}`)}</p>
               <div className="mcp-setup-head">
                 <span className="mcp-setup-kind">Stdio</span>
                 <button type="button" className="button small mcp-copy" onClick={handleCopy}>

@@ -3172,3 +3172,12 @@ td:hover .prop-empty,
 .section-fold-chevron.is-open {
   transform: rotate(90deg);
 }
+
+/* which agent the mcp setup is shown for, and where it goes */
+.mcp-agents {
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.mcp-where {
+  margin: 0 0 8px;
+}

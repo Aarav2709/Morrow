@@ -445,11 +445,18 @@ export const es: TranslationSchema = {
         'Expone las notas, etiquetas y herramientas de Morrow mediante el protocolo MCP para asistentes y agentes de IA externos.',
       mcpRow: 'Servidor MCP',
       mcpRowHelp:
-        'Permite que agentes y asistentes de IA externos como Cursor, Claude Desktop o Antigravity consulten y gestionen tus notas mediante el protocolo MCP.',
+        'Permite que agentes y asistentes de IA externos como Opencode, Claude Code, Codex, Cursor o Claude Desktop consulten y gestionen tus notas mediante el protocolo MCP.',
       mcpSwitch: 'Habilitar servidor MCP',
-      mcpConfigTitle: 'Configuración para Agente (JSON)',
+      mcpConfigTitle: 'Configuración del agente',
       mcpConfigHelp:
         'Copia este bloque en el archivo de configuración de tu agente para conectarlo con Morrow. Ejecuta el servidor con Node, así Morrow no se abre. ¿Lo configuraste con Morrow 1.x? Cópialo de nuevo, el anterior abría la app de Morrow.',
+      mcpAgent: 'Agente',
+      mcpWhere: {
+        json: 'Va en el archivo de ajustes MCP de la app, como claude_desktop_config.json o .cursor/mcp.json.',
+        opencode: 'Va en opencode.json en tu proyecto, o en ~/.config/opencode/opencode.json para todos.',
+        claudeCode: 'Ejecútalo una vez en una terminal.',
+        codex: 'Va en ~/.codex/config.toml.',
+      },
       mcpCopyButton: 'Copiar JSON',
       mcpCopied: '¡Copiado!',
     },
