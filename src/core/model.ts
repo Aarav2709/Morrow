@@ -58,6 +58,8 @@ export interface PropDef {
   // a number or formula shown as a progress bar filled to value out of max, 100 when not set
   display?: 'bar';
   max?: number;
+  // a text property shown in full over as many lines as it takes, rather than cut off at the cell's edge
+  wrap?: boolean;
 }
 
 export type FilterOp =

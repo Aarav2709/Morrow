@@ -1583,6 +1583,7 @@ export const en = {
     codeAria: 'Code shown on the other computer',
   },
   database: {
+    wrapText: 'Wrap text',
     exportIcsHint: 'Save the dated rows as an .ics file for other calendar apps',
     importIcsHint: 'Add the events in an .ics file as rows',
     importedIcs: 'Added {count} events.',

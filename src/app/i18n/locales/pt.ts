@@ -1597,6 +1597,7 @@ export const pt: TranslationSchema = {
     codeAria: 'Código mostrado no outro computador',
   },
   database: {
+    wrapText: 'Quebrar texto',
     exportIcsHint: 'Salve as linhas com data como um arquivo .ics para outros apps de calendário',
     importIcsHint: 'Adicione os eventos de um arquivo .ics como linhas',
     importedIcs: '{count} eventos adicionados.',

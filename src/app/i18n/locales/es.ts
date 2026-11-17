@@ -1598,6 +1598,7 @@ export const es: TranslationSchema = {
     codeAria: 'Código que muestra el otro ordenador',
   },
   database: {
+    wrapText: 'Ajustar texto',
     exportIcsHint: 'Guarda las filas con fecha como un archivo .ics para otras apps de calendario',
     importIcsHint: 'Añade los eventos de un archivo .ics como filas',
     importedIcs: 'Se añadieron {count} eventos.',

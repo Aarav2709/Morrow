@@ -10,6 +10,7 @@ import { toast } from '../../ui';
 import { runAll, useWorkspace } from '../../workspace';
 import { Popover } from '../Popover';
 import { Select } from '../Select';
+import { Switch } from '../primitives';
 import { updateDatabase, updateProp, updateView } from './data';
 import { DraftInput } from './PropertyValue';
 import { t } from '../../i18n';
@@ -154,6 +155,21 @@ export function PropertySettings({
             </label>
           )}
         </div>
+      )}
+      {prop.type === 'text' && (
+        <label className="field-inline">
+          <span>{t('database.wrapText')}</span>
+          <Switch
+            label={t('database.wrapText')}
+            checked={prop.wrap === true}
+            onChange={(wrap) =>
+              updateProp(dbId, prop.id, (current) => {
+                const { wrap: _old, ...rest } = current;
+                return wrap ? { ...rest, wrap: true } : rest;
+              })
+            }
+          />
+        </label>
       )}
       {prop.type === 'formula' && <FormulaField dbId={dbId} prop={prop} database={database} />}
       {(prop.type === 'select' || prop.type === 'multiSelect') && (

@@ -289,6 +289,7 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       ...(prop.type === 'formula' && prop.formula ? { formula: prop.formula } : {}),
       ...(prop.display === 'bar' ? { display: 'bar' } : {}),
       ...(prop.display === 'bar' && prop.max && prop.max !== 100 ? { max: prop.max } : {}),
+      ...(prop.type === 'text' && prop.wrap ? { wrap: true } : {}),
     })),
     views: database.views.map((view) => ({
       id: view.id,

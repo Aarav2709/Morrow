@@ -1,5 +1,5 @@
 import { Check, ExternalLink, Plus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatValue, formulaResult } from '../../../core/database';
 import { displayTitle } from '../../../core/model';
 import { findPagesByTitle, resolveLinkTarget } from '../../../core/search';
@@ -260,17 +260,78 @@ export function PropertyInput({
         </>
       );
     }
-    default:
+    default: {
+      const text = typeof value === 'string' ? value : value === null ? '' : String(value);
+      if (prop.type === 'text' && prop.wrap)
+        return (
+          <WrappedText
+            label={label}
+            value={text}
+            editable={editable}
+            onCommit={(next) => setValue(row.id, prop.id, next || null)}
+          />
+        );
       return (
         <DraftInput
           type="text"
           label={label}
-          value={typeof value === 'string' ? value : value === null ? '' : String(value)}
+          value={text}
           editable={editable}
-          onCommit={(text) => setValue(row.id, prop.id, text || null)}
+          onCommit={(next) => setValue(row.id, prop.id, next || null)}
         />
       );
+    }
   }
+}
+
+// text shown in full, over as many lines as it needs. the box grows with what is typed, enter saves it and
+// shift and enter starts a new line
+function WrappedText({
+  label,
+  value,
+  editable,
+  onCommit,
+}: {
+  label: string;
+  value: string;
+  editable: boolean;
+  onCommit: (text: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const shown = draft ?? value;
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    element.style.height = 'auto';
+    element.style.height = `${element.scrollHeight}px`;
+  }, [shown]);
+  const commit = () => {
+    if (draft !== null && draft !== value) onCommit(draft);
+    setDraft(null);
+  };
+  return (
+    <textarea
+      ref={box}
+      className="prop-input prop-wrap"
+      aria-label={label}
+      rows={1}
+      value={shown}
+      readOnly={!editable}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          commit();
+          event.currentTarget.blur();
+        } else if (event.key === 'Escape') {
+          setDraft(null);
+          event.currentTarget.blur();
+        }
+      }}
+    />
+  );
 }
 
 // keeps typing local and saves on blur or enter, so every keystroke is not a separate change

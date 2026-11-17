@@ -874,3 +874,16 @@ html.is-printing body {
 .youtube-card.no-thumbnail img {
   visibility: hidden;
 }
+
+/* a text property that wraps shows all its lines and grows as more are typed */
+.prop-input.prop-wrap {
+  display: block;
+  width: 100%;
+  resize: none;
+  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+  min-height: 1.45em;
+  font: inherit;
+}
