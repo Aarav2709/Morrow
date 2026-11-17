@@ -187,6 +187,10 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
     dateProp: propRef(raw.dateProp),
     hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((id): id is string => propRef(id) !== null) : [],
     ...(isRecord(raw.widths) ? { widths: normalizeWidths(raw.widths) } : {}),
+    ...groupSettings(raw),
+    ...(typeof raw.limit === 'number' && Number.isInteger(raw.limit) && raw.limit >= 0 && raw.limit <= 10_000
+      ? { limit: raw.limit }
+      : {}),
     ...(Array.isArray(raw.columns)
       ? {
           columns: raw.columns
@@ -195,6 +199,21 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
         }
       : {}),
   };
+}
+
+function groupSettings(raw: Record<string, unknown>): Partial<ViewDef> {
+  const keys = (value: unknown) =>
+    Array.isArray(value)
+      ? value
+          .filter((key): key is string => typeof key === 'string' && key.length > 0 && key.length <= 64)
+          .slice(0, 200)
+      : [];
+  const out: Partial<ViewDef> = {};
+  if (keys(raw.groupOrder).length) out.groupOrder = keys(raw.groupOrder);
+  if (keys(raw.hiddenGroups).length) out.hiddenGroups = keys(raw.hiddenGroups);
+  if (keys(raw.collapsedGroups).length) out.collapsedGroups = keys(raw.collapsedGroups);
+  if (raw.hideEmptyGroups === true) out.hideEmptyGroups = true;
+  return out;
 }
 
 export const MIN_COLUMN_WIDTH = 80;

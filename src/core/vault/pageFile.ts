@@ -302,6 +302,11 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       ...(view.hidden.length ? { hidden: [...view.hidden] } : {}),
       ...(view.widths && Object.keys(view.widths).length ? { widths: { ...view.widths } } : {}),
       ...(view.columns?.length ? { columns: [...view.columns] } : {}),
+      ...(view.groupOrder?.length ? { groupOrder: [...view.groupOrder] } : {}),
+      ...(view.hiddenGroups?.length ? { hiddenGroups: [...view.hiddenGroups] } : {}),
+      ...(view.collapsedGroups?.length ? { collapsedGroups: [...view.collapsedGroups] } : {}),
+      ...(view.hideEmptyGroups ? { hideEmptyGroups: true } : {}),
+      ...(view.limit !== undefined ? { limit: view.limit } : {}),
     })),
   };
 }

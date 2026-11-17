@@ -95,6 +95,14 @@ export interface ViewDef {
   widths?: Record<string, number>;
   // the order of the table's columns by property id, title among them, missing keeps the database's order
   columns?: string[];
+  // the groups rows are split into by groupBy: their order, the ones left out and the ones folded, by key,
+  // and whether groups with no rows show
+  groupOrder?: string[];
+  hiddenGroups?: string[];
+  collapsedGroups?: string[];
+  hideEmptyGroups?: boolean;
+  // how many rows the view shows before more are asked for, 0 for all, missing for the default
+  limit?: number;
 }
 
 export interface DatabaseDef {

@@ -1,5 +1,7 @@
 import {
+  ArrowDown,
   ArrowDownUp,
+  ArrowUp,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -23,7 +25,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { dateKey } from '../../../core/daily';
 import {
   filterOpsFor,
+  arrangeGroups,
+  groupKey,
   groupRows,
+  moveGroup,
   propType,
   rowsOf,
   TITLE_PROP,
@@ -57,9 +62,11 @@ import { getState, run, useWorkspace } from '../../workspace';
 import { usePreferences } from '../../platform/preferences';
 import { Menu } from '../Menu';
 import { Popover } from '../Popover';
+import { Switch } from '../primitives';
 import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
+import { Grouped, Limited } from './Grouped';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
 import { PropertySettings } from './PropertySettings';
 import { dateLocale, t, tp } from '../../i18n';
@@ -186,16 +193,35 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       </div>
       {editable && <ColumnSuggestion dbId={page.id} database={database} rows={allRows} />}
 
-      {view.type === 'table' && (
-        <TableView
-          dbId={page.id}
-          database={database}
-          view={view}
-          rows={rows}
-          props={visible}
-          editable={editable}
-        />
-      )}
+      {(view.type === 'table' || view.type === 'list' || view.type === 'gallery') &&
+        (() => {
+          // a table, list or gallery, split into groups when the view groups its rows
+          const draw = (shown: PageMeta[]) =>
+            view.type === 'table' ? (
+              <TableView
+                dbId={page.id}
+                database={database}
+                view={view}
+                rows={shown}
+                props={visible}
+                editable={editable}
+              />
+            ) : view.type === 'list' ? (
+              <ListView rows={shown} props={visible} database={database} />
+            ) : (
+              <GalleryView rows={shown} props={visible} database={database} />
+            );
+          const grouped = !!view.groupBy && database.properties.some((prop) => prop.id === view.groupBy);
+          return grouped ? (
+            <Grouped dbId={page.id} database={database} view={view} rows={rows} editable={editable}>
+              {draw}
+            </Grouped>
+          ) : (
+            <Limited key={view.id} view={view} rows={rows}>
+              {draw}
+            </Limited>
+          );
+        })()}
       {view.type === 'board' && (
         <BoardView
           dbId={page.id}
@@ -209,8 +235,6 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
       {view.type === 'calendar' && (
         <CalendarView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />
       )}
-      {view.type === 'list' && <ListView rows={rows} props={visible} database={database} />}
-      {view.type === 'gallery' && <GalleryView rows={rows} props={visible} database={database} />}
       {view.type !== 'table' && editable && (
         <button type="button" className="db-new-row" onClick={() => newRowAndOpen(page.id, {})}>
           <Plus size={14} /> {t('database.new')}
@@ -479,11 +503,14 @@ function Toolbar({
         <ArrowDownUp size={13} /> {t('database.sort')}
         {view.sorts.length ? ` ${view.sorts.length}` : ''}
       </button>
-      {(view.type === 'board' || view.type === 'calendar') && (
-        <button type="button" className="text-tool" onClick={open('layout')} disabled={!editable}>
-          <Settings2 size={13} /> {view.type === 'board' ? t('database.group') : t('database.date')}
-        </button>
-      )}
+      <button type="button" className="text-tool" onClick={open('layout')} disabled={!editable}>
+        <Settings2 size={13} />{' '}
+        {view.type === 'calendar'
+          ? t('database.date')
+          : view.groupBy
+            ? t('database.group')
+            : t('slash.sections.layout')}
+      </button>
       <button type="button" className="text-tool" onClick={open('properties')}>
         <Eye size={13} /> {t('database.properties')}
       </button>
@@ -685,24 +712,30 @@ function Toolbar({
           className="db-panel"
         >
           <label className="field">
-            <span>{view.type === 'board' ? t('database.groupCardsBy') : t('database.placeRowsBy')}</span>
+            <span>
+              {view.type === 'board'
+                ? t('database.groupCardsBy')
+                : view.type === 'calendar'
+                  ? t('database.placeRowsBy')
+                  : t('database.groupRowsBy')}
+            </span>
             <select
               className="text-input small"
-              value={(view.type === 'board' ? view.groupBy : view.dateProp) ?? ''}
+              value={(view.type === 'calendar' ? view.dateProp : view.groupBy) ?? ''}
               onChange={(event) =>
                 updateView(dbId, view.id, (current) =>
-                  current.type === 'board'
-                    ? { ...current, groupBy: event.target.value || null }
-                    : { ...current, dateProp: event.target.value || null },
+                  current.type === 'calendar'
+                    ? { ...current, dateProp: event.target.value || null }
+                    : { ...current, groupBy: event.target.value || null },
                 )
               }
             >
               <option value="">{t('database.none')}</option>
               {database.properties
                 .filter((prop) =>
-                  view.type === 'board'
-                    ? ['select', 'multiSelect', 'checkbox'].includes(prop.type)
-                    : prop.type === 'date',
+                  view.type === 'calendar'
+                    ? prop.type === 'date'
+                    : ['select', 'multiSelect', 'checkbox'].includes(prop.type),
                 )
                 .map((prop) => (
                   <option key={prop.id} value={prop.id}>
@@ -711,6 +744,34 @@ function Toolbar({
                 ))}
             </select>
           </label>
+          {view.type !== 'calendar' && view.groupBy && (
+            <GroupSettings dbId={dbId} database={database} view={view} rows={rows} />
+          )}
+          {view.type !== 'calendar' && view.type !== 'board' && (
+            <label className="field">
+              <span>{t('database.loadLimit')}</span>
+              <select
+                className="text-input small"
+                value={view.limit === undefined ? 'default' : String(view.limit)}
+                onChange={(event) =>
+                  updateView(dbId, view.id, (current) => {
+                    const { limit: _old, ...rest } = current;
+                    return event.target.value === 'default'
+                      ? rest
+                      : { ...rest, limit: Number(event.target.value) };
+                  })
+                }
+              >
+                <option value="default">{t('database.limitDefault')}</option>
+                {[10, 25, 50, 100, 200, 500].map((count) => (
+                  <option key={count} value={count}>
+                    {t('database.limitRows', { count })}
+                  </option>
+                ))}
+                <option value="0">{t('database.limitAll')}</option>
+              </select>
+            </label>
+          )}
         </Popover>
       )}
       {panel?.kind === 'properties' && (
@@ -785,6 +846,101 @@ function Toolbar({
         </Popover>
       )}
     </div>
+  );
+}
+
+// the groups of a grouped view: each can be left out or moved up or down, and empty ones hidden
+function GroupSettings({
+  dbId,
+  database,
+  view,
+  rows,
+}: {
+  dbId: PageId;
+  database: DatabaseDef;
+  view: ViewDef;
+  rows: PageMeta[];
+}) {
+  const groups = groupRows(rows, view.groupBy, database);
+  const ordered = arrangeGroups(groups, { ...view, hiddenGroups: [], hideEmptyGroups: false });
+  const hidden = view.hiddenGroups ?? [];
+  return (
+    <>
+      <p className="db-panel-heading">{t('database.groups')}</p>
+      <ul className="db-prop-list db-group-list">
+        {ordered.map((group, index) => {
+          const key = groupKey(group);
+          const off = hidden.includes(key);
+          return (
+            <li key={key}>
+              <span className={`chip color-${group.color}`}>{group.label}</span>
+              <span className="muted small">{group.rows.length}</span>
+              <button
+                type="button"
+                className="icon-button tiny"
+                aria-label={t('database.moveGroupUp', { name: group.label })}
+                disabled={index === 0}
+                onClick={() =>
+                  updateView(dbId, view.id, (current) => ({
+                    ...current,
+                    groupOrder: moveGroup(groups, current, key, -1),
+                  }))
+                }
+              >
+                <ArrowUp size={13} />
+              </button>
+              <button
+                type="button"
+                className="icon-button tiny"
+                aria-label={t('database.moveGroupDown', { name: group.label })}
+                disabled={index === ordered.length - 1}
+                onClick={() =>
+                  updateView(dbId, view.id, (current) => ({
+                    ...current,
+                    groupOrder: moveGroup(groups, current, key, 1),
+                  }))
+                }
+              >
+                <ArrowDown size={13} />
+              </button>
+              <button
+                type="button"
+                className="icon-button tiny"
+                aria-label={
+                  off
+                    ? t('database.showGroup', { name: group.label })
+                    : t('database.hideGroup', { name: group.label })
+                }
+                onClick={() =>
+                  updateView(dbId, view.id, (current) => {
+                    const list = current.hiddenGroups ?? [];
+                    return {
+                      ...current,
+                      hiddenGroups: off ? list.filter((item) => item !== key) : [...list, key],
+                    };
+                  })
+                }
+              >
+                {off ? <EyeOff size={13} /> : <Eye size={13} />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <label className="field-inline">
+        <span>{t('database.hideEmptyGroups')}</span>
+        <Switch
+          label={t('database.hideEmptyGroups')}
+          checked={view.hideEmptyGroups === true}
+          onChange={(hideEmptyGroups) =>
+            updateView(dbId, view.id, (current) => {
+              const { hideEmptyGroups: _old, ...rest } = current;
+              return hideEmptyGroups ? { ...rest, hideEmptyGroups: true } : rest;
+            })
+          }
+        />
+      </label>
+    </>
   );
 }
 
@@ -1132,8 +1288,8 @@ const DRAG = 'application/x-morrow-row';
 
 function BoardView({ dbId, database, view, rows, props, editable }: ViewProps) {
   const prop = database.properties.find((candidate) => candidate.id === view.groupBy);
-  // an empty column for rows without a value only adds noise
-  const groups = groupRows(rows, view.groupBy, database).filter(
+  // an empty column for rows without a value only adds noise. the view's order and hidden groups count too
+  const groups = arrangeGroups(groupRows(rows, view.groupBy, database), view).filter(
     (group) => group.key !== null || group.rows.length > 0,
   );
   const [over, setOver] = useState<string | null>(null);

@@ -115,6 +115,8 @@ export interface Preferences {
   backlinksSection: FooterSection;
   // the button that looks for this page's title written in other pages without a link
   mentionsButton: boolean;
+  // how many rows a database view shows at first once it has more, 0 for all of them
+  databaseLimit: number;
   // pages in the trash longer than this many days are deleted for good, 0 keeps them until emptied
   trashDays: TrashDays;
   // reminders set on dates in pages, shown by this computer when they are due
@@ -189,6 +191,7 @@ const defaults: Preferences = {
   subpagesSection: 'open',
   backlinksSection: 'open',
   mentionsButton: true,
+  databaseLimit: 100,
   trashDays: 0,
   reminders: [],
   splitShare: 0.5,
@@ -299,6 +302,9 @@ function read(): Preferences {
       subpagesSection: FOOTER_SECTIONS.find((value) => value === parsed.subpagesSection) ?? 'open',
       backlinksSection: FOOTER_SECTIONS.find((value) => value === parsed.backlinksSection) ?? 'open',
       mentionsButton: parsed.mentionsButton !== false,
+      databaseLimit: [0, 25, 50, 100, 200, 500].includes(parsed.databaseLimit as number)
+        ? (parsed.databaseLimit as number)
+        : 100,
       hiddenOutlines: Array.isArray(parsed.hiddenOutlines)
         ? parsed.hiddenOutlines.filter((id): id is string => typeof id === 'string').slice(0, 2000)
         : [],

@@ -66,6 +66,7 @@ import { checkForUpdate, installUpdate, useUpdateState } from '../updates';
 import { getSession } from '../workspace';
 import { Dialog, Logo, Switch } from './primitives';
 import { PluginSettings } from './PluginSettings';
+import { Select } from './Select';
 import { Segmented, SettingRow, SettingsGroup } from './SettingsRows';
 import { LanguageSettings } from './LanguageSettings';
 import { CloudSettings, NetworkSettings } from './SyncSettings';
@@ -402,6 +403,20 @@ function PageParts() {
           value={prefs.backlinksSection}
           options={sections}
           onChange={(backlinksSection) => setPreferences({ backlinksSection })}
+        />
+      </SettingRow>
+      <SettingRow
+        label={t('settings.pageParts.databaseLimit')}
+        help={t('settings.pageParts.databaseLimitHelp')}
+      >
+        <Select<string>
+          label={t('settings.pageParts.databaseLimit')}
+          value={String(prefs.databaseLimit)}
+          options={[25, 50, 100, 200, 500, 0].map((count) => ({
+            value: String(count),
+            label: count ? t('database.limitRows', { count }) : t('database.limitAll'),
+          }))}
+          onChange={(value) => setPreferences({ databaseLimit: Number(value) })}
         />
       </SettingRow>
       <SettingRow label={t('settings.pageParts.mentions')} help={t('settings.pageParts.mentionsHelp')}>

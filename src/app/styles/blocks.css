@@ -887,3 +887,34 @@ html.is-printing body {
   min-height: 1.45em;
   font: inherit;
 }
+
+/* a view's rows in groups, each folding under its heading, and the footer under rows not shown yet */
+.db-group + .db-group {
+  margin-top: 14px;
+}
+.db-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-weight: 500;
+}
+.db-group-chevron {
+  color: var(--text-faint);
+  transition: transform 120ms var(--ease);
+}
+.db-group-chevron.is-open {
+  transform: rotate(90deg);
+}
+.db-load-more {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 2px;
+}
+.db-group-list li {
+  gap: 4px;
+}
+.db-group-list .chip {
+  margin-right: auto;
+}

@@ -260,6 +260,36 @@ export interface RowGroup {
 }
 
 // board columns: one per option in order, rows without a value come first
+// the key a group goes by in a view's order, hidden and folded lists. rows without a value have one too
+export const NO_VALUE_GROUP = '__none';
+export const groupKey = (group: RowGroup): string => group.key ?? NO_VALUE_GROUP;
+
+// the groups as the view sets them out: in its order, the rest after them as they come, without the ones it
+// leaves out, and without empty ones when it hides those
+export function arrangeGroups(groups: RowGroup[], view: ViewDef): RowGroup[] {
+  const order = view.groupOrder ?? [];
+  const place = (group: RowGroup) => {
+    const index = order.indexOf(groupKey(group));
+    return index === -1 ? order.length : index;
+  };
+  return groups
+    .map((group, index) => ({ group, index }))
+    .sort((a, b) => place(a.group) - place(b.group) || a.index - b.index)
+    .map(({ group }) => group)
+    .filter((group) => !(view.hiddenGroups ?? []).includes(groupKey(group)))
+    .filter((group) => !view.hideEmptyGroups || group.rows.length > 0);
+}
+
+// the groups' keys with one moved up or down a place, for the view's order
+export function moveGroup(groups: RowGroup[], view: ViewDef, key: string, by: -1 | 1): string[] {
+  const keys = arrangeGroups(groups, { ...view, hiddenGroups: [], hideEmptyGroups: false }).map(groupKey);
+  const index = keys.indexOf(key);
+  const to = index + by;
+  if (index < 0 || to < 0 || to >= keys.length) return keys;
+  [keys[index], keys[to]] = [keys[to]!, keys[index]!];
+  return keys;
+}
+
 export function groupRows(rows: PageMeta[], propId: string | null, database: DatabaseDef): RowGroup[] {
   const prop = database.properties.find((candidate) => candidate.id === propId);
   if (!prop) return [{ key: null, label: 'All', color: 'gray', rows }];
