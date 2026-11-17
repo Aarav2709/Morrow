@@ -800,8 +800,18 @@ async fn sync_status() -> Res<Value> {
 }
 
 #[tauri::command]
-async fn sync_enable(enabled: bool) -> Res<()> {
+async fn sync_enable<R: Runtime>(app: AppHandle<R>, enabled: bool) -> Res<()> {
+    if enabled {
+        allow_local_network(&app).await;
+    }
     blocking(move || sync::set_enabled(enabled)).await
+}
+
+// a phone asks to reach the other devices on its network before syncing with them
+#[allow(unused_variables)]
+async fn allow_local_network<R: Runtime>(app: &AppHandle<R>) {
+    #[cfg(target_os = "android")]
+    sync::LOCAL_NETWORK_ALLOWED.store(device::local_network(app, true).await, Ordering::Relaxed);
 }
 
 #[tauri::command]
@@ -810,7 +820,8 @@ async fn sync_name(name: String) -> Res<()> {
 }
 
 #[tauri::command]
-async fn sync_start_pairing() -> Res<String> {
+async fn sync_start_pairing<R: Runtime>(app: AppHandle<R>) -> Res<String> {
+    allow_local_network(&app).await;
     blocking(sync::start_pairing).await
 }
 
@@ -820,7 +831,8 @@ async fn sync_stop_pairing() -> Res<()> {
 }
 
 #[tauri::command]
-async fn sync_pair(target: Value, code: String) -> Value {
+async fn sync_pair<R: Runtime>(app: AppHandle<R>, target: Value, code: String) -> Value {
+    allow_local_network(&app).await;
     sync::pair(target, code).await
 }
 
@@ -1130,6 +1142,10 @@ pub fn run() {
                 tauri::async_runtime::spawn(async move {
                     if let Some(name) = device::name(&handle).await {
                         sync::set_default_name(&name);
+                    }
+                    // sync turned on before android asked about the local network asks now
+                    if sync::status()["enabled"].as_bool() == Some(true) {
+                        allow_local_network(&handle).await;
                     }
                 });
             }

@@ -772,11 +772,21 @@ pub fn stop_pairing() {
     });
 }
 
+// false once the phone said morrow may not reach devices on the network
+pub static LOCAL_NETWORK_ALLOWED: AtomicBool = AtomicBool::new(true);
+
 // a request that never reached the other device says what usually stands in the way, rather than only
 // that sending failed
 fn unreachable(error: reqwest::Error, address: &str, port: u16) -> String {
     if !(error.is_connect() || error.is_timeout()) {
         return error.to_string();
+    }
+    if !LOCAL_NETWORK_ALLOWED.load(Ordering::Relaxed) {
+        return format!(
+            "Couldn't reach the other device at {address}:{port}. Android hasn't let Morrow reach devices on \
+             this network. Allow Nearby devices, or Local network, for Morrow in Android's settings for the \
+             app, then try again."
+        );
     }
     format!(
         "Couldn't reach the other device at {address}:{port}. Keep Morrow open and in front on it with sync \

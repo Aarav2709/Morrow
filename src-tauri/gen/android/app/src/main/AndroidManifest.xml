@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- syncing reaches the other device on the same network. android 17 keeps an app that targets it away
+         from the local network until this is allowed, asked when sync is turned on -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- the phone only hears the other device saying where it is while it holds a multicast lock -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- a vault is a plain folder of markdown, opening one that is already on the phone means reading files
          outside the app's own storage. asked for only when a folder is opened, never at the start -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />

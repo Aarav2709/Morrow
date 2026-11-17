@@ -2,7 +2,9 @@ package app.morrow
 
 import android.Manifest
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.wifi.WifiManager
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -35,7 +37,8 @@ class ThemeArgs {
     Permission(
       strings = [Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE],
       alias = "storage"
-    )
+    ),
+    Permission(strings = [Manifest.permission.ACCESS_LOCAL_NETWORK], alias = "localNetwork")
   ]
 )
 class DevicePlugin(private val activity: Activity) : Plugin(activity) {
@@ -84,6 +87,45 @@ class DevicePlugin(private val activity: Activity) : Plugin(activity) {
 
   @PermissionCallback
   fun storagePermissionResult(invoke: Invoke) = answer(invoke)
+
+  // android 17 lets an app reach other devices on the network only once it is allowed to, earlier ones always
+  private fun localNetworkGranted(): Boolean =
+    Build.VERSION.SDK_INT < 37 || getPermissionState("localNetwork") == PermissionState.GRANTED
+
+  private fun answerLocalNetwork(invoke: Invoke) {
+    val result = JSObject()
+    result.put("granted", localNetworkGranted())
+    invoke.resolve(result)
+  }
+
+  private var multicast: WifiManager.MulticastLock? = null
+
+  // without it the phone drops the broadcasts other devices send to say where they are
+  private fun holdMulticast() {
+    if (multicast?.isHeld == true) return
+    try {
+      val wifi = activity.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+      multicast = wifi?.createMulticastLock("morrow-sync")?.apply {
+        setReferenceCounted(false)
+        acquire()
+      }
+    } catch (ex: Exception) {
+      // pairing by address still works without it
+    }
+  }
+
+  @Command
+  fun localNetworkAccess(invoke: Invoke) = answerLocalNetwork(invoke)
+
+  @Command
+  fun requestLocalNetworkAccess(invoke: Invoke) {
+    holdMulticast()
+    if (localNetworkGranted()) return answerLocalNetwork(invoke)
+    requestPermissionForAlias("localNetwork", invoke, "localNetworkResult")
+  }
+
+  @PermissionCallback
+  fun localNetworkResult(invoke: Invoke) = answerLocalNetwork(invoke)
 
   @Command
   fun pickFolder(invoke: Invoke) {

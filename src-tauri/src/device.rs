@@ -92,3 +92,17 @@ pub fn set_theme<R: Runtime>(app: &AppHandle<R>, dark: bool, color: String) {
             call(&app, "setTheme", json!({ "dark": dark, "color": color })).await;
     });
 }
+
+// whether morrow may reach other devices on the network, asking first when `request` is set. android 17
+// keeps an app away from them until this is allowed, which made pairing fail both ways
+pub async fn local_network<R: Runtime>(app: &AppHandle<R>, request: bool) -> bool {
+    let command = if request {
+        "requestLocalNetworkAccess"
+    } else {
+        "localNetworkAccess"
+    };
+    call::<R, Access>(app, command, json!({}))
+        .await
+        .map(|access| access.granted)
+        .unwrap_or(true)
+}
