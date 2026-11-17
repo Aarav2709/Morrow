@@ -24,7 +24,6 @@ tauri-plugin-clipboard-manager = "2"
 tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-arboard = { version = "3.7", default-features = false }
 tokio = { version = "1", features = ["sync", "time", "macros", "rt-multi-thread"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "http2"] }
 futures-util = "0.3"
@@ -51,6 +50,8 @@ dirs = "5"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 trash = "5"
+# reads the html another app copied, which the clipboard plugin can only write. phones have no use for it
+arboard = { version = "3.7", default-features = false }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"

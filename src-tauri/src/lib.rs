@@ -260,6 +260,18 @@ async fn fetch_calendar(url: String) -> Res<String> {
 // the page can't read any other one
 #[tauri::command]
 fn read_pasted_picture(src: String) -> Res<Response> {
+    #[cfg(mobile)]
+    {
+        let _ = src;
+        Err("Not available on this phone.".into())
+    }
+    #[cfg(desktop)]
+    read_pasted_file(&src)
+}
+
+#[cfg(desktop)]
+fn read_pasted_file(src: &str) -> Res<Response> {
+    let src = src.to_string();
     let html = arboard::Clipboard::new()
         .and_then(|mut clipboard| clipboard.get().html())
         .map_err(|error| error.to_string())?;
