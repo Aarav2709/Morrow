@@ -90,11 +90,21 @@ function readViewChoice(id: PageId): string | null {
   }
 }
 
-export function DatabaseView({ page, editable }: { page: PageMeta; editable: boolean }) {
+export function DatabaseView({
+  page,
+  editable,
+  onlyView = null,
+}: {
+  page: PageMeta;
+  editable: boolean;
+  // one view shown alone, without the tabs for the others, as a database embedded with #view does
+  onlyView?: string | null;
+}) {
   const state = useWorkspace();
   const database = useMemo(() => page.database ?? { properties: [], views: [] }, [page.database]);
   const [viewId, setViewId] = useState<string | null>(() => readViewChoice(page.id));
-  const view = database.views.find((candidate) => candidate.id === viewId) ?? database.views[0] ?? null;
+  const view =
+    database.views.find((candidate) => candidate.id === (onlyView ?? viewId)) ?? database.views[0] ?? null;
   const allRows = useMemo(() => rowsOf(state, page.id), [state, page.id]);
   const rows = useMemo(
     () => (view ? visibleRows(allRows, view, database) : allRows),
@@ -129,56 +139,58 @@ export function DatabaseView({ page, editable }: { page: PageMeta; editable: boo
     <section className="database" aria-label={t('sidebar.database')}>
       <div className="db-bar">
         <div className="db-tabs" role="tablist" aria-label={t('database.views')}>
-          {database.views.map((candidate) => {
-            const Icon = VIEW_ICONS[candidate.type];
-            return (
-              <button
-                key={candidate.id}
-                type="button"
-                role="tab"
-                aria-selected={candidate.id === view.id}
-                className={`db-tab${candidate.id === view.id ? ' is-active' : ''}${movingView === candidate.id ? ' is-moving' : ''}`}
-                onClick={() => choose(candidate.id)}
-                // a view is dragged along the tabs to another place
-                draggable={editable}
-                onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = 'move';
-                  event.dataTransfer.setData('text/x-morrow-view', candidate.id);
-                  setMovingView(candidate.id);
-                }}
-                onDragEnd={() => setMovingView(null)}
-                onDragOver={(event) => movingView && event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  const moved = movingView;
-                  setMovingView(null);
-                  if (!moved || moved === candidate.id) return;
-                  updateDatabase(page.id, (current) => {
-                    const order = moveKey(
-                      current.views.map((item) => item.id),
-                      moved,
-                      candidate.id,
-                    );
-                    return {
-                      ...current,
-                      views: order.map((id) => current.views.find((item) => item.id === id)!),
-                    };
-                  });
-                }}
-                onContextMenu={(event) => {
-                  if (!editable) return;
-                  event.preventDefault();
-                  setTabMenu({ view: candidate, anchor: event.currentTarget });
-                }}
-                onDoubleClick={(event) =>
-                  editable && setTabMenu({ view: candidate, anchor: event.currentTarget })
-                }
-              >
-                <Icon size={14} /> {viewName(candidate)}
-              </button>
-            );
-          })}
-          {editable && (
+          {(onlyView ? database.views.filter((candidate) => candidate.id === view.id) : database.views).map(
+            (candidate) => {
+              const Icon = VIEW_ICONS[candidate.type];
+              return (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={candidate.id === view.id}
+                  className={`db-tab${candidate.id === view.id ? ' is-active' : ''}${movingView === candidate.id ? ' is-moving' : ''}`}
+                  onClick={() => choose(candidate.id)}
+                  // a view is dragged along the tabs to another place
+                  draggable={editable}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/x-morrow-view', candidate.id);
+                    setMovingView(candidate.id);
+                  }}
+                  onDragEnd={() => setMovingView(null)}
+                  onDragOver={(event) => movingView && event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    const moved = movingView;
+                    setMovingView(null);
+                    if (!moved || moved === candidate.id) return;
+                    updateDatabase(page.id, (current) => {
+                      const order = moveKey(
+                        current.views.map((item) => item.id),
+                        moved,
+                        candidate.id,
+                      );
+                      return {
+                        ...current,
+                        views: order.map((id) => current.views.find((item) => item.id === id)!),
+                      };
+                    });
+                  }}
+                  onContextMenu={(event) => {
+                    if (!editable) return;
+                    event.preventDefault();
+                    setTabMenu({ view: candidate, anchor: event.currentTarget });
+                  }}
+                  onDoubleClick={(event) =>
+                    editable && setTabMenu({ view: candidate, anchor: event.currentTarget })
+                  }
+                >
+                  <Icon size={14} /> {viewName(candidate)}
+                </button>
+              );
+            },
+          )}
+          {editable && !onlyView && (
             <button
               type="button"
               className="icon-button small"

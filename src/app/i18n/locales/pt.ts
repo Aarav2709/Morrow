@@ -1620,6 +1620,8 @@ export const pt: TranslationSchema = {
     codeAria: 'Código mostrado no outro computador',
   },
   database: {
+    showInPage: 'A visualização mostrada nesta página',
+    allViews: 'Todas as visualizações',
     showingOf: 'Mostrando {count} de {total}',
     loadMore: 'Carregar mais {count}',
     showAll: 'Mostrar todas',

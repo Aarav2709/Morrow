@@ -918,3 +918,10 @@ html.is-printing body {
 .db-group-list .chip {
   margin-right: auto;
 }
+
+/* which of its views a database in a page shows */
+.inline-database-view {
+  margin-left: auto;
+  margin-right: 4px;
+  width: auto;
+}

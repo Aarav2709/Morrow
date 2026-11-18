@@ -1606,6 +1606,8 @@ export const en = {
     codeAria: 'Code shown on the other computer',
   },
   database: {
+    showInPage: 'The view shown in this page',
+    allViews: 'All views',
     showingOf: 'Showing {count} of {total}',
     loadMore: 'Load {count} more',
     showAll: 'Show all',

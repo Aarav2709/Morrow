@@ -1622,6 +1622,8 @@ export const es: TranslationSchema = {
     codeAria: 'Código que muestra el otro ordenador',
   },
   database: {
+    showInPage: 'La vista que se muestra en esta página',
+    allViews: 'Todas las vistas',
     showingOf: 'Mostrando {count} de {total}',
     loadMore: 'Cargar {count} más',
     showAll: 'Mostrar todas',

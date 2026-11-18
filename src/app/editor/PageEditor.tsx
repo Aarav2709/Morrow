@@ -59,6 +59,7 @@ interface Props {
 
 const COMMIT_DELAY_MS = 250;
 
+import { viewName } from '../i18n/labels';
 const EmbeddedDatabase = lazy(() =>
   import('../components/database/EmbeddedDatabase').then((module) => ({ default: module.EmbeddedDatabase })),
 );
@@ -73,12 +74,22 @@ function mountEmbed(
   hostId: PageId,
   element: HTMLElement,
   editable: boolean,
+  anchor: string | null,
+  setAnchor: (anchor: string | null) => void,
 ): (() => void) | null {
   const state = getState();
   const page = state.pages[id];
   if (!page || id === hostId) return null;
   const canvas = page.kind === 'canvas' && !page.encrypted && !isEffectivelyTrashed(state.pages, id);
   if (!page.database && !canvas) return null;
+  // after # a database names the view to show, anything else is a part of the page shown as text
+  const wanted = anchor?.toLowerCase();
+  const view = wanted
+    ? (page.database?.views.find((item) =>
+        [item.name, viewName(item)].some((name) => name.toLowerCase() === wanted),
+      ) ?? null)
+    : null;
+  if (anchor && !view) return null;
   // react gets a box of its own inside the embed, so when the embed is emptied before the deferred unmount
   // below runs, react still finds its nodes where it left them
   const host = document.createElement('div');
@@ -88,7 +99,7 @@ function mountEmbed(
   root.render(
     <Suspense fallback={null}>
       {page.database ? (
-        <EmbeddedDatabase pageId={id} editable={editable} />
+        <EmbeddedDatabase pageId={id} editable={editable} viewId={view?.id ?? null} onPickView={setAnchor} />
       ) : (
         <EmbeddedCanvas pageId={id} editable={editable} />
       )}
@@ -469,7 +480,8 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           createFromTarget: (target) => createPage({ title: target.split('/').pop() || target, open: false }),
           openTag: (tag) => navigate({ name: 'tag', tag }),
           renderEmbed: (id, target) => embedHtml(id, pageId, target),
-          mountEmbed: (id, element, canEdit) => mountEmbed(id, pageId, element, canEdit),
+          mountEmbed: (id, element, canEdit, anchor, setAnchor) =>
+            mountEmbed(id, pageId, element, canEdit, anchor, setAnchor),
           createChild: (kind) => createPage({ parentId: pageId, kind, open: false }),
           openDate: (date) => openToday(date),
           dateMenu: (date, anchor, time) => setDateMenu({ date, anchor, time }),
