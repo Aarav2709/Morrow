@@ -79,8 +79,31 @@ export interface SortRule {
   dir: 'asc' | 'desc';
 }
 
-export type ViewType = 'table' | 'board' | 'calendar' | 'list' | 'gallery';
-export const VIEW_TYPES: readonly ViewType[] = ['table', 'board', 'calendar', 'list', 'gallery'];
+export type ViewType = 'table' | 'board' | 'calendar' | 'list' | 'gallery' | 'dashboard';
+
+// a tile of a dashboard view: a number worked out from the rows, or a chart of them by a property
+export type WidgetKind = 'count' | 'sum' | 'average' | 'min' | 'max' | 'bar' | 'hbar' | 'donut' | 'line';
+export interface Widget {
+  id: string;
+  kind: WidgetKind;
+  // the number property summed or averaged, the select a chart counts by, the date a line follows
+  prop: string | null;
+  title?: string;
+  // across two of the grid's columns rather than one
+  wide?: boolean;
+}
+export const VIEW_TYPES: readonly ViewType[] = ['table', 'board', 'calendar', 'list', 'gallery', 'dashboard'];
+export const WIDGET_KINDS: readonly WidgetKind[] = [
+  'count',
+  'sum',
+  'average',
+  'min',
+  'max',
+  'bar',
+  'hbar',
+  'donut',
+  'line',
+];
 
 export interface ViewDef {
   id: string;
@@ -103,6 +126,8 @@ export interface ViewDef {
   hideEmptyGroups?: boolean;
   // how many rows the view shows before more are asked for, 0 for all, missing for the default
   limit?: number;
+  // the tiles of a dashboard view, in order
+  widgets?: Widget[];
 }
 
 export interface DatabaseDef {

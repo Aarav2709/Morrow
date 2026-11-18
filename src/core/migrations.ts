@@ -9,6 +9,7 @@ import {
   SCHEMA_VERSION,
   validCover,
   VIEW_TYPES,
+  WIDGET_KINDS,
 } from './model';
 import type {
   ColorName,
@@ -23,6 +24,8 @@ import type {
   PropValue,
   ViewDef,
   ViewType,
+  Widget,
+  WidgetKind,
 } from './model';
 import { fail, ok } from './result';
 import type { Result } from './result';
@@ -188,6 +191,7 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
     hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((id): id is string => propRef(id) !== null) : [],
     ...(isRecord(raw.widths) ? { widths: normalizeWidths(raw.widths) } : {}),
     ...groupSettings(raw),
+    ...(Array.isArray(raw.widgets) ? { widgets: normalizeWidgets(raw.widgets) } : {}),
     ...(typeof raw.limit === 'number' && Number.isInteger(raw.limit) && raw.limit >= 0 && raw.limit <= 10_000
       ? { limit: raw.limit }
       : {}),
@@ -199,6 +203,21 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
         }
       : {}),
   };
+}
+
+function normalizeWidgets(raw: unknown[]): Widget[] {
+  return raw.slice(0, 40).flatMap((item) => {
+    if (!isRecord(item) || !validId(item.id) || !WIDGET_KINDS.includes(item.kind as WidgetKind)) return [];
+    return [
+      {
+        id: item.id,
+        kind: item.kind as WidgetKind,
+        prop: typeof item.prop === 'string' && item.prop.length <= 64 ? item.prop : null,
+        ...(typeof item.title === 'string' && item.title.trim() ? { title: item.title.slice(0, 80) } : {}),
+        ...(item.wide === true ? { wide: true } : {}),
+      },
+    ];
+  });
 }
 
 function groupSettings(raw: Record<string, unknown>): Partial<ViewDef> {

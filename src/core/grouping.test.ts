@@ -48,3 +48,22 @@ describe('grouping a view', () => {
     expect(moveGroup(groups, view, 'done', -1)).toEqual([NO_VALUE_GROUP, 'todo', 'done', 'doing']);
   });
 });
+
+describe('a dashboard', () => {
+  it('works out its numbers and counts rows by month', async () => {
+    const { widgetNumber, rowsByMonth } = await import('./database');
+    const rows = [
+      newPageMeta({ id: 'a', parentId: 'db', properties: { hours: 2, due: '2026-11-03' } }),
+      newPageMeta({ id: 'b', parentId: 'db', properties: { hours: 4, due: '2026-10-20' } }),
+    ];
+    expect(widgetNumber({ id: 'w', kind: 'count', prop: null }, rows)).toBe(2);
+    expect(widgetNumber({ id: 'w', kind: 'sum', prop: 'hours' }, rows)).toBe(6);
+    expect(widgetNumber({ id: 'w', kind: 'average', prop: 'hours' }, rows)).toBe(3);
+    const months = rowsByMonth(rows, 'due', new Date(2026, 10, 18));
+    expect(months).toHaveLength(12);
+    expect(months.slice(-2)).toEqual([
+      { month: '2026-10', count: 1 },
+      { month: '2026-11', count: 1 },
+    ]);
+  });
+});

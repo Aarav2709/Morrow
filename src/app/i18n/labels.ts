@@ -22,6 +22,7 @@ const VIEW: Record<ViewType, TranslationKey> = {
   calendar: 'database.viewCalendar',
   list: 'database.viewList',
   gallery: 'database.viewGallery',
+  dashboard: 'database.viewDashboard',
 };
 
 const FILTER: Record<FilterOp, TranslationKey> = {

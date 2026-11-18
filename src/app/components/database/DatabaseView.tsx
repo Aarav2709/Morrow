@@ -10,6 +10,7 @@ import {
   EyeOff,
   Filter,
   GalleryVerticalEnd,
+  LayoutDashboard,
   LayoutList,
   Maximize2,
   Plus,
@@ -67,6 +68,7 @@ import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
 import { Grouped, Limited } from './Grouped';
+import { DashboardView } from './DashboardView';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
 import { PropertySettings } from './PropertySettings';
 import { dateLocale, t, tp } from '../../i18n';
@@ -78,6 +80,7 @@ const VIEW_ICONS: Record<ViewType, LucideIcon> = {
   calendar: Calendar,
   list: LayoutList,
   gallery: GalleryVerticalEnd,
+  dashboard: LayoutDashboard,
 };
 
 const viewKey = (id: PageId) => `morrow.view.${id}`;
@@ -244,10 +247,13 @@ export function DatabaseView({
           editable={editable}
         />
       )}
+      {view.type === 'dashboard' && (
+        <DashboardView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />
+      )}
       {view.type === 'calendar' && (
         <CalendarView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />
       )}
-      {view.type !== 'table' && editable && (
+      {view.type !== 'table' && view.type !== 'dashboard' && editable && (
         <button type="button" className="db-new-row" onClick={() => newRowAndOpen(page.id, {})}>
           <Plus size={14} /> {t('database.new')}
         </button>
@@ -515,14 +521,16 @@ function Toolbar({
         <ArrowDownUp size={13} /> {t('database.sort')}
         {view.sorts.length ? ` ${view.sorts.length}` : ''}
       </button>
-      <button type="button" className="text-tool" onClick={open('layout')} disabled={!editable}>
-        <Settings2 size={13} />{' '}
-        {view.type === 'calendar'
-          ? t('database.date')
-          : view.groupBy
-            ? t('database.group')
-            : t('slash.sections.layout')}
-      </button>
+      {view.type !== 'dashboard' && (
+        <button type="button" className="text-tool" onClick={open('layout')} disabled={!editable}>
+          <Settings2 size={13} />{' '}
+          {view.type === 'calendar'
+            ? t('database.date')
+            : view.groupBy
+              ? t('database.group')
+              : t('slash.sections.layout')}
+        </button>
+      )}
       <button type="button" className="text-tool" onClick={open('properties')}>
         <Eye size={13} /> {t('database.properties')}
       </button>

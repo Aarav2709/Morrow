@@ -14,6 +14,7 @@ import type {
   SortRule,
   ViewDef,
   ViewType,
+  Widget,
   WorkspaceState,
 } from './model';
 import { computeFormula } from './formula';
@@ -31,6 +32,7 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   calendar: 'Calendar',
   list: 'List',
   gallery: 'Gallery',
+  dashboard: 'Dashboard',
 };
 
 export function filterOpsFor(type: PropType | 'title'): FilterOp[] {
@@ -64,7 +66,71 @@ export function newView(type: ViewType, database: DatabaseDef, newId: () => stri
     groupBy: type === 'board' ? (select?.id ?? null) : null,
     dateProp: type === 'calendar' ? (date?.id ?? null) : null,
     hidden: [],
+    // a dashboard starts with the number of rows and charts of what the database already has
+    ...(type === 'dashboard' ? { widgets: defaultWidgets(database, newId) } : {}),
   };
+}
+
+function defaultWidgets(database: DatabaseDef, newId: () => string): Widget[] {
+  const select = database.properties.find((prop) => prop.type === 'select');
+  const number = database.properties.find((prop) => prop.type === 'number');
+  const date = database.properties.find((prop) => prop.type === 'date');
+  return [
+    { id: newId(), kind: 'count', prop: null },
+    ...(number ? [{ id: newId(), kind: 'sum' as const, prop: number.id }] : []),
+    ...(select ? [{ id: newId(), kind: 'donut' as const, prop: select.id }] : []),
+    ...(select ? [{ id: newId(), kind: 'bar' as const, prop: select.id, wide: true }] : []),
+    { id: newId(), kind: 'line', prop: date?.id ?? null, wide: true },
+  ];
+}
+
+// what a number tile shows for the rows, null when there is nothing to work it out from
+export function widgetNumber(widget: Widget, rows: PageMeta[]): number | null {
+  if (widget.kind === 'count') return rows.length;
+  const values = rows
+    .map((row) => (widget.prop ? row.properties[widget.prop] : null))
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  if (values.length === 0) return widget.kind === 'sum' ? 0 : null;
+  switch (widget.kind) {
+    case 'sum':
+      return values.reduce((sum, value) => sum + value, 0);
+    case 'average':
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    case 'min':
+      return Math.min(...values);
+    case 'max':
+      return Math.max(...values);
+    default:
+      return null;
+  }
+}
+
+// rows counted by month of a date, the created date when none is given, for the last twelve months
+export function rowsByMonth(
+  rows: PageMeta[],
+  prop: string | null,
+  today = new Date(),
+): Array<{ month: string; count: number }> {
+  const months: Array<{ month: string; count: number }> = [];
+  for (let back = 11; back >= 0; back--) {
+    const at = new Date(today.getFullYear(), today.getMonth() - back, 1);
+    months.push({ month: `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, '0')}`, count: 0 });
+  }
+  for (const row of rows) {
+    const value = prop ? row.properties[prop] : null;
+    const key =
+      typeof value === 'string' && /^\d{4}-\d{2}/.test(value)
+        ? value.slice(0, 7)
+        : prop
+          ? null
+          : (() => {
+              const made = new Date(row.createdAt);
+              return `${made.getFullYear()}-${String(made.getMonth() + 1).padStart(2, '0')}`;
+            })();
+    const month = months.find((item) => item.month === key);
+    if (month) month.count++;
+  }
+  return months;
 }
 
 export function defaultDatabase(newId: () => string): DatabaseDef {
