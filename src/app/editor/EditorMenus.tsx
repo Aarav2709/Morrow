@@ -1363,6 +1363,24 @@ export function BlockMenu({
       { separator: true },
     );
   }
+  // an html block can draw what it makes, beside or in place of its code
+  if (line?.type.name === 'codeBlock' && line.attrs.language === 'html') {
+    entries.unshift(
+      {
+        label: t('editor.showPreview'),
+        icon: Eye,
+        checked: line.attrs.preview === true,
+        onSelect: () =>
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(request.pos, undefined, {
+              ...line.attrs,
+              preview: line.attrs.preview === true ? null : true,
+            }),
+          ),
+      },
+      { separator: true },
+    );
+  }
   if (blockType === 'image') {
     // a picture narrower than the page can sit at either side or in the middle
     const current = editor.state.doc.nodeAt(request.pos)?.attrs.align ?? null;

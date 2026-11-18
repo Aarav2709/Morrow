@@ -713,6 +713,9 @@ export const pt: TranslationSchema = {
   },
   editor: {
     showEmbedTitle: 'Mostrar o título da página',
+    showPreview: 'Mostrar pré-visualização',
+    editHtml: 'Editar HTML',
+    htmlPreview: 'Pré-visualização do HTML',
     alignPicture: 'Posição',
     alignLeft: 'Esquerda',
     alignCentre: 'Centro',

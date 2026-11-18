@@ -7,6 +7,7 @@ import {
   ALIGN_PATTERN,
   BACKGROUND_PATTERN,
   EMBED_TITLE_COMMENT,
+  PREVIEW_COMMENT,
   calloutIcon,
   LETTERS_COMMENT,
   HEADER_COLUMN,
@@ -348,6 +349,10 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
           }
           if (token.content.trim() === EMBED_TITLE_COMMENT) {
             note({ embedTitle: false });
+            break;
+          }
+          if (token.content.trim() === PREVIEW_COMMENT) {
+            note({ preview: true });
             break;
           }
           if (token.content.trim() === LETTERS_COMMENT) {

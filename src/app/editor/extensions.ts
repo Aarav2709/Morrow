@@ -110,6 +110,26 @@ const EmbedTitle = Extension.create({
   },
 });
 
+// an html code block can be drawn as a page beside its code, see the code block in Extras.ts
+const CodePreview = Extension.create({
+  name: 'codePreview',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['codeBlock'],
+        attributes: {
+          preview: {
+            default: null,
+            keepOnSplit: false,
+            parseHTML: (element) => (element.getAttribute('data-preview') === 'true' ? true : null),
+            renderHTML: (attrs) => (attrs.preview === true ? { 'data-preview': 'true' } : {}),
+          },
+        },
+      },
+    ];
+  },
+});
+
 // a block's own background colour, from the colour in its Turn into menu
 const BlockBackground = Extension.create({
   name: 'blockBackground',
@@ -242,6 +262,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     BlockIds,
     BlockBackground,
     EmbedTitle,
+    CodePreview,
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: {

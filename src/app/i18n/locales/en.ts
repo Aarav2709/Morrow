@@ -706,6 +706,9 @@ export const en = {
   },
   editor: {
     showEmbedTitle: "Show the page's title",
+    showPreview: 'Show preview',
+    editHtml: 'Edit HTML',
+    htmlPreview: 'Preview of the HTML',
     alignPicture: 'Place',
     alignLeft: 'Left',
     alignCentre: 'Centre',

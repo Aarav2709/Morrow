@@ -64,6 +64,7 @@ function blocks(nodes: DocNode[], options: SerializeOptions): string {
       ...(background ? [BACKGROUND_COMMENT(background)] : []),
       ...(node.type === 'orderedList' && node.attrs?.type === 'a' ? [LETTERS_COMMENT] : []),
       ...(node.type === 'paragraph' && node.attrs?.embedTitle === false ? [EMBED_TITLE_COMMENT] : []),
+      ...(node.type === 'codeBlock' && node.attrs?.preview === true ? [PREVIEW_COMMENT] : []),
       ...(node.type === 'image' && (node.attrs?.align === 'left' || node.attrs?.align === 'right')
         ? [ALIGN_COMMENT(String(node.attrs.align))]
         : []),
@@ -249,6 +250,8 @@ export const ALIGN_COMMENT = (side: string) => `<!-- align: ${side} -->`;
 export const ALIGN_PATTERN = /^<!--\s*align:\s*(left|right)\s*-->$/;
 // a line showing another page without that page's title
 export const EMBED_TITLE_COMMENT = '<!-- embed: no title -->';
+// an html code block drawn as a page under its code
+export const PREVIEW_COMMENT = '<!-- preview -->';
 // a numbered list counted a, b, c. markdown only has numbers, so other apps show it numbered
 export const LETTERS_COMMENT = '<!-- letters -->';
 

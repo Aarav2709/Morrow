@@ -1,13 +1,19 @@
 // @vitest-environment happy-dom
 import { Editor } from '@tiptap/core';
 import { CellSelection } from '@tiptap/pm/tables';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DocNode } from '../../core/model';
 import { selectBlockRange } from './BlockSelect';
 import { changeCase, setBlockBackground, setHeading, turnInto } from './EditorMenus';
 import { createExtensions } from './extensions';
 import { tagDecorations } from './Extras';
 import type { DecorationSet } from '@tiptap/pm/view';
+
+// code blocks watch the vault's pages for bases, there is no vault open here
+vi.mock('./bases', async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  onPagesChange: () => () => {},
+}));
 
 const json = (target: Editor) => target.getJSON() as DocNode;
 
@@ -634,5 +640,35 @@ describe('columns', () => {
     moveColumn(target.state, target.view.dispatch, 2, 2);
     const texts = json(target).content![0]!.content!.map((item) => item.content![0]!.content![0]!.text);
     expect(texts).toEqual(['B', 'C', 'A']);
+  });
+});
+
+describe('html blocks', () => {
+  it('draw their page in a frame that runs no scripts once the preview is on', async () => {
+    const code = (preview: boolean | null) => ({
+      type: 'doc',
+      content: [
+        {
+          type: 'codeBlock',
+          attrs: { language: 'html', preview },
+          content: [{ type: 'text', text: '<b>Hi</b><script>parent.hacked = 1</script>' }],
+        },
+      ],
+    });
+    const plain = make(code(null));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(plain.view.dom.querySelector('iframe')).toBeNull();
+    plain.destroy();
+    const target = make(code(true));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    const frame = target.view.dom.querySelector('iframe')!;
+    expect(frame).not.toBeNull();
+    expect(frame.getAttribute('sandbox')).toBe('allow-same-origin');
+    expect(frame.srcdoc).toContain('<b>Hi</b>');
+    expect(target.view.dom.querySelector('.code-block')!.classList.contains('hide-code')).toBe(true);
+    // turning it off brings the code back and takes the frame away
+    target.view.dispatch(target.state.tr.setNodeMarkup(0, undefined, { language: 'html', preview: null }));
+    expect(target.view.dom.querySelector('.code-block')!.classList.contains('hide-code')).toBe(false);
+    expect(target.view.dom.querySelector('iframe')).toBeNull();
   });
 });

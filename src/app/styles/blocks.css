@@ -135,6 +135,19 @@
 .code-block:not(.is-mermaid) .mermaid-diagram {
   display: none;
 }
+/* an html block drawn as a page, in a frame as tall as what it draws */
+.code-block.is-preview .mermaid-diagram {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+.html-preview {
+  display: block;
+  width: 100%;
+  height: 24px;
+  border: 0;
+  background: transparent;
+}
 /* obsidian bases: the pages a base finds, under its yaml, as wide as the page */
 .code-block.is-base .code-split {
   display: block;

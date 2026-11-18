@@ -491,6 +491,14 @@ describe('colours', () => {
     expect(docToMarkdown(doc)).toBe(out);
   });
 
+  it('keeps an html block drawn as a preview as a comment above it', () => {
+    const out = '<!-- preview -->\n```html\n<p>Hi</p>\n```\n';
+    const doc = markdownToDoc(out);
+    expect(doc.content![0]!.type).toBe('codeBlock');
+    expect(doc.content![0]!.attrs?.preview).toBe(true);
+    expect(docToMarkdown(doc)).toBe(out);
+  });
+
   it('keeps a list counted in letters, numbered in the file', () => {
     const item = (words: string) => ({ type: 'listItem', content: [p(text(words))] });
     const doc: DocNode = {

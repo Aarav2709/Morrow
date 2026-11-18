@@ -24,7 +24,7 @@ import type { CalloutTone, ColorName } from '../../core/model';
 import { tagClass } from '../../core/tags';
 import { emojiElement } from '../components/Emoji';
 import { getPreferences, setPreferences } from '../platform/preferences';
-import { desktop } from '../platform/desktop';
+import { desktop, openExternal } from '../platform/desktop';
 import { openDialog } from '../ui';
 import { calloutIcon } from '../../core/markdown/serialize';
 import { t } from '../i18n';
@@ -395,6 +395,61 @@ export async function renderMermaid(source: string): Promise<{ html: string; err
   }
 }
 
+// the page an html block draws, in the page's own type and colours so a widget sits in with the rest.
+// the frame is sandboxed without scripts, so what is drawn can't run code, send forms or reach morrow
+function previewDocument(source: string, host: HTMLElement): string {
+  const style = getComputedStyle(host);
+  // the same colour scheme as the page around it, otherwise the frame paints a background of its own
+  const scheme = getComputedStyle(document.documentElement).colorScheme || 'normal';
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+:root { color-scheme: ${scheme}; }
+html, body { background: transparent; }
+body { margin: 0; padding: 12px; font-family: ${style.fontFamily}; font-size: ${style.fontSize}; line-height: 1.5; color: ${style.color}; overflow-wrap: anywhere; }
+img, video, svg { max-width: 100%; height: auto; }
+</style></head><body>${source}</body></html>`;
+}
+
+// a sandboxed frame for an html block, as tall as what it draws
+function createPreviewFrame(): {
+  frame: HTMLIFrameElement;
+  show: (source: string, host: HTMLElement) => void;
+} {
+  const frame = document.createElement('iframe');
+  frame.className = 'html-preview';
+  // same origin, so its height can be read, but no scripts, which together keep it shut in
+  frame.setAttribute('sandbox', 'allow-same-origin');
+  frame.setAttribute('referrerpolicy', 'no-referrer');
+  frame.title = t('editor.htmlPreview');
+  const fit = () => {
+    const root = frame.contentDocument?.documentElement;
+    if (!root) return;
+    frame.style.height = `${Math.min(Math.max(root.scrollHeight, 24), 1600)}px`;
+  };
+  frame.addEventListener('load', () => {
+    const doc = frame.contentDocument;
+    if (!doc) return;
+    fit();
+    // pictures load after the page does and make it taller
+    doc.addEventListener('load', fit, true);
+    // a link opens in the browser, the frame never goes anywhere
+    doc.addEventListener('click', (event) => {
+      const link = (event.target as Element | null)?.closest?.('a[href]');
+      if (!link) return;
+      event.preventDefault();
+      const href = link.getAttribute('href') ?? '';
+      if (/^(https?|mailto):/i.test(href)) openExternal(href);
+    });
+  });
+  // the width changes with the page, and the words wrap to a new height
+  new ResizeObserver(fit).observe(frame);
+  return {
+    frame,
+    show: (source, host) => {
+      frame.srcdoc = previewDocument(source, host);
+    },
+  };
+}
+
 // a new code block starts in the language the last one was set to, so a page of python stays python
 const lastLanguage = () => getPreferences().codeLanguage || null;
 
@@ -476,13 +531,17 @@ export const CodeBlock = CodeBlockLowlight.extend({
       let showCode = current.textContent.trim() === '';
       let drawn = '';
       let timer: ReturnType<typeof setTimeout> | null = null;
-      // mermaid draws a diagram, a base shows the pages it finds, both from the text in the block
+      // mermaid draws a diagram, a base shows the pages it finds, an html block set to show its
+      // preview draws its page, all from the text in the block
       const isBase = () => current.attrs.language === 'base';
-      const isMermaid = () => current.attrs.language === 'mermaid' || isBase();
+      const isPreview = () => current.attrs.language === 'html' && current.attrs.preview === true;
+      const isMermaid = () => current.attrs.language === 'mermaid' || isBase() || isPreview();
+      let preview: ReturnType<typeof createPreviewFrame> | null = null;
       const layout = () => {
         const mermaid = isMermaid();
         dom.classList.toggle('is-mermaid', mermaid);
         dom.classList.toggle('is-base', isBase());
+        dom.classList.toggle('is-preview', isPreview());
         dom.classList.toggle('hide-code', mermaid && !showCode);
         diagram.hidden = !mermaid;
         toggle.hidden = !mermaid;
@@ -490,13 +549,31 @@ export const CodeBlock = CodeBlockLowlight.extend({
           ? t('editor.hideCode')
           : isBase()
             ? t('editor.editBase')
-            : t('editor.editDiagram');
+            : isPreview()
+              ? t('editor.editHtml')
+              : t('editor.editDiagram');
       };
       const draw = () => {
-        if (!isMermaid()) return;
+        if (!isMermaid()) {
+          drawn = '';
+          return;
+        }
         const source = current.textContent;
-        if (source === drawn) return;
+        if (source === drawn && (!isPreview() || preview)) return;
         if (timer) clearTimeout(timer);
+        if (isPreview()) {
+          timer = setTimeout(() => {
+            drawn = source;
+            diagram.classList.remove('is-error');
+            if (!preview || !diagram.contains(preview.frame)) {
+              preview = createPreviewFrame();
+              diagram.replaceChildren(preview.frame);
+            }
+            preview.show(source, editor.view.dom as HTMLElement);
+          }, 350);
+          return;
+        }
+        preview = null;
         timer = setTimeout(() => {
           drawn = source;
           const render = isBase() ? Promise.resolve(renderBase(source)) : renderMermaid(source);
@@ -528,6 +605,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
         drawn = '';
         draw();
       });
+      let wasPreview = isPreview();
       const stopPages = onPagesChange(() => {
         if (!isBase()) return;
         drawn = '';
@@ -543,6 +621,14 @@ export const CodeBlock = CodeBlockLowlight.extend({
         update(updated) {
           if (updated.type !== current.type) return false;
           current = updated;
+          // turning the preview on or off draws the block afresh, a preview starts with its code folded away
+          if (isPreview() !== wasPreview) {
+            wasPreview = isPreview();
+            drawn = '';
+            preview = null;
+            diagram.replaceChildren();
+            showCode = !wasPreview || current.textContent.trim() === '';
+          }
           sync();
           layout();
           draw();
