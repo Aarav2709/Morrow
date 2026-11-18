@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { dateKey, parseDateKey } from '../../core/daily';
+import { displayTitle } from '../../core/model';
 import type { WorkspaceState } from '../../core/model';
 import { tasksByDay } from '../../core/tasks';
 import type { TaskRef } from '../../core/tasks';
@@ -223,8 +224,11 @@ function DayAgenda({
                 onClick={() => openPage(task.pageId, task.text || null)}
               >
                 {task.time && <span className="tasks-agenda-time">{describeTime(task.time)}</span>}
-                {task.text || <span className="muted">{t('tasks.untitledTask')}</span>}
-                <span className="task-page">{state.pages[task.pageId]?.title}</span>
+                {/* the words and the page they are on sit on two lines, so they never run together */}
+                <span className="tasks-agenda-text">
+                  <span>{task.text || <span className="muted">{t('tasks.untitledTask')}</span>}</span>
+                  <span className="link-row-path">{displayTitle(state.pages[task.pageId])}</span>
+                </span>
               </button>
             </li>
           ))}
