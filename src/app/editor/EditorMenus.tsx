@@ -205,9 +205,14 @@ export function noteMouseButton(editor: Editor, event: MouseEvent | KeyboardEven
 }
 
 // bubble menu props must keep their identity, new objects make tiptap dispatch and rerender in a loop
+// words whose bar was put away with escape keep it away until something else is picked
+const dismissedFormatting = new WeakMap<Editor, string>();
 const showFormatting: BubbleMenuProps['shouldShow'] = ({ editor, state, from, to }) => {
   if (!editor.isEditable || from === to || state.selection instanceof NodeSelection) return false;
   if (rightClicked.has(editor)) return false;
+  const dismissed = dismissedFormatting.get(editor);
+  if (dismissed === `${from}:${to}`) return false;
+  if (dismissed !== undefined) dismissedFormatting.delete(editor);
   // whole blocks picked in the margin have the block menu instead
   return !editor.isActive('codeBlock') && !selectedBlocks(state);
 };
@@ -224,6 +229,20 @@ function dismissLink(editor: Editor): void {
   dismissedLinks.set(editor, start);
   // the menu only looks again when the page or the cursor changed, so it is told to hide
   editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false).setMeta('linkMenu', 'hide'));
+}
+// escape puts the bar over picked words or a link's card away, and leaves the words picked. true when
+// there was one to put away, so escape does nothing else then
+function dismissWithEscape(editor: Editor, formattingShown: boolean): boolean {
+  const { from, to } = editor.state.selection;
+  if (formattingShown && from !== to) {
+    dismissedFormatting.set(editor, `${from}:${to}`);
+    editor.view.dispatch(editor.state.tr.setMeta('addToHistory', false).setMeta('formattingMenu', 'hide'));
+    return true;
+  }
+  const start = from === to && editor.isActive('link') ? linkStart(editor) : null;
+  if (start === null || dismissedLinks.get(editor) === start) return false;
+  dismissLink(editor);
+  return true;
 }
 const showLink: BubbleMenuProps['shouldShow'] = ({ editor, view, from, to }) => {
   const start = from === to && editor.isActive('link') ? linkStart(editor) : null;
@@ -256,6 +275,13 @@ function useMarks(editor: Editor) {
 }
 
 // the nine colours for text and for highlighting, the same set notion, affine and select options use
+// escape in a panel of the bar goes back to the bar, a second one puts the bar away
+function escapeTo(event: React.KeyboardEvent, back: () => void): void {
+  if (event.key !== 'Escape') return;
+  event.preventDefault();
+  back();
+}
+
 function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) {
   const current = useEditorState({
     editor,
@@ -311,7 +337,7 @@ function ColorPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) 
     </div>
   );
   return (
-    <div className="color-panel" onKeyDown={(event) => event.key === 'Escape' && onDone()}>
+    <div className="color-panel" onKeyDown={(event) => escapeTo(event, onDone)}>
       <span className="color-panel-label">{t('slash.items.text.title')}</span>
       {row('text')}
       <span className="color-panel-label">{t('editor.highlight')}</span>
@@ -418,6 +444,21 @@ export function FormattingMenu({
     };
   }, [editor]);
 
+  // escape in the page puts the bar or a link's card away before it does anything else, such as picking
+  // the block. it is caught before the editor's own keys, which skip a key already handled
+  useEffect(() => {
+    const dom = editor.view.dom;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing) return;
+      if (dismissWithEscape(editor, shown.current)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    dom.addEventListener('keydown', onKey, true);
+    return () => dom.removeEventListener('keydown', onKey, true);
+  }, [editor]);
+
   useEffect(() => {
     // capture the node now, the editor can be destroyed before this cleanup runs
     const dom = editor.view.dom;
@@ -436,7 +477,17 @@ export function FormattingMenu({
 
   return (
     <BubbleMenu editor={editor} pluginKey="formattingMenu" options={options} shouldShow={showFormatting}>
-      <div className="toolbar popover" role="toolbar" aria-label={t('editor.formattingAria')}>
+      <div
+        className="toolbar popover"
+        role="toolbar"
+        aria-label={t('editor.formattingAria')}
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape' || event.defaultPrevented) return;
+          event.preventDefault();
+          dismissWithEscape(editor, true);
+          editor.commands.focus();
+        }}
+      >
         {editingLink ? (
           <LinkInput editor={editor} onDone={() => setEditingLink(false)} />
         ) : coloring ? (
@@ -559,7 +610,7 @@ function HeadingPanel({ editor, onDone }: { editor: Editor; onDone: () => void }
   const level = useEditorState({ editor, selector: ({ editor: e }) => headingLevel(e) });
   const icons = [Heading1, Heading2, Heading3, Heading4, Heading5, Heading6] as const;
   return (
-    <div className="heading-panel" onKeyDown={(event) => event.key === 'Escape' && onDone()}>
+    <div className="heading-panel" onKeyDown={(event) => escapeTo(event, onDone)}>
       <ToolButton
         label={t('slash.items.text.title')}
         icon={Pilcrow}
@@ -622,7 +673,15 @@ export function LinkMenu({ editor }: { editor: Editor }) {
   );
   return (
     <BubbleMenu editor={editor} pluginKey="linkMenu" options={options} shouldShow={showLink}>
-      <div className="toolbar popover link-popover">
+      <div
+        className="toolbar popover link-popover"
+        onKeyDown={(event) => {
+          if (event.key !== 'Escape' || event.defaultPrevented) return;
+          event.preventDefault();
+          dismissLink(editor);
+          editor.commands.focus();
+        }}
+      >
         {editing ? (
           <LinkInput
             editor={editor}

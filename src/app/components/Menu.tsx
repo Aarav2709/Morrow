@@ -30,6 +30,10 @@ interface MenuProps {
   onPicked?: () => void;
 }
 
+// menus open now, the last one on top. escape closes the top one wherever the focus is, as a menu opened
+// from the page can leave the keys going to the page
+const openMenus: Array<() => void> = [];
+
 export function Menu({ anchor, entries, onClose, placement = 'bottom-start', label, onPicked }: MenuProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isSubmenu = onPicked !== undefined;
@@ -66,10 +70,21 @@ export function Menu({ anchor, entries, onClose, placement = 'bottom-start', lab
       closeRef.current();
     };
     const onBlurWindow = () => closeRef.current();
+    const close = () => closeRef.current();
+    openMenus.push(close);
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || openMenus[openMenus.length - 1] !== close) return;
+      event.preventDefault();
+      event.stopPropagation();
+      close();
+    };
+    window.addEventListener('keydown', onEscape, true);
     document.addEventListener('pointerdown', onPointer, true);
     window.addEventListener('blur', onBlurWindow);
     window.addEventListener('resize', onBlurWindow);
     return () => {
+      openMenus.splice(openMenus.indexOf(close), 1);
+      window.removeEventListener('keydown', onEscape, true);
       document.removeEventListener('pointerdown', onPointer, true);
       window.removeEventListener('blur', onBlurWindow);
       window.removeEventListener('resize', onBlurWindow);
