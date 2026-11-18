@@ -666,7 +666,8 @@ pub fn is_synced_path(relative: &str) -> bool {
             | ".morrow/tag-colors.json"
             | ".morrow/sidebar-sections.json"
             | ".morrow/calendars.json"
-    ) {
+    ) || relative.starts_with(".morrow/emoji/")
+    {
         return true;
     }
     !is_hidden(relative)
@@ -1085,6 +1086,7 @@ mod tests {
         assert!(is_synced_path(".morrow/tag-colors.json"));
         assert!(is_synced_path(".morrow/sidebar-sections.json"));
         assert!(is_synced_path(".morrow/calendars.json"));
+        assert!(is_synced_path(".morrow/emoji/party_cat.png"));
         assert!(is_synced_path("Notes/Page.md"));
     }
 

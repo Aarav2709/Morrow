@@ -1644,3 +1644,32 @@ button.home-stat:hover {
   color: var(--text-muted);
   background: currentColor;
 }
+
+/* a picture of your own in the picker, with a small button to take it out of the vault */
+.emoji-mine {
+  position: relative;
+  display: inline-flex;
+}
+.emoji-mine .custom-emoji-img {
+  width: 24px;
+  height: 24px;
+}
+.emoji-mine-remove {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  display: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--popover);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.emoji-mine:hover .emoji-mine-remove {
+  display: grid;
+}
+.emoji-mine-help {
+  margin: 4px 0 0;
+}

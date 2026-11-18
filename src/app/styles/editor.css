@@ -1114,3 +1114,22 @@ html.is-dragging-blocks * {
 .prose .image-block.is-align-right img {
   margin: 0;
 }
+
+/* :name: for a picture of your own, drawn as the picture in place of its letters */
+.prose .custom-emoji {
+  display: inline-block;
+  width: 1.3em;
+  height: 1.3em;
+  vertical-align: -0.28em;
+  overflow: hidden;
+  color: transparent;
+  font-size: inherit;
+  letter-spacing: -1em;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  white-space: nowrap;
+}
+.custom-emoji-img {
+  object-fit: contain;
+}

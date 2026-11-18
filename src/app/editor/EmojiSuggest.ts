@@ -4,6 +4,7 @@ import Suggestion from '@tiptap/suggestion';
 import { loadEmoji, readRecent, rememberEmoji } from '../components/EmojiPicker';
 import type { EmojiEntry } from '../components/EmojiPicker';
 import { t } from '../i18n';
+import { CUSTOM_PREFIX, customEmojiList, loadCustomEmoji } from '../customEmoji';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
 
@@ -52,12 +53,27 @@ export const EmojiSuggest = Extension.create({
         },
         items: async ({ query }) => {
           const list = await loadEmoji();
-          return matchEmoji(list, query, readRecent())
-            .slice(0, 8)
-            .map((item) => ({ id: item.unicode, title: item.label, emoji: item.unicode }));
+          await loadCustomEmoji();
+          // pictures of your own whose short name starts with what was typed come first, they go in as
+          // :name: and are drawn as their picture
+          const typed = query.toLowerCase();
+          const own = customEmojiList()
+            .filter((item) => item.name.startsWith(typed) || item.name.includes(`_${typed}`))
+            .slice(0, 4)
+            .map((item) => ({
+              id: `:${item.name}: `,
+              title: `:${item.name}:`,
+              emoji: `${CUSTOM_PREFIX}${item.name}`,
+            }));
+          return [
+            ...own,
+            ...matchEmoji(list, query, readRecent())
+              .slice(0, 8 - own.length)
+              .map((item) => ({ id: item.unicode, title: item.label, emoji: item.unicode })),
+          ];
         },
         command: ({ editor, range, props }) => {
-          rememberEmoji(props.id);
+          if (!props.id.startsWith(':')) rememberEmoji(props.id);
           editor.chain().focus().insertContentAt(range, props.id).run();
         },
         render: renderSuggestion(() => t('emoji.emoji'), '', 'insert'),

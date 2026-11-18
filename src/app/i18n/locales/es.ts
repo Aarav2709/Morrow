@@ -150,7 +150,8 @@ export const es: TranslationSchema = {
     },
     pageParts: {
       databaseLimit: 'Filas de base de datos mostradas al principio',
-      databaseLimitHelp: 'Una vista con más filas muestra estas, con un botón para el resto. Cada vista puede tener la suya en su diseño.',
+      databaseLimitHelp:
+        'Una vista con más filas muestra estas, con un botón para el resto. Cada vista puede tener la suya en su diseño.',
       title: 'Partes de una página',
       help: 'Para todas las páginas. El esquema se puede activar o desactivar en una página desde su menú.',
       outline: 'Esquema junto a las páginas largas',
@@ -1464,6 +1465,15 @@ export const es: TranslationSchema = {
     madeThisDay: 'Creado este día',
   },
   emoji: {
+    mine: 'Tuyas',
+    searchMine: 'Buscar tus imágenes',
+    addMine: 'Añadir imágenes',
+    mineHelp:
+      'Imágenes tuyas, guardadas en la bóveda. Usa una como icono de página o escribe :nombre: en una página.',
+    mineEmpty: 'Aún no hay imágenes tuyas.',
+    mineTooLarge:
+      'Algunas imágenes se dejaron fuera, cada una puede tener hasta 1 MB en PNG, JPEG, GIF, WebP o SVG.',
+    removeMine: 'Quitar :{name}:',
     iconGroups: {
       work: 'Trabajo',
       money: 'Dinero',

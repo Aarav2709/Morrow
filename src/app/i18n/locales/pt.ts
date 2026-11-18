@@ -150,7 +150,8 @@ export const pt: TranslationSchema = {
     },
     pageParts: {
       databaseLimit: 'Linhas de banco de dados mostradas no início',
-      databaseLimitHelp: 'Uma visualização com mais linhas mostra estas, com um botão para o resto. Cada visualização pode ter a sua no layout.',
+      databaseLimitHelp:
+        'Uma visualização com mais linhas mostra estas, com um botão para o resto. Cada visualização pode ter a sua no layout.',
       title: 'Partes de uma página',
       help: 'Para todas as páginas. O sumário ainda pode ser ligado ou desligado numa página pelo menu dela.',
       outline: 'Sumário ao lado de páginas longas',
@@ -1463,6 +1464,14 @@ export const pt: TranslationSchema = {
     madeThisDay: 'Criado neste dia',
   },
   emoji: {
+    mine: 'Suas',
+    searchMine: 'Buscar suas imagens',
+    addMine: 'Adicionar imagens',
+    mineHelp: 'Imagens suas, guardadas no cofre. Use uma como ícone de página ou escreva :nome: numa página.',
+    mineEmpty: 'Ainda não há imagens suas.',
+    mineTooLarge:
+      'Algumas imagens ficaram de fora, cada uma pode ter até 1 MB em PNG, JPEG, GIF, WebP ou SVG.',
+    removeMine: 'Remover :{name}:',
     iconGroups: {
       work: 'Trabalho',
       money: 'Dinheiro',

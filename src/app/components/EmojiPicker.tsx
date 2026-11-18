@@ -1,6 +1,8 @@
-import { Shuffle } from 'lucide-react';
+import { ImagePlus, Shuffle, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { closeDialog } from '../ui';
+import { closeDialog, toast } from '../ui';
+import { addCustomEmoji, CUSTOM_PREFIX, emojiName, removeCustomEmoji, useCustomEmoji } from '../customEmoji';
+import { pickFiles } from '../platform/files';
 import { Emoji, emojiSrc } from './Emoji';
 import { FLAT_ICON_GROUPS, FLAT_ICONS, FlatIcon, flatIconValue, parseFlatIcon } from './flatIcons';
 import type { FlatIconGroup } from './flatIcons';
@@ -86,7 +88,9 @@ export function EmojiPicker({ title, current, onPick }: Props) {
   const [group, setGroup] = useState<number | null>(null);
   const [recent] = useState(readRecent);
   // flat icons sit beside the emoji, outlined or filled
-  const [tab, setTab] = useState<'emoji' | 'icons'>(() => (current?.startsWith('icon:') ? 'icons' : 'emoji'));
+  const [tab, setTab] = useState<'emoji' | 'icons' | 'mine'>(() =>
+    current?.startsWith('icon:') ? 'icons' : current?.startsWith(CUSTOM_PREFIX) ? 'mine' : 'emoji',
+  );
   const picked = current ? parseFlatIcon(current) : null;
   const [filled, setFilled] = useState(() => picked?.filled ?? false);
   const [colour, setColour] = useState<ColorName | null>(() => picked?.color ?? null);
@@ -137,8 +141,19 @@ export function EmojiPicker({ title, current, onPick }: Props) {
         >
           {t('emoji.icons')}
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'mine'}
+          className={tab === 'mine' ? 'is-active' : ''}
+          onClick={() => setTab('mine')}
+        >
+          {t('emoji.mine')}
+        </button>
       </div>
-      {tab === 'icons' ? (
+      {tab === 'mine' ? (
+        <MineGrid current={current} onPick={pick} />
+      ) : tab === 'icons' ? (
         <IconGrid
           current={current}
           filled={filled}
@@ -342,6 +357,75 @@ function IconGrid({
           ))
         )}
         {names.length === 0 && <p className="muted">{t('emoji.noMatch', { query })}</p>}
+      </div>
+    </>
+  );
+}
+
+// pictures of your own, kept in the vault. one can be a page's icon, or written in a page as :name:
+function MineGrid({ current, onPick }: { current: string | null; onPick: (icon: string | null) => void }) {
+  const mine = useCustomEmoji();
+  const [query, setQuery] = useState('');
+  const shown = mine.filter((item) => item.name.includes(emojiName(query) || query.trim().toLowerCase()));
+  const add = async () => {
+    const files = await pickFiles('image/png,image/jpeg,image/gif,image/webp,image/svg+xml', true);
+    let added = 0;
+    for (const file of files) if (await addCustomEmoji(file)) added++;
+    if (added < files.length) toast(t('emoji.mineTooLarge'), { tone: 'error' });
+  };
+  return (
+    <>
+      <div className="emoji-top">
+        <input
+          className="text-input"
+          data-autofocus
+          placeholder={t('emoji.searchMine')}
+          aria-label={t('emoji.searchMine')}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && shown[0]) onPick(`${CUSTOM_PREFIX}${shown[0].name}`);
+          }}
+        />
+        <button type="button" className="button" onClick={() => void add()}>
+          <ImagePlus size={14} /> {t('emoji.addMine')}
+        </button>
+        {current && (
+          <button type="button" className="button" onClick={() => onPick(null)}>
+            {t('common.remove')}
+          </button>
+        )}
+      </div>
+      <p className="muted small emoji-mine-help">{t('emoji.mineHelp')}</p>
+      <div className="emoji-grid emoji-all" role="listbox" aria-label={t('emoji.mine')}>
+        {shown.map((item) => {
+          const value = `${CUSTOM_PREFIX}${item.name}`;
+          return (
+            <span key={item.name} className="emoji-mine">
+              <button
+                type="button"
+                role="option"
+                aria-selected={current === value}
+                title={`:${item.name}:`}
+                aria-label={`:${item.name}:`}
+                className={`emoji-choice${current === value ? ' is-active' : ''}`}
+                onClick={() => onPick(value)}
+              >
+                <img className="emoji-img custom-emoji-img" src={item.url} alt="" draggable={false} />
+              </button>
+              <button
+                type="button"
+                className="emoji-mine-remove"
+                aria-label={t('emoji.removeMine', { name: item.name })}
+                title={t('emoji.removeMine', { name: item.name })}
+                onClick={() => void removeCustomEmoji(item.name)}
+              >
+                <X size={10} />
+              </button>
+            </span>
+          );
+        })}
+        {mine.length === 0 && <p className="muted">{t('emoji.mineEmpty')}</p>}
       </div>
     </>
   );

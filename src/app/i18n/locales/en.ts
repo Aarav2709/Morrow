@@ -147,7 +147,8 @@ export const en = {
     },
     pageParts: {
       databaseLimit: 'Database rows shown at first',
-      databaseLimitHelp: 'A view with more rows shows this many, with a button for the rest. Each view can have its own in its layout.',
+      databaseLimitHelp:
+        'A view with more rows shows this many, with a button for the rest. Each view can have its own in its layout.',
       title: 'Parts of a page',
       help: 'For every page. The outline can still be turned on or off for one page from its menu.',
       outline: 'Outline beside long pages',
@@ -1451,6 +1452,13 @@ export const en = {
     madeThisDay: 'Made this day',
   },
   emoji: {
+    mine: 'Yours',
+    searchMine: 'Search your pictures',
+    addMine: 'Add pictures',
+    mineHelp: 'Pictures of your own, kept in the vault. Use one as a page icon, or write :name: in a page.',
+    mineEmpty: 'No pictures of your own yet.',
+    mineTooLarge: 'Some pictures were left out, each can be up to 1 MB as PNG, JPEG, GIF, WebP or SVG.',
+    removeMine: 'Remove :{name}:',
     iconGroups: {
       work: 'Work',
       money: 'Money',

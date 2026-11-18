@@ -20,6 +20,7 @@ import type { BlockMenuRequest } from './BlockHandle';
 import { CopyFromInside, MarkdownPaste, PasteOnEmptyLine } from './MarkdownPaste';
 import { MultiSelect } from './MultiSelect';
 import { ColumnGrip } from './ColumnGrip';
+import { CustomEmojiText } from './CustomEmojiText';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
@@ -285,6 +286,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     }),
     SlashCommand.configure({ createChild: options.createChild }),
     EmojiSuggest,
+    CustomEmojiText,
     Image,
     FileAttachment,
     FileDrop,

@@ -2,6 +2,7 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { EMOJI_FILES } from 'virtual:morrow-emoji';
 import { FlatIcon, parseFlatIcon } from './flatIcons';
+import { CUSTOM_PREFIX, customEmoji, useCustomEmoji } from '../customEmoji';
 
 // the image for an emoji, trying the spellings the image set uses for variation selectors and keycaps
 export function emojiSrc(emoji: string): string | null {
@@ -19,6 +20,22 @@ export function emojiSrc(emoji: string): string | null {
 
 // page icons and other emoji in the interface, drawn the same on every system
 export function Emoji({ emoji, className }: { emoji: string; className?: string }) {
+  useCustomEmoji();
+  if (emoji.startsWith(CUSTOM_PREFIX)) {
+    const own = customEmoji(emoji.slice(CUSTOM_PREFIX.length));
+    return own ? (
+      <img
+        className={`emoji-img custom-emoji-img${className ? ` ${className}` : ''}`}
+        src={own.url}
+        alt={`:${own.name}:`}
+        draggable={false}
+      />
+    ) : (
+      <span
+        className={`emoji-text${className ? ` ${className}` : ''}`}
+      >{`:${emoji.slice(CUSTOM_PREFIX.length)}:`}</span>
+    );
+  }
   const flat = parseFlatIcon(emoji);
   if (flat)
     return <FlatIcon name={flat.name} filled={flat.filled} color={flat.color} className={className} />;
@@ -38,6 +55,15 @@ export function Emoji({ emoji, className }: { emoji: string; className?: string 
 
 // the same for code that builds dom by hand, such as editor node views
 export function emojiElement(emoji: string): HTMLElement {
+  const own = emoji.startsWith(CUSTOM_PREFIX) ? customEmoji(emoji.slice(CUSTOM_PREFIX.length)) : null;
+  if (own) {
+    const img = document.createElement('img');
+    img.className = 'emoji-img custom-emoji-img';
+    img.src = own.url;
+    img.alt = `:${own.name}:`;
+    img.draggable = false;
+    return img;
+  }
   const flat = parseFlatIcon(emoji);
   if (flat) {
     const span = document.createElement('span');
