@@ -721,6 +721,8 @@ export const en = {
     replaceFrom: 'First match to replace',
     replaceUntil: 'Last match to replace',
     replaceThese: 'Replace these',
+    matchInRange: '{current} of {count}, in {first} to {last}',
+    replaceEveryMatch: 'Back to every match',
     diagramMistake: 'This diagram has a mistake: {error}',
     imageFrom: 'Image from {host}',
     imageNotFound: 'Image not found: {src}',

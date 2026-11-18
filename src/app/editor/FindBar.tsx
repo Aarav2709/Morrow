@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, Regex, Replace, X, CaseSensitive } from 'lucide
 import { useEffect, useRef, useState } from 'react';
 import { toast } from '../ui';
 import { t } from '../i18n';
-import { getFindState, replaceAll, replaceCurrent, setFindQuery, stepFind } from './Blocks';
+import { getFindState, replaceAll, replaceCurrent, setFindQuery, setFindRange, stepFind } from './Blocks';
 
 interface Props {
   editor: Editor;
@@ -35,6 +35,7 @@ export function FindBar({ editor, seed, onClose }: Props) {
         current: state.current,
         regex: state.regex,
         caseSensitive: state.caseSensitive ?? false,
+        range: state.range ?? null,
       };
     },
   });
@@ -64,8 +65,24 @@ export function FindBar({ editor, seed, onClose }: Props) {
         .querySelector('.find-match.is-current')
         ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     );
+  // the numbers typed for the range narrow the search as they are typed, an empty one means the first or
+  // the last match
+  const narrow = (next: { from: string; to: string }) => {
+    setRange(next);
+    const count = getFindState(editor.state).matches.length;
+    if (!next.from.trim() && !next.to.trim()) {
+      setFindRange(editor.state, editor.view.dispatch, null);
+      return;
+    }
+    const first = Math.max(1, Math.floor(Number(next.from) || 1));
+    const last = Math.min(count, Math.floor(Number(next.to) || count));
+    if (last < first) return;
+    setFindRange(editor.state, editor.view.dispatch, { first, last });
+    reveal();
+  };
   const update = (value: string, regex = find.regex, caseSensitive = find.caseSensitive) => {
     setQuery(value);
+    setRange({ from: '', to: '' });
     setFindQuery(editor.state, editor.view.dispatch, value, regex, caseSensitive);
     reveal();
   };
@@ -100,7 +117,18 @@ export function FindBar({ editor, seed, onClose }: Props) {
           onChange={(event) => update(event.target.value)}
         />
         <span className="find-count" aria-live="polite">
-          {query ? (find.count ? `${find.current + 1} of ${find.count}` : t('editor.noResults')) : ''}
+          {query
+            ? find.count
+              ? find.range
+                ? t('editor.matchInRange', {
+                    current: find.current + 1,
+                    count: find.count,
+                    first: find.range.first,
+                    last: find.range.last,
+                  })
+                : `${find.current + 1} of ${find.count}`
+              : t('editor.noResults')
+            : ''}
         </span>
         <button
           type="button"
@@ -184,7 +212,9 @@ export function FindBar({ editor, seed, onClose }: Props) {
             className="button small"
             disabled={!find.count}
             onClick={() => {
+              // with a range, only the matches in it, the way they are lit
               const count = replaceAll(editor.state, editor.view.dispatch, replacement);
+              setRange({ from: '', to: '' });
               toast(
                 count === 1
                   ? t('toasts.replacedMatchesSingle')
@@ -193,7 +223,7 @@ export function FindBar({ editor, seed, onClose }: Props) {
               );
             }}
           >
-            {t('editor.replaceAll')}
+            {find.range ? t('editor.replaceThese') : t('editor.replaceAll')}
           </button>
         </div>
       )}
@@ -209,7 +239,7 @@ export function FindBar({ editor, seed, onClose }: Props) {
             placeholder="1"
             aria-label={t('editor.replaceFrom')}
             value={range.from}
-            onChange={(event) => setRange({ ...range, from: event.target.value })}
+            onChange={(event) => narrow({ ...range, from: event.target.value })}
           />
           <span className="find-range-label">{t('editor.replaceTo')}</span>
           <input
@@ -221,27 +251,19 @@ export function FindBar({ editor, seed, onClose }: Props) {
             placeholder={String(find.count)}
             aria-label={t('editor.replaceUntil')}
             value={range.to}
-            onChange={(event) => setRange({ ...range, to: event.target.value })}
+            onChange={(event) => narrow({ ...range, to: event.target.value })}
           />
-          <button
-            type="button"
-            className="button small"
-            onClick={() => {
-              const from = Math.max(1, Math.floor(Number(range.from) || 1));
-              const to = Math.min(find.count, Math.floor(Number(range.to) || find.count));
-              if (to < from) return;
-              const count = replaceAll(editor.state, editor.view.dispatch, replacement, from, to);
-              setRange({ from: '', to: '' });
-              toast(
-                count === 1
-                  ? t('toasts.replacedMatchesSingle')
-                  : t('toasts.replacedMatchesPlural', { count }),
-                { action: { label: t('toasts.undo'), run: () => editor.commands.undo() } },
-              );
-            }}
-          >
-            {t('editor.replaceThese')}
-          </button>
+          {find.range && (
+            <button
+              type="button"
+              className="icon-button small"
+              aria-label={t('editor.replaceEveryMatch')}
+              title={t('editor.replaceEveryMatch')}
+              onClick={() => narrow({ from: '', to: '' })}
+            >
+              <X size={13} />
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -70,4 +70,41 @@ describe('replacing some of the matches', () => {
     expect(editor.state.doc.textContent).toBe('a a a b b b b a');
     editor.destroy();
   });
+
+  it('keeps stepping, lighting and replacing to the range picked', async () => {
+    const { Editor } = await import('@tiptap/core');
+    const { createExtensions } = await import('./extensions');
+    const { getFindState, replaceAll, setFindQuery, setFindRange, stepFind } = await import('./Blocks');
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: createExtensions({
+        onBlockMenu: () => {},
+        resolvePage: () => null,
+        openTag: () => {},
+        createChild: () => null,
+        openDate: () => {},
+        pages: () => [],
+        findPages: () => [],
+        createPage: () => null,
+        renderEmbed: () => {},
+      } as never),
+      content: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'a a a a a a a a' }] }],
+      },
+    });
+    setFindQuery(editor.state, editor.view.dispatch, 'a');
+    setFindRange(editor.state, editor.view.dispatch, { first: 4, last: 7 });
+    expect(getFindState(editor.state).current).toBe(3);
+    for (let step = 0; step < 4; step++) stepFind(editor.state, editor.view.dispatch, 1);
+    // past the last of the range it goes back to the first of it, never to a match outside
+    expect(getFindState(editor.state).current).toBe(3);
+    stepFind(editor.state, editor.view.dispatch, -1);
+    expect(getFindState(editor.state).current).toBe(6);
+    expect(editor.view.dom.querySelectorAll('.find-match')).toHaveLength(4);
+    expect(replaceAll(editor.state, editor.view.dispatch, 'b')).toBe(4);
+    expect(editor.state.doc.textContent).toBe('a a a b b b b a');
+    expect(getFindState(editor.state).range).toBeNull();
+    editor.destroy();
+  });
 });

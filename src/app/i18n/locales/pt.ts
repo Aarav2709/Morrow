@@ -728,6 +728,8 @@ export const pt: TranslationSchema = {
     replaceFrom: 'Primeira ocorrência a substituir',
     replaceUntil: 'Última ocorrência a substituir',
     replaceThese: 'Substituir estas',
+    matchInRange: '{current} de {count}, entre {first} e {last}',
+    replaceEveryMatch: 'Voltar a todas as ocorrências',
     diagramMistake: 'Este diagrama tem um erro: {error}',
     imageFrom: 'Imagem de {host}',
     imageNotFound: 'Imagem não encontrada: {src}',
