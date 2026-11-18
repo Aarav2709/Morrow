@@ -15,6 +15,8 @@ import {
   Trash2,
   X,
   Paperclip,
+  LayoutTemplate,
+  BookOpen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useDeferredValue, useEffect, useRef, useState } from 'react';
@@ -52,6 +54,8 @@ const VIEW_ICONS: Record<string, LucideIcon> = {
   review: GraduationCap,
   graph: Network,
   search: Search,
+  templates: LayoutTemplate,
+  journal: BookOpen,
 };
 
 function getViewTitle(name: string): string {
@@ -74,6 +78,10 @@ function getViewTitle(name: string): string {
       return t('sidebar.graph');
     case 'search':
       return t('common.search');
+    case 'templates':
+      return t('dialogs.templates');
+    case 'journal':
+      return t('journal.title');
     default:
       return t('settings.general.startPages.home');
   }
