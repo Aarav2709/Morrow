@@ -43,6 +43,7 @@ import {
   SIDEBAR_MODULES,
   setPreferences,
   usePreferences,
+  tidySidebarOrder,
 } from '../platform/preferences';
 import type {
   Palette as PaletteName,
@@ -482,13 +483,13 @@ function SidebarSettings() {
       if (!target) {
         const last = members[members.length - 1];
         order.splice(last ? order.indexOf(last) + 1 : order.length, 0, item);
-        setPreferences({ sidebarOrder: order });
+        setPreferences({ sidebarOrder: tidySidebarOrder(order) });
         return;
       }
     } else target = to;
     if (!target || groupOf(target) !== group) return;
     order.splice(order.indexOf(target), 0, item);
-    setPreferences({ sidebarOrder: order });
+    setPreferences({ sidebarOrder: tidySidebarOrder(order) });
   };
   const groups: Array<[keyof typeof SIDEBAR_GROUPS, string]> = [
     ['top', t('settings.sidebar.groupTop')],

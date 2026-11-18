@@ -243,7 +243,25 @@ function readSidebarOrder(raw: unknown): SidebarItem[] {
       .find((other) => kept.includes(other));
     kept.splice(before ? kept.indexOf(before) + 1 : 0, 0, item);
   }
-  return kept;
+  return tidySidebarOrder(kept);
+}
+
+// each item kept with its own group, in case it moved group since the order was saved, as templates did
+// from the sections to the links at the top. the assistant has no place of its own in settings and stays the
+// last link at the top, so turning it on never pushes another link below it
+export function tidySidebarOrder(order: SidebarItem[]): SidebarItem[] {
+  const groupIndex = (item: SidebarItem) =>
+    (SIDEBAR_GROUPS.top as readonly string[]).includes(item)
+      ? item === 'assistant'
+        ? 0.5
+        : 0
+      : (SIDEBAR_GROUPS.sections as readonly string[]).includes(item)
+        ? 1
+        : 2;
+  return order
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => groupIndex(a.item) - groupIndex(b.item) || a.index - b.index)
+    .map(({ item }) => item);
 }
 
 function read(): Preferences {
