@@ -2850,8 +2850,10 @@ td:hover .prop-empty,
 }
 
 /* the templates view, a search beside the button for a new one, and each template's tags under its name */
+/* the search runs the full width of the list under it, and is as tall as the buttons beside it */
 .templates-view-bar {
   display: flex;
+  align-self: stretch;
   gap: 8px;
   align-items: center;
   margin-top: 12px;
@@ -2859,6 +2861,25 @@ td:hover .prop-empty,
 .templates-view-bar .search-field {
   flex: 1;
   min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  gap: 8px;
+  border-radius: var(--radius);
+}
+.templates-view-bar .search-field svg {
+  width: 15px;
+  height: 15px;
+}
+.templates-view-bar .search-field input {
+  font-size: var(--text-sm);
+}
+.templates-view-bar .icon-button,
+.templates-view-bar .button {
+  flex: none;
+  height: 32px;
+}
+.templates-view-bar .icon-button {
+  width: 32px;
 }
 .templates-view-tags {
   display: flex;
