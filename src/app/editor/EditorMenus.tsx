@@ -1339,6 +1339,30 @@ export function BlockMenu({
   const blockType = editor.state.doc.nodeAt(request.pos)?.type.name;
   const fileId = editor.state.doc.nodeAt(request.pos)?.attrs.fileId as string | null | undefined;
   const vault = desktop?.vault;
+  // a line showing another page can leave out that page's title
+  const line = editor.state.doc.nodeAt(request.pos);
+  let embedsPage = false;
+  if (line?.type.name === 'paragraph')
+    line.forEach((child) => {
+      if (child.type.name === 'pageLink' && child.attrs.embed === true) embedsPage = true;
+    });
+  if (line && embedsPage) {
+    entries.unshift(
+      {
+        label: t('editor.showEmbedTitle'),
+        icon: Heading,
+        checked: line.attrs.embedTitle !== false,
+        onSelect: () =>
+          editor.view.dispatch(
+            editor.state.tr.setNodeMarkup(request.pos, undefined, {
+              ...line.attrs,
+              embedTitle: line.attrs.embedTitle === false ? null : false,
+            }),
+          ),
+      },
+      { separator: true },
+    );
+  }
   if (blockType === 'image') {
     // a picture narrower than the page can sit at either side or in the middle
     const current = editor.state.doc.nodeAt(request.pos)?.attrs.align ?? null;

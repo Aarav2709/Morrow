@@ -6,6 +6,7 @@ import { inlineText } from '../doc';
 import {
   ALIGN_PATTERN,
   BACKGROUND_PATTERN,
+  EMBED_TITLE_COMMENT,
   calloutIcon,
   LETTERS_COMMENT,
   HEADER_COLUMN,
@@ -343,6 +344,10 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
           const side = ALIGN_PATTERN.exec(token.content.trim())?.[1];
           if (side) {
             note({ align: side });
+            break;
+          }
+          if (token.content.trim() === EMBED_TITLE_COMMENT) {
+            note({ embedTitle: false });
             break;
           }
           if (token.content.trim() === LETTERS_COMMENT) {

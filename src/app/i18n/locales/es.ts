@@ -712,6 +712,7 @@ export const es: TranslationSchema = {
     pressEnterToAdd: 'Pulsa Enter para añadir',
   },
   editor: {
+    showEmbedTitle: "Mostrar el título de la página",
     alignPicture: 'Posición',
     alignLeft: 'Izquierda',
     alignCentre: 'Centro',

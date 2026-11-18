@@ -1673,3 +1673,11 @@ button.home-stat:hover {
 .emoji-mine-help {
   margin: 4px 0 0;
 }
+
+/* a page shown in another without its title, only its words */
+.prose p[data-embed-title='hidden'] .page-embed:not(.is-live) > .page-link {
+  display: none;
+}
+.prose p[data-embed-title='hidden'] .page-embed:not(.is-live) {
+  padding-top: 6px;
+}

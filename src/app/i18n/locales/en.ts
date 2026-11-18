@@ -705,6 +705,7 @@ export const en = {
     pressEnterToAdd: 'Press Enter to add',
   },
   editor: {
+    showEmbedTitle: "Show the page's title",
     alignPicture: 'Place',
     alignLeft: 'Left',
     alignCentre: 'Centre',

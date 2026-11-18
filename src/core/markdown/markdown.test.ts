@@ -484,6 +484,13 @@ describe('colours', () => {
     expect(markdownToDoc(out).content![0]!.attrs?.align).toBe('right');
   });
 
+  it('keeps a page shown without its title as a comment above the line', () => {
+    const out = '<!-- embed: no title -->\n![[Notes]]\n';
+    const doc = markdownToDoc(out);
+    expect(doc.content![0]!.attrs?.embedTitle).toBe(false);
+    expect(docToMarkdown(doc)).toBe(out);
+  });
+
   it('keeps a list counted in letters, numbered in the file', () => {
     const item = (words: string) => ({ type: 'listItem', content: [p(text(words))] });
     const doc: DocNode = {

@@ -90,6 +90,26 @@ const BlockIds = Extension.create({
   },
 });
 
+// a line with another page shown in it can leave out that page's title, just its words show
+const EmbedTitle = Extension.create({
+  name: 'embedTitle',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph'],
+        attributes: {
+          embedTitle: {
+            default: null,
+            keepOnSplit: false,
+            parseHTML: (element) => (element.getAttribute('data-embed-title') === 'hidden' ? false : null),
+            renderHTML: (attrs) => (attrs.embedTitle === false ? { 'data-embed-title': 'hidden' } : {}),
+          },
+        },
+      },
+    ];
+  },
+});
+
 // a block's own background colour, from the colour in its Turn into menu
 const BlockBackground = Extension.create({
   name: 'blockBackground',
@@ -221,6 +241,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
   return [
     BlockIds,
     BlockBackground,
+    EmbedTitle,
     StarterKit.configure({
       heading: { levels: [1, 2, 3, 4, 5, 6] },
       link: {
