@@ -1091,7 +1091,6 @@ export const en = {
     previousWeek: 'Previous week',
     removeCalendar: 'Remove {name}',
     untitledEvent: 'Untitled event',
-    weekStartsOn: 'Weeks start on {day}',
     layouts: {
       list: 'List',
       month: 'Month',

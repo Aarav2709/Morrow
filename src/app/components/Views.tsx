@@ -25,7 +25,7 @@ import { run, useWorkspace } from '../workspace';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
-import { dateLocale, t } from '../i18n';
+import { t } from '../i18n';
 import {
   followCalendar,
   importCalendarFile,
@@ -34,11 +34,8 @@ import {
   useCalendars,
 } from '../calendars';
 import { pickFiles, saveFile } from '../platform/files';
-import { setPreferences, usePreferences } from '../platform/preferences';
-import type { WeekStart } from '../platform/preferences';
 import { toast } from '../ui';
 import { Popover } from './Popover';
-import { Select } from './Select';
 import { TasksCalendar } from './TasksCalendar';
 import { describeDate, describeTime } from '../editor/Structure';
 import type { CalendarMode } from './TasksCalendar';
@@ -139,7 +136,6 @@ function readLayout(): TaskLayout {
 
 export function TasksView() {
   const state = useWorkspace();
-  const prefs = usePreferences();
   const [filter, setFilter] = useState<TaskFilter>('open');
   const [layout, setLayoutState] = useState<TaskLayout>(readLayout);
   const [calendarsMenu, setCalendarsMenu] = useState<HTMLElement | null>(null);
@@ -172,7 +168,7 @@ export function TasksView() {
             <h1>{t('tasks.title')}</h1>
             <p className="muted">{t('tasks.subtitle')}</p>
             <div className="tasks-bar">
-              <div className="segmented" role="radiogroup" aria-label={t('tasks.layout')}>
+              <div className="segmented has-icons" role="radiogroup" aria-label={t('tasks.layout')}>
                 {(['list', 'month', 'week'] as const).map((value) => (
                   <button
                     key={value}
@@ -182,7 +178,7 @@ export function TasksView() {
                     className={layout === value ? 'is-active' : ''}
                     onClick={() => setLayout(value)}
                   >
-                    {value === 'list' ? <ListIcon size={14} /> : <CalendarDays size={14} />}{' '}
+                    {value === 'list' ? <ListIcon size={14} /> : <CalendarDays size={14} />}
                     {t(`tasks.layouts.${value}`)}
                   </button>
                 ))}
@@ -207,30 +203,14 @@ export function TasksView() {
                   ))}
                 </div>
               ) : (
-                <>
-                  <Select<string>
-                    label={t('settings.general.weekStart')}
-                    value={String(prefs.weekStart)}
-                    options={([1, 0, 6] as const).map((day) => ({
-                      value: String(day),
-                      label: t('tasks.weekStartsOn', {
-                        // 2023-12-31 was a sunday
-                        day: new Date(2023, 11, 31 + day).toLocaleDateString(dateLocale(), {
-                          weekday: 'long',
-                        }),
-                      }),
-                    }))}
-                    onChange={(value) => setPreferences({ weekStart: Number(value) as WeekStart })}
-                  />
-                  <button
-                    type="button"
-                    className="button small"
-                    aria-haspopup="dialog"
-                    onClick={(event) => setCalendarsMenu(calendarsMenu ? null : event.currentTarget)}
-                  >
-                    <CalendarPlus size={14} /> {t('tasks.calendars')}
-                  </button>
-                </>
+                <button
+                  type="button"
+                  className="button small"
+                  aria-haspopup="dialog"
+                  onClick={(event) => setCalendarsMenu(calendarsMenu ? null : event.currentTarget)}
+                >
+                  <CalendarPlus size={14} /> {t('tasks.calendars')}
+                </button>
               )}
             </div>
           </header>

@@ -809,6 +809,18 @@ kbd,
   color: var(--text);
 }
 
+/* an icon and its word sit on the same middle line */
+.segmented.has-icons button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.segmented.has-icons svg {
+  flex: none;
+  display: block;
+}
+
 .segmented button.is-active {
   background: var(--surface);
   color: var(--text);

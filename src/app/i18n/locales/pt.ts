@@ -1098,7 +1098,6 @@ export const pt: TranslationSchema = {
     previousWeek: 'Semana anterior',
     removeCalendar: 'Remover {name}',
     untitledEvent: 'Evento sem título',
-    weekStartsOn: 'Início da semana: {day}',
     layouts: {
       list: 'Lista',
       month: 'Mês',
