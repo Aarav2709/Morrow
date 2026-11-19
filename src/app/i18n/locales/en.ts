@@ -19,6 +19,7 @@ export const en = {
     show: 'Show',
     open: 'Open',
     remove: 'Remove',
+    clear: 'Clear',
   },
   sidebar: {
     sectionEmpty: "Drag pages here, or add them from a page's menu",
@@ -1564,6 +1565,7 @@ export const en = {
   reminders: {
     dateMenu: 'Date',
     openNote: 'Open this day’s note',
+    changeDate: 'Change date',
     otherTime: 'At a custom time…',
     atScheduled: 'At scheduled time, {time}',
     inThePast: 'That time has already passed.',

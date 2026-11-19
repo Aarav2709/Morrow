@@ -1877,10 +1877,30 @@ td:hover .prop-empty,
 .daily-calendar-day.is-selected {
   background: var(--accent-line);
 }
-.daily-calendar-today {
+.daily-calendar-foot {
+  display: flex;
+  gap: 6px;
   margin-top: 8px;
-  width: 100%;
+}
+.daily-calendar-today {
+  flex: 1;
   justify-content: center;
+}
+/* a date in a property or a cell, written out, which opens the same calendar as the journal */
+.date-field {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.date-field:hover:not(:disabled) {
+  background: var(--hover);
+}
+.date-field.is-empty {
+  color: var(--text-faint);
 }
 .home-today {
   margin-top: 14px;

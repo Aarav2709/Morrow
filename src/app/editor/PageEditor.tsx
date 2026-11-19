@@ -15,7 +15,8 @@ import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle, foldText, pageIdByTitle, resolveLinkTarget } from '../../core/search';
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
 import { dateKey } from '../../core/daily';
-import { Bell, BellOff, CalendarDays, Clock } from 'lucide-react';
+import { Bell, BellOff, CalendarCog, CalendarDays, Clock } from 'lucide-react';
+import { MonthPickerPopover } from '../components/MonthPicker';
 import { Menu } from '../components/Menu';
 import type { MenuEntry } from '../components/Menu';
 import { dateLocale, t } from '../i18n';
@@ -194,6 +195,7 @@ function dateMenuEntries(
   date: Date,
   scheduled: string | null,
   pickTime: () => void,
+  pickDate: (() => void) | null,
 ): MenuEntry[] {
   const key = dateKey(date);
   const set = remindersFor(pageId, key)[0];
@@ -226,6 +228,7 @@ function dateMenuEntries(
       icon: CalendarDays,
       onSelect: () => openToday(date),
     },
+    ...(pickDate ? [{ label: t('reminders.changeDate'), icon: CalendarCog, onSelect: pickDate }] : []),
     ...(hours.length || set || endOfDay > Date.now() ? [{ heading: t('reminders.remindMe') }] : []),
     ...(scheduledAt && scheduledAt.getTime() > Date.now()
       ? [
@@ -266,6 +269,23 @@ function dateMenuEntries(
       ? [{ label: t('reminders.remove'), icon: BellOff, onSelect: () => removeReminders(pageId, key) }]
       : []),
   ];
+}
+
+// a date written in the page moves to another day, its time of day kept
+function moveDateMention(editor: Editor, element: HTMLElement, key: string): void {
+  if (editor.isDestroyed || !element.isConnected) return;
+  let pos: number;
+  try {
+    pos = editor.view.posAtDOM(element, 0);
+  } catch {
+    return;
+  }
+  for (const at of [pos, pos - 1]) {
+    const node = at >= 0 ? editor.state.doc.nodeAt(at) : null;
+    if (node?.type.name !== 'dateMention') continue;
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, { ...node.attrs, date: key }));
+    return;
+  }
 }
 
 // a reminder at a time of your own, typed or picked, on the date's day
@@ -392,6 +412,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     time: string | null;
   } | null>(null);
   const [timePicker, setTimePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
+  const [datePicker, setDatePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
   // the find bar opens with the words picked on the page, n changes so pressing it again refills it
   const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
@@ -710,7 +731,22 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           anchor={dateMenu.anchor}
           label={t('reminders.dateMenu')}
           onClose={() => setDateMenu(null)}
-          entries={dateMenuEntries(pageId, dateMenu.date, dateMenu.time, () => setTimePicker(dateMenu))}
+          entries={dateMenuEntries(
+            pageId,
+            dateMenu.date,
+            dateMenu.time,
+            () => setTimePicker(dateMenu),
+            editable ? () => setDatePicker(dateMenu) : null,
+          )}
+        />
+      )}
+      {datePicker && (
+        <MonthPickerPopover
+          anchor={datePicker.anchor}
+          selected={dateKey(datePicker.date)}
+          label={t('reminders.changeDate')}
+          onPick={(key) => moveDateMention(editor, datePicker.anchor, key)}
+          onClose={() => setDatePicker(null)}
         />
       )}
       {timePicker && (

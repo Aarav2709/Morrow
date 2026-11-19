@@ -1,3 +1,4 @@
+import { DateField } from './MonthPicker';
 import { Check, Columns3, ExternalLink, Palette, Pencil, Plus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { stringify } from 'yaml';
@@ -464,14 +465,7 @@ function ExtraValue({
     );
   if (typeof value === 'string' && DAY.test(value))
     return (
-      <input
-        type="date"
-        className="prop-input"
-        aria-label={label}
-        value={value}
-        disabled={!editable}
-        onChange={(event) => onChange(event.target.value)}
-      />
+      <DateField label={label} value={value} disabled={!editable} onChange={(next) => onChange(next ?? '')} />
     );
   // nested values can not be edited here without losing their shape, the markdown view can change them
   if (value !== null && typeof value === 'object' && !Array.isArray(value))

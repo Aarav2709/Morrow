@@ -1,3 +1,4 @@
+import { DateField } from '../MonthPicker';
 import { Check, ExternalLink, Plus, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatValue, formulaResult } from '../../../core/database';
@@ -198,13 +199,11 @@ export function PropertyInput({
     }
     case 'date':
       return (
-        <input
-          type="date"
-          className="prop-input"
-          aria-label={label}
-          value={typeof value === 'string' ? value : ''}
+        <DateField
+          label={label}
+          value={typeof value === 'string' ? value : null}
           disabled={!editable}
-          onChange={(event) => setValue(row.id, prop.id, event.target.value || null)}
+          onChange={(next) => setValue(row.id, prop.id, next)}
         />
       );
     case 'url':

@@ -1,4 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MonthPicker } from './MonthPicker';
 import { useMemo, useState } from 'react';
 import { dateKey, daysWithNotes, neighbourNotes, pagesMadeOn, parseDateKey } from '../../core/daily';
 import { displayTitle } from '../../core/model';
@@ -6,7 +7,6 @@ import type { PageMeta } from '../../core/model';
 import { openToday } from '../operations';
 import { openPage } from '../router';
 import { useWorkspace } from '../workspace';
-import { usePreferences } from '../platform/preferences';
 import { Popover } from './Popover';
 import { relativeTime, useShowMore } from './primitives';
 import { PageIcon } from './Sidebar';
@@ -77,12 +77,6 @@ export function DailyNav({ page }: { page: PageMeta }) {
   );
 }
 
-// the days' first letters from the day weeks start on. 2023-12-31 was a sunday
-const weekdays = (weekStart: number) =>
-  Array.from({ length: 7 }, (_, index) =>
-    new Date(2023, 11, 31 + weekStart + index).toLocaleDateString(dateLocale(), { weekday: 'narrow' }),
-  );
-
 // a month at a time, days with a note are marked, any day opens its note and makes it if needed
 export function DailyCalendar({
   selected,
@@ -93,72 +87,13 @@ export function DailyCalendar({
 }) {
   const state = useWorkspace();
   const days = useMemo(() => daysWithNotes(state), [state]);
-  const start = (selected && parseDateKey(selected)) || new Date();
-  const [month, setMonth] = useState(() => new Date(start.getFullYear(), start.getMonth(), 1));
-  const today = dateKey(new Date());
-  const { weekStart } = usePreferences();
-  const offset = (month.getDay() - weekStart + 7) % 7;
-  const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const cells = [
-    ...Array.from({ length: offset }, () => null),
-    ...Array.from(
-      { length: count },
-      (_, index) => new Date(month.getFullYear(), month.getMonth(), index + 1),
-    ),
-  ];
-  const shift = (by: number) => setMonth(new Date(month.getFullYear(), month.getMonth() + by, 1));
-
   return (
-    <div className="daily-calendar">
-      <div className="daily-calendar-head">
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t('daily.previousMonth')}
-          onClick={() => shift(-1)}
-        >
-          <ChevronLeft size={15} />
-        </button>
-        <strong>{month.toLocaleDateString(dateLocale(), { month: 'long', year: 'numeric' })}</strong>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t('daily.nextMonth')}
-          onClick={() => shift(1)}
-        >
-          <ChevronRight size={15} />
-        </button>
-      </div>
-      <div className="daily-calendar-grid" role="grid">
-        {weekdays(weekStart).map((day, index) => (
-          <span key={`w${index}`} className="daily-calendar-weekday" aria-hidden="true">
-            {day}
-          </span>
-        ))}
-        {cells.map((date, index) => {
-          if (!date) return <span key={`e${index}`} />;
-          const key = dateKey(date);
-          return (
-            <button
-              key={key}
-              type="button"
-              className={`daily-calendar-day${days.has(key) ? ' has-note' : ''}${key === today ? ' is-today' : ''}${key === selected ? ' is-selected' : ''}`}
-              aria-label={
-                days.has(key)
-                  ? t('daily.hasNote', { date: date.toLocaleDateString(dateLocale(), { dateStyle: 'full' }) })
-                  : date.toLocaleDateString(dateLocale(), { dateStyle: 'full' })
-              }
-              onClick={() => onPick(date)}
-            >
-              {date.getDate()}
-            </button>
-          );
-        })}
-      </div>
-      <button type="button" className="button small daily-calendar-today" onClick={() => onPick(new Date())}>
-        {t('sidebar.today')}
-      </button>
-    </div>
+    <MonthPicker
+      selected={selected}
+      onPick={onPick}
+      marked={days}
+      markedLabel={(date) => t('daily.hasNote', { date })}
+    />
   );
 }
 

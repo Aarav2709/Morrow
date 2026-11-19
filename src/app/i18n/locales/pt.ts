@@ -21,6 +21,7 @@ export const pt: TranslationSchema = {
     show: 'Mostrar',
     open: 'Abrir',
     remove: 'Remover',
+    clear: 'Limpar',
   },
   sidebar: {
     sectionEmpty: 'Arraste páginas para cá ou adicione pelo menu de uma página',
@@ -1578,6 +1579,7 @@ export const pt: TranslationSchema = {
   reminders: {
     dateMenu: 'Data',
     openNote: 'Abrir a nota deste dia',
+    changeDate: 'Mudar data',
     otherTime: 'Em um horário personalizado…',
     atScheduled: 'No horário marcado, {time}',
     inThePast: 'Esse horário já passou.',
