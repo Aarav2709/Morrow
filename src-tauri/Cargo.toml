@@ -47,6 +47,8 @@ gethostname = "0.5"
 which = "6"
 mime_guess = "2"
 dirs = "5"
+# spelling in several languages at once, with hunspell dictionaries, where the web view checks only one
+spellbook = "0.4"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 trash = "5"

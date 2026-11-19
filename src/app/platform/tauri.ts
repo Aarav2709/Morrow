@@ -185,6 +185,15 @@ export function tauriBridge(): DesktopBridge | null {
     fetchCalendar: (url) => invoke<string>('fetch_calendar', { url }),
     spellLanguages: () => invoke('spell_languages'),
     setSpellLanguages: (languages) => invoke<boolean>('set_spell_languages', { languages }),
+    // only windows needs morrow to check spelling itself, other systems check every language picked
+    ...(info.platform === 'win32'
+      ? {
+          spellCheck: (words: string[]) =>
+            invoke<{ wrong: string[]; missing: string[] }>('spell_check', { words }),
+          spellSuggest: (word: string) => invoke<string[]>('spell_suggest', { word }),
+          spellAdd: (word: string) => invoke<void>('spell_add', { word }),
+        }
+      : {}),
     async fetchImage(url) {
       const bytes = await bytesOrNull('fetch_image', { url });
       if (!bytes) return null;

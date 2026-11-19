@@ -10,6 +10,7 @@ mod device;
 mod mcp;
 mod native;
 mod paths;
+mod spell;
 mod sync;
 mod updates;
 mod vault;
@@ -126,6 +127,8 @@ struct SpellLanguages {
     system: Vec<String>,
     // the system checks in all its languages by itself and there is nothing to pick, as on macos
     automatic: bool,
+    // morrow checks the page's words itself, with a dictionary fetched for each language, as on windows
+    own: bool,
 }
 
 #[tauri::command]
@@ -134,6 +137,7 @@ fn spell_languages() -> SpellLanguages {
         chosen: native::chosen_spell_languages(),
         system: native::system_spell_languages(),
         automatic: !cfg!(any(target_os = "linux", windows)),
+        own: cfg!(windows),
     }
 }
 
@@ -143,7 +147,25 @@ fn set_spell_languages<R: Runtime>(
     window: WebviewWindow<R>,
     languages: Vec<String>,
 ) -> Result<bool, String> {
+    spell::forget_failures();
     native::set_spell_languages(&window, &languages)
+}
+
+// the words of a page no language picked for spelling knows, on windows where the web view can't check
+// several languages
+#[tauri::command]
+async fn spell_check(words: Vec<String>) -> spell::Checked {
+    spell::check(words).await
+}
+
+#[tauri::command]
+async fn spell_suggest(word: String) -> Vec<String> {
+    spell::suggest(word).await
+}
+
+#[tauri::command]
+fn spell_add(word: String) -> Res<()> {
+    spell::add_word(&word)
 }
 
 #[tauri::command]
@@ -1210,6 +1232,9 @@ pub fn run() {
             set_zoom,
             spell_languages,
             set_spell_languages,
+            spell_check,
+            spell_suggest,
+            spell_add,
             open_external,
             copy_text,
             copy_rich,

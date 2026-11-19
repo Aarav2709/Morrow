@@ -168,6 +168,7 @@ export const es: TranslationSchema = {
       region: 'Fechas y hora',
       spellLanguages: 'Idiomas de ortografía',
       spellLanguagesHelp: 'Las palabras se revisan en todos estos a la vez.',
+      spellDownload: 'El diccionario de cada idioma se descarga una vez, la primera vez que se usa.',
       spellSystem: 'No hay ninguno elegido, así que se usan los del sistema: {languages}.',
       spellAutomatic: 'Tu sistema revisa la ortografía en todos sus idiomas por sí mismo.',
       spellRestart: 'Los idiomas de ortografía se aplican la próxima vez que abras Morrow.',
@@ -795,6 +796,12 @@ export const es: TranslationSchema = {
     heading: 'Encabezado',
     clearFormatting: 'Quitar el formato',
     alignText: 'Alinear',
+    spelling: {
+      menu: 'Ortografía',
+      looking: 'Buscando palabras…',
+      none: 'Sin sugerencias',
+      add: 'Añadir «{word}» al diccionario',
+    },
     crop: {
       title: 'Recortar',
       shape: 'Forma',

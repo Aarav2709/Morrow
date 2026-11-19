@@ -150,8 +150,9 @@ pub fn system_spell_languages() -> Vec<String> {
     Vec::new()
 }
 
-// keeps the picked languages. linux checks in them at once, the web view on windows reads them as it
-// starts, so they apply the next time morrow opens. true when that restart is needed
+// keeps the picked languages. linux checks in them at once. on windows morrow checks pages itself in them at
+// once too, the small text fields the web view checks take them the next time morrow opens. true when a
+// restart is needed
 pub fn set_spell_languages<R: Runtime>(
     window: &WebviewWindow<R>,
     languages: &[String],
@@ -176,7 +177,7 @@ pub fn set_spell_languages<R: Runtime>(
     #[cfg(windows)]
     {
         let _ = window;
-        Ok(true)
+        Ok(false)
     }
     #[cfg(not(any(target_os = "linux", windows)))]
     {

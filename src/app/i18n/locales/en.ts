@@ -165,6 +165,7 @@ export const en = {
       region: 'Dates and time',
       spellLanguages: 'Spelling languages',
       spellLanguagesHelp: 'Words are checked in all of these at once.',
+      spellDownload: 'Each language’s dictionary is downloaded once, the first time it is used.',
       spellSystem: "None picked, so the system's languages are used: {languages}.",
       spellAutomatic: 'Your system checks spelling in every language it has, by itself.',
       spellRestart: 'The spelling languages apply the next time Morrow opens.',
@@ -788,6 +789,12 @@ export const en = {
     heading: 'Heading',
     clearFormatting: 'Clear formatting',
     alignText: 'Align',
+    spelling: {
+      menu: 'Spelling',
+      looking: 'Looking for words…',
+      none: 'No suggestions',
+      add: 'Add “{word}” to the dictionary',
+    },
     crop: {
       title: 'Crop',
       shape: 'Shape',

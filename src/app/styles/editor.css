@@ -1133,3 +1133,11 @@ html.is-dragging-blocks * {
 .custom-emoji-img {
   object-fit: contain;
 }
+
+/* a word no spelling language picked knows, the way the system marks one */
+.ProseMirror .spell-error {
+  text-decoration: underline wavy #e5484d;
+  text-decoration-skip-ink: none;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}

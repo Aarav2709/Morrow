@@ -7,6 +7,7 @@ import { desktop } from '../platform/desktop';
 import { DATE_FORMATS, setPreferences, usePreferences } from '../platform/preferences';
 import type { DateFormat, WeekStart } from '../platform/preferences';
 import { toast } from '../ui';
+import { forgetSpelling } from '../editor/Spelling';
 import { allTimeZones, systemTimeZone, zoneOffsetLabel } from '../zones';
 import { Switch } from './primitives';
 import { Select } from './Select';
@@ -55,7 +56,34 @@ interface SpellInfo {
   chosen: string[];
   system: string[];
   automatic: boolean;
+  // morrow checks pages itself, with a dictionary fetched for each language the first time
+  own?: boolean;
 }
+
+// languages morrow has a dictionary for, where it checks spelling itself
+const OWN_DICTIONARIES = [
+  'en',
+  'es',
+  'pt',
+  'fr',
+  'de',
+  'it',
+  'nl',
+  'ca',
+  'sv',
+  'da',
+  'nb',
+  'no',
+  'pl',
+  'cs',
+  'hu',
+  'ro',
+  'el',
+  'tr',
+  'ru',
+  'uk',
+  'vi',
+];
 
 // the languages words are checked in. none picked follows the system, several can be checked at once
 function SpellLanguages() {
@@ -78,21 +106,24 @@ function SpellLanguages() {
   const save = async (chosen: string[]) => {
     setInfo({ ...info, chosen });
     const restart = await desktop?.setSpellLanguages?.(chosen).catch(() => false);
+    forgetSpelling();
     if (restart) toast(t('settings.language.spellRestart'));
   };
   const remaining = [...new Set([...info.system, ...SPELL_CHOICES])].filter(
-    (code) => !info.chosen.includes(code),
+    (code) =>
+      !info.chosen.includes(code) &&
+      (!info.own || OWN_DICTIONARIES.includes(code.toLowerCase().split('-')[0]!)),
   );
   return (
     <SettingRow
       label={t('settings.language.spellLanguages')}
-      help={
+      help={`${
         info.chosen.length
           ? t('settings.language.spellLanguagesHelp')
           : t('settings.language.spellSystem', {
               languages: info.system.map(languageName).join(', ') || '—',
             })
-      }
+      }${info.own ? ` ${t('settings.language.spellDownload')}` : ''}`}
       stacked
     >
       <div className="spell-languages">

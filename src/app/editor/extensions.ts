@@ -24,6 +24,7 @@ import { CustomEmojiText } from './CustomEmojiText';
 import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
+import { Spelling } from './Spelling';
 import { IndentedLines, KeepTab, lineContent, LineEdges } from './turnInto';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Fragment, Slice } from '@tiptap/pm/model';
@@ -291,6 +292,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     BlockIds,
     BlockBackground,
     TextAlignment,
+    Spelling,
     EmbedTitle,
     CodePreview,
     StarterKit.configure({

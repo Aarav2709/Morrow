@@ -394,6 +394,12 @@ export function setPreferences(patch: Partial<Preferences>): void {
   for (const listener of listeners) listener();
 }
 
+// called whenever a preference changes, outside react
+export function subscribePreferences(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 export function usePreferences(): Preferences {
   return useSyncExternalStore(
     (listener) => {

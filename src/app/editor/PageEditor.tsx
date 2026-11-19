@@ -15,9 +15,11 @@ import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle, foldText, pageIdByTitle, resolveLinkTarget } from '../../core/search';
 import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
 import { dateKey } from '../../core/daily';
-import { Bell, BellOff, CalendarCog, CalendarDays, Clock } from 'lucide-react';
+import { Bell, BellOff, BookPlus, CalendarCog, CalendarDays, Clock } from 'lucide-react';
 import { MonthPickerPopover } from '../components/MonthPicker';
 import { CropDialog } from './CropDialog';
+import { forgetSpelling, misspelledAt, ownSpelling } from './Spelling';
+import { desktop } from '../platform/desktop';
 import { Menu } from '../components/Menu';
 import type { MenuEntry } from '../components/Menu';
 import { dateLocale, t } from '../i18n';
@@ -415,6 +417,13 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   const [timePicker, setTimePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
   const [datePicker, setDatePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
   const [cropping, setCropping] = useState<number | null>(null);
+  const [spellMenu, setSpellMenu] = useState<{
+    word: string;
+    from: number;
+    to: number;
+    rect: DOMRect;
+    suggestions: string[] | null;
+  } | null>(null);
   // the find bar opens with the words picked on the page, n changes so pressing it again refills it
   const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
@@ -560,6 +569,23 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           },
           // right click on a picture shows the same options as its handle, with copy and open
           contextmenu: (view, event) => {
+            const misspelled = ownSpelling() ? misspelledAt(view, event) : null;
+            if (misspelled) {
+              event.preventDefault();
+              setSpellMenu({
+                ...misspelled,
+                rect: new DOMRect(event.clientX, event.clientY, 0, 0),
+                suggestions: null,
+              });
+              void desktop
+                ?.spellSuggest?.(misspelled.word)
+                .then((suggestions) =>
+                  setSpellMenu((current) =>
+                    current?.from === misspelled.from ? { ...current, suggestions } : current,
+                  ),
+                );
+              return true;
+            }
             if (!(event.target instanceof Element) || !event.target.closest('.image-block')) return false;
             const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
             const node = at && at.inside >= 0 ? view.state.doc.nodeAt(at.inside) : null;
@@ -752,6 +778,34 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
         />
       )}
       {cropping !== null && <CropDialog editor={editor} pos={cropping} onClose={() => setCropping(null)} />}
+      {spellMenu && (
+        <Menu
+          anchor={spellMenu.rect}
+          label={t('editor.spelling.menu')}
+          onClose={() => setSpellMenu(null)}
+          entries={[
+            ...(spellMenu.suggestions === null
+              ? [{ label: t('editor.spelling.looking'), disabled: true, onSelect: () => {} }]
+              : spellMenu.suggestions.length === 0
+                ? [{ label: t('editor.spelling.none'), disabled: true, onSelect: () => {} }]
+                : spellMenu.suggestions.map((suggestion) => ({
+                    label: suggestion,
+                    onSelect: () => {
+                      const { from, to, word } = spellMenu;
+                      if (editor.state.doc.textBetween(from, to) !== word) return;
+                      editor.chain().focus().insertContentAt({ from, to }, suggestion).run();
+                    },
+                  }))),
+            { separator: true as const },
+            {
+              label: t('editor.spelling.add', { word: spellMenu.word }),
+              icon: BookPlus,
+              onSelect: () =>
+                void desktop?.spellAdd?.(spellMenu.word).then(() => forgetSpelling(spellMenu.word)),
+            },
+          ]}
+        />
+      )}
       {datePicker && (
         <MonthPickerPopover
           anchor={datePicker.anchor}

@@ -213,9 +213,14 @@ export interface DesktopBridge {
   // a picture file another app put among the words it copied, by its file:// address
   readPastedPicture?(src: string): Promise<Uint8Array | null>;
   // the languages spelling is checked in: the ones picked, and the system's own for when none are
-  spellLanguages?(): Promise<{ chosen: string[]; system: string[]; automatic: boolean }>;
+  spellLanguages?(): Promise<{ chosen: string[]; system: string[]; automatic: boolean; own?: boolean }>;
   // true when they only apply once morrow opens again
   setSpellLanguages?(languages: string[]): Promise<boolean>;
+  // morrow's own spelling, where the web view checks one language only: the words no language picked knows,
+  // what one might have meant, and a word to always take as right
+  spellCheck?(words: string[]): Promise<{ wrong: string[]; missing: string[] }>;
+  spellSuggest?(word: string): Promise<string[]>;
+  spellAdd?(word: string): Promise<void>;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
   // a file made in the app, saved where the person picks. the webview has no downloads of its own
   saveFile?(
