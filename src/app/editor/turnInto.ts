@@ -340,9 +340,8 @@ function lineEdge(editor: Editor, forward: boolean, extend: boolean, page: boole
     const head = selection.head;
     const $head = state.doc.resolve(head);
     if (!$head.parent.isTextblock) return false;
-    const start = $head.start();
-    const end = $head.end();
-    target = nativeLineEdge(editor, forward, start, end) ?? measuredLineEdge(editor, forward, start, end);
+    target =
+      visualLineEdge(editor, forward, $head.start(), $head.end()) ?? (forward ? $head.end() : $head.start());
   }
   const anchor = extend ? selection.anchor : target;
   const next = TextSelection.between(state.doc.resolve(anchor), state.doc.resolve(target));
@@ -350,42 +349,75 @@ function lineEdge(editor: Editor, forward: boolean, extend: boolean, page: boole
   return true;
 }
 
-// the web view's own idea of where the line on screen starts or ends, asked by moving a copy of the cursor
-// there. the selection is put back as it was, the editor then moves it itself
-function nativeLineEdge(editor: Editor, forward: boolean, start: number, end: number): number | null {
-  const { view } = editor;
+// the middle height of the line the cursor is drawn on. the web view's own cursor knows which of two lines
+// a place where a line wraps belongs to, the end of one or the start of the next, so it is asked first
+function caretLine(editor: Editor): number | null {
+  const { view, state } = editor;
+  const head = state.selection.head;
   const dom = view.dom.ownerDocument.getSelection?.();
-  if (!dom || typeof dom.modify !== 'function' || !dom.focusNode) return null;
+  if (dom && dom.rangeCount > 0 && dom.isCollapsed && dom.focusNode && view.dom.contains(dom.focusNode)) {
+    try {
+      if (view.posAtDOM(dom.focusNode, dom.focusOffset) === head) {
+        const rects = dom.getRangeAt(0).getClientRects();
+        const rect = rects[rects.length - 1];
+        if (rect && rect.height > 0) return (rect.top + rect.bottom) / 2;
+      }
+    } catch {
+      // the layout is asked instead
+    }
+  }
   try {
-    const head = view.domAtPos(editor.state.selection.head);
-    dom.collapse(head.node, head.offset);
-    dom.modify('move', forward ? 'forward' : 'backward', 'lineboundary');
-    if (!dom.focusNode || !view.dom.contains(dom.focusNode)) return null;
-    const pos = view.posAtDOM(dom.focusNode, dom.focusOffset);
-    return pos >= start && pos <= end ? pos : null;
+    const caret = view.coordsAtPos(head, 1);
+    return (caret.top + caret.bottom) / 2;
   } catch {
     return null;
   }
 }
 
-// the same found from the layout: the position at the far side of the block, at the height of the cursor
-function measuredLineEdge(editor: Editor, forward: boolean, start: number, end: number): number {
+// where the line on screen the cursor is on starts or ends, found from the layout. lines only go down as the
+// text goes on, so the first and last places drawn on the cursor's line are searched for by halves. at the
+// end of a line that wraps, the place found is also the start of the next line, and the cursor would be
+// drawn there, so it stops just before: before the space the line wraps at, at the end of the words
+function visualLineEdge(editor: Editor, forward: boolean, start: number, end: number): number | null {
   const { view, state } = editor;
   const head = state.selection.head;
-  let target = forward ? end : start;
+  const y = caretLine(editor);
+  if (y === null) return null;
+  const middle = (pos: number, side: -1 | 1) => {
+    const box = view.coordsAtPos(pos, side);
+    return (box.top + box.bottom) / 2;
+  };
   try {
-    const caret = view.coordsAtPos(head, forward ? -1 : 1);
-    const block = view.nodeDOM(state.doc.resolve(head).before());
-    const box = block instanceof HTMLElement ? block.getBoundingClientRect() : null;
-    if (box) {
-      const top = (caret.top + caret.bottom) / 2;
-      const found = view.posAtCoords({ left: forward ? box.right - 1 : box.left + 1, top });
-      if (found && found.pos >= start && found.pos <= end) target = found.pos;
+    const line = view.coordsAtPos(head, 1);
+    const tolerance = Math.max(2, (line.bottom - line.top) / 2);
+    if (!forward) {
+      // the first place whose cursor is on this line or below it
+      let low = start;
+      let high = head;
+      while (low < high) {
+        const mid = (low + high) >> 1;
+        if (middle(mid, 1) >= y - tolerance) high = mid;
+        else low = mid + 1;
+      }
+      return low;
     }
+    // the last place whose cursor, drawn at the end of a line, is on this line or above it
+    let low = head;
+    let high = end;
+    while (low < high) {
+      const mid = (low + high + 1) >> 1;
+      if (middle(mid, -1) <= y + tolerance) low = mid;
+      else high = mid - 1;
+    }
+    if (low < end && middle(low, 1) > y + tolerance && low > start) {
+      const before = state.doc.textBetween(low - 1, low, '\n', '\ufffc');
+      if (/\s/.test(before) || low - 1 > head) return low - 1;
+    }
+    return low;
   } catch {
-    // no layout to measure, such as a hidden page, so the edge of the whole line will do
+    // no layout to measure, such as a hidden page
+    return null;
   }
-  return target;
 }
 
 // taken as the key goes down in the page, ahead of every other key handler, so nothing else can let the
