@@ -90,6 +90,35 @@ const BlockIds = Extension.create({
   },
 });
 
+export const TEXT_ALIGNS = ['left', 'center', 'right', 'justify'] as const;
+export type TextAlign = (typeof TEXT_ALIGNS)[number];
+
+// lines and headings can put their words in the middle, to the right or spread across the line. left is
+// how every line starts, so it is kept as nothing. words pasted from other apps keep how they were set
+const TextAlignment = Extension.create({
+  name: 'textAlignment',
+  addGlobalAttributes() {
+    return [
+      {
+        types: ['paragraph', 'heading'],
+        attributes: {
+          align: {
+            default: null,
+            parseHTML: (element) => {
+              const value = (element.style.textAlign || element.getAttribute('align') || '').toLowerCase();
+              return value === 'center' || value === 'right' || value === 'justify' ? value : null;
+            },
+            renderHTML: (attrs) =>
+              attrs.align === 'center' || attrs.align === 'right' || attrs.align === 'justify'
+                ? { style: `text-align: ${attrs.align}` }
+                : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
 // a line with another page shown in it can leave out that page's title, just its words show
 const EmbedTitle = Extension.create({
   name: 'embedTitle',
@@ -261,6 +290,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
   return [
     BlockIds,
     BlockBackground,
+    TextAlignment,
     EmbedTitle,
     CodePreview,
     StarterKit.configure({

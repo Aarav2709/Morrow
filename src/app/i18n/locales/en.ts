@@ -786,6 +786,13 @@ export const en = {
     equation: 'Equation inline',
     heading: 'Heading',
     clearFormatting: 'Clear formatting',
+    alignText: 'Align',
+    align: {
+      left: 'Left',
+      center: 'Center',
+      right: 'Right',
+      justify: 'Justify',
+    },
     moreOptions: 'More options',
     colour: 'Colour',
     link: 'Link',

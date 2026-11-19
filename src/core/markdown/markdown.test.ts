@@ -484,6 +484,24 @@ describe('colours', () => {
     expect(markdownToDoc(out).content![0]!.attrs?.align).toBe('right');
   });
 
+  it('round trips lines and headings set in the middle, right or across as a comment above them', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 2, align: 'center' }, content: [text('Title')] },
+        { type: 'paragraph', attrs: { align: 'right' }, content: [text('Signed')] },
+        { type: 'paragraph', attrs: { align: 'justify' }, content: [text('Long words')] },
+        { type: 'paragraph', attrs: { align: 'left' }, content: [text('Plain')] },
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe(
+      '<!-- align: center -->\n## Title\n\n<!-- align: right -->\nSigned\n\n<!-- align: justify -->\nLong words\n\nPlain\n',
+    );
+    const back = markdownToDoc(out).content!;
+    expect(back.map((node) => node.attrs?.align ?? null)).toEqual(['center', 'right', 'justify', null]);
+  });
+
   it('keeps a page shown without its title as a comment above the line', () => {
     const out = '<!-- embed: no title -->\n![[Notes]]\n';
     const doc = markdownToDoc(out);

@@ -10,6 +10,7 @@ import {
   ArrowDown,
   AlignCenter,
   AlignLeft,
+  AlignJustify,
   AlignRight,
   ArrowLeft,
   ArrowRight,
@@ -57,6 +58,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { ListLettered } from './icons';
+import { TEXT_ALIGNS } from './extensions';
+import type { TextAlign } from './extensions';
 import { columnAt, moveColumn } from './ColumnGrip';
 import type { LucideIcon } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -267,6 +270,7 @@ function useMarks(editor: Editor) {
       colour: current.isActive('textColor') || current.isActive('highlight'),
       link: current.isActive('link'),
       heading: headingLevel(current) !== null,
+      align: textAlignAt(current),
       // words in a list's items, a heading there would take the line out of its list
       inList: current.isActive('listItem') || current.isActive('taskItem'),
       href: String(current.getAttributes('link').href ?? ''),
@@ -407,6 +411,7 @@ export function FormattingMenu({
   const [editingLink, setEditingLink] = useState(false);
   const [coloring, setColoring] = useState(false);
   const [headings, setHeadings] = useState(false);
+  const [aligning, setAligning] = useState(false);
   const marks = useMarks(editor);
   const { assistant } = usePreferences();
   const shown = useRef(false);
@@ -425,6 +430,7 @@ export function FormattingMenu({
           setEditingLink(false);
           setColoring(false);
           setHeadings(false);
+          setAligning(false);
         },
       }) as const,
   );
@@ -494,6 +500,8 @@ export function FormattingMenu({
           <ColorPanel editor={editor} onDone={() => setColoring(false)} />
         ) : headings ? (
           <HeadingPanel editor={editor} onDone={() => setHeadings(false)} />
+        ) : aligning ? (
+          <AlignPanel editor={editor} onDone={() => setAligning(false)} />
         ) : (
           <>
             <ToolButton
@@ -565,6 +573,12 @@ export function FormattingMenu({
                 onClick={() => setHeadings(true)}
               />
             )}
+            <ToolButton
+              label={t('editor.alignText')}
+              icon={ALIGN_ICONS[marks.align ?? 'left']}
+              active={marks.align !== null && marks.align !== 'left'}
+              onClick={() => setAligning(true)}
+            />
             <ToolButton
               label={t('editor.clearFormatting')}
               icon={RemoveFormatting}
@@ -1058,6 +1072,69 @@ function intoColumns(editor: Editor, from: number, to: number, count: number): v
 
 // a background on the whole block, not only its words. an item of a list gets one of its own, the list
 // around it keeps what it had. a whole list coloured takes the colour off its items so it shows evenly
+// the lines and headings from one place to another take the same alignment, the cursor's own line when
+// nothing is picked. a list's items, a quote's lines and the like each take it
+export function setTextAlign(editor: Editor, align: TextAlign, from?: number, to?: number): void {
+  const { tr, doc, selection } = editor.state;
+  const start = from ?? selection.from;
+  const end = to ?? selection.to;
+  doc.nodesBetween(start, Math.max(start + 1, end), (node, pos) => {
+    if (node.type.name !== 'paragraph' && node.type.name !== 'heading') return true;
+    const value = align === 'left' ? null : align;
+    if ((node.attrs.align ?? null) !== value)
+      tr.setNodeMarkup(pos, undefined, { ...node.attrs, align: value });
+    return false;
+  });
+  if (tr.docChanged) editor.view.dispatch(tr);
+  editor.commands.focus();
+}
+
+// where the words of the cursor's line sit, left when it says nothing
+function textAlignAt(editor: Editor, pos?: number): TextAlign | null {
+  const $pos = editor.state.doc.resolve(pos ?? editor.state.selection.from);
+  for (let depth = $pos.depth; depth >= 0; depth--) {
+    const node = $pos.node(depth);
+    if (node.type.name === 'paragraph' || node.type.name === 'heading')
+      return (TEXT_ALIGNS as readonly string[]).includes(String(node.attrs.align))
+        ? (node.attrs.align as TextAlign)
+        : 'left';
+  }
+  const node = pos === undefined ? null : editor.state.doc.nodeAt(pos);
+  if (node && (node.type.name === 'paragraph' || node.type.name === 'heading'))
+    return (TEXT_ALIGNS as readonly string[]).includes(String(node.attrs.align))
+      ? (node.attrs.align as TextAlign)
+      : 'left';
+  return null;
+}
+
+const ALIGN_ICONS: Record<TextAlign, LucideIcon> = {
+  left: AlignLeft,
+  center: AlignCenter,
+  right: AlignRight,
+  justify: AlignJustify,
+};
+
+// the four ways to set a line's words, from the bar over picked words
+function AlignPanel({ editor, onDone }: { editor: Editor; onDone: () => void }) {
+  const current = useEditorState({ editor, selector: ({ editor: e }) => textAlignAt(e) });
+  return (
+    <div className="heading-panel" onKeyDown={(event) => escapeTo(event, onDone)}>
+      {TEXT_ALIGNS.map((align) => (
+        <ToolButton
+          key={align}
+          label={t(`editor.align.${align}`)}
+          icon={ALIGN_ICONS[align]}
+          active={current === align}
+          onClick={() => {
+            setTextAlign(editor, align);
+            onDone();
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function setBlockBackground(editor: Editor, positions: number[], color: ColorName | null): void {
   const { tr, doc } = editor.state;
   const done = new Set<number>();
@@ -1176,6 +1253,15 @@ export function BlockMenu({
   const block = editor.state.doc.nodeAt(request.pos);
   // pictures, dividers and other blocks without words have no colour to change
   const colourable = range !== null || (block !== null && block.textContent.trim() !== '');
+  // words in lines and headings can be set left, in the middle, right or across the line, also in a list
+  let alignable = range !== null;
+  if (block && !range)
+    block.descendants((node) => {
+      if (node.type.name === 'paragraph' || node.type.name === 'heading') alignable = true;
+      return !alignable;
+    });
+  if (block && (block.type.name === 'paragraph' || block.type.name === 'heading')) alignable = true;
+  const alignment = range ? null : textAlignAt(editor, request.pos);
   const blockPositions = () => {
     if (!range) return [request.pos];
     // the picked blocks side by side, items of a list when only some of its items were picked
@@ -1284,6 +1370,28 @@ export function BlockMenu({
       })),
     },
     { separator: true },
+    ...(alignable
+      ? [
+          {
+            label: t('editor.alignText'),
+            icon: ALIGN_ICONS[alignment ?? 'left'],
+            submenu: TEXT_ALIGNS.map((align) => ({
+              label: t(`editor.align.${align}`),
+              icon: ALIGN_ICONS[align],
+              checked: alignment === align,
+              onSelect: () =>
+                range
+                  ? setTextAlign(editor, align, range.from, range.to)
+                  : setTextAlign(
+                      editor,
+                      align,
+                      request.pos,
+                      request.pos + (editor.state.doc.nodeAt(request.pos)?.nodeSize ?? 1),
+                    ),
+            })),
+          },
+        ]
+      : []),
     ...(colourable
       ? [
           {

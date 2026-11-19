@@ -68,6 +68,11 @@ function blocks(nodes: DocNode[], options: SerializeOptions): string {
       ...(node.type === 'image' && (node.attrs?.align === 'left' || node.attrs?.align === 'right')
         ? [ALIGN_COMMENT(String(node.attrs.align))]
         : []),
+      // words put in the middle, to the right or spread across the line, which markdown has no way to say
+      ...((node.type === 'paragraph' || node.type === 'heading') &&
+      (node.attrs?.align === 'center' || node.attrs?.align === 'right' || node.attrs?.align === 'justify')
+        ? [ALIGN_COMMENT(String(node.attrs.align))]
+        : []),
     ];
     parts.push([...notes, text].join('\n'));
   }
@@ -247,7 +252,7 @@ export const BACKGROUND_COMMENT = (color: ColorName) => `<!-- background: ${colo
 export const BACKGROUND_PATTERN = /^<!--\s*background:\s*([a-z]+)\s*-->$/;
 // a picture set to one side of the page, a comment above it like the background
 export const ALIGN_COMMENT = (side: string) => `<!-- align: ${side} -->`;
-export const ALIGN_PATTERN = /^<!--\s*align:\s*(left|right)\s*-->$/;
+export const ALIGN_PATTERN = /^<!--\s*align:\s*(left|right|center|justify)\s*-->$/;
 // a line showing another page without that page's title
 export const EMBED_TITLE_COMMENT = '<!-- embed: no title -->';
 // an html code block drawn as a page under its code

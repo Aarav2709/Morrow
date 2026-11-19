@@ -793,6 +793,13 @@ export const pt: TranslationSchema = {
     equation: 'Equação embutida',
     heading: 'Título',
     clearFormatting: 'Limpar a formatação',
+    alignText: 'Alinhar',
+    align: {
+      left: 'Esquerda',
+      center: 'Centro',
+      right: 'Direita',
+      justify: 'Justificar',
+    },
     moreOptions: 'Mais opções',
     colour: 'Cor',
     link: 'Link',
