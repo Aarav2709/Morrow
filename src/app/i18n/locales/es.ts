@@ -795,6 +795,20 @@ export const es: TranslationSchema = {
     heading: 'Encabezado',
     clearFormatting: 'Quitar el formato',
     alignText: 'Alinear',
+    crop: {
+      title: 'Recortar',
+      shape: 'Forma',
+      reset: 'Volver a la imagen entera',
+      apply: 'Recortar',
+      failed: 'No se pudo recortar la imagen.',
+      ratios: {
+        free: 'Libre',
+        square: 'Cuadrado',
+        fourThree: '4:3',
+        sixteenNine: '16:9',
+        portrait: '3:4',
+      },
+    },
     align: {
       left: 'Izquierda',
       center: 'Centro',

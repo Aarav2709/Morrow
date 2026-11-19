@@ -788,6 +788,20 @@ export const en = {
     heading: 'Heading',
     clearFormatting: 'Clear formatting',
     alignText: 'Align',
+    crop: {
+      title: 'Crop',
+      shape: 'Shape',
+      reset: 'Back to the whole picture',
+      apply: 'Crop',
+      failed: 'The picture could not be cropped.',
+      ratios: {
+        free: 'Free',
+        square: 'Square',
+        fourThree: '4:3',
+        sixteenNine: '16:9',
+        portrait: '3:4',
+      },
+    },
     align: {
       left: 'Left',
       center: 'Center',

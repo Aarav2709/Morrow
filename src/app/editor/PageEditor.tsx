@@ -17,6 +17,7 @@ import { ancestorsOf, isEffectivelyTrashed } from '../../core/tree';
 import { dateKey } from '../../core/daily';
 import { Bell, BellOff, CalendarCog, CalendarDays, Clock } from 'lucide-react';
 import { MonthPickerPopover } from '../components/MonthPicker';
+import { CropDialog } from './CropDialog';
 import { Menu } from '../components/Menu';
 import type { MenuEntry } from '../components/Menu';
 import { dateLocale, t } from '../i18n';
@@ -413,6 +414,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   } | null>(null);
   const [timePicker, setTimePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
   const [datePicker, setDatePicker] = useState<{ date: Date; anchor: HTMLElement } | null>(null);
+  const [cropping, setCropping] = useState<number | null>(null);
   // the find bar opens with the words picked on the page, n changes so pressing it again refills it
   const [finding, setFinding] = useState<{ text: string; n: number } | null>(null);
   const pane = usePane();
@@ -695,6 +697,15 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     navigate({ name: 'page', id: pageId, find: null }, { replace: true, pane });
   }, [editor, anchor, pageId, pane]);
 
+  // a picture's menu asks for it to be cropped
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom;
+    const crop = (event: Event) => setCropping((event as CustomEvent<number>).detail);
+    dom.addEventListener('morrow:crop', crop);
+    return () => dom.removeEventListener('morrow:crop', crop);
+  }, [editor]);
+
   // ctrl or cmd f from anywhere on the page opens the find bar, in the side of a split being used
   useEffect(() => {
     const open = () => {
@@ -740,6 +751,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
           )}
         />
       )}
+      {cropping !== null && <CropDialog editor={editor} pos={cropping} onClose={() => setCropping(null)} />}
       {datePicker && (
         <MonthPickerPopover
           anchor={datePicker.anchor}

@@ -3222,3 +3222,114 @@ td:hover .prop-empty,
 .mcp-where {
   margin: 0 0 8px;
 }
+
+/* cropping a picture in the page: the part kept is clear, the rest dimmed, dragged by its edges */
+.crop-dialog {
+  width: min(880px, calc(100vw - 48px));
+  max-width: none;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.crop-stage-wrap {
+  display: grid;
+  place-items: center;
+  min-height: 200px;
+  max-height: calc(100vh - 200px);
+  background: var(--hover);
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow: hidden;
+}
+.crop-stage {
+  position: relative;
+  line-height: 0;
+  touch-action: none;
+  user-select: none;
+}
+.crop-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 232px);
+}
+.crop-area {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  outline: 1px solid rgba(255, 255, 255, 0.9);
+  cursor: move;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35)),
+    linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35));
+  background-size:
+    100% 1px,
+    100% 1px,
+    1px 100%,
+    1px 100%;
+  background-position:
+    0 33.33%,
+    0 66.66%,
+    33.33% 0,
+    66.66% 0;
+  background-repeat: no-repeat;
+}
+.crop-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 3px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.crop-handle.is-nw {
+  left: 0;
+  top: 0;
+  cursor: nwse-resize;
+}
+.crop-handle.is-ne {
+  left: 100%;
+  top: 0;
+  cursor: nesw-resize;
+}
+.crop-handle.is-sw {
+  left: 0;
+  top: 100%;
+  cursor: nesw-resize;
+}
+.crop-handle.is-se {
+  left: 100%;
+  top: 100%;
+  cursor: nwse-resize;
+}
+.crop-handle.is-n {
+  left: 50%;
+  top: 0;
+  cursor: ns-resize;
+}
+.crop-handle.is-s {
+  left: 50%;
+  top: 100%;
+  cursor: ns-resize;
+}
+.crop-handle.is-w {
+  left: 0;
+  top: 50%;
+  cursor: ew-resize;
+}
+.crop-handle.is-e {
+  left: 100%;
+  top: 50%;
+  cursor: ew-resize;
+}
+.crop-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.crop-spacer {
+  flex: 1;
+}

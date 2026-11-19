@@ -10,6 +10,7 @@ import {
   ArrowDown,
   AlignCenter,
   AlignLeft,
+  Crop,
   AlignJustify,
   AlignRight,
   ArrowLeft,
@@ -1574,6 +1575,17 @@ export function BlockMenu({
   if (blockType === 'image' && fileId) {
     entries.unshift(
       { heading: t('slash.items.image.title') },
+      ...(editor.isEditable
+        ? [
+            {
+              label: t('editor.crop.title'),
+              icon: Crop,
+              // the page's editor shows the cropping over the page
+              onSelect: () =>
+                editor.view.dom.dispatchEvent(new CustomEvent('morrow:crop', { detail: request.pos })),
+            },
+          ]
+        : []),
       { label: t('editor.copyImage'), icon: ImageIcon, onSelect: () => void copyImageFile(fileId) },
       { label: t('editor.saveACopy'), icon: Download, onSelect: () => void downloadFile(fileId) },
       ...(vault
