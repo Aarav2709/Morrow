@@ -102,25 +102,43 @@ export function moveSection(id: string, by: -1 | 1): Promise<void> {
   return save(next);
 }
 
-// a page goes into a section, or out of it when it is already there
+// a page goes into a section, or out of it when it is already there. a page is in one section at a time,
+// it moves there from Pages and from any other section, the way a page moves between folders
 export function togglePageInSection(id: string, pageId: PageId): Promise<void> {
+  const adding = !sections.find((section) => section.id === id)?.pages.includes(pageId);
   return save(
     sections.map((section) =>
-      section.id !== id
-        ? section
-        : {
+      section.id === id
+        ? {
             ...section,
-            pages: section.pages.includes(pageId)
-              ? section.pages.filter((page) => page !== pageId)
-              : [...section.pages, pageId],
-          },
+            pages: adding ? [...section.pages, pageId] : section.pages.filter((page) => page !== pageId),
+          }
+        : adding
+          ? { ...section, pages: section.pages.filter((page) => page !== pageId) }
+          : section,
     ),
   );
+}
+
+// a page dropped above or below one in a section goes there, the section's pages in their new order
+export function placeInSection(
+  id: string,
+  pageId: PageId,
+  target: PageId,
+  zone: 'before' | 'after',
+): Promise<void> {
+  const section = sections.find((item) => item.id === id);
+  if (!section || pageId === target) return Promise.resolve();
+  const pages = section.pages.filter((page) => page !== pageId);
+  const at = pages.indexOf(target);
+  if (at === -1) return Promise.resolve();
+  pages.splice(zone === 'after' ? at + 1 : at, 0, pageId);
+  return updateSection(id, { pages });
 }
 
 // a page dropped on a section from the page tree goes in at the end, a page already there stays put
 export function addPageToSection(id: string, pageId: PageId): Promise<void> {
   const section = sections.find((item) => item.id === id);
   if (!section || section.pages.includes(pageId)) return Promise.resolve();
-  return updateSection(id, { pages: [...section.pages, pageId] });
+  return togglePageInSection(id, pageId);
 }

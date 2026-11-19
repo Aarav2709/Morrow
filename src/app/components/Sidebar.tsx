@@ -46,7 +46,12 @@ import {
 import { collectCards, dueCards } from '../../core/flashcards';
 import { collectTags } from '../../core/tags';
 import { findTemplatesPage, listTemplates } from '../../core/templates';
-import { addPageToSection, togglePageInSection, useSidebarSections } from '../sidebarSections';
+import {
+  addPageToSection,
+  placeInSection,
+  togglePageInSection,
+  useSidebarSections,
+} from '../sidebarSections';
 import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { t, useTranslation } from '../i18n';
@@ -156,6 +161,12 @@ export function Sidebar() {
     [live],
   );
   const customSections = useSidebarSections();
+  // a page put in a section of your own moves there from Pages, with its subpages. a hidden section gives
+  // its pages back to Pages, so they never go out of sight
+  const inSections = useMemo(
+    () => new Set(customSections.filter((section) => !section.hidden).flatMap((section) => section.pages)),
+    [customSections],
+  );
   const [dropSection, setDropSection] = useState<string | null>(null);
   // templates have a section of their own rather than sitting among the pages
   const templatesPage = useMemo(() => findTemplatesPage(state), [state]);
@@ -365,36 +376,20 @@ export function Sidebar() {
           >
             <h2 className="sidebar-heading">{section.name}</h2>
             {pages.length === 0 && <p className="sidebar-section-hint">{t('sidebar.sectionEmpty')}</p>}
-            <ul className="flat-list">
-              {pages.map((page) => (
-                <li key={page.id}>
-                  <button
-                    type="button"
-                    className={`tree-row flat${activeId === page.id ? ' is-active' : ''}`}
-                    data-page-id={page.id}
-                    onClick={go(() => openPage(page.id))}
-                  >
-                    <span className="tree-icon">
-                      <PageIcon page={page} />
-                    </span>
-                    <span className="tree-title">{displayTitle(page)}</span>
-                    <span
-                      role="button"
-                      tabIndex={-1}
-                      className="favorite-mark"
-                      title={t('sidebar.removeFromSection', { name: section.name })}
-                      aria-label={t('sidebar.removeFromSection', { name: section.name })}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void togglePageInSection(section.id, page.id);
-                      }}
-                    >
-                      <X size={12} />
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+            {/* a tree of its own, each page with its subpages under it, the way Pages shows them */}
+            {pages.length > 0 && (
+              <PageTree
+                state={state}
+                activeId={activeId}
+                expanded={prefs.expanded}
+                label={section.name}
+                roots={pages.map((page) => page.id)}
+                hidden={inSections}
+                onRootDrop={(id, target, zone) => void placeInSection(section.id, id, target, zone)}
+                onRemoveRoot={(id) => void togglePageInSection(section.id, id)}
+                removeLabel={t('sidebar.removeFromSection', { name: section.name })}
+              />
+            )}
           </section>
         );
       }),
@@ -421,7 +416,7 @@ export function Sidebar() {
             </button>
           </div>
         ) : (
-          <PageTree state={state} activeId={activeId} expanded={prefs.expanded} />
+          <PageTree state={state} activeId={activeId} expanded={prefs.expanded} hidden={inSections} />
         )}
       </section>
     ),
@@ -594,11 +589,31 @@ interface TreeProps {
   state: WorkspaceState;
   activeId: PageId | null;
   expanded: string[];
+  // the tree's name for screen readers, Pages unless it is a section's
+  label?: string;
+  // the pages at the top of the tree, in this order. without them, the top pages of the vault
+  roots?: PageId[];
+  // pages shown in a section of their own, left out everywhere else in the tree
+  hidden?: ReadonlySet<PageId>;
+  // a page dropped above or below one at the top of a section's tree, which orders the section
+  onRootDrop?: (id: PageId, target: PageId, zone: 'before' | 'after') => void;
+  onRemoveRoot?: (id: PageId) => void;
+  removeLabel?: string;
 }
 
 const SUBPAGES_SHOWN = 50;
 
-const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps) {
+const PageTree = memo(function PageTree({
+  state,
+  activeId,
+  expanded,
+  label,
+  roots,
+  hidden,
+  onRootDrop,
+  onRemoveRoot,
+  removeLabel,
+}: TreeProps) {
   const ui = useUi();
   const [drop, setDrop] = useState<{ id: PageId; zone: DropZone } | null>(null);
   const [menu, setMenu] = useState<{ id: PageId; anchor: HTMLElement } | null>(null);
@@ -631,6 +646,11 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
     dragging.current = null;
     setDrop(null);
     if (!id || id === target.id) return;
+    // the top of a section's tree is in the section's own order, not where the pages are in the vault
+    if (zone !== 'inside' && onRootDrop && roots?.includes(target.id)) {
+      onRootDrop(id, target.id, zone);
+      return;
+    }
     if (zone === 'inside') {
       if (movePage(id, target.id)) expandPage(target.id);
       return;
@@ -697,11 +717,17 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
 
   const renderLevel = (parentId: PageId | null, depth: number): React.ReactNode => {
     // daily notes are in the journal's own view, so the journal and the templates leave the tree
-    const all = childrenOf(state.pages, parentId).filter(
-      (page) =>
-        page.archivedAt === null &&
-        (parentId !== null || (page.kind !== 'journal' && page.kind !== 'templates')),
-    );
+    const all =
+      parentId === null && roots
+        ? roots
+            .map((id) => state.pages[id])
+            .filter((page): page is PageMeta => !!page && page.trashedAt === null && page.archivedAt === null)
+        : childrenOf(state.pages, parentId).filter(
+            (page) =>
+              page.archivedAt === null &&
+              !hidden?.has(page.id) &&
+              (parentId !== null || (page.kind !== 'journal' && page.kind !== 'templates')),
+          );
     if (all.length === 0) return null;
     const key = parentId ?? '';
     let limit = limits[key] ?? SUBPAGES_SHOWN;
@@ -713,7 +739,9 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
     const children = all.length > limit ? all.slice(0, limit) : all;
     const rest = all.length - children.length;
     const rows = children.map((page) => {
-      const hasChildren = childrenOf(state.pages, page.id).length > 0;
+      const hasChildren = childrenOf(state.pages, page.id).some(
+        (child) => child.archivedAt === null && !hidden?.has(child.id),
+      );
       const isOpen = expandedSet.has(page.id);
       return (
         <li key={page.id} role="none">
@@ -743,6 +771,9 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
             }}
             onDragLeave={() => setDrop((current) => (current?.id === page.id ? null : current))}
             onDrop={(zone) => onDrop(page, zone)}
+            {...(depth === 0 && onRemoveRoot
+              ? { onRemove: () => onRemoveRoot(page.id), removeLabel: removeLabel ?? '' }
+              : {})}
           />
           {hasChildren && isOpen && (
             <ul role="group" className="tree-group">
@@ -773,7 +804,7 @@ const PageTree = memo(function PageTree({ state, activeId, expanded }: TreeProps
       <ul
         className="page-tree"
         role="tree"
-        aria-label={t('sidebar.pagesHeading')}
+        aria-label={label ?? t('sidebar.pagesHeading')}
         ref={treeRef}
         onKeyDown={onKeyDown}
         onDragEnd={() => setDrop(null)}
@@ -808,6 +839,9 @@ interface RowProps {
   onDragOverZone: (zone: DropZone) => boolean;
   onDragLeave: () => void;
   onDrop: (zone: DropZone) => void;
+  // a page at the top of a section's tree can be taken out of the section, back to Pages
+  onRemove?: () => void;
+  removeLabel?: string;
 }
 
 const TreeRow = memo(function TreeRow(props: RowProps) {
@@ -907,6 +941,21 @@ const TreeRow = memo(function TreeRow(props: RowProps) {
           >
             <Plus size={14} />
           </button>
+          {props.onRemove && (
+            <button
+              type="button"
+              tabIndex={-1}
+              className="icon-button tiny"
+              aria-label={props.removeLabel}
+              title={props.removeLabel}
+              onClick={(event) => {
+                event.stopPropagation();
+                props.onRemove?.();
+              }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </span>
       )}
     </div>
