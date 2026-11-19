@@ -672,3 +672,31 @@ describe('html blocks', () => {
     expect(target.view.dom.querySelector('iframe')).toBeNull();
   });
 });
+
+describe('a link to a block pasted as text', () => {
+  it('goes in as the link, to the page it names, with the block after #', () => {
+    const target = new Editor({
+      element: document.createElement('div'),
+      extensions: createExtensions({
+        onBlockMenu: () => {},
+        resolvePage: () => null,
+        openTag: () => {},
+        createChild: () => null,
+        openDate: () => {},
+        pages: () => [],
+        findPages: () => [],
+        createPage: () => null,
+        renderEmbed: () => null,
+        getTitle: () => 'Notes',
+        subscribe: () => () => {},
+        resolveTarget: (name: string) => (name === 'Notes' ? 'notes-id' : null),
+      } as never),
+      content: { type: 'doc', content: [{ type: 'paragraph' }] },
+    });
+    editor = target;
+    target.view.pasteText('[[Notes#^abc123]]');
+    const link = json(target).content?.[0]?.content?.[0];
+    expect(link?.type).toBe('pageLink');
+    expect(link?.attrs).toMatchObject({ id: 'notes-id', anchor: '^abc123' });
+  });
+});

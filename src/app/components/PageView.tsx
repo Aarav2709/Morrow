@@ -33,7 +33,7 @@ import { findTemplatesPage, listTemplates } from '../../core/templates';
 import { RepeatBar } from './RepeatBar';
 import { findDatabaseOf } from '../../core/database';
 import { basename, conflictOriginal, stripExtension } from '../../core/vault/paths';
-import { PageEditor } from '../editor/PageEditor';
+import { opensAtPlace, PageEditor } from '../editor/PageEditor';
 import { SourceEditor } from './SourceEditor';
 import { CoverBanner, CoverPicker } from './Cover';
 import { DailyNav, MadeThisDay } from './DailyNav';
@@ -402,7 +402,8 @@ export function PageView({ id, find, anchor }: { id: PageId; find: string | null
                     firstPage = false;
                     if (!focusWhenReady.current) {
                       requestAnimationFrame(() => {
-                        if (!find && !anchor) restorePlace(editor, scrollRef.current, placeKey, startup);
+                        if (!find && !anchor && !opensAtPlace(editor))
+                          restorePlace(editor, scrollRef.current, placeKey, startup);
                         placed.current = true;
                       });
                       return;

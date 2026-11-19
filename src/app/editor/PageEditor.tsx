@@ -341,6 +341,37 @@ function dropUnlinkedBlockIds(editor: Editor, pageId: PageId): void {
 }
 
 // keeps one editor instance per page and writes changes back through commands
+// editors that opened at a block, a heading or a match, rather than where the page was last left
+const openedAtPlace = new WeakSet<Editor>();
+export function opensAtPlace(editor: Editor): boolean {
+  return openedAtPlace.has(editor);
+}
+
+// scrolls a block to the middle of the page and keeps it there for a moment, as pictures and embeds above it
+// load and push it down. scrolling, a click or a key lets go at once
+function holdInView(dom: HTMLElement): void {
+  const scroller = dom.closest<HTMLElement>('.page-scroll') ?? document.scrollingElement;
+  let frames = 0;
+  let stopped = false;
+  const stop = () => {
+    stopped = true;
+    for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart'])
+      scroller?.removeEventListener(type, stop);
+  };
+  for (const type of ['wheel', 'pointerdown', 'keydown', 'touchstart'])
+    scroller?.addEventListener(type, stop, { passive: true, once: true });
+  let last = Number.NaN;
+  const step = () => {
+    if (stopped || !dom.isConnected) return stop();
+    const top = dom.getBoundingClientRect().top;
+    if (Math.abs(top - last) > 1) dom.scrollIntoView({ block: 'center' });
+    last = dom.getBoundingClientRect().top;
+    if (++frames < 90) requestAnimationFrame(step);
+    else stop();
+  };
+  step();
+}
+
 export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onDirty, onReady }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [blockMenu, setBlockMenu] = useState<BlockMenuRequest | null>(null);
@@ -590,6 +621,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   // opens with the search match selected and in view
   useEffect(() => {
     if (!editor || !find) return;
+    openedAtPlace.add(editor);
     const term = find.toLowerCase();
     let found: { from: number; to: number } | null = null;
     editor.state.doc.descendants((node, pos) => {
@@ -613,6 +645,8 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
   // picture or file it names, from the pages listed under a file in Files
   useEffect(() => {
     if (!editor || !anchor) return;
+    // the page is not put back where it was last left, which would scroll away from the block
+    openedAtPlace.add(editor);
     let target: number | null = null;
     const fileId = anchor.startsWith('file:') ? anchor.slice(5) : null;
     const usesFile = (node: ProseNode): boolean =>
@@ -629,7 +663,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
     });
     const dom = target === null ? null : editor.view.nodeDOM(target);
     if (dom instanceof HTMLElement) {
-      dom.scrollIntoView({ block: 'center' });
+      holdInView(dom);
       // an animation, not a class, so the editor never sees its own content change
       const glow = getComputedStyle(document.documentElement).getPropertyValue('--accent-soft').trim();
       dom.animate([{ backgroundColor: glow }, { backgroundColor: 'transparent' }], {

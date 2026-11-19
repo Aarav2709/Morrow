@@ -323,6 +323,30 @@ export const PageLink = Node.create<PageLinkOptions>({
           },
         },
       }),
+      // a [[link]] pasted as text, such as one from Copy link to block, goes in as the link it is. left as
+      // text it would open the link menu, which offers to make a new page when the link is to this page
+      new Plugin({
+        key: new PluginKey('pageLinkPaste'),
+        props: {
+          handlePaste(view, event, slice) {
+            const text = (
+              event.clipboardData?.getData('text/plain') ||
+              slice.content.textBetween(0, slice.content.size, '\n')
+            ).trim();
+            const written = /^(!?)\[\[([^[\]\n]+)\]\]$/.exec(text);
+            if (!written || !view.editable) return false;
+            if (view.state.selection.$from.parent.type.name === 'codeBlock') return false;
+            const link = parseWikiLink(written[2]!, written[1] === '!');
+            if (!link.target) return false;
+            const id = options.resolveTarget(link.target);
+            const node = view.state.schema.nodes.pageLink!.create(
+              linkAttrs(link, id, id ? options.getTitle(id) : null),
+            );
+            view.dispatch(view.state.tr.replaceSelectionWith(node, false).scrollIntoView());
+            return true;
+          },
+        },
+      }),
       Suggestion<LinkItem, LinkItem>({
         editor: this.editor,
         pluginKey: new PluginKey('pageLinkSuggestion'),
