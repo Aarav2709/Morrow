@@ -51,19 +51,23 @@ export const Image = Node.create({
       {
         tag: 'img[src]',
         getAttrs: (element) => {
-          const src = element.getAttribute('src') ?? '';
+          const src = pastedSrc(element.getAttribute('src') ?? '');
           return PASTED_IMAGE.test(src) ? { src, alt: element.getAttribute('alt') ?? '' } : false;
         },
       },
     ];
   },
 
+  // a picture from the web keeps its address when copied, so other apps can show it too. the vault's own
+  // pictures are put in the copy by copyWithImages
   renderHTML({ node, HTMLAttributes }) {
+    const src = typeof node.attrs.src === 'string' ? node.attrs.src : '';
     return [
       'img',
       mergeAttributes(HTMLAttributes, {
         'data-file-id': node.attrs.fileId,
         'data-src': node.attrs.src,
+        ...(!node.attrs.fileId && /^https?:\/\//i.test(src) ? { src } : {}),
         alt: node.attrs.alt,
       }),
     ];
@@ -393,6 +397,25 @@ function filesFrom(data: DataTransfer | null): File[] {
 // word and libreoffice put the pictures among the words they copy
 const PASTED_IMAGE = /^(https?:\/\/|data:image\/|file:\/\/)/i;
 
+// an address as pasted, made whole: //host/path, which a web page means as https, gets it written out
+export function pastedSrc(src: string): string {
+  const trimmed = src.trim();
+  return trimmed.startsWith('//') ? `https:${trimmed}` : trimmed;
+}
+
+// notion shows pictures through an address of its own, notion.so/image/ with the picture's real address
+// inside it. the real one is tried first, the outer one only answers people signed in to notion
+export function innerImageUrl(src: string): string | null {
+  const found = /^https:\/\/(?:www\.)?notion\.so\/image\/([^?#]+)/i.exec(src);
+  if (!found) return null;
+  try {
+    const inner = decodeURIComponent(found[1]!);
+    return /^https?:\/\//i.test(inner) ? inner : null;
+  } catch {
+    return null;
+  }
+}
+
 // the bytes of a picture pasted by its address, or held in the address itself
 async function pastedImage(src: string): Promise<File | null> {
   try {
@@ -410,10 +433,15 @@ async function pastedImage(src: string): Promise<File | null> {
       const name = decodeURIComponent(src.split(/[\\/]/).pop() ?? '') || 'image.png';
       return new File([bytes.slice().buffer as ArrayBuffer], name, { type: mimeType(name) });
     }
-    const fetched = desktop?.fetchImage ? await desktop.fetchImage(src) : null;
-    if (!fetched) return null;
-    const name = decodeURIComponent(new URL(src).pathname.split('/').pop() ?? '') || 'image';
-    return new File([fetched.data], name, { type: fetched.type });
+    const inner = innerImageUrl(src);
+    for (const address of inner ? [inner, src] : [src]) {
+      const fetched = desktop?.fetchImage ? await desktop.fetchImage(address).catch(() => null) : null;
+      if (!fetched) continue;
+      // named after the picture itself, not the address it came through
+      const name = decodeURIComponent(new URL(inner ?? address).pathname.split('/').pop() ?? '') || 'image';
+      return new File([fetched.data], name, { type: fetched.type });
+    }
+    return null;
   } catch {
     return null;
   }

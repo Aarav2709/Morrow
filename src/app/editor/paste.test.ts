@@ -22,3 +22,14 @@ describe('paths copied on windows', () => {
     expect(pastedKind(unquote('"C:\\Videos\\clip.mp4"'))).toBe('local');
   });
 });
+
+describe('pictures pasted from other apps', () => {
+  it('finds the picture inside the address notion shows it through', async () => {
+    const { innerImageUrl, pastedSrc } = await import('./Media');
+    const inner = 'https://prod-files.example.com/space/file/photo.png';
+    expect(innerImageUrl(`https://www.notion.so/image/${encodeURIComponent(inner)}?table=block&id=1`)).toBe(inner);
+    expect(innerImageUrl('https://example.org/image.png')).toBeNull();
+    // //host/path, the way a web page often writes a picture's address
+    expect(pastedSrc('//cdn.example.org/a.png')).toBe('https://cdn.example.org/a.png');
+  });
+});
