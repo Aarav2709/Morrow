@@ -18,7 +18,8 @@ export type Route =
   | { name: 'graph'; focus: PageId | null }
   // deck is a page whose cards, with those of the pages inside it, are studied on their own
   | { name: 'review'; deck?: PageId | null }
-  | { name: 'search'; query: string };
+  | { name: 'search'; query: string }
+  | { name: 'agent'; sessionId?: string | null };
 
 export function parseRoute(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#/, '').split('?');
@@ -41,6 +42,8 @@ export function parseRoute(hash: string): Route {
   if (parts[0] === 'review') return { name: 'review', deck: parts[1] ? decodeURIComponent(parts[1]) : null };
   if (parts[0] === 'search') return { name: 'search', query: new URLSearchParams(query).get('q') ?? '' };
   if (parts[0] === 'graph') return { name: 'graph', focus: parts[1] ? decodeURIComponent(parts[1]) : null };
+  if (parts[0] === 'agent')
+    return { name: 'agent', sessionId: parts[1] ? decodeURIComponent(parts[1]) : null };
   return { name: 'home' };
 }
 
@@ -75,6 +78,8 @@ export function routeHash(route: Route): string {
       return route.query ? `#/search?q=${encodeURIComponent(route.query)}` : '#/search';
     case 'graph':
       return route.focus ? `#/graph/${encodeURIComponent(route.focus)}` : '#/graph';
+    case 'agent':
+      return route.sessionId ? `#/agent/${encodeURIComponent(route.sessionId)}` : '#/agent';
     default:
       return '#/';
   }

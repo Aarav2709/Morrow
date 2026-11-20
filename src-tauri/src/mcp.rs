@@ -18,7 +18,7 @@ pub fn set_enabled(enabled: bool) -> bool {
     paths::write_atomic_plain(&config_file(), &body).is_ok() && enabled
 }
 
-fn bundled_script<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
+pub fn bundled_script<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBuf> {
     let resource = app
         .path()
         .resolve("mcp/index.js", tauri::path::BaseDirectory::Resource)
@@ -37,7 +37,7 @@ fn bundled_script<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<PathBu
 // node on this computer. an app opened from the dock or start menu doesn't get the shell's path, so the
 // places node is usually put by homebrew, the installer, nvm, volta and fnm are looked through as well. the
 // server runs with node itself, never morrow, so starting it doesn't bring morrow up on screen
-fn find_node() -> Option<PathBuf> {
+pub fn find_node() -> Option<PathBuf> {
     if let Ok(found) = which::which("node") {
         return Some(found);
     }

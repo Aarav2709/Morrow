@@ -1,4 +1,8 @@
 import type { Mermaid } from 'mermaid';
+import { createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import type { Root } from 'react-dom/client';
+import { EmbeddedAgentButton, EmbeddedAgentChat } from '../assistant/EmbeddedAgentBlock';
 import { onPagesChange, renderBase } from './bases';
 import {
   Extension,
@@ -314,7 +318,13 @@ function currentView(_node: PmNode): EditorView | null {
 export { MathViewTracker };
 
 const lowlight = createLowlight(common);
-export const CODE_LANGUAGES = [...lowlight.listLanguages(), 'mermaid', 'base'].sort();
+export const CODE_LANGUAGES = [
+  ...lowlight.listLanguages(),
+  'mermaid',
+  'base',
+  'agent-client',
+  'agent-button',
+].sort();
 
 // mermaid is large, it loads the first time a page has a diagram on it
 let mermaidReady: Promise<Mermaid> | null = null;
@@ -514,7 +524,12 @@ export const CodeBlock = CodeBlockLowlight.extend({
       select.addEventListener('change', () => {
         setAttrs(editor.view, getPos, { language: select.value || null });
         // a diagram is a one off, the next block is still code
-        if (select.value !== 'mermaid' && select.value !== 'base')
+        if (
+          select.value !== 'mermaid' &&
+          select.value !== 'base' &&
+          select.value !== 'agent-client' &&
+          select.value !== 'agent-button'
+        )
           setPreferences({ codeLanguage: select.value });
       });
       const pre = document.createElement('pre');
@@ -534,14 +549,21 @@ export const CodeBlock = CodeBlockLowlight.extend({
       // mermaid draws a diagram, a base shows the pages it finds, an html block set to show its
       // preview draws its page, all from the text in the block
       const isBase = () => current.attrs.language === 'base';
+      const isAgentClient = () => current.attrs.language === 'agent-client';
+      const isAgentButton = () => current.attrs.language === 'agent-button';
+      const isAgentBlock = () => isAgentClient() || isAgentButton();
       const isPreview = () => current.attrs.language === 'html' && current.attrs.preview === true;
-      const isMermaid = () => current.attrs.language === 'mermaid' || isBase() || isPreview();
+      const isMermaid = () =>
+        current.attrs.language === 'mermaid' || isBase() || isPreview() || isAgentBlock();
       let preview: ReturnType<typeof createPreviewFrame> | null = null;
+      let agentRoot: Root | null = null;
+      let agentKind: 'chat' | 'button' | null = null;
       const layout = () => {
         const mermaid = isMermaid();
         dom.classList.toggle('is-mermaid', mermaid);
         dom.classList.toggle('is-base', isBase());
         dom.classList.toggle('is-preview', isPreview());
+        dom.classList.toggle('is-agent-block', isAgentBlock());
         dom.classList.toggle('hide-code', mermaid && !showCode);
         diagram.hidden = !mermaid;
         toggle.hidden = !mermaid;
@@ -551,14 +573,47 @@ export const CodeBlock = CodeBlockLowlight.extend({
             ? t('editor.editBase')
             : isPreview()
               ? t('editor.editHtml')
-              : t('editor.editDiagram');
+              : isAgentBlock()
+                ? 'Edit block'
+                : t('editor.editDiagram');
       };
       const draw = () => {
         if (!isMermaid()) {
           drawn = '';
+          if (agentRoot) {
+            agentRoot.unmount();
+            agentRoot = null;
+            agentKind = null;
+          }
           return;
         }
         const source = current.textContent;
+        if (isAgentBlock()) {
+          const wantKind = isAgentClient() ? 'chat' : 'button';
+          if (source === drawn && agentRoot && agentKind === wantKind) return;
+          drawn = source;
+          if (timer) clearTimeout(timer);
+          timer = setTimeout(() => {
+            if (!agentRoot || agentKind !== wantKind) {
+              agentRoot?.unmount();
+              diagram.replaceChildren();
+              agentRoot = createRoot(diagram);
+              agentKind = wantKind;
+            }
+            diagram.classList.remove('is-error');
+            agentRoot.render(
+              wantKind === 'chat'
+                ? createElement(EmbeddedAgentChat, { source })
+                : createElement(EmbeddedAgentButton, { source }),
+            );
+          }, 200);
+          return;
+        }
+        if (agentRoot) {
+          agentRoot.unmount();
+          agentRoot = null;
+          agentKind = null;
+        }
         if (source === drawn && (!isPreview() || preview)) return;
         if (timer) clearTimeout(timer);
         if (isPreview()) {
@@ -640,6 +695,11 @@ export const CodeBlock = CodeBlockLowlight.extend({
           ours(mutation.target) || (mutation.type === 'attributes' && mutation.target === dom),
         destroy: () => {
           if (timer) clearTimeout(timer);
+          if (agentRoot) {
+            const root = agentRoot;
+            agentRoot = null;
+            setTimeout(() => root.unmount(), 0);
+          }
           stopWatching();
           stopPages();
         },

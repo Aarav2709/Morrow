@@ -285,12 +285,18 @@ export function Sidebar() {
         onClick={go(() => navigate({ name: 'files' }))}
       />
     ),
-    assistant: prefs.assistant && desktop?.assistant && (
+    assistant: prefs.assistant && (desktop?.assistant || desktop?.acp) && (
       <NavItem
         icon={Sparkles}
         label={t('settings.sections.assistant')}
-        active={prefs.assistantOpen}
-        onClick={() => setPreferences({ assistantOpen: !prefs.assistantOpen })}
+        active={prefs.assistantOpen || route.name === 'agent'}
+        onClick={go(() => {
+          if (prefs.assistantEngine === 'acp' && desktop?.acp && prefs.acpChatLocation === 'tab') {
+            navigate({ name: 'agent' });
+          } else {
+            setPreferences({ assistantOpen: !prefs.assistantOpen });
+          }
+        })}
       />
     ),
   };

@@ -520,11 +520,11 @@ export function FormattingMenu({
               onClick={() => editor.chain().focus().unsetAllMarks().run()}
             />
             {/* the assistant and more options sit together at the end, past one divider */}
-            {((assistant && desktop?.assistant && pageId) || onBlockMenu) && (
+            {((assistant && (desktop?.assistant || desktop?.acp) && pageId) || onBlockMenu) && (
               <span className="toolbar-divider" />
             )}
             {/* only while the assistant is turned on, a workspace without it shows no trace of it */}
-            {assistant && desktop?.assistant && pageId && (
+            {assistant && (desktop?.assistant || desktop?.acp) && pageId && (
               <ToolButton
                 label={t('editor.askAssistant')}
                 icon={Sparkles}

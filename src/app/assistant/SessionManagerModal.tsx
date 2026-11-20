@@ -1,0 +1,205 @@
+import {
+  Download,
+  FolderPlus,
+  GitFork,
+  Layers,
+  MessageSquare,
+  Plus,
+  Radio,
+  ShieldAlert,
+  Trash2,
+} from 'lucide-react';
+import { useState } from 'react';
+import { Dialog } from '../components/primitives';
+import { desktop } from '../platform/desktop';
+import { setPreferences, usePreferences } from '../platform/preferences';
+import { navigate } from '../router';
+import { closeDialog, toast } from '../ui';
+import {
+  broadcastAcpPrompt,
+  closeAcpSession,
+  createAcpSession,
+  exportAcpSession,
+  forkAcpSession,
+  setActiveFloatingSession,
+  setActivePanelSession,
+  useAcpStore,
+} from './acpStore';
+import type { AcpSession } from './acpStore';
+
+function focusSession(session: AcpSession): void {
+  if (session.origin === 'floating') {
+    setActiveFloatingSession(session.id);
+    setPreferences({ acpFloatingEnabled: true });
+  } else if (session.origin === 'tab') {
+    navigate({ name: 'agent', sessionId: session.id });
+  } else {
+    setActivePanelSession(session.id);
+    setPreferences({ assistant: true, assistantOpen: true, assistantEngine: 'acp' });
+  }
+  closeDialog();
+}
+
+export function SessionManagerModal() {
+  const store = useAcpStore();
+  const prefs = usePreferences();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [broadcastText, setBroadcastText] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const handleBroadcast = async () => {
+    const targets = selected.length > 0 ? selected : store.sessions.map((s) => s.id);
+    if (targets.length === 0 || !broadcastText.trim()) return;
+    setSending(true);
+    try {
+      const msg = broadcastText;
+      setBroadcastText('');
+      await broadcastAcpPrompt(targets, msg);
+      toast(`Broadcast sent to ${targets.length} session${targets.length === 1 ? '' : 's'}.`);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Dialog title="Agent Session Manager" size="large" onClose={closeDialog}>
+      <div className="acp-sm-toolbar">
+        <button
+          type="button"
+          className="button small primary"
+          onClick={() => {
+            void createAcpSession({ origin: prefs.acpChatLocation === 'tab' ? 'tab' : 'panel' }).then((s) =>
+              focusSession(s),
+            );
+          }}
+        >
+          <Plus size={14} /> New chat
+        </button>
+        <button
+          type="button"
+          className="button small"
+          onClick={() => {
+            void desktop?.acp?.pickDirectory().then((dir) => {
+              if (!dir) return;
+              void createAcpSession({
+                cwd: dir,
+                origin: prefs.acpChatLocation === 'tab' ? 'tab' : 'panel',
+              }).then((s) => focusSession(s));
+            });
+          }}
+        >
+          <FolderPlus size={14} /> New chat in directory…
+        </button>
+      </div>
+
+      <div className="acp-sm-list">
+        {store.sessions.length === 0 ? (
+          <p className="muted">No agent sessions yet. Start one above.</p>
+        ) : (
+          store.sessions.map((session) => (
+            <div key={session.id} className={`acp-sm-row status-${session.status}`}>
+              <input
+                type="checkbox"
+                aria-label={`Select ${session.title} for broadcast`}
+                checked={selected.includes(session.id)}
+                onChange={() => toggleSelected(session.id)}
+              />
+              <button type="button" className="acp-sm-main" onClick={() => focusSession(session)}>
+                <div className="acp-sm-title-row">
+                  {session.status === 'waiting-permission' ? (
+                    <ShieldAlert size={14} className="acp-icon-warn" />
+                  ) : (
+                    <MessageSquare size={14} />
+                  )}
+                  <strong>{session.title}</strong>
+                  <span className="acp-sm-badge">{session.agentName}</span>
+                  <span className="acp-sm-badge">{session.origin}</span>
+                  <span className={`acp-sm-status is-${session.status}`}>
+                    {session.status === 'waiting-permission' ? 'Waiting for permission' : session.status}
+                  </span>
+                </div>
+                <div className="acp-sm-meta">
+                  <span>{session.cwd || 'Vault root'}</span>
+                  <span>{session.items.length} items</span>
+                  <span>{new Date(session.updatedAt).toLocaleTimeString()}</span>
+                </div>
+              </button>
+              <div className="acp-sm-actions">
+                <button
+                  type="button"
+                  className="icon-button small"
+                  title="Fork session"
+                  aria-label="Fork session"
+                  onClick={() => void forkAcpSession(session.id)}
+                >
+                  <GitFork size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button small"
+                  title="Export to note"
+                  aria-label="Export to note"
+                  disabled={session.items.length === 0}
+                  onClick={() =>
+                    void exportAcpSession(session.id, { open: prefs.acpOpenAfterExport }).then((id) => {
+                      if (id) toast('Exported chat to note.');
+                    })
+                  }
+                >
+                  <Download size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="icon-button small"
+                  title="Close session"
+                  aria-label="Close session"
+                  onClick={() => void closeAcpSession(session.id)}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {store.sessions.length > 0 && (
+        <form
+          className="acp-broadcast-bar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleBroadcast();
+          }}
+        >
+          <div className="acp-broadcast-head">
+            <Radio size={14} />
+            <span>
+              Broadcast prompt to{' '}
+              {selected.length > 0 ? `${selected.length} selected` : `all ${store.sessions.length}`}{' '}
+              session(s)
+            </span>
+          </div>
+          <div className="acp-broadcast-controls">
+            <input
+              className="text-input small"
+              placeholder="Send one prompt to multiple agents at once…"
+              value={broadcastText}
+              onChange={(e) => setBroadcastText(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="button small primary"
+              disabled={sending || !broadcastText.trim()}
+            >
+              <Layers size={14} /> Broadcast
+            </button>
+          </div>
+        </form>
+      )}
+    </Dialog>
+  );
+}

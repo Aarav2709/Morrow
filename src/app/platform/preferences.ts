@@ -138,6 +138,39 @@ export interface Preferences {
   assistantOpen: boolean;
   // changes the assistant proposes wait for approval
   assistantAsk: boolean;
+  // whether the assistant uses local ACP CLI agents or direct API providers
+  assistantEngine: 'acp' | 'api';
+  acpSendShortcut: 'enter' | 'mod-enter';
+  acpAutoMentionActive: boolean;
+  acpExpandWikilinks: boolean;
+  acpMaxNoteLength: number;
+  acpMaxSelectionLength: number;
+  acpChatLocation: 'right-pane' | 'tab' | 'split';
+  acpFontSize: number;
+  acpShowEmojis: boolean;
+  acpAutoCollapseDiffs: boolean;
+  acpCollapseDiffThreshold: number;
+  acpFloatingEnabled: boolean;
+  acpFloatingButtonImage: string;
+  acpFloatingBounds: { x: number; y: number; width: number; height: number } | null;
+  acpAutoAllowPermissions: boolean;
+  acpSystemNotifications: boolean;
+  acpInjectMarkdownRules: boolean;
+  acpInjectTableSpacing: boolean;
+  acpInjectLatexRules: boolean;
+  acpExportFolder: string;
+  acpExportFilename: string;
+  acpExportTag: string;
+  acpExportIncludeImages: boolean;
+  acpExportImageLocation: 'attachments' | 'export-folder' | 'custom';
+  acpExportImageCustomPath: string;
+  acpExportIncludeAudio: boolean;
+  acpExportAudioLocation: 'attachments' | 'export-folder' | 'custom';
+  acpExportAudioCustomPath: string;
+  acpAutoExportOnNew: boolean;
+  acpAutoExportOnClose: boolean;
+  acpOpenAfterExport: boolean;
+  acpDebugMode: boolean;
   // look for a new version when morrow opens and once a day, off until turned on
   checkUpdates: boolean;
   mcpEnabled: boolean;
@@ -204,6 +237,38 @@ const defaults: Preferences = {
   assistant: false,
   assistantOpen: false,
   assistantAsk: true,
+  assistantEngine: 'acp',
+  acpSendShortcut: 'enter',
+  acpAutoMentionActive: true,
+  acpExpandWikilinks: true,
+  acpMaxNoteLength: 10000,
+  acpMaxSelectionLength: 10000,
+  acpChatLocation: 'right-pane',
+  acpFontSize: 14,
+  acpShowEmojis: true,
+  acpAutoCollapseDiffs: false,
+  acpCollapseDiffThreshold: 30,
+  acpFloatingEnabled: false,
+  acpFloatingButtonImage: '',
+  acpFloatingBounds: null,
+  acpAutoAllowPermissions: false,
+  acpSystemNotifications: true,
+  acpInjectMarkdownRules: true,
+  acpInjectTableSpacing: true,
+  acpInjectLatexRules: true,
+  acpExportFolder: 'Agent Client',
+  acpExportFilename: 'agent_client_{date}_{time}',
+  acpExportTag: 'agent-client',
+  acpExportIncludeImages: true,
+  acpExportImageLocation: 'attachments',
+  acpExportImageCustomPath: '',
+  acpExportIncludeAudio: true,
+  acpExportAudioLocation: 'attachments',
+  acpExportAudioCustomPath: '',
+  acpAutoExportOnNew: false,
+  acpAutoExportOnClose: false,
+  acpOpenAfterExport: true,
+  acpDebugMode: false,
   checkUpdates: false,
   mcpEnabled: false,
   codeLanguage: '',
@@ -328,6 +393,80 @@ function read(): Preferences {
       assistant: parsed.assistant === true,
       assistantOpen: parsed.assistantOpen === true,
       assistantAsk: parsed.assistantAsk !== false,
+      assistantEngine: parsed.assistantEngine === 'api' ? 'api' : 'acp',
+      acpSendShortcut: parsed.acpSendShortcut === 'mod-enter' ? 'mod-enter' : 'enter',
+      acpAutoMentionActive: parsed.acpAutoMentionActive !== false,
+      acpExpandWikilinks: parsed.acpExpandWikilinks !== false,
+      acpMaxNoteLength:
+        typeof parsed.acpMaxNoteLength === 'number'
+          ? Math.min(200_000, Math.max(500, Math.round(parsed.acpMaxNoteLength)))
+          : defaults.acpMaxNoteLength,
+      acpMaxSelectionLength:
+        typeof parsed.acpMaxSelectionLength === 'number'
+          ? Math.min(200_000, Math.max(500, Math.round(parsed.acpMaxSelectionLength)))
+          : defaults.acpMaxSelectionLength,
+      acpChatLocation:
+        parsed.acpChatLocation === 'tab' || parsed.acpChatLocation === 'split'
+          ? parsed.acpChatLocation
+          : 'right-pane',
+      acpFontSize:
+        typeof parsed.acpFontSize === 'number'
+          ? Math.min(30, Math.max(10, Math.round(parsed.acpFontSize)))
+          : defaults.acpFontSize,
+      acpShowEmojis: parsed.acpShowEmojis !== false,
+      acpAutoCollapseDiffs: parsed.acpAutoCollapseDiffs === true,
+      acpCollapseDiffThreshold:
+        typeof parsed.acpCollapseDiffThreshold === 'number'
+          ? Math.min(500, Math.max(5, Math.round(parsed.acpCollapseDiffThreshold)))
+          : defaults.acpCollapseDiffThreshold,
+      acpFloatingEnabled: parsed.acpFloatingEnabled === true,
+      acpFloatingButtonImage:
+        typeof parsed.acpFloatingButtonImage === 'string' ? parsed.acpFloatingButtonImage.slice(0, 500) : '',
+      acpFloatingBounds:
+        parsed.acpFloatingBounds &&
+        typeof parsed.acpFloatingBounds.x === 'number' &&
+        typeof parsed.acpFloatingBounds.y === 'number' &&
+        typeof parsed.acpFloatingBounds.width === 'number' &&
+        typeof parsed.acpFloatingBounds.height === 'number'
+          ? parsed.acpFloatingBounds
+          : null,
+      acpAutoAllowPermissions: parsed.acpAutoAllowPermissions === true,
+      acpSystemNotifications: parsed.acpSystemNotifications !== false,
+      acpInjectMarkdownRules: parsed.acpInjectMarkdownRules !== false,
+      acpInjectTableSpacing: parsed.acpInjectTableSpacing !== false,
+      acpInjectLatexRules: parsed.acpInjectLatexRules !== false,
+      acpExportFolder:
+        typeof parsed.acpExportFolder === 'string'
+          ? parsed.acpExportFolder.slice(0, 200)
+          : defaults.acpExportFolder,
+      acpExportFilename:
+        typeof parsed.acpExportFilename === 'string' && parsed.acpExportFilename.trim()
+          ? parsed.acpExportFilename.slice(0, 200)
+          : defaults.acpExportFilename,
+      acpExportTag:
+        typeof parsed.acpExportTag === 'string' ? parsed.acpExportTag.slice(0, 120) : defaults.acpExportTag,
+      acpExportIncludeImages: parsed.acpExportIncludeImages !== false,
+      acpExportImageLocation:
+        parsed.acpExportImageLocation === 'export-folder' || parsed.acpExportImageLocation === 'custom'
+          ? parsed.acpExportImageLocation
+          : 'attachments',
+      acpExportImageCustomPath:
+        typeof parsed.acpExportImageCustomPath === 'string'
+          ? parsed.acpExportImageCustomPath.slice(0, 200)
+          : '',
+      acpExportIncludeAudio: parsed.acpExportIncludeAudio !== false,
+      acpExportAudioLocation:
+        parsed.acpExportAudioLocation === 'export-folder' || parsed.acpExportAudioLocation === 'custom'
+          ? parsed.acpExportAudioLocation
+          : 'attachments',
+      acpExportAudioCustomPath:
+        typeof parsed.acpExportAudioCustomPath === 'string'
+          ? parsed.acpExportAudioCustomPath.slice(0, 200)
+          : '',
+      acpAutoExportOnNew: parsed.acpAutoExportOnNew === true,
+      acpAutoExportOnClose: parsed.acpAutoExportOnClose === true,
+      acpOpenAfterExport: parsed.acpOpenAfterExport !== false,
+      acpDebugMode: parsed.acpDebugMode === true,
       checkUpdates: parsed.checkUpdates === true,
       mcpEnabled: parsed.mcpEnabled === true,
       codeLanguage:

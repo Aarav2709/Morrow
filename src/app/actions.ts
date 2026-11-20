@@ -4,7 +4,11 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowRightLeft,
+  Bot,
+  Check,
   Columns2,
+  FolderPlus,
+  Layers,
   PanelRightClose,
   RotateCcw,
   CalendarDays,
@@ -77,8 +81,14 @@ import { chooseVaultFolder } from './vaults';
 import { getPreferences, resolvedTheme, setPreferences } from './platform/preferences';
 import { activeRoute, navigate } from './router';
 import { pluginActions } from './plugins/registry';
-import { getUi, openDialog, setUi } from './ui';
+import { getUi, openDialog, setUi, toast } from './ui';
 import { getState } from './workspace';
+import {
+  createAcpSession,
+  exportAcpSession,
+  getAcpState,
+  respondFirstWaitingPermission,
+} from './assistant/acpStore';
 
 export interface ActionContext {
   pageId: PageId | null;
@@ -349,9 +359,116 @@ export const ACTIONS: Action[] = [
     group: 'View',
     icon: Sparkles,
     shortcut: 'Mod+J',
-    keywords: 'ai chat ask claude gpt gemini',
-    enabled: () => getPreferences().assistant && desktop?.assistant !== undefined,
-    run: () => setPreferences({ assistantOpen: !getPreferences().assistantOpen }),
+    keywords: 'ai chat ask claude gpt gemini agent acp',
+    enabled: () =>
+      getPreferences().assistant && (desktop?.assistant !== undefined || desktop?.acp !== undefined),
+    run: () => {
+      const prefs = getPreferences();
+      if (prefs.assistantEngine === 'acp' && desktop?.acp) {
+        if (prefs.acpChatLocation === 'tab') {
+          openTab('#/agent');
+          return;
+        }
+        if (prefs.acpChatLocation === 'split') {
+          openSide('#/agent');
+          return;
+        }
+      }
+      setPreferences({ assistantOpen: !prefs.assistantOpen });
+    },
+  },
+  {
+    id: 'acp.newChat',
+    label: 'Agent Client: New chat',
+    group: 'View',
+    icon: Bot,
+    keywords: 'agent client new chat acp claude codex gemini',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => {
+      const prefs = getPreferences();
+      const origin = prefs.acpChatLocation === 'right-pane' ? 'panel' : 'tab';
+      void createAcpSession({ origin }).then((s) => {
+        if (origin === 'tab') openTab(`#/agent/${encodeURIComponent(s.id)}`);
+        else setPreferences({ assistantOpen: true, assistantEngine: 'acp' });
+      });
+    },
+  },
+  {
+    id: 'acp.newChatInDir',
+    label: 'Agent Client: New chat in directory…',
+    group: 'View',
+    icon: FolderPlus,
+    keywords: 'agent client directory folder cwd',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => {
+      void desktop?.acp?.pickDirectory().then((dir) => {
+        if (!dir) return;
+        const prefs = getPreferences();
+        const origin = prefs.acpChatLocation === 'right-pane' ? 'panel' : 'tab';
+        void createAcpSession({ cwd: dir, origin }).then((s) => {
+          if (origin === 'tab') openTab(`#/agent/${encodeURIComponent(s.id)}`);
+          else setPreferences({ assistantOpen: true, assistantEngine: 'acp' });
+        });
+      });
+    },
+  },
+  {
+    id: 'acp.sessionManager',
+    label: 'Agent Client: Open Session Manager',
+    group: 'View',
+    icon: Layers,
+    keywords: 'agent client sessions broadcast mission control',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => openDialog({ kind: 'sessionManager' }),
+  },
+  {
+    id: 'acp.toggleFloating',
+    label: 'Agent Client: Toggle floating chat',
+    group: 'View',
+    icon: Bot,
+    keywords: 'agent client floating chat window',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => setPreferences({ acpFloatingEnabled: !getPreferences().acpFloatingEnabled }),
+  },
+  {
+    id: 'acp.exportChat',
+    label: 'Agent Client: Export active chat to note',
+    group: 'View',
+    icon: Download,
+    keywords: 'agent client export markdown note',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => {
+      const id = getAcpState().activePanelSessionId;
+      if (id) {
+        void exportAcpSession(id).then((pageId) => {
+          if (pageId) toast('Exported chat to note.');
+        });
+      }
+    },
+  },
+  {
+    id: 'acp.approvePermission',
+    label: 'Agent Client: Approve waiting permission',
+    group: 'View',
+    icon: Check,
+    shortcut: 'Mod+Shift+Y',
+    keywords: 'agent client permission approve allow',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => {
+      respondFirstWaitingPermission(true);
+    },
+  },
+  {
+    id: 'acp.rejectPermission',
+    label: 'Agent Client: Reject waiting permission',
+    group: 'View',
+    icon: X,
+    shortcut: 'Mod+Shift+N',
+    keywords: 'agent client permission reject deny',
+    enabled: () => getPreferences().assistant && desktop?.acp !== undefined,
+    run: () => {
+      respondFirstWaitingPermission(false);
+    },
   },
   {
     id: 'go.home',

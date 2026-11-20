@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react';
 import { formatShortcut } from '../actions';
 import { Switch } from '../components/primitives';
 import { Select } from '../components/Select';
-import { SettingRow, SettingsGroup } from '../components/SettingsRows';
+import { SettingRow, SettingsGroup, Segmented } from '../components/SettingsRows';
 import { openHref } from '../editor/EditorMenus';
 import { useTranslation } from '../i18n';
 import { tr } from '../i18n/rich';
 import { copyText, desktop } from '../platform/desktop';
 import type { AssistantProviderId, AssistantSettings as Settings, McpLaunch } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
+import { AcpSettings } from './AcpSettings';
 
 // the open panel listens for this to show the provider and model that were just picked
 export const SETTINGS_CHANGED = 'morrow:assistant-settings';
@@ -162,9 +163,27 @@ export function AssistantSettings() {
             onChange={(on) => setPreferences({ assistant: on, assistantOpen: on && prefs.assistantOpen })}
           />
         </SettingRow>
+        {prefs.assistant && desktop?.acp && (
+          <SettingRow
+            label="Assistant mode"
+            help="Use local ACP CLI agents (Claude Code, Codex, Gemini CLI, Antigravity) or direct API keys."
+          >
+            <Segmented<'acp' | 'api'>
+              label="Assistant mode"
+              value={prefs.assistantEngine}
+              options={[
+                ['acp', 'Agent Client (ACP)'],
+                ['api', 'API Providers'],
+              ]}
+              onChange={(assistantEngine) => setPreferences({ assistantEngine })}
+            />
+          </SettingRow>
+        )}
       </SettingsGroup>
 
-      {prefs.assistant && settings && (
+      {prefs.assistant && prefs.assistantEngine === 'acp' && desktop?.acp && <AcpSettings />}
+
+      {prefs.assistant && (prefs.assistantEngine === 'api' || !desktop?.acp) && settings && (
         <>
           <SettingsGroup title={t('settings.assistant.connection')}>
             <SettingRow label={t('settings.assistant.provider')}>
