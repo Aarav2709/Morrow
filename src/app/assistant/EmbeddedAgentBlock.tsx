@@ -1,5 +1,6 @@
 import { Bot, Play } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from '../i18n';
 import { setPreferences } from '../platform/preferences';
 import { openDialog } from '../ui';
 import { AgentClientView } from './AgentClientView';
@@ -18,6 +19,7 @@ export function parseAgentBlockConfig(source: string): Record<string, string> {
 }
 
 export function EmbeddedAgentChat({ source }: { source: string }) {
+  const { t } = useTranslation();
   const cfg = useMemo(() => parseAgentBlockConfig(source), [source]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const embeddedKey = cfg.session || 'default-note-chat';
@@ -50,7 +52,7 @@ export function EmbeddedAgentChat({ source }: { source: string }) {
         />
       ) : (
         <div className="acp-embedded-loading">
-          <Bot size={14} /> Loading agent session…
+          <Bot size={14} /> {t('acp.loadingSession')}
         </div>
       )}
     </div>
@@ -58,8 +60,9 @@ export function EmbeddedAgentChat({ source }: { source: string }) {
 }
 
 export function EmbeddedAgentButton({ source }: { source: string }) {
+  const { t } = useTranslation();
   const cfg = useMemo(() => parseAgentBlockConfig(source), [source]);
-  const label = cfg.label || 'Run Agent Prompt';
+  const label = cfg.label || t('acp.runAgentPrompt');
   const prompt = cfg.prompt || '';
 
   const trigger = async () => {

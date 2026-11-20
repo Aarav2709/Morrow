@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Switch } from '../components/primitives';
 import { Select } from '../components/Select';
 import { SettingRow, SettingsGroup } from '../components/SettingsRows';
+import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import type { AcpConfigurePatch, AcpCustomAgentConfig, AcpSettings as AcpConfig } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
@@ -39,6 +40,7 @@ function textToArgs(raw: string): string[] {
 }
 
 export function AcpSettings() {
+  const { t } = useTranslation();
   const prefs = usePreferences();
   const [cfg, setCfg] = useState<AcpConfig | null>(null);
   const [openPresets, setOpenPresets] = useState<Record<string, boolean>>({});
@@ -72,7 +74,7 @@ export function AcpSettings() {
     const id = n === 1 ? 'custom-agent' : `custom-agent-${n}`;
     const created: AcpCustomAgentConfig = {
       id,
-      displayName: 'Custom agent',
+      displayName: t('settings.assistant.acp.customAgentDefaultName'),
       enabled: true,
       command: '',
       args: [],
@@ -90,9 +92,12 @@ export function AcpSettings() {
   return (
     <>
       <SettingsGroup>
-        <SettingRow label="Default agent" help="Choose which ACP agent is used when opening a new chat.">
+        <SettingRow
+          label={t('settings.assistant.acp.defaultAgent')}
+          help={t('settings.assistant.acp.defaultAgentHelp')}
+        >
           <Select<string>
-            label="Default agent"
+            label={t('settings.assistant.acp.defaultAgent')}
             value={cfg.defaultAgentId}
             options={agentOptions}
             onChange={(defaultAgentId) => void patch({ defaultAgentId })}
@@ -100,17 +105,17 @@ export function AcpSettings() {
         </SettingRow>
 
         <SettingRow
-          label="Node.js path"
-          help="Path to Node.js. Usually leave blank unless node is in a non-standard location."
+          label={t('settings.assistant.acp.nodePath')}
+          help={t('settings.assistant.acp.nodePathHelp')}
           stacked
         >
           <div className="settings-inline-form">
             <input
               className="text-input small"
-              aria-label="Node.js path"
+              aria-label={t('settings.assistant.acp.nodePath')}
               key={cfg.nodePath}
               defaultValue={cfg.nodePath}
-              placeholder={cfg.detectedNodePath ?? 'Leave blank (auto-detect)'}
+              placeholder={cfg.detectedNodePath ?? t('settings.assistant.acp.nodePathPlaceholder')}
               spellCheck={false}
               onBlur={(e) => e.target.value !== cfg.nodePath && void patch({ nodePath: e.target.value })}
               onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
@@ -122,55 +127,58 @@ export function AcpSettings() {
                 void acp.detectNode().then((found) => {
                   if (found) {
                     void patch({ nodePath: found });
-                    toast(`Detected Node.js: ${found}`);
+                    toast(t('settings.assistant.acp.detectedNode', { path: found }));
                   } else {
-                    toast('Could not find Node.js automatically.', { tone: 'error' });
+                    toast(t('settings.assistant.acp.nodeNotFound'), { tone: 'error' });
                   }
                 });
               }}
             >
-              Auto-detect
+              {t('settings.assistant.acp.autoDetect')}
             </button>
           </div>
         </SettingRow>
 
-        <SettingRow label="Send message shortcut" help="Choose the keyboard shortcut to send messages.">
+        <SettingRow
+          label={t('settings.assistant.acp.sendShortcut')}
+          help={t('settings.assistant.acp.sendShortcutHelp')}
+        >
           <Select<'enter' | 'mod-enter'>
-            label="Send message shortcut"
+            label={t('settings.assistant.acp.sendShortcut')}
             value={prefs.acpSendShortcut}
             options={[
-              { value: 'enter', label: 'Enter to send, Shift+Enter for newline' },
-              { value: 'mod-enter', label: 'Ctrl/Cmd+Enter to send' },
+              { value: 'enter', label: t('settings.assistant.acp.sendEnter') },
+              { value: 'mod-enter', label: t('settings.assistant.acp.sendModEnter') },
             ]}
             onChange={(acpSendShortcut) => setPreferences({ acpSendShortcut })}
           />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Mentions">
+      <SettingsGroup title={t('settings.assistant.acp.mentionsTitle')}>
         <SettingRow
-          label="Auto-mention active note"
-          help="Include the current note automatically without typing @notename."
+          label={t('settings.assistant.acp.autoMentionActive')}
+          help={t('settings.assistant.acp.autoMentionActiveHelp')}
         >
           <Switch
-            label="Auto-mention active note"
+            label={t('settings.assistant.acp.autoMentionActive')}
             checked={prefs.acpAutoMentionActive}
             onChange={(acpAutoMentionActive) => setPreferences({ acpAutoMentionActive })}
           />
         </SettingRow>
         <SettingRow
-          label="Expand wikilink context"
-          help="Surface [[wikilinks]] inside mentioned notes as resolved file paths so the agent can read them."
+          label={t('settings.assistant.acp.expandWikilinks')}
+          help={t('settings.assistant.acp.expandWikilinksHelp')}
         >
           <Switch
-            label="Expand wikilink context"
+            label={t('settings.assistant.acp.expandWikilinks')}
             checked={prefs.acpExpandWikilinks}
             onChange={(acpExpandWikilinks) => setPreferences({ acpExpandWikilinks })}
           />
         </SettingRow>
         <SettingRow
-          label="Max note length"
-          help="Maximum characters per mentioned note. Longer notes are truncated."
+          label={t('settings.assistant.acp.maxNoteLength')}
+          help={t('settings.assistant.acp.maxNoteLengthHelp')}
         >
           <input
             type="number"
@@ -185,8 +193,8 @@ export function AcpSettings() {
           />
         </SettingRow>
         <SettingRow
-          label="Max selection length"
-          help="Maximum characters for highlighted text selection context."
+          label={t('settings.assistant.acp.maxSelectionLength')}
+          help={t('settings.assistant.acp.maxSelectionLengthHelp')}
         >
           <input
             type="number"
@@ -202,20 +210,26 @@ export function AcpSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Display">
-        <SettingRow label="Chat view location" help="Where to open new chat views.">
+      <SettingsGroup title={t('settings.assistant.acp.displayTitle')}>
+        <SettingRow
+          label={t('settings.assistant.acp.chatLocation')}
+          help={t('settings.assistant.acp.chatLocationHelp')}
+        >
           <Select<'right-pane' | 'tab' | 'split'>
-            label="Chat view location"
+            label={t('settings.assistant.acp.chatLocation')}
             value={prefs.acpChatLocation}
             options={[
-              { value: 'right-pane', label: 'Right pane (panel)' },
-              { value: 'tab', label: 'Editor tab' },
-              { value: 'split', label: 'Split pane' },
+              { value: 'right-pane', label: t('settings.assistant.acp.locationRightPane') },
+              { value: 'tab', label: t('settings.assistant.acp.locationTab') },
+              { value: 'split', label: t('settings.assistant.acp.locationSplit') },
             ]}
             onChange={(acpChatLocation) => setPreferences({ acpChatLocation })}
           />
         </SettingRow>
-        <SettingRow label="Chat font size" help="Adjust the font size of the chat message area (10-30px).">
+        <SettingRow
+          label={t('settings.assistant.acp.chatFontSize')}
+          help={t('settings.assistant.acp.chatFontSizeHelp')}
+        >
           <input
             type="number"
             className="text-input small acp-num-input"
@@ -229,41 +243,41 @@ export function AcpSettings() {
           />
         </SettingRow>
         <SettingRow
-          label="Show emojis"
-          help="Display emoji icons in tool calls, thoughts, plans, and terminal blocks."
+          label={t('settings.assistant.acp.showEmojis')}
+          help={t('settings.assistant.acp.showEmojisHelp')}
         >
           <Switch
-            label="Show emojis"
+            label={t('settings.assistant.acp.showEmojis')}
             checked={prefs.acpShowEmojis}
             onChange={(acpShowEmojis) => setPreferences({ acpShowEmojis })}
           />
         </SettingRow>
         <SettingRow
-          label="Auto-collapse long diffs"
-          help="Automatically collapse diffs that exceed the line threshold."
+          label={t('settings.assistant.acp.autoCollapseDiffs')}
+          help={t('settings.assistant.acp.autoCollapseDiffsHelp')}
         >
           <Switch
-            label="Auto-collapse long diffs"
+            label={t('settings.assistant.acp.autoCollapseDiffs')}
             checked={prefs.acpAutoCollapseDiffs}
             onChange={(acpAutoCollapseDiffs) => setPreferences({ acpAutoCollapseDiffs })}
           />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Floating chat">
+      <SettingsGroup title={t('settings.assistant.acp.floatingTitle')}>
         <SettingRow
-          label="Enable floating chat"
-          help="Enable the floating chat button and draggable chat windows."
+          label={t('settings.assistant.acp.enableFloating')}
+          help={t('settings.assistant.acp.enableFloatingHelp')}
         >
           <Switch
-            label="Enable floating chat"
+            label={t('settings.assistant.acp.enableFloating')}
             checked={prefs.acpFloatingEnabled}
             onChange={(acpFloatingEnabled) => setPreferences({ acpFloatingEnabled })}
           />
         </SettingRow>
         <SettingRow
-          label="Floating button image"
-          help="URL or path to an image for the floating button. Leave empty for default icon."
+          label={t('settings.assistant.acp.floatingImage')}
+          help={t('settings.assistant.acp.floatingImageHelp')}
           stacked
         >
           <input
@@ -275,59 +289,59 @@ export function AcpSettings() {
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Permissions">
+      <SettingsGroup title={t('settings.assistant.acp.permissionsTitle')}>
         <SettingRow
-          label="Auto-allow permissions"
-          help="Automatically allow all permission requests from agents. Use with caution: this gives agents full access to your system."
+          label={t('settings.assistant.acp.autoAllowPermissions')}
+          help={t('settings.assistant.acp.autoAllowPermissionsHelp')}
         >
           <Switch
-            label="Auto-allow permissions"
+            label={t('settings.assistant.acp.autoAllowPermissions')}
             checked={prefs.acpAutoAllowPermissions}
             onChange={(acpAutoAllowPermissions) => setPreferences({ acpAutoAllowPermissions })}
           />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Notifications">
+      <SettingsGroup title={t('settings.assistant.acp.notificationsTitle')}>
         <SettingRow
-          label="System notifications"
-          help="Show OS notifications when the agent completes a response or requests permission while Morrow is unfocused."
+          label={t('settings.assistant.acp.systemNotifications')}
+          help={t('settings.assistant.acp.systemNotificationsHelp')}
         >
           <Switch
-            label="System notifications"
+            label={t('settings.assistant.acp.systemNotifications')}
             checked={prefs.acpSystemNotifications}
             onChange={(acpSystemNotifications) => setPreferences({ acpSystemNotifications })}
           />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Prompt injection">
+      <SettingsGroup title={t('settings.assistant.acp.promptInjectionTitle')}>
         <SettingRow
-          label="Inject Morrow Markdown instructions"
-          help="Include formatting guidance in the first message of each session so agents produce Morrow-compatible Markdown."
+          label={t('settings.assistant.acp.injectMarkdown')}
+          help={t('settings.assistant.acp.injectMarkdownHelp')}
         >
           <Switch
-            label="Inject Morrow Markdown instructions"
+            label={t('settings.assistant.acp.injectMarkdown')}
             checked={prefs.acpInjectMarkdownRules}
             onChange={(acpInjectMarkdownRules) => setPreferences({ acpInjectMarkdownRules })}
           />
         </SettingRow>
         <SettingRow
-          label="Markdown table spacing"
-          help="Instruct agents to leave a blank line before Markdown tables so Morrow renders them cleanly."
+          label={t('settings.assistant.acp.tableSpacing')}
+          help={t('settings.assistant.acp.tableSpacingHelp')}
         >
           <Switch
-            label="Markdown table spacing"
+            label={t('settings.assistant.acp.tableSpacing')}
             checked={prefs.acpInjectTableSpacing}
             onChange={(acpInjectTableSpacing) => setPreferences({ acpInjectTableSpacing })}
           />
         </SettingRow>
         <SettingRow
-          label="LaTeX math formatting"
-          help="Instruct agents to use $...$ and $$...$$ delimiters for math expressions."
+          label={t('settings.assistant.acp.latexFormatting')}
+          help={t('settings.assistant.acp.latexFormattingHelp')}
         >
           <Switch
-            label="LaTeX math formatting"
+            label={t('settings.assistant.acp.latexFormatting')}
             checked={prefs.acpInjectLatexRules}
             onChange={(acpInjectLatexRules) => setPreferences({ acpInjectLatexRules })}
           />
@@ -335,13 +349,13 @@ export function AcpSettings() {
       </SettingsGroup>
 
       {desktop?.platform === 'win32' && (
-        <SettingsGroup title="Windows Subsystem for Linux">
+        <SettingsGroup title={t('settings.assistant.acp.wslTitle')}>
           <SettingRow
-            label="Enable WSL mode"
-            help="Run agents inside Windows Subsystem for Linux. Recommended for agents like Codex that work better in Linux."
+            label={t('settings.assistant.acp.wslMode')}
+            help={t('settings.assistant.acp.wslModeHelp')}
           >
             <Switch
-              label="Enable WSL mode"
+              label={t('settings.assistant.acp.wslMode')}
               checked={cfg.wslMode}
               onChange={(wslMode) => void patch({ wslMode })}
             />
@@ -349,7 +363,7 @@ export function AcpSettings() {
         </SettingsGroup>
       )}
 
-      <SettingsGroup title="Preset agents">
+      <SettingsGroup title={t('settings.assistant.acp.presetAgentsTitle')}>
         {cfg.presets.map((preset) => {
           const isOpen = Boolean(openPresets[preset.id]);
           return (
@@ -365,14 +379,18 @@ export function AcpSettings() {
                   <code className="acp-agent-id">{preset.id}</code>
                 </button>
                 <Switch
-                  label={`Enable ${preset.displayName}`}
+                  label={t('settings.assistant.acp.enableAgent', { name: preset.displayName })}
                   checked={preset.enabled}
                   onChange={(enabled) => void patch({ presets: [{ id: preset.id, enabled }] })}
                 />
               </div>
               {isOpen && (
                 <div className="acp-agent-card-body">
-                  <SettingRow label="Path" help={`Default command: ${preset.defaultCommand}`} stacked>
+                  <SettingRow
+                    label={t('settings.assistant.acp.path')}
+                    help={t('settings.assistant.acp.presetPathHelp', { command: preset.defaultCommand })}
+                    stacked
+                  >
                     <input
                       className="text-input small"
                       defaultValue={preset.command}
@@ -381,7 +399,11 @@ export function AcpSettings() {
                       onBlur={(e) => void patch({ presets: [{ id: preset.id, command: e.target.value }] })}
                     />
                   </SettingRow>
-                  <SettingRow label="Arguments" help="One argument per line." stacked>
+                  <SettingRow
+                    label={t('settings.assistant.acp.arguments')}
+                    help={t('settings.assistant.acp.argumentsHelp')}
+                    stacked
+                  >
                     <textarea
                       className="text-input small acp-textarea"
                       rows={2}
@@ -392,7 +414,11 @@ export function AcpSettings() {
                       }
                     />
                   </SettingRow>
-                  <SettingRow label="Environment variables" help="KEY=VALUE pairs, one per line." stacked>
+                  <SettingRow
+                    label={t('settings.assistant.acp.envVars')}
+                    help={t('settings.assistant.acp.envVarsHelp')}
+                    stacked
+                  >
                     <textarea
                       className="text-input small acp-textarea"
                       rows={2}
@@ -411,12 +437,13 @@ export function AcpSettings() {
         })}
       </SettingsGroup>
 
-      <SettingsGroup title="Custom agents">
+      <SettingsGroup title={t('settings.assistant.acp.customAgentsTitle')}>
         {cfg.customAgents.length === 0 ? (
-          <p className="muted small acp-empty-custom">No custom agents configured yet.</p>
+          <p className="muted small acp-empty-custom">{t('settings.assistant.acp.noCustomAgents')}</p>
         ) : (
           cfg.customAgents.map((agent, index) => {
             const isOpen = Boolean(openCustom[agent.id]);
+            const display = agent.displayName || t('settings.assistant.acp.customAgentDefaultName');
             return (
               <div key={`${agent.id}-${index}`} className="acp-agent-card">
                 <div className="acp-agent-card-head">
@@ -426,18 +453,18 @@ export function AcpSettings() {
                     onClick={() => setOpenCustom((prev) => ({ ...prev, [agent.id]: !isOpen }))}
                   >
                     {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    <span>{agent.displayName || 'Custom agent'}</span>
+                    <span>{display}</span>
                   </button>
                   <div className="acp-agent-card-actions">
                     <Switch
-                      label={`Enable ${agent.displayName}`}
+                      label={t('settings.assistant.acp.enableAgent', { name: display })}
                       checked={agent.enabled}
                       onChange={(enabled) => updateCustomAgent(index, { enabled })}
                     />
                     <button
                       type="button"
                       className="icon-button small"
-                      aria-label={`Delete ${agent.displayName}`}
+                      aria-label={t('settings.assistant.acp.deleteAgent', { name: display })}
                       onClick={() => removeCustomAgent(index)}
                     >
                       <Trash2 size={14} />
@@ -447,8 +474,8 @@ export function AcpSettings() {
                 {isOpen && (
                   <div className="acp-agent-card-body">
                     <SettingRow
-                      label="Agent ID"
-                      help="Unique identifier used to reference this agent."
+                      label={t('settings.assistant.acp.agentId')}
+                      help={t('settings.assistant.acp.agentIdHelp')}
                       stacked
                     >
                       <input
@@ -458,23 +485,35 @@ export function AcpSettings() {
                         onBlur={(e) => updateCustomAgent(index, { id: e.target.value.trim() || agent.id })}
                       />
                     </SettingRow>
-                    <SettingRow label="Display name" help="Shown in menus and headers." stacked>
+                    <SettingRow
+                      label={t('settings.assistant.acp.displayName')}
+                      help={t('settings.assistant.acp.displayNameHelp')}
+                      stacked
+                    >
                       <input
                         className="text-input small"
                         defaultValue={agent.displayName}
                         onBlur={(e) => updateCustomAgent(index, { displayName: e.target.value })}
                       />
                     </SettingRow>
-                    <SettingRow label="Path" help="Command name or path to the custom agent." stacked>
+                    <SettingRow
+                      label={t('settings.assistant.acp.path')}
+                      help={t('settings.assistant.acp.customPathHelp')}
+                      stacked
+                    >
                       <input
                         className="text-input small"
                         defaultValue={agent.command}
-                        placeholder="Command name or path"
+                        placeholder={t('settings.assistant.acp.customPathPlaceholder')}
                         spellCheck={false}
                         onBlur={(e) => updateCustomAgent(index, { command: e.target.value })}
                       />
                     </SettingRow>
-                    <SettingRow label="Arguments" help="Enter one argument per line." stacked>
+                    <SettingRow
+                      label={t('settings.assistant.acp.arguments')}
+                      help={t('settings.assistant.acp.argumentsHelp')}
+                      stacked
+                    >
                       <textarea
                         className="text-input small acp-textarea"
                         rows={2}
@@ -485,8 +524,8 @@ export function AcpSettings() {
                       />
                     </SettingRow>
                     <SettingRow
-                      label="Environment variables"
-                      help="Enter KEY=VALUE pairs, one per line."
+                      label={t('settings.assistant.acp.envVars')}
+                      help={t('settings.assistant.acp.envVarsHelp')}
                       stacked
                     >
                       <textarea
@@ -504,15 +543,21 @@ export function AcpSettings() {
             );
           })
         )}
-        <SettingRow label="New custom agent" help="Register any ACP-compatible agent.">
+        <SettingRow
+          label={t('settings.assistant.acp.newCustomAgent')}
+          help={t('settings.assistant.acp.newCustomAgentHelp')}
+        >
           <button type="button" className="button small primary" onClick={addCustomAgent}>
-            <Plus size={14} /> Add custom agent
+            <Plus size={14} /> {t('settings.assistant.acp.addCustomAgent')}
           </button>
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Export">
-        <SettingRow label="Export folder" help="Folder where chat exports will be saved.">
+      <SettingsGroup title={t('settings.assistant.acp.exportTitle')}>
+        <SettingRow
+          label={t('settings.assistant.acp.exportFolder')}
+          help={t('settings.assistant.acp.exportFolderHelp')}
+        >
           <input
             className="text-input small settings-input"
             defaultValue={prefs.acpExportFolder}
@@ -520,8 +565,8 @@ export function AcpSettings() {
           />
         </SettingRow>
         <SettingRow
-          label="Filename"
-          help="Template for exported filenames. Use {date} for date and {time} for time."
+          label={t('settings.assistant.acp.filename')}
+          help={t('settings.assistant.acp.filenameHelp')}
         >
           <input
             className="text-input small settings-input"
@@ -530,8 +575,8 @@ export function AcpSettings() {
           />
         </SettingRow>
         <SettingRow
-          label="Frontmatter tag"
-          help="Tag to add to exported notes. Supports nested tags (e.g., projects/agent-client)."
+          label={t('settings.assistant.acp.frontmatterTag')}
+          help={t('settings.assistant.acp.frontmatterTagHelp')}
         >
           <input
             className="text-input small settings-input"
@@ -539,27 +584,33 @@ export function AcpSettings() {
             onBlur={(e) => setPreferences({ acpExportTag: e.target.value })}
           />
         </SettingRow>
-        <SettingRow label="Include images" help="Include images in exported Markdown files.">
+        <SettingRow
+          label={t('settings.assistant.acp.includeImages')}
+          help={t('settings.assistant.acp.includeImagesHelp')}
+        >
           <Switch
-            label="Include images"
+            label={t('settings.assistant.acp.includeImages')}
             checked={prefs.acpExportIncludeImages}
             onChange={(acpExportIncludeImages) => setPreferences({ acpExportIncludeImages })}
           />
         </SettingRow>
-        <SettingRow label="Image location" help="Where to save exported images.">
+        <SettingRow
+          label={t('settings.assistant.acp.imageLocation')}
+          help={t('settings.assistant.acp.imageLocationHelp')}
+        >
           <Select<'attachments' | 'export-folder' | 'custom'>
-            label="Image location"
+            label={t('settings.assistant.acp.imageLocation')}
             value={prefs.acpExportImageLocation}
             options={[
-              { value: 'attachments', label: "Use Morrow's attachment setting" },
-              { value: 'export-folder', label: 'Export folder' },
-              { value: 'custom', label: 'Custom folder' },
+              { value: 'attachments', label: t('settings.assistant.acp.locationAttachments') },
+              { value: 'export-folder', label: t('settings.assistant.acp.locationExportFolder') },
+              { value: 'custom', label: t('settings.assistant.acp.locationCustom') },
             ]}
             onChange={(acpExportImageLocation) => setPreferences({ acpExportImageLocation })}
           />
         </SettingRow>
         {prefs.acpExportImageLocation === 'custom' && (
-          <SettingRow label="Custom image folder" stacked>
+          <SettingRow label={t('settings.assistant.acp.customImageFolder')} stacked>
             <input
               className="text-input small"
               defaultValue={prefs.acpExportImageCustomPath}
@@ -567,27 +618,33 @@ export function AcpSettings() {
             />
           </SettingRow>
         )}
-        <SettingRow label="Include audio" help="Include audio attachments in exported Markdown files.">
+        <SettingRow
+          label={t('settings.assistant.acp.includeAudio')}
+          help={t('settings.assistant.acp.includeAudioHelp')}
+        >
           <Switch
-            label="Include audio"
+            label={t('settings.assistant.acp.includeAudio')}
             checked={prefs.acpExportIncludeAudio}
             onChange={(acpExportIncludeAudio) => setPreferences({ acpExportIncludeAudio })}
           />
         </SettingRow>
-        <SettingRow label="Audio location" help="Where to save exported audio files.">
+        <SettingRow
+          label={t('settings.assistant.acp.audioLocation')}
+          help={t('settings.assistant.acp.audioLocationHelp')}
+        >
           <Select<'attachments' | 'export-folder' | 'custom'>
-            label="Audio location"
+            label={t('settings.assistant.acp.audioLocation')}
             value={prefs.acpExportAudioLocation}
             options={[
-              { value: 'attachments', label: "Use Morrow's attachment setting" },
-              { value: 'export-folder', label: 'Export folder' },
-              { value: 'custom', label: 'Custom folder' },
+              { value: 'attachments', label: t('settings.assistant.acp.locationAttachments') },
+              { value: 'export-folder', label: t('settings.assistant.acp.locationExportFolder') },
+              { value: 'custom', label: t('settings.assistant.acp.locationCustom') },
             ]}
             onChange={(acpExportAudioLocation) => setPreferences({ acpExportAudioLocation })}
           />
         </SettingRow>
         {prefs.acpExportAudioLocation === 'custom' && (
-          <SettingRow label="Custom audio folder" stacked>
+          <SettingRow label={t('settings.assistant.acp.customAudioFolder')} stacked>
             <input
               className="text-input small"
               defaultValue={prefs.acpExportAudioCustomPath}
@@ -596,44 +653,44 @@ export function AcpSettings() {
           </SettingRow>
         )}
         <SettingRow
-          label="Auto-export on new chat"
-          help="Automatically export the current chat when starting a new chat."
+          label={t('settings.assistant.acp.autoExportNew')}
+          help={t('settings.assistant.acp.autoExportNewHelp')}
         >
           <Switch
-            label="Auto-export on new chat"
+            label={t('settings.assistant.acp.autoExportNew')}
             checked={prefs.acpAutoExportOnNew}
             onChange={(acpAutoExportOnNew) => setPreferences({ acpAutoExportOnNew })}
           />
         </SettingRow>
         <SettingRow
-          label="Auto-export on close chat"
-          help="Automatically export the current chat when closing the chat view."
+          label={t('settings.assistant.acp.autoExportClose')}
+          help={t('settings.assistant.acp.autoExportCloseHelp')}
         >
           <Switch
-            label="Auto-export on close chat"
+            label={t('settings.assistant.acp.autoExportClose')}
             checked={prefs.acpAutoExportOnClose}
             onChange={(acpAutoExportOnClose) => setPreferences({ acpAutoExportOnClose })}
           />
         </SettingRow>
         <SettingRow
-          label="Open note after export"
-          help="Automatically open the exported note after exporting."
+          label={t('settings.assistant.acp.openAfterExport')}
+          help={t('settings.assistant.acp.openAfterExportHelp')}
         >
           <Switch
-            label="Open note after export"
+            label={t('settings.assistant.acp.openAfterExport')}
             checked={prefs.acpOpenAfterExport}
             onChange={(acpOpenAfterExport) => setPreferences({ acpOpenAfterExport })}
           />
         </SettingRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Developer">
+      <SettingsGroup title={t('settings.assistant.acp.developerTitle')}>
         <SettingRow
-          label="Debug mode"
-          help="Record raw ACP JSON-RPC messages and agent stderr inside the chat view."
+          label={t('settings.assistant.acp.debugMode')}
+          help={t('settings.assistant.acp.debugModeHelp')}
         >
           <Switch
-            label="Debug mode"
+            label={t('settings.assistant.acp.debugMode')}
             checked={prefs.acpDebugMode}
             onChange={(acpDebugMode) => setPreferences({ acpDebugMode })}
           />

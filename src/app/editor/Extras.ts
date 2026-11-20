@@ -574,7 +574,7 @@ export const CodeBlock = CodeBlockLowlight.extend({
             : isPreview()
               ? t('editor.editHtml')
               : isAgentBlock()
-                ? 'Edit block'
+                ? t('acp.editBlock')
                 : t('editor.editDiagram');
       };
       const draw = () => {

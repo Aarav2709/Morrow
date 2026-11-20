@@ -29,7 +29,7 @@ import type { PageId } from '../../core/model';
 import { resolveLinkTarget } from '../../core/search';
 import { docToHtml } from '../../core/site';
 import { openHref } from '../editor/EditorMenus';
-import { t } from '../i18n';
+import { t, useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import { usePreferences } from '../platform/preferences';
 import { toast } from '../ui';
@@ -93,7 +93,10 @@ function ThoughtBlock({ text, showEmojis }: { text: string; showEmojis: boolean 
     <div className="acp-thought">
       <button type="button" className="acp-collapse-toggle" onClick={() => setOpen(!open)}>
         {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-        <span>{showEmojis ? '💭 ' : ''}Thought</span>
+        <span>
+          {showEmojis ? '💭 ' : ''}
+          {t('acp.thought')}
+        </span>
       </button>
       {open && <div className="acp-thought-body">{text}</div>}
     </div>
@@ -109,7 +112,10 @@ function PlanBlock({
 }) {
   return (
     <div className="acp-plan">
-      <div className="acp-plan-head">{showEmojis ? '📋 ' : ''}Plan</div>
+      <div className="acp-plan-head">
+        {showEmojis ? '📋 ' : ''}
+        {t('acp.plan')}
+      </div>
       <ul>
         {entries.map((entry, idx) => (
           <li key={idx} className={`is-${entry.status}`}>
@@ -162,7 +168,7 @@ function AcpDiffView({
         <span className="acp-diff-path">{diff.path}</span>
         {tooLong && (
           <button type="button" className="link-button small" onClick={() => setExpanded(!expanded)}>
-            {expanded ? 'Collapse' : `Show ${lines.length} lines`}
+            {expanded ? t('acp.collapse') : t('acp.showLines', { count: lines.length })}
           </button>
         )}
       </div>
@@ -219,7 +225,7 @@ function ToolCallBlock({
           <button
             type="button"
             className="icon-button small"
-            aria-label="Toggle tool output"
+            aria-label={t('acp.toggleToolOutput')}
             onClick={() => setShowOutput(!showOutput)}
           >
             {showOutput ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
@@ -231,9 +237,9 @@ function ToolCallBlock({
       )}
       {showOutput && item.terminalOutput !== undefined && (
         <pre className="acp-terminal">
-          <code>{item.terminalOutput || '(running...)'}</code>
+          <code>{item.terminalOutput || t('acp.runningEllipsis')}</code>
           {item.exitCode !== undefined && item.exitCode !== null && (
-            <div className="acp-terminal-exit">Exit code {item.exitCode}</div>
+            <div className="acp-terminal-exit">{t('acp.exitCode', { code: item.exitCode })}</div>
           )}
         </pre>
       )}
@@ -279,10 +285,10 @@ function PermissionCard({
           <span className="muted small">
             {item.status === 'approved' ? (
               <>
-                <Check size={13} /> {item.chosenOptionName || 'Allowed'}
+                <Check size={13} /> {item.chosenOptionName || t('acp.allowed')}
               </>
             ) : (
-              item.chosenOptionName || 'Rejected'
+              item.chosenOptionName || t('acp.rejected')
             )}
           </span>
         )}
@@ -329,6 +335,7 @@ export function AgentClientView({
   onOpenSettings?: () => void;
   onClose?: () => void;
 }) {
+  useTranslation();
   const store = useAcpStore();
   const prefs = usePreferences();
   const workspace = useWorkspace();
@@ -455,7 +462,9 @@ export function AgentClientView({
   };
 
   const activeTitle = prefs.acpAutoMentionActive ? activeNoteTitle() : null;
-  const cwdShort = session?.cwd ? session.cwd.split(/[\\/]/).filter(Boolean).pop() || session.cwd : 'Vault';
+  const cwdShort = session?.cwd
+    ? session.cwd.split(/[\\/]/).filter(Boolean).pop() || session.cwd
+    : t('acp.vaultRoot');
   const busy = session?.status === 'running' || session?.status === 'starting';
 
   return (
@@ -472,7 +481,7 @@ export function AgentClientView({
         <Bot size={15} />
         <select
           className="acp-header-select"
-          aria-label="Select agent"
+          aria-label={t('acp.selectAgent')}
           value={session?.agentId ?? ''}
           onChange={(e) => session && void switchSessionAgent(session.id, e.target.value)}
         >
@@ -487,7 +496,7 @@ export function AgentClientView({
           <button
             type="button"
             className="acp-cwd-pill"
-            title={`Working directory: ${session.cwd || 'Vault root'} (click to change)`}
+            title={t('acp.cwdTitle', { cwd: session.cwd || t('acp.vaultRoot') })}
             onClick={() => {
               void desktop?.acp?.pickDirectory(session.cwd).then((dir) => {
                 if (dir) void switchSessionDirectory(session.id, dir);
@@ -504,8 +513,8 @@ export function AgentClientView({
             <button
               type="button"
               className="icon-button acp-sm-btn"
-              title="Session Manager & Broadcast"
-              aria-label="Session Manager"
+              title={t('acp.sessionManagerBroadcast')}
+              aria-label={t('acp.sessionManager')}
               onClick={onOpenSessionManager}
             >
               <Layers size={15} />
@@ -516,11 +525,11 @@ export function AgentClientView({
             <button
               type="button"
               className="icon-button"
-              title="Export chat to note"
-              aria-label="Export chat to note"
+              title={t('acp.exportChat')}
+              aria-label={t('acp.exportChat')}
               onClick={() =>
                 void exportAcpSession(session.id, { open: prefs.acpOpenAfterExport }).then((id) => {
-                  if (id) toast('Exported chat to note.');
+                  if (id) toast(t('acp.exportedNote'));
                 })
               }
             >
@@ -589,12 +598,8 @@ export function AgentClientView({
       <div className="assistant-messages" ref={listRef} aria-live="polite">
         {(!session || session.items.length === 0) && (
           <div className="assistant-empty">
-            <p>
-              Chat with <strong>{session?.agentName || 'ACP Agent'}</strong> directly in your vault.
-            </p>
-            <p className="muted small">
-              Type <code>@</code> to mention notes, <code>/</code> for agent commands, or drop images.
-            </p>
+            <p>{t('acp.emptyTitle', { agent: session?.agentName || t('acp.tabTitle') })}</p>
+            <p className="muted small">{t('acp.emptyHint')}</p>
           </div>
         )}
 
@@ -655,7 +660,7 @@ export function AgentClientView({
         {busy && session?.status !== 'waiting-permission' && (
           <div className="assistant-thinking">
             <Loader2 size={14} className="spin" />{' '}
-            {session?.status === 'starting' ? 'Starting agent…' : t('assistant.working')}
+            {session?.status === 'starting' ? t('acp.startingAgent') : t('assistant.working')}
           </div>
         )}
       </div>
@@ -664,11 +669,11 @@ export function AgentClientView({
         <div className="acp-debug">
           <button type="button" className="acp-collapse-toggle" onClick={() => setShowDebug(!showDebug)}>
             {showDebug ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            <span>Debug JSON-RPC ({session.debugLog.length})</span>
+            <span>{t('acp.debugTitle', { count: session.debugLog.length })}</span>
           </button>
           {showDebug && (
             <pre className="acp-debug-log">
-              {session.debugLog.map((d) => `[${d.direction}] ${d.line}`).join('\n') || '(no traffic yet)'}
+              {session.debugLog.map((d) => `[${d.direction}] ${d.line}`).join('\n') || t('acp.debugEmpty')}
             </pre>
           )}
         </div>
@@ -695,13 +700,13 @@ export function AgentClientView({
 
       {(activeTitle || explicitMentions.length > 0 || attachments.length > 0) && (
         <div className="acp-context-bar">
-          {activeTitle && <span className="acp-chip">Active: [[{activeTitle}]]</span>}
+          {activeTitle && <span className="acp-chip">{t('acp.activeNoteChip', { title: activeTitle })}</span>}
           {explicitMentions.map((m) => (
             <span key={m.id} className="acp-chip">
               @{m.title}
               <button
                 type="button"
-                aria-label={`Remove ${m.title}`}
+                aria-label={t('acp.removeItem', { name: m.title })}
                 onClick={() => setExplicitMentions((prev) => prev.filter((x) => x.id !== m.id))}
               >
                 <X size={11} />
@@ -713,7 +718,7 @@ export function AgentClientView({
               {att.kind === 'image' ? '🖼' : '🎵'} {att.name}
               <button
                 type="button"
-                aria-label={`Remove ${att.name}`}
+                aria-label={t('acp.removeItem', { name: att.name })}
                 onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== att.id))}
               >
                 <X size={11} />
@@ -771,7 +776,7 @@ export function AgentClientView({
             ref={inputRef}
             rows={2}
             value={text}
-            placeholder={`Message ${session?.agentName ?? 'agent'}… (@ note, / command)`}
+            placeholder={t('acp.messagePlaceholder', { agent: session?.agentName ?? t('acp.tabTitle') })}
             onChange={(e) => {
               setText(e.target.value);
               updateTriggers(e.target.value, e.target.selectionStart ?? e.target.value.length);
@@ -824,7 +829,7 @@ export function AgentClientView({
               {session && session.modes.length > 0 && (
                 <select
                   className="acp-mini-select"
-                  aria-label="Agent mode"
+                  aria-label={t('acp.agentMode')}
                   value={session.currentModeId ?? ''}
                   onChange={(e) => void setAcpMode(session.id, e.target.value)}
                 >
@@ -838,7 +843,7 @@ export function AgentClientView({
               {session && session.models.length > 0 && (
                 <select
                   className="acp-mini-select"
-                  aria-label="Agent model"
+                  aria-label={t('acp.agentModel')}
                   value={session.currentModelId ?? ''}
                   onChange={(e) => void setAcpModel(session.id, e.target.value)}
                 >
@@ -852,8 +857,8 @@ export function AgentClientView({
               <button
                 type="button"
                 className="icon-button small"
-                title="Mention note (@)"
-                aria-label="Mention note"
+                title={t('acp.mentionNote')}
+                aria-label={t('acp.mentionNote')}
                 onClick={() => {
                   setText((prev) => `${prev}@`);
                   setMentionQuery('');
@@ -865,8 +870,8 @@ export function AgentClientView({
               <button
                 type="button"
                 className="icon-button small"
-                title="Attach image or audio"
-                aria-label="Attach image or audio"
+                title={t('acp.attachMedia')}
+                aria-label={t('acp.attachMedia')}
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Paperclip size={14} />

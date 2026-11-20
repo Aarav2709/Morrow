@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog } from '../components/primitives';
+import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import { setPreferences, usePreferences } from '../platform/preferences';
 import { navigate } from '../router';
@@ -41,6 +42,7 @@ function focusSession(session: AcpSession): void {
 }
 
 export function SessionManagerModal() {
+  const { t, tp } = useTranslation();
   const store = useAcpStore();
   const prefs = usePreferences();
   const [selected, setSelected] = useState<string[]>([]);
@@ -59,14 +61,14 @@ export function SessionManagerModal() {
       const msg = broadcastText;
       setBroadcastText('');
       await broadcastAcpPrompt(targets, msg);
-      toast(`Broadcast sent to ${targets.length} session${targets.length === 1 ? '' : 's'}.`);
+      toast(tp('acp.broadcastSent', targets.length));
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <Dialog title="Agent Session Manager" size="large" onClose={closeDialog}>
+    <Dialog title={t('acp.modalTitle')} size="large" onClose={closeDialog}>
       <div className="acp-sm-toolbar">
         <button
           type="button"
@@ -77,7 +79,7 @@ export function SessionManagerModal() {
             );
           }}
         >
-          <Plus size={14} /> New chat
+          <Plus size={14} /> {t('acp.newChat')}
         </button>
         <button
           type="button"
@@ -92,19 +94,19 @@ export function SessionManagerModal() {
             });
           }}
         >
-          <FolderPlus size={14} /> New chat in directory…
+          <FolderPlus size={14} /> {t('acp.newChatInDir')}
         </button>
       </div>
 
       <div className="acp-sm-list">
         {store.sessions.length === 0 ? (
-          <p className="muted">No agent sessions yet. Start one above.</p>
+          <p className="muted">{t('acp.noSessions')}</p>
         ) : (
           store.sessions.map((session) => (
             <div key={session.id} className={`acp-sm-row status-${session.status}`}>
               <input
                 type="checkbox"
-                aria-label={`Select ${session.title} for broadcast`}
+                aria-label={t('acp.selectForBroadcast', { title: session.title })}
                 checked={selected.includes(session.id)}
                 onChange={() => toggleSelected(session.id)}
               />
@@ -119,12 +121,12 @@ export function SessionManagerModal() {
                   <span className="acp-sm-badge">{session.agentName}</span>
                   <span className="acp-sm-badge">{session.origin}</span>
                   <span className={`acp-sm-status is-${session.status}`}>
-                    {session.status === 'waiting-permission' ? 'Waiting for permission' : session.status}
+                    {session.status === 'waiting-permission' ? t('acp.waitingPermission') : session.status}
                   </span>
                 </div>
                 <div className="acp-sm-meta">
-                  <span>{session.cwd || 'Vault root'}</span>
-                  <span>{session.items.length} items</span>
+                  <span>{session.cwd || t('acp.vaultRoot')}</span>
+                  <span>{tp('acp.itemsCount', session.items.length)}</span>
                   <span>{new Date(session.updatedAt).toLocaleTimeString()}</span>
                 </div>
               </button>
@@ -132,8 +134,8 @@ export function SessionManagerModal() {
                 <button
                   type="button"
                   className="icon-button small"
-                  title="Fork session"
-                  aria-label="Fork session"
+                  title={t('acp.forkSession')}
+                  aria-label={t('acp.forkSession')}
                   onClick={() => void forkAcpSession(session.id)}
                 >
                   <GitFork size={14} />
@@ -141,12 +143,12 @@ export function SessionManagerModal() {
                 <button
                   type="button"
                   className="icon-button small"
-                  title="Export to note"
-                  aria-label="Export to note"
+                  title={t('acp.exportToNote')}
+                  aria-label={t('acp.exportToNote')}
                   disabled={session.items.length === 0}
                   onClick={() =>
                     void exportAcpSession(session.id, { open: prefs.acpOpenAfterExport }).then((id) => {
-                      if (id) toast('Exported chat to note.');
+                      if (id) toast(t('acp.exportedNote'));
                     })
                   }
                 >
@@ -155,8 +157,8 @@ export function SessionManagerModal() {
                 <button
                   type="button"
                   className="icon-button small"
-                  title="Close session"
-                  aria-label="Close session"
+                  title={t('acp.closeSession')}
+                  aria-label={t('acp.closeSession')}
                   onClick={() => void closeAcpSession(session.id)}
                 >
                   <Trash2 size={14} />
@@ -178,15 +180,15 @@ export function SessionManagerModal() {
           <div className="acp-broadcast-head">
             <Radio size={14} />
             <span>
-              Broadcast prompt to{' '}
-              {selected.length > 0 ? `${selected.length} selected` : `all ${store.sessions.length}`}{' '}
-              session(s)
+              {selected.length > 0
+                ? t('acp.broadcastSelected', { count: selected.length })
+                : t('acp.broadcastAll', { count: store.sessions.length })}
             </span>
           </div>
           <div className="acp-broadcast-controls">
             <input
               className="text-input small"
-              placeholder="Send one prompt to multiple agents at once…"
+              placeholder={t('acp.broadcastPlaceholder')}
               value={broadcastText}
               onChange={(e) => setBroadcastText(e.target.value)}
             />
@@ -195,7 +197,7 @@ export function SessionManagerModal() {
               className="button small primary"
               disabled={sending || !broadcastText.trim()}
             >
-              <Layers size={14} /> Broadcast
+              <Layers size={14} /> {t('acp.broadcastButton')}
             </button>
           </div>
         </form>

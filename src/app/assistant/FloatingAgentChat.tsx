@@ -1,5 +1,6 @@
 import { Bot, GripHorizontal, X } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from '../i18n';
 import { desktop } from '../platform/desktop';
 import { getPreferences, setPreferences, usePreferences } from '../platform/preferences';
 import { openDialog } from '../ui';
@@ -7,6 +8,7 @@ import { AgentClientView } from './AgentClientView';
 import { useAcpStore } from './acpStore';
 
 export function FloatingAgentChat() {
+  const { t } = useTranslation();
   const prefs = usePreferences();
   const store = useAcpStore();
   const [open, setOpen] = useState(false);
@@ -72,8 +74,8 @@ export function FloatingAgentChat() {
       <button
         type="button"
         className="acp-floating-fab"
-        title="Toggle floating agent chat"
-        aria-label="Toggle floating agent chat"
+        title={t('acp.toggleFloating')}
+        aria-label={t('acp.toggleFloating')}
         onClick={() => setOpen(!open)}
       >
         {prefs.acpFloatingButtonImage.trim() ? (
@@ -87,7 +89,7 @@ export function FloatingAgentChat() {
       {open && (
         <section
           className="acp-floating-window"
-          aria-label="Floating agent chat"
+          aria-label={t('acp.floatingWindowAria')}
           style={{
             left: bounds.x,
             top: bounds.y,
@@ -97,11 +99,11 @@ export function FloatingAgentChat() {
         >
           <div className="acp-floating-drag" onPointerDown={startDrag}>
             <GripHorizontal size={14} />
-            <span>Agent Client</span>
+            <span>{t('acp.tabTitle')}</span>
             <button
               type="button"
               className="icon-button small"
-              aria-label="Close floating chat"
+              aria-label={t('acp.closeFloating')}
               onClick={() => setOpen(false)}
             >
               <X size={14} />
@@ -118,7 +120,7 @@ export function FloatingAgentChat() {
           <div
             className="acp-floating-resize"
             role="separator"
-            aria-label="Resize floating chat"
+            aria-label={t('acp.resizeFloating')}
             onPointerDown={startResize}
           />
         </section>

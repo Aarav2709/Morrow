@@ -85,7 +85,7 @@ function getViewTitle(name: string): string {
     case 'journal':
       return t('journal.title');
     case 'agent':
-      return 'Agent Client';
+      return t('acp.tabTitle');
     default:
       return t('settings.general.startPages.home');
   }

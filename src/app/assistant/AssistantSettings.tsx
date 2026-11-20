@@ -164,16 +164,13 @@ export function AssistantSettings() {
           />
         </SettingRow>
         {prefs.assistant && desktop?.acp && (
-          <SettingRow
-            label="Assistant mode"
-            help="Use local ACP CLI agents (Claude Code, Codex, Gemini CLI, Antigravity) or direct API keys."
-          >
+          <SettingRow label={t('settings.assistant.engine')} help={t('settings.assistant.engineHelp')}>
             <Segmented<'acp' | 'api'>
-              label="Assistant mode"
+              label={t('settings.assistant.engine')}
               value={prefs.assistantEngine}
               options={[
-                ['acp', 'Agent Client (ACP)'],
-                ['api', 'API Providers'],
+                ['acp', t('settings.assistant.engineAcp')],
+                ['api', t('settings.assistant.engineApi')],
               ]}
               onChange={(assistantEngine) => setPreferences({ assistantEngine })}
             />

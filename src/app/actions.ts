@@ -82,6 +82,7 @@ import { getPreferences, resolvedTheme, setPreferences } from './platform/prefer
 import { activeRoute, navigate } from './router';
 import { pluginActions } from './plugins/registry';
 import { getUi, openDialog, setUi, toast } from './ui';
+import { t } from './i18n';
 import { getState } from './workspace';
 import {
   createAcpSession,
@@ -441,7 +442,7 @@ export const ACTIONS: Action[] = [
       const id = getAcpState().activePanelSessionId;
       if (id) {
         void exportAcpSession(id).then((pageId) => {
-          if (pageId) toast('Exported chat to note.');
+          if (pageId) toast(t('acp.exportedNote'));
         });
       }
     },
