@@ -16,6 +16,7 @@ import { sampleCommands } from './core/sample';
 import { emptyOldTrash } from './app/operations';
 import { startRecurring } from './app/recurring';
 import { startReminders } from './app/reminders';
+import { startFormulaAlerts } from './app/formulaAlerts';
 import { WorkspaceSession } from './storage/session';
 import { VaultRepository } from './storage/vaultRepository';
 import { App } from './app/App';
@@ -82,6 +83,7 @@ async function openWorkspace(): Promise<BootState> {
   startRecurring();
   emptyOldTrash();
   startReminders();
+  startFormulaAlerts();
   void startPlugins();
   setInterval(() => emptyOldTrash(), 6 * 60 * 60 * 1000);
   if (session.problems.length > 0) {

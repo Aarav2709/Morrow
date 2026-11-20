@@ -63,6 +63,9 @@ export interface PropDef {
   wrap?: boolean;
   // a relation to the rows of one database, by its id, rather than to any page
   relation?: string;
+  // a formula notifies when a row's value comes to say notifyWhen, or is true when that is empty
+  notify?: boolean;
+  notifyWhen?: string;
 }
 
 export type FilterOp =

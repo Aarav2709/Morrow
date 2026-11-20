@@ -166,6 +166,10 @@ function normalizeProp(raw: Record<string, unknown>): PropDef | null {
     ...(raw.display === 'bar' ? { display: 'bar' as const } : {}),
     ...(raw.wrap === true && raw.type === 'text' ? { wrap: true } : {}),
     ...(raw.type === 'relation' && validId(raw.relation) ? { relation: raw.relation as string } : {}),
+    ...(raw.type === 'formula' && raw.notify === true ? { notify: true } : {}),
+    ...(raw.type === 'formula' && typeof raw.notifyWhen === 'string' && raw.notifyWhen.trim()
+      ? { notifyWhen: raw.notifyWhen.slice(0, 100) }
+      : {}),
     ...(typeof raw.max === 'number' && Number.isFinite(raw.max) && raw.max > 0 ? { max: raw.max } : {}),
   };
 }

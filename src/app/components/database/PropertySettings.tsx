@@ -172,6 +172,47 @@ export function PropertySettings({
         </label>
       )}
       {prop.type === 'formula' && <FormulaField dbId={dbId} prop={prop} database={database} />}
+      {prop.type === 'formula' && (
+        <>
+          <label className="field-inline">
+            <span>{t('database.notifyMe')}</span>
+            <Switch
+              label={t('database.notifyMe')}
+              checked={prop.notify === true}
+              onChange={(notify) =>
+                updateProp(dbId, prop.id, (current) => {
+                  const { notify: _old, notifyWhen: _when, ...rest } = current;
+                  return notify
+                    ? {
+                        ...rest,
+                        notify: true,
+                        ...(current.notifyWhen ? { notifyWhen: current.notifyWhen } : {}),
+                      }
+                    : rest;
+                })
+              }
+            />
+          </label>
+          {prop.notify && (
+            <label className="field">
+              <span>{t('database.notifyWhen')}</span>
+              <DraftInput
+                type="text"
+                label={t('database.notifyWhen')}
+                value={prop.notifyWhen ?? ''}
+                editable
+                placeholder={t('database.notifyWhenPlaceholder')}
+                onCommit={(text) =>
+                  updateProp(dbId, prop.id, (current) => {
+                    const { notifyWhen: _old, ...rest } = current;
+                    return text.trim() ? { ...rest, notifyWhen: text.trim() } : rest;
+                  })
+                }
+              />
+            </label>
+          )}
+        </>
+      )}
       {prop.type === 'relation' && <RelationTarget dbId={dbId} prop={prop} />}
       {(prop.type === 'select' || prop.type === 'multiSelect') && (
         <ul className="db-prop-list">
