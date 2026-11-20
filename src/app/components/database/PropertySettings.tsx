@@ -2,7 +2,7 @@ import { EyeOff, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import type { Command } from '../../../core/commands';
 import { convertValue, formatValue, formulaResult, optionsFromValues, rowsOf } from '../../../core/database';
-import { COLORS, PROP_TYPES } from '../../../core/model';
+import { COLORS, displayTitle, PROP_TYPES } from '../../../core/model';
 import type { ColorName, DatabaseDef, PageId, PropDef, PropType, ViewDef } from '../../../core/model';
 import { reservedPropertyName } from '../../../core/vault/pageFile';
 import { newId } from '../../platform/files';
@@ -172,6 +172,7 @@ export function PropertySettings({
         </label>
       )}
       {prop.type === 'formula' && <FormulaField dbId={dbId} prop={prop} database={database} />}
+      {prop.type === 'relation' && <RelationTarget dbId={dbId} prop={prop} />}
       {(prop.type === 'select' || prop.type === 'multiSelect') && (
         <ul className="db-prop-list">
           {prop.options.map((option) => (
@@ -280,10 +281,44 @@ export function PropertySettings({
 
 // the formula language's functions, by their names in formulas, which stay the same in every language
 const FORMULA_FUNCTIONS =
-  'if, empty, round, floor, ceil, abs, min, max, sum, length, concat, join, upper, lower, contains, replace, slice, today, now, dateAdd, dateBetween, year, month, day';
+  'if, empty, round, floor, ceil, abs, min, max, sum, length, concat, join, upper, lower, contains, replace, slice, today, now, dateAdd, dateBetween, year, month, day, rollup';
+
+// which pages a relation picks from: any page, or the rows of one database, this one or another
+function RelationTarget({ dbId, prop }: { dbId: PageId; prop: PropDef }) {
+  const state = useWorkspace();
+  const databases = Object.values(state.pages)
+    .filter((page) => page.kind === 'database' && page.trashedAt === null)
+    .sort((a, b) => displayTitle(a).localeCompare(displayTitle(b)));
+  return (
+    <label className="field">
+      <span>{t('database.relationTo')}</span>
+      <Select<string>
+        label={t('database.relationTo')}
+        value={prop.relation ?? ''}
+        options={[
+          { value: '', label: t('database.relationAnyPage') },
+          ...databases.map((page) => ({
+            value: page.id,
+            label:
+              page.id === dbId
+                ? t('database.relationThisDatabase', { title: displayTitle(page) })
+                : displayTitle(page),
+          })),
+        ]}
+        onChange={(relation) =>
+          updateProp(dbId, prop.id, (current) => {
+            const { relation: _old, ...rest } = current;
+            return relation ? { ...rest, relation } : rest;
+          })
+        }
+      />
+    </label>
+  );
+}
 
 const FORMULA_EXAMPLES = [
   'prop("Price") * prop("Count")',
+  'rollup("Tasks", "Done", "percentChecked")',
   'if(prop("Done"), "✅", "⏳")',
   'dateBetween(prop("Due"), today(), "days")',
   'concat(prop("Name"), " · ", prop("Status"))',

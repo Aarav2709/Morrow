@@ -1,4 +1,5 @@
 import { DateField } from '../MonthPicker';
+import { rowsOf } from '../../../core/database';
 import { Check, ExternalLink, Plus, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { formatValue, formulaResult } from '../../../core/database';
@@ -644,7 +645,16 @@ function RelationPicker({
   const state = useWorkspace();
   const [query, setQuery] = useState('');
   const chosen = new Set(targets.map((target) => target.toLowerCase()));
-  const found = findPagesByTitle(state, query, 12).filter((page) => page.id !== row.id);
+  // a relation to one database offers its rows, a relation to any page searches them all
+  const found = (
+    prop.relation
+      ? rowsOf(state, prop.relation)
+          .filter(
+            (page) => !query.trim() || displayTitle(page).toLowerCase().includes(query.trim().toLowerCase()),
+          )
+          .slice(0, 50)
+      : findPagesByTitle(state, query, 12)
+  ).filter((page) => page.id !== row.id);
   const toggle = (title: string) => {
     const next = chosen.has(title.toLowerCase())
       ? targets.filter((target) => target.toLowerCase() !== title.toLowerCase())

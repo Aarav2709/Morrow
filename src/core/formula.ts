@@ -241,10 +241,14 @@ const FUNCTIONS: Record<string, (args: FormulaValue[], now: Date) => FormulaValu
   day: ([date = null]) => toDate(date)?.getDate() ?? null,
 };
 
+// what rollup("Relation", "Property", "sum") works out from the rows a relation points at
+export type Rollup = (relation: string, prop: string, how: string) => FormulaValue;
+
 export function evaluateFormula(
   expr: Expr,
   prop: (name: string) => FormulaValue,
   now = new Date(),
+  rollup?: Rollup,
 ): FormulaValue {
   let steps = 0;
   const run = (node: Expr): FormulaValue => {
@@ -300,6 +304,10 @@ export function evaluateFormula(
           const name = node.args[0] ? toText(run(node.args[0])) : '';
           return prop(name);
         }
+        if (node.name === 'rollup') {
+          const [relation, target, how] = node.args.map((arg) => toText(run(arg)));
+          return rollup ? rollup(relation ?? '', target ?? '', how || 'count') : null;
+        }
         const fn = FUNCTIONS[node.name];
         if (!fn) throw new Error(`There is no function called ${node.name}()`);
         // if only runs the branch it needs
@@ -323,6 +331,7 @@ export function computeFormula(
   source: string,
   prop: (name: string) => FormulaValue,
   now = new Date(),
+  rollup?: Rollup,
 ): { value: FormulaValue; error: string | null } {
   if (!source.trim()) return { value: null, error: null };
   let parsed = cache.get(source);
@@ -337,7 +346,7 @@ export function computeFormula(
   }
   if (parsed instanceof Error) return { value: null, error: parsed.message };
   try {
-    return { value: evaluateFormula(parsed, prop, now), error: null };
+    return { value: evaluateFormula(parsed, prop, now, rollup), error: null };
   } catch (error) {
     return { value: null, error: error instanceof Error ? error.message : String(error) };
   }

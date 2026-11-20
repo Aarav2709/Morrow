@@ -164,6 +164,7 @@ function normalizeProp(raw: Record<string, unknown>): PropDef | null {
       : {}),
     ...(raw.display === 'bar' ? { display: 'bar' as const } : {}),
     ...(raw.wrap === true && raw.type === 'text' ? { wrap: true } : {}),
+    ...(raw.type === 'relation' && validId(raw.relation) ? { relation: raw.relation as string } : {}),
     ...(typeof raw.max === 'number' && Number.isFinite(raw.max) && raw.max > 0 ? { max: raw.max } : {}),
   };
 }

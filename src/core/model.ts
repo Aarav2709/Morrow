@@ -60,6 +60,8 @@ export interface PropDef {
   max?: number;
   // a text property shown in full over as many lines as it takes, rather than cut off at the cell's edge
   wrap?: boolean;
+  // a relation to the rows of one database, by its id, rather than to any page
+  relation?: string;
 }
 
 export type FilterOp =

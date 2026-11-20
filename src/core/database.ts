@@ -172,6 +172,57 @@ export function valueOf(page: PageMeta, propId: string, database?: DatabaseDef):
   return page.properties[propId] ?? null;
 }
 
+// the pages titles in a relation stand for, and the database each is a row of. the app gives this the
+// workspace it has open, core has no workspace of its own
+export type RelatedLookup = (
+  titles: string[],
+  database: string | undefined,
+) => Array<{
+  page: PageMeta;
+  database: DatabaseDef | null;
+}>;
+let relatedLookup: RelatedLookup | null = null;
+export function setRelatedLookup(lookup: RelatedLookup | null): void {
+  relatedLookup = lookup;
+}
+
+// one number from the rows a relation points at: how many, or the sum, average, smallest or largest of a
+// property of theirs, or how many or what share of a checkbox is ticked
+export function rollupOf(values: FormulaValue[], how: string): FormulaValue {
+  const kind = how.trim().toLowerCase();
+  const numbers = values.filter((value): value is number => typeof value === 'number');
+  switch (kind) {
+    case 'count':
+      return values.length;
+    case 'countvalues':
+    case 'filled':
+      return values.filter((value) => value !== null && value !== '' && value !== false).length;
+    case 'checked':
+      return values.filter((value) => value === true).length;
+    case 'percentchecked':
+      return values.length
+        ? Math.round((values.filter((value) => value === true).length / values.length) * 100)
+        : 0;
+    case 'sum':
+      return numbers.reduce((total, value) => total + value, 0);
+    case 'average':
+      return numbers.length ? numbers.reduce((total, value) => total + value, 0) / numbers.length : null;
+    case 'min':
+      return numbers.length ? Math.min(...numbers) : null;
+    case 'max':
+      return numbers.length ? Math.max(...numbers) : null;
+    case 'list':
+      return values
+        .filter((value) => value !== null && value !== '')
+        .map(String)
+        .join(', ');
+    default:
+      throw new Error(
+        `rollup() can count, sum, average, min, max, checked, percentChecked or list, not ${how}`,
+      );
+  }
+}
+
 // a formula's value for one row, other properties are found by name with prop("Name")
 export function formulaResult(
   page: PageMeta,
@@ -180,22 +231,50 @@ export function formulaResult(
   depth = 0,
 ): { value: FormulaValue; error: string | null } {
   if (depth > 8) return { value: null, error: 'Formulas refer to each other in a loop' };
-  return computeFormula(prop.formula ?? '', (name) => {
-    const wanted = name.trim().toLowerCase();
-    const other = database.properties.find((candidate) => candidate.name.toLowerCase() === wanted);
-    if (!other) {
-      if (['title', 'name'].includes(wanted)) return displayTitle(page);
-      if (wanted === 'created') return page.createdAt;
-      if (wanted === 'updated' || wanted === 'edited') return page.updatedAt;
-      return null;
-    }
-    if (other.type === 'formula') return formulaResult(page, other, database, depth + 1).value;
-    const value = page.properties[other.id] ?? null;
-    if (other.type === 'checkbox') return value === true;
-    if (other.type === 'number' || typeof value === 'boolean') return value as FormulaValue;
-    const text = formatValue(other, value);
-    return text === '' ? null : text;
-  });
+  const rollup = (relationName: string, targetName: string, how: string): FormulaValue => {
+    const relation = database.properties.find(
+      (candidate) =>
+        candidate.type === 'relation' && candidate.name.toLowerCase() === relationName.trim().toLowerCase(),
+    );
+    if (!relation) throw new Error(`There is no relation called ${relationName}`);
+    const raw = page.properties[relation.id];
+    const titles = (Array.isArray(raw) ? raw : raw ? [String(raw)] : []).map(String);
+    const related = relatedLookup ? relatedLookup(titles, relation.relation) : [];
+    const wanted = targetName.trim().toLowerCase();
+    const values = related.map(({ page: other, database: otherDatabase }): FormulaValue => {
+      if (!wanted || ['title', 'name'].includes(wanted)) return displayTitle(other);
+      const target = otherDatabase?.properties.find((candidate) => candidate.name.toLowerCase() === wanted);
+      if (!target) return null;
+      if (target.type === 'formula') return formulaResult(other, target, otherDatabase!, depth + 1).value;
+      const value = other.properties[target.id] ?? null;
+      if (target.type === 'checkbox') return value === true;
+      if (target.type === 'number' || typeof value === 'boolean') return value as FormulaValue;
+      const text = formatValue(target, value);
+      return text === '' ? null : text;
+    });
+    return rollupOf(values, how);
+  };
+  return computeFormula(
+    prop.formula ?? '',
+    (name) => {
+      const wanted = name.trim().toLowerCase();
+      const other = database.properties.find((candidate) => candidate.name.toLowerCase() === wanted);
+      if (!other) {
+        if (['title', 'name'].includes(wanted)) return displayTitle(page);
+        if (wanted === 'created') return page.createdAt;
+        if (wanted === 'updated' || wanted === 'edited') return page.updatedAt;
+        return null;
+      }
+      if (other.type === 'formula') return formulaResult(page, other, database, depth + 1).value;
+      const value = page.properties[other.id] ?? null;
+      if (other.type === 'checkbox') return value === true;
+      if (other.type === 'number' || typeof value === 'boolean') return value as FormulaValue;
+      const text = formatValue(other, value);
+      return text === '' ? null : text;
+    },
+    new Date(),
+    rollup,
+  );
 }
 
 export function propType(database: DatabaseDef, propId: string): PropType | 'title' | null {

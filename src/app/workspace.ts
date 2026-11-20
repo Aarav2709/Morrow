@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Command } from '../core/commands';
+import { rowsOf, setRelatedLookup } from '../core/database';
+import { displayTitle } from '../core/model';
 import type { PageId, PageMeta, WorkspaceState } from '../core/model';
 import type { Result } from '../core/result';
 import type { SaveStatus } from '../storage/saveQueue';
@@ -10,6 +12,21 @@ let session: WorkspaceSession | null = null;
 
 export function setSession(next: WorkspaceSession): void {
   session = next;
+  // a formula's rollup() finds a relation's rows in the workspace open now
+  setRelatedLookup((titles, databaseId) => {
+    const state = next.getState();
+    const wanted = new Set(titles.map((title) => title.trim().toLowerCase()).filter(Boolean));
+    if (wanted.size === 0) return [];
+    const candidates = databaseId
+      ? rowsOf(state, databaseId)
+      : Object.values(state.pages).filter((page) => page.trashedAt === null);
+    return candidates
+      .filter((page) => wanted.has(displayTitle(page).toLowerCase()))
+      .map((page) => {
+        const parent = page.parentId ? state.pages[page.parentId] : undefined;
+        return { page, database: parent?.kind === 'database' ? (parent.database ?? null) : null };
+      });
+  });
 }
 
 export function getSession(): WorkspaceSession {

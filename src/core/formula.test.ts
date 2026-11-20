@@ -39,3 +39,44 @@ describe('formulas', () => {
     expect(run('').value).toBeNull();
   });
 });
+
+describe('rollups over a relation', () => {
+  it('work out a number from the rows a relation points at', async () => {
+    const { formulaResult, rollupOf, setRelatedLookup } = await import('./database');
+    expect(rollupOf([1, 2, 3], 'sum')).toBe(6);
+    expect(rollupOf([true, false, true, true], 'percentChecked')).toBe(75);
+    expect(rollupOf(['a', null, 'b'], 'list')).toBe('a, b');
+    const tasks = {
+      properties: [
+        { id: 'hours', name: 'Hours', type: 'number' as const, options: [] },
+        { id: 'done', name: 'Done', type: 'checkbox' as const, options: [] },
+      ],
+      views: [],
+    };
+    const row = (title: string, hours: number, done: boolean) =>
+      ({ id: title, title, properties: { hours, done } }) as never;
+    setRelatedLookup((titles) =>
+      [row('Write', 3, true), row('Edit', 2, false)]
+        .filter((page) => titles.includes((page as { title: string }).title))
+        .map((page) => ({ page, database: tasks })),
+    );
+    const project = {
+      properties: [
+        { id: 'rel', name: 'Tasks', type: 'relation' as const, options: [] },
+        {
+          id: 'f',
+          name: 'Hours',
+          type: 'formula' as const,
+          options: [],
+          formula: 'rollup("Tasks", "Hours", "sum")',
+        },
+      ],
+      views: [],
+    };
+    const page = { id: 'p', title: 'Book', properties: { rel: ['Write', 'Edit'] } } as never;
+    expect(formulaResult(page, project.properties[1]!, project).value).toBe(5);
+    const done = { ...project.properties[1]!, formula: 'rollup("Tasks", "Done", "percentChecked")' };
+    expect(formulaResult(page, done, project).value).toBe(50);
+    setRelatedLookup(null);
+  });
+});
