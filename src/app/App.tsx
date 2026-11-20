@@ -156,8 +156,15 @@ function useHidePointerWhileTyping() {
 }
 
 // links and words shared from another app on a phone go into today's note, when morrow opens from the share
-// sheet or comes back to the front
+// sheet or comes back to the front. on a computer the quick capture box sends its notes here the same way
 function useSharedText() {
+  useEffect(
+    () =>
+      desktop?.onCaptureText?.((text) => {
+        if (captureToToday(text)) toast(t('toasts.addedToToday'), { durationMs: 3000 });
+      }),
+    [],
+  );
   useEffect(() => {
     if (!desktop?.takeShared) return;
     const take = () => {

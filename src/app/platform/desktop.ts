@@ -176,6 +176,12 @@ export interface DesktopMcpApi {
   isEnabled(): Promise<boolean>;
 }
 
+export interface BackgroundSettings {
+  launchAtStartup: boolean;
+  startMinimized: boolean;
+  quickCapture: boolean;
+}
+
 export interface DesktopBridge {
   assistant?: DesktopAssistantApi;
   updates?: DesktopUpdatesApi;
@@ -224,6 +230,13 @@ export interface DesktopBridge {
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
   // the top of a web page, read for the title and description of a bookmark or a link mention
   fetchPageHead?(url: string): Promise<string>;
+  // opening with the computer, perhaps minimized, and the quick capture box from any app
+  backgroundSettings?(): Promise<BackgroundSettings>;
+  setBackgroundSettings?(settings: BackgroundSettings): Promise<void>;
+  // the quick capture box: a note from it, sent to the main window, and the box put away
+  captureSubmit?(text: string): Promise<void>;
+  hideCapture?(): Promise<void>;
+  onCaptureText?(listener: (text: string) => void): () => void;
   // lets a website load in a frame of the page, rather than opening in the browser
   allowFrame?(url: string): Promise<boolean>;
   // a file made in the app, saved where the person picks. the webview has no downloads of its own

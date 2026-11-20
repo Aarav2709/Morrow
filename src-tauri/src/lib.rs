@@ -4,6 +4,7 @@
 #![cfg_attr(mobile, allow(dead_code, unused_mut))]
 
 mod ai;
+mod background;
 mod cloud;
 #[cfg(target_os = "android")]
 mod device;
@@ -106,6 +107,146 @@ fn allow_frame(url: String) -> bool {
         .unwrap_or_else(|poison| poison.into_inner())
         .insert(site);
     true
+}
+
+// the quick capture box, made the first time and kept hidden between notes. it shows the same app as the
+// main window, which sees it is the box and draws only that
+#[cfg(desktop)]
+fn open_capture<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("capture") {
+        let _ = window.center();
+        let _ = window.show();
+        let _ = window.set_focus();
+        let _ = window.emit("morrow:capture-open", ());
+        return;
+    }
+    let script = format!(
+        "{} Object.defineProperty(window, '__MORROW_CAPTURE__', {{ value: true }});",
+        info_script()
+    );
+    let built = WebviewWindowBuilder::new(app, "capture", WebviewUrl::App("index.html".into()))
+        .title("Quick capture")
+        .inner_size(560.0, 196.0)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .center()
+        .visible(false)
+        .initialization_script(script)
+        .disable_drag_drop_handler();
+    // the same web view as the main window's, which windows only shares when it was started the same way
+    #[cfg(windows)]
+    let built = built.additional_browser_args(&native::browser_args());
+    let built = built.build();
+    let window = match built {
+        Ok(window) => window,
+        Err(error) => {
+            eprintln!("the quick capture box could not open: {error}");
+            return;
+        }
+    };
+    {
+        let dark = matches!(window.theme(), Ok(tauri::Theme::Dark));
+        let _ = window.set_background_color(Some(if dark { DARK } else { LIGHT }));
+        let _ = window.show();
+        let _ = window.set_focus();
+        // clicking away puts it back out of sight, the way the system's own boxes go
+        let handle = window.clone();
+        window.on_window_event(move |event| {
+            if let tauri::WindowEvent::Focused(false) = event {
+                let _ = handle.hide();
+            }
+        });
+    }
+}
+
+#[cfg(not(desktop))]
+fn open_capture<R: Runtime>(_app: &AppHandle<R>) {}
+
+// the quick capture box opened from inside morrow, the same as its shortcut from anywhere. async, a window
+// made while a command holds the main thread would wait on it forever on windows
+#[tauri::command]
+async fn capture_open<R: Runtime>(app: AppHandle<R>) {
+    open_capture(&app);
+}
+
+// a note from the quick capture box goes to today's note, which the main window writes
+#[tauri::command]
+fn capture_submit<R: Runtime>(app: AppHandle<R>, text: String) {
+    to_window(&app, "morrow:capture-text", text);
+    if let Some(window) = app.get_webview_window("capture") {
+        let _ = window.hide();
+    }
+}
+
+#[tauri::command]
+fn capture_hide<R: Runtime>(app: AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("capture") {
+        let _ = window.hide();
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BackgroundSettings {
+    // morrow opens when the computer starts
+    launch_at_startup: bool,
+    start_minimized: bool,
+    quick_capture: bool,
+}
+
+#[tauri::command]
+fn background_settings<R: Runtime>(app: AppHandle<R>) -> BackgroundSettings {
+    let saved = background::read();
+    #[cfg(desktop)]
+    let launch_at_startup = {
+        use tauri_plugin_autostart::ManagerExt;
+        app.autolaunch().is_enabled().unwrap_or(false)
+    };
+    #[cfg(not(desktop))]
+    let launch_at_startup = {
+        let _ = &app;
+        false
+    };
+    BackgroundSettings {
+        launch_at_startup,
+        start_minimized: saved.start_minimized,
+        quick_capture: saved.quick_capture,
+    }
+}
+
+#[tauri::command]
+fn set_background_settings<R: Runtime>(app: AppHandle<R>, settings: BackgroundSettings) -> Res<()> {
+    background::write(&background::Background {
+        start_minimized: settings.start_minimized,
+        quick_capture: settings.quick_capture,
+    })?;
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_autostart::ManagerExt;
+        use tauri_plugin_global_shortcut::GlobalShortcutExt;
+        let launcher = app.autolaunch();
+        if settings.launch_at_startup != launcher.is_enabled().unwrap_or(false) {
+            if settings.launch_at_startup {
+                launcher.enable().map_err(|error| error.to_string())?;
+            } else {
+                launcher.disable().map_err(|error| error.to_string())?;
+            }
+        }
+        let shortcuts = app.global_shortcut();
+        let registered = shortcuts.is_registered(background::CAPTURE_SHORTCUT);
+        if settings.quick_capture && !registered {
+            shortcuts
+                .register(background::CAPTURE_SHORTCUT)
+                .map_err(|error| error.to_string())?;
+        } else if !settings.quick_capture && registered {
+            let _ = shortcuts.unregister(background::CAPTURE_SHORTCUT);
+        }
+    }
+    #[cfg(not(desktop))]
+    let _ = &app;
+    Ok(())
 }
 
 fn is_web_url(url: &str) -> bool {
@@ -1219,6 +1360,11 @@ fn create_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     // the window shows at once in the colour of the app rather than after the page's first paint, so opening
     // morrow never looks like nothing happened
     if !(cfg!(debug_assertions) && std::env::var("MORROW_HIDDEN").as_deref() == Ok("1")) {
+        // started with the computer and asked to stay out of the way, it waits in the taskbar
+        #[cfg(desktop)]
+        if background::launched_at_login() && background::read().start_minimized {
+            let _ = window.minimize();
+        }
         window.show()?;
     }
     let closing = app.clone();
@@ -1259,6 +1405,7 @@ pub fn run() {
                         tauri_plugin_window_state::StateFlags::all()
                             - tauri_plugin_window_state::StateFlags::VISIBLE,
                     )
+                    .with_denylist(&["capture"])
                     .build(),
             );
     }
@@ -1295,17 +1442,25 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
-                // quick capture from any app: the window comes forward with a small box for a note
+                // quick capture from any app: a small box for a note comes up over whatever is open, the main
+                // window stays where it is
                 let shortcuts = tauri_plugin_global_shortcut::Builder::new()
                     .with_handler(|app, _shortcut, event| {
                         if event.state == ShortcutState::Pressed {
-                            bring_forward(app);
-                            command(app, "capture");
+                            // made off the event loop, which the new window needs free
+                            let app = app.clone();
+                            tauri::async_runtime::spawn(async move { open_capture(&app) });
                         }
                     })
                     .build();
                 app.handle().plugin(shortcuts)?;
-                let _ = app.global_shortcut().register("CommandOrControl+Alt+M");
+                if background::read().quick_capture {
+                    let _ = app.global_shortcut().register(background::CAPTURE_SHORTCUT);
+                }
+                app.handle().plugin(tauri_plugin_autostart::init(
+                    tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                    Some(vec![background::AUTOSTART_ARG]),
+                ))?;
             }
             create_window(app.handle())?;
             Ok(())
@@ -1329,6 +1484,11 @@ pub fn run() {
             fetch_image,
             fetch_page_head,
             allow_frame,
+            capture_submit,
+            capture_open,
+            capture_hide,
+            background_settings,
+            set_background_settings,
             show_data_folder,
             show_backups,
             write_backup,

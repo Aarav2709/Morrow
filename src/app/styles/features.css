@@ -3333,3 +3333,30 @@ td:hover .prop-empty,
 .crop-spacer {
   flex: 1;
 }
+
+/* the quick capture box over any app, the whole of its own small window */
+.quick-capture-window {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 14px 16px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+.quick-capture-input {
+  flex: 1;
+  resize: none;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font: 17px/1.5 var(--font-ui);
+}
+.quick-capture-hint {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+}

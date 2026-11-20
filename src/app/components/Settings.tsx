@@ -34,6 +34,7 @@ import {
 } from '../operations';
 import { formatBytes } from '../platform/attachments';
 import { canOpenFolders, desktop, isMobile } from '../platform/desktop';
+import type { BackgroundSettings } from '../platform/desktop';
 import {
   ACCENTS,
   PALETTES,
@@ -197,7 +198,66 @@ function GeneralSettings() {
           />
         </SettingRow>
       )}
+      <BackgroundRows />
     </SettingsGroup>
+  );
+}
+
+// morrow opening with the computer, maybe minimized so reminders go off without opening it first, and the
+// quick capture box from any app
+function BackgroundRows() {
+  const { t } = useTranslation();
+  const [settings, setSettings] = useState<BackgroundSettings | null>(null);
+  useEffect(() => {
+    void desktop
+      ?.backgroundSettings?.()
+      .then(setSettings)
+      .catch(() => setSettings(null));
+  }, []);
+  if (!settings) return null;
+  const save = (change: Partial<BackgroundSettings>) => {
+    const next = { ...settings, ...change };
+    setSettings(next);
+    void desktop?.setBackgroundSettings?.(next).catch((error: unknown) => {
+      setSettings(settings);
+      toast(String(error), { tone: 'error' });
+    });
+  };
+  return (
+    <>
+      <SettingRow
+        label={t('settings.general.launchAtStartup')}
+        help={t('settings.general.launchAtStartupHelp')}
+      >
+        <Switch
+          label={t('settings.general.launchAtStartup')}
+          checked={settings.launchAtStartup}
+          onChange={(launchAtStartup) => save({ launchAtStartup })}
+        />
+      </SettingRow>
+      {settings.launchAtStartup && (
+        <SettingRow
+          label={t('settings.general.startMinimized')}
+          help={t('settings.general.startMinimizedHelp')}
+        >
+          <Switch
+            label={t('settings.general.startMinimized')}
+            checked={settings.startMinimized}
+            onChange={(startMinimized) => save({ startMinimized })}
+          />
+        </SettingRow>
+      )}
+      <SettingRow
+        label={t('settings.general.quickCapture')}
+        help={t('settings.general.quickCaptureHelp', { shortcut: formatShortcut('Mod+Alt+M') })}
+      >
+        <Switch
+          label={t('settings.general.quickCapture')}
+          checked={settings.quickCapture}
+          onChange={(quickCapture) => save({ quickCapture })}
+        />
+      </SettingRow>
+    </>
   );
 }
 

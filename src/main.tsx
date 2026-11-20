@@ -21,6 +21,7 @@ import { VaultRepository } from './storage/vaultRepository';
 import { App } from './app/App';
 import { Logo } from './app/components/primitives';
 import { VaultChooser } from './app/components/VaultChooser';
+import { QuickCaptureWindow } from './app/components/QuickCaptureWindow';
 import { commitEditors } from './app/editor/commits';
 import { COPY_LEGACY_KEY, copyLegacyInto, legacyPageCount } from './app/legacy';
 import { desktop } from './app/platform/desktop';
@@ -147,8 +148,12 @@ function Boot() {
   );
 }
 
+declare global {
+  interface Window {
+    __MORROW_CAPTURE__?: boolean;
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Boot />
-  </StrictMode>,
+  <StrictMode>{window.__MORROW_CAPTURE__ ? <QuickCaptureWindow /> : <Boot />}</StrictMode>,
 );

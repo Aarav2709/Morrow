@@ -3,7 +3,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import type { DesktopBridge } from './desktop';
+import type { BackgroundSettings, DesktopBridge } from './desktop';
 
 interface NativeInfo {
   version: string;
@@ -95,7 +95,8 @@ export function tauriBridge(): DesktopBridge | null {
     if (id === 'app.prepareToClose') void done.finally(() => invoke('close_ready'));
   });
 
-  setupWindow(info.platform, run);
+  // the quick capture box is a window of its own without the main window's buttons
+  if (!(window as { __MORROW_CAPTURE__?: boolean }).__MORROW_CAPTURE__) setupWindow(info.platform, run);
 
   let zoom = 0;
   try {
@@ -196,6 +197,17 @@ export function tauriBridge(): DesktopBridge | null {
       : {}),
     fetchPageHead: (url) => invoke<string>('fetch_page_head', { url }),
     allowFrame: (url) => invoke<boolean>('allow_frame', { url }),
+    ...(['win32', 'darwin', 'linux'].includes(info.platform)
+      ? {
+          backgroundSettings: () => invoke<BackgroundSettings>('background_settings'),
+          setBackgroundSettings: (settings: BackgroundSettings) =>
+            invoke<void>('set_background_settings', { settings }),
+          captureSubmit: (text: string) => invoke<void>('capture_submit', { text }),
+          hideCapture: () => invoke<void>('capture_hide'),
+          onCaptureText: (listener: (text: string) => void) =>
+            subscribe<string>('morrow:capture-text', listener),
+        }
+      : {}),
     async fetchImage(url) {
       const bytes = await bytesOrNull('fetch_image', { url });
       if (!bytes) return null;

@@ -58,6 +58,8 @@ keyring = { version = "3", features = ["apple-native", "windows-native", "sync-s
 tauri-plugin-single-instance = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-global-shortcut = "2"
+# opening morrow when the computer starts, kept off unless turned on in settings
+tauri-plugin-autostart = "2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 webkit2gtk = { version = "2.0", features = ["v2_40"] }
