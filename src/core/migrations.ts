@@ -195,6 +195,9 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
     ...(typeof raw.limit === 'number' && Number.isInteger(raw.limit) && raw.limit >= 0 && raw.limit <= 10_000
       ? { limit: raw.limit }
       : {}),
+    ...(typeof raw.frozen === 'number' && Number.isInteger(raw.frozen) && raw.frozen > 0 && raw.frozen <= 20
+      ? { frozen: raw.frozen }
+      : {}),
     ...(Array.isArray(raw.columns)
       ? {
           columns: raw.columns

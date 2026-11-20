@@ -126,6 +126,8 @@ export interface ViewDef {
   hideEmptyGroups?: boolean;
   // how many rows the view shows before more are asked for, 0 for all, missing for the default
   limit?: number;
+  // how many of a table's first columns stay in place while it scrolls sideways
+  frozen?: number;
   // the tiles of a dashboard view, in order
   widgets?: Widget[];
 }

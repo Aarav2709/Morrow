@@ -307,6 +307,7 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       ...(view.collapsedGroups?.length ? { collapsedGroups: [...view.collapsedGroups] } : {}),
       ...(view.hideEmptyGroups ? { hideEmptyGroups: true } : {}),
       ...(view.limit !== undefined ? { limit: view.limit } : {}),
+      ...(view.frozen ? { frozen: view.frozen } : {}),
       ...(view.widgets ? { widgets: view.widgets.map((widget) => ({ ...widget })) } : {}),
     })),
   };

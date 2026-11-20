@@ -754,6 +754,13 @@ textarea.text-input.small {
 .db-table .db-col-add {
   min-width: 36px;
 }
+/* columns kept in place while the table scrolls sideways, with a line where they end */
+.db-table .is-frozen {
+  background: var(--bg);
+}
+.db-table .is-frozen-last {
+  box-shadow: inset -1px 0 0 var(--border-strong);
+}
 .db-header {
   width: 100%;
   height: 32px;

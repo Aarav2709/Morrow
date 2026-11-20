@@ -767,6 +767,29 @@ function Toolbar({
           {view.type !== 'calendar' && view.groupBy && (
             <GroupSettings dbId={dbId} database={database} view={view} rows={rows} />
           )}
+          {view.type === 'table' && (
+            <label className="field">
+              <span>{t('database.frozenColumns')}</span>
+              <select
+                className="text-input small"
+                value={String(view.frozen ?? 0)}
+                onChange={(event) =>
+                  updateView(dbId, view.id, (current) => {
+                    const { frozen: _old, ...rest } = current;
+                    const frozen = Number(event.target.value);
+                    return frozen > 0 ? { ...rest, frozen } : rest;
+                  })
+                }
+              >
+                <option value="0">{t('database.frozenNone')}</option>
+                {[1, 2, 3, 4].map((count) => (
+                  <option key={count} value={count}>
+                    {count === 1 ? t('database.frozenFirst') : t('database.frozenCount', { count })}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           {view.type !== 'calendar' && view.type !== 'board' && (
             <label className="field">
               <span>{t('database.loadLimit')}</span>
@@ -1097,6 +1120,17 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
     );
   const total =
     widthOf(TITLE_PROP) + props.reduce((sum, prop) => sum + widthOf(prop.id), 0) + (editable ? 36 : 0);
+  // the first columns the view keeps in place while the table scrolls sideways, each from where the ones
+  // before it end
+  const frozen = Math.min(view.frozen ?? 0, columns.length);
+  const stuck = (index: number): React.CSSProperties | undefined => {
+    if (index >= frozen) return undefined;
+    let left = 0;
+    for (let at = 0; at < index; at++) left += widthOf(keyOf(columns[at]!));
+    return { position: 'sticky', left, zIndex: 2 };
+  };
+  const stuckClass = (index: number) =>
+    index < frozen ? ` is-frozen${index === frozen - 1 ? ' is-frozen-last' : ''}` : '';
   return (
     <div className="db-table-wrap">
       <table className={`db-table${editable ? ' is-filled' : ''}`} style={{ width: total }}>
@@ -1109,7 +1143,7 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         </colgroup>
         <thead>
           <tr>
-            {columns.map((column) => {
+            {columns.map((column, index) => {
               const key = keyOf(column);
               // a column is dragged by its header to another place, the name column too
               const drag = editable
@@ -1137,7 +1171,8 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
                   <th
                     key={key}
                     scope="col"
-                    className={`db-col-title${moving === key ? ' is-moving' : ''}`}
+                    className={`db-col-title${moving === key ? ' is-moving' : ''}${stuckClass(index)}`}
+                    style={stuck(index)}
                     {...drag}
                   >
                     {t('database.name')}
@@ -1145,7 +1180,13 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
                   </th>
                 );
               return (
-                <th key={key} scope="col" className={moving === key ? 'is-moving' : undefined} {...drag}>
+                <th
+                  key={key}
+                  scope="col"
+                  className={`${moving === key ? 'is-moving' : ''}${stuckClass(index)}` || undefined}
+                  style={stuck(index)}
+                  {...drag}
+                >
                   <button
                     type="button"
                     className="db-header"
@@ -1175,13 +1216,13 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         <tbody>
           {rows.map((row) => (
             <tr key={row.id}>
-              {columns.map((column) =>
+              {columns.map((column, index) =>
                 column === TITLE_PROP ? (
-                  <td key={TITLE_PROP} className="db-col-title">
+                  <td key={TITLE_PROP} className={`db-col-title${stuckClass(index)}`} style={stuck(index)}>
                     <RowTitle row={row} editable={editable} autoFocus={focusNew === row.id} />
                   </td>
                 ) : (
-                  <td key={column.id}>
+                  <td key={column.id} className={stuckClass(index).trim() || undefined} style={stuck(index)}>
                     <PropertyInput dbId={dbId} prop={column} row={row} editable={editable} />
                   </td>
                 ),
