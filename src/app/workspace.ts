@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Command } from '../core/commands';
+import { automationValues } from '../core/automations';
+import { dateKey } from '../core/daily';
 import { rowsOf, setRelatedLookup } from '../core/database';
 import { displayTitle } from '../core/model';
 import type { PageId, PageMeta, WorkspaceState } from '../core/model';
@@ -45,11 +47,36 @@ export function run(command: Command): Result<WorkspaceState> {
 
 export function runAll(commands: Command[]): Result<WorkspaceState> {
   const before = propertySnapshots(commands);
+  const prior = getState();
   const result =
     commands.length === 1 ? getSession().execute(commands[0]!) : getSession().executeAll(commands);
   if (!result.ok) toast(result.error, { tone: 'error' });
-  else if (before) recordProperties(before);
+  else {
+    if (before) recordProperties(before);
+    runAutomations(prior, result.value, commands);
+  }
   return result;
+}
+
+// rows whose properties a command changed set off their database's automations, which set others
+function runAutomations(prior: WorkspaceState, next: WorkspaceState, commands: Command[]): void {
+  const ids = new Set<PageId>();
+  for (const command of commands)
+    if (
+      command.type === 'page.setProperties' ||
+      command.type === 'page.setFields' ||
+      command.type === 'page.create'
+    )
+      ids.add(command.id);
+  const today = dateKey(new Date());
+  for (const id of ids) {
+    const row = next.pages[id];
+    const database = row?.parentId ? next.pages[row.parentId]?.database : undefined;
+    if (!row || !database?.automations?.length) continue;
+    const values = automationValues(database, prior.pages[id]?.properties ?? {}, row.properties, today);
+    if (Object.keys(values).length)
+      getSession().execute({ type: 'page.setProperties', id, values, now: Date.now() });
+  }
 }
 
 // property values and types live outside a page's text, so the editor's undo never sees them. ctrl+z away

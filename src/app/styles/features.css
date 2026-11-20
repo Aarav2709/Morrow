@@ -3549,3 +3549,38 @@ td:hover .prop-empty,
 .db-form > .button {
   align-self: flex-start;
 }
+
+/* a database's automations, each a sentence, and the sentence that makes a new one */
+.db-automations {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+}
+.db-automation-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.db-automation-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+.db-automation-new {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+}
+.db-automation-new select,
+.db-automation-new input {
+  width: auto;
+  max-width: 160px;
+}

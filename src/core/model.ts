@@ -1,3 +1,4 @@
+import type { Automation } from './automations';
 // workspace data model, plain json shared by storage, search, export and the editor
 
 // bump when the persisted shape changes and add a migration in migrations.ts
@@ -149,6 +150,8 @@ export interface ViewDef {
 export interface DatabaseDef {
   properties: PropDef[];
   views: ViewDef[];
+  // properties set by themselves when another comes to have a value, see core/automations
+  automations?: Automation[];
 }
 
 // option ids for selects, yyyy mm dd for dates

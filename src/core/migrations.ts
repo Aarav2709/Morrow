@@ -1,3 +1,4 @@
+import { normalizeAutomations } from './automations';
 import { isRecord, validateDoc } from './doc';
 import { normalizeExtra } from './vault/frontmatter';
 import {
@@ -257,6 +258,9 @@ export function normalizeDatabase(raw: unknown): DatabaseDef | null {
   return {
     properties: records(raw.properties).flatMap((prop) => normalizeProp(prop) ?? []),
     views: records(raw.views).flatMap((view) => normalizeView(view) ?? []),
+    ...(Array.isArray(raw.automations) && raw.automations.length
+      ? { automations: normalizeAutomations(raw.automations) }
+      : {}),
   };
 }
 

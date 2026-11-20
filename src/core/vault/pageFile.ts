@@ -312,6 +312,15 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       ...(view.frozen ? { frozen: view.frozen } : {}),
       ...(view.widgets ? { widgets: view.widgets.map((widget) => ({ ...widget })) } : {}),
     })),
+    ...(database.automations?.length
+      ? {
+          automations: database.automations.map((automation) => ({
+            id: automation.id,
+            when: { ...automation.when },
+            then: { ...automation.then },
+          })),
+        }
+      : {}),
   };
 }
 

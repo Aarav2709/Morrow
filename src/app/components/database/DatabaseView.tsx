@@ -22,6 +22,7 @@ import {
   Trash2,
   Upload,
   X,
+  Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -70,6 +71,7 @@ import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
 import { Grouped, Limited } from './Grouped';
+import { AutomationsPanel } from './AutomationsPanel';
 import { DashboardView } from './DashboardView';
 import { FormView } from './FormView';
 import { TimelineView } from './TimelineView';
@@ -443,7 +445,7 @@ function ViewSettings({
   );
 }
 
-type ToolPanel = 'filter' | 'sort' | 'properties' | 'layout';
+type ToolPanel = 'filter' | 'sort' | 'properties' | 'layout' | 'automations';
 
 // the frontmatter keys rows already have but no column shows yet, such as the properties of notes that
 // came from obsidian, offered once until they are added or dismissed
@@ -551,6 +553,26 @@ function Toolbar({
       <button type="button" className="text-tool" onClick={open('properties')}>
         <Eye size={13} /> {t('database.properties')}
       </button>
+      {editable && (
+        <button
+          type="button"
+          className={`text-tool${database.automations?.length ? ' is-active' : ''}`}
+          onClick={open('automations')}
+        >
+          <Zap size={13} /> {t('database.automations')}
+          {database.automations?.length ? ` ${database.automations.length}` : ''}
+        </button>
+      )}
+      {panel?.kind === 'automations' && (
+        <Popover
+          anchor={panel.anchor}
+          onClose={() => setPanel(null)}
+          label={t('database.automations')}
+          className="db-panel is-wide"
+        >
+          <AutomationsPanel dbId={dbId} database={database} />
+        </Popover>
+      )}
       {panel?.kind === 'filter' && (
         <Popover
           anchor={panel.anchor}
