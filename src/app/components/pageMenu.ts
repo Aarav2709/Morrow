@@ -33,6 +33,7 @@ import type { PageId } from '../../core/model';
 import {
   createPage,
   duplicatePage,
+  exportPageHtml,
   exportPageMarkdown,
   exportPagePdf,
   importMarkdown,
@@ -187,6 +188,9 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       : []),
     { separator: true },
     { label: t('pageMenu.exportMarkdown'), icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
+    ...(page.kind === 'page'
+      ? [{ label: t('pageMenu.exportHtml'), icon: FileCode2, onSelect: () => void exportPageHtml(pageId) }]
+      : []),
     ...(desktop && page.kind !== 'canvas'
       ? [{ label: t('pageMenu.exportPdf'), icon: FileText, onSelect: () => void exportPagePdf(pageId) }]
       : []),

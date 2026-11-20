@@ -1,4 +1,5 @@
-import { strToU8, unzipSync, zipSync } from 'fflate';
+import { htmlFileToMarkdown } from './htmlImport';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import katex from 'katex';
 import {
   dailyInsertIndex,
@@ -17,7 +18,7 @@ import { defaultDatabase } from '../core/database';
 import { displayTitle } from '../core/model';
 import type { FileId, FileMeta, PageId, PageKind, PropValue, Snapshot } from '../core/model';
 import { databaseFromSubpages, fieldsForMove, releaseRow } from '../core/properties';
-import { buildSite } from '../core/site';
+import { buildSite, docToHtml, standalonePage } from '../core/site';
 import {
   applyTemplate,
   dailyTemplate,
@@ -647,6 +648,36 @@ export async function exportPageMarkdown(id: PageId): Promise<void> {
   saveFile(`${name}.zip`, zipBytes(entries), 'application/zip');
 }
 
+// a page as one html file that opens in any browser, its pictures held inside it so nothing else is needed
+export async function exportPageHtml(id: PageId): Promise<void> {
+  commitEditors();
+  const state = getState();
+  const page = state.pages[id];
+  const doc = state.docs[id];
+  if (!page || !doc) return;
+  if (page.encrypted) {
+    toast(t('toasts.encryptedNotExported'), { tone: 'error' });
+    return;
+  }
+  const pictures = new Map<string, string>();
+  for (const fileId of fileIdsInDoc(doc)) {
+    const file = await getSession().getFile(fileId);
+    if (file)
+      pictures.set(fileId, `data:${file.meta.type};base64,${bytesToBase64(new Uint8Array(file.data))}`);
+  }
+  const body = docToHtml(doc, {
+    titleOf: (other) => (state.pages[other] ? displayTitle(state.pages[other]!) : null),
+    // other pages are not in the file, their links stay as their names
+    href: () => null,
+    assetPath: (fileId) => pictures.get(fileId) ?? '',
+    renderMath: (latex, display) =>
+      katex.renderToString(latex, { output: 'mathml', displayMode: display, throwOnError: false }),
+  });
+  const title = displayTitle(page);
+  const html = standalonePage(title, body);
+  saveFile(`${safeFileName(title)}.html`, html, 'text/html;charset=utf-8');
+}
+
 // the open page exactly as it looks, through the system's pdf printer
 export async function exportPagePdf(id: PageId): Promise<void> {
   commitEditors();
@@ -783,7 +814,7 @@ function message(error: unknown): string {
 
 export async function importMarkdown(parentId: PageId | null = null): Promise<void> {
   const picked = await pickFiles(
-    '.md,.markdown,.mdown,.txt,.zip,text/markdown,text/plain,application/zip',
+    '.md,.markdown,.mdown,.txt,.html,.htm,.zip,text/markdown,text/plain,text/html,application/zip',
     true,
   );
   if (picked.length === 0) return;
@@ -794,7 +825,25 @@ export async function importMarkdown(parentId: PageId | null = null): Promise<vo
     const texts: Array<{ name: string; text: string }> = [];
     for (const file of files) {
       if (/\.zip$/i.test(file.name)) entries.push(...unzipAll(new Uint8Array(await file.arrayBuffer())));
+      // html pages come in as the markdown they say, named the same
+      else if (/\.html?$/i.test(file.name))
+        texts.push({
+          name: file.name.replace(/\.html?$/i, '.md'),
+          text: htmlFileToMarkdown(await file.text(), file.name.replace(/\.html?$/i, '')),
+        });
       else texts.push({ name: file.name, text: await file.text() });
+    }
+    // html pages in a zip, such as notion's html export, are read as markdown beside the files they use
+    for (const [index, entry] of entries.entries()) {
+      if (!/\.html?$/i.test(entry.path)) continue;
+      const name = entry.path
+        .split('/')
+        .pop()!
+        .replace(/\.html?$/i, '');
+      entries[index] = {
+        path: entry.path.replace(/\.html?$/i, '.md'),
+        data: strToU8(htmlFileToMarkdown(strFromU8(entry.data), name)),
+      };
     }
     if (entries.length === 0 && texts.length === 0) throw new Error(t('toasts.importTooLarge'));
     const state = getState();

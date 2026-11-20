@@ -174,6 +174,29 @@ ${sub}${back ? `<section class="backlinks"><h2>Linked from</h2><ul>${back}</ul><
   return { files, assets };
 }
 
+// one page as a file of its own, with the site's look written inside it
+export function standalonePage(title: string, body: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="Morrow">
+<title>${escape(title)}</title>
+<style>${SITE_CSS}</style>
+</head>
+<body>
+<main>
+<article>
+<h1>${escape(title)}</h1>
+${body}
+</article>
+</main>
+</body>
+</html>
+`;
+}
+
 export interface RenderContext {
   href: (id: PageId) => string | null;
   assetPath: (fileId: FileId) => string;
