@@ -28,6 +28,7 @@ import { getPreferences, setPreferences, usePreferences } from '../platform/pref
 import { openDialog } from '../ui';
 import { getState } from '../workspace';
 import { SETTINGS_CHANGED } from './AssistantSettings';
+import { AgentClientView } from './AgentClientView';
 import { answerProposal, newChat, sendMessage, stopTurn, undoChange, useChat } from './chat';
 import { clearSelection, useAttachedSelection } from './selection';
 import type { ChatItem } from './chat';
@@ -168,8 +169,59 @@ function ToolLine({ item }: { item: Extract<ChatItem, { kind: 'tool' }> }) {
 }
 
 export function AssistantPanel() {
+  const { assistantWidth, assistantEngine } = usePreferences();
+
+  // the panel's left edge drags to make it wider or narrower
+  const startResize = (event: React.PointerEvent) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = getPreferences().assistantWidth;
+    const onMove = (move: PointerEvent) =>
+      setPreferences({ assistantWidth: Math.min(720, Math.max(300, startWidth + startX - move.clientX)) });
+    const onUp = () => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  };
+
+  if (assistantEngine === 'acp' && desktop?.acp) {
+    return (
+      <aside
+        className="assistant-panel"
+        aria-label={t('settings.sections.assistant')}
+        style={{ width: assistantWidth }}
+      >
+        <div
+          className="assistant-resizer"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={t('assistant.resize')}
+          onPointerDown={startResize}
+          onDoubleClick={() => setPreferences({ assistantWidth: 380 })}
+        />
+        <AgentClientView
+          origin="panel"
+          onOpenSessionManager={() => openDialog({ kind: 'sessionManager' })}
+          onOpenSettings={() => openDialog({ kind: 'settings', section: 'assistant' })}
+          onClose={() => setPreferences({ assistantOpen: false })}
+        />
+      </aside>
+    );
+  }
+
+  return <ApiAssistantPanel assistantWidth={assistantWidth} startResize={startResize} />;
+}
+
+function ApiAssistantPanel({
+  assistantWidth,
+  startResize,
+}: {
+  assistantWidth: number;
+  startResize: (event: React.PointerEvent) => void;
+}) {
   const chat = useChat();
-  const { assistantWidth } = usePreferences();
   const [settings, setSettings] = useState<AssistantSettings | null>(null);
   const [text, setText] = useState('');
   const list = useRef<HTMLDivElement>(null);
@@ -207,21 +259,6 @@ export function AssistantPanel() {
     if (!text.trim() || chat.busy || !ready) return;
     void sendMessage(text);
     setText('');
-  };
-
-  // the panel's left edge drags to make it wider or narrower
-  const startResize = (event: React.PointerEvent) => {
-    event.preventDefault();
-    const startX = event.clientX;
-    const startWidth = getPreferences().assistantWidth;
-    const onMove = (move: PointerEvent) =>
-      setPreferences({ assistantWidth: Math.min(720, Math.max(300, startWidth + startX - move.clientX)) });
-    const onUp = () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-    };
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
   };
 
   return (

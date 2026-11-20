@@ -3,6 +3,8 @@
 // a phone leaves out the window, tray and keychain parts, which leaves a few helpers unused there
 #![cfg_attr(mobile, allow(dead_code, unused_mut))]
 
+#[cfg(desktop)]
+mod acp;
 mod ai;
 mod cloud;
 #[cfg(target_os = "android")]
@@ -949,6 +951,242 @@ fn mcp_is_enabled() -> bool {
     mcp::is_enabled()
 }
 
+// ---- agent client protocol (acp) local cli agents
+
+#[cfg(desktop)]
+fn acp_hooks<R: Runtime>(app: &AppHandle<R>) -> std::sync::Arc<acp::HostHooks> {
+    let emit_handle = app.clone();
+    let notify_handle = app.clone();
+    let mcp_info = mcp::launch(app);
+    let mcp_command = if mcp_info["available"].as_bool() == Some(true) {
+        Some((
+            mcp_info["command"].as_str().unwrap_or("node").to_string(),
+            mcp_info["script"].as_str().unwrap_or("").to_string(),
+        ))
+    } else {
+        None
+    };
+    std::sync::Arc::new(acp::HostHooks {
+        emit: Box::new(move |payload| to_window(&emit_handle, "acp:event", payload)),
+        notify_if_unfocused: Box::new(move |title, body| {
+            let focused = main_window(&notify_handle)
+                .and_then(|w| w.is_focused().ok())
+                .unwrap_or(false);
+            if !focused {
+                let t: String = title.chars().take(200).collect();
+                let b: String = body.chars().take(500).collect();
+                let _ = notify_handle
+                    .notification()
+                    .builder()
+                    .title(t)
+                    .body(b)
+                    .show();
+            }
+        }),
+        mcp_command,
+    })
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_settings() -> Res<Value> {
+    blocking(acp::settings).await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_settings() -> Res<Value> {
+    Err("ACP agents are only supported on desktop.".into())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_configure(patch: Value) -> Res<Value> {
+    blocking(move || acp::configure(patch)).await?
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_configure(_patch: Value) -> Res<Value> {
+    Err("ACP agents are only supported on desktop.".into())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_detect_node() -> Res<Option<String>> {
+    blocking(acp::detect_node).await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_detect_node() -> Option<String> {
+    None
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_pick_directory<R: Runtime>(
+    app: AppHandle<R>,
+    start: Option<String>,
+) -> Option<String> {
+    let initial = start
+        .filter(|s| !s.trim().is_empty())
+        .map(PathBuf::from)
+        .filter(|p| p.is_dir())
+        .or_else(vault::current)
+        .unwrap_or_else(paths::documents_dir);
+    let mut dialog = app
+        .dialog()
+        .file()
+        .set_title("Choose working directory for agent")
+        .set_directory(initial);
+    if let Some(window) = main_window(&app) {
+        dialog = dialog.set_parent(&window);
+    }
+    let (send, receive) = tokio::sync::oneshot::channel();
+    dialog.pick_folder(move |path| {
+        let _ = send.send(path.and_then(|p| p.into_path().ok()));
+    });
+    receive
+        .await
+        .ok()
+        .flatten()
+        .map(|p| p.to_string_lossy().into_owned())
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_pick_directory(_start: Option<String>) -> Option<String> {
+    None
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_start_session<R: Runtime>(app: AppHandle<R>, request: Value) -> Value {
+    acp::start_or_load_session(
+        acp::StartSessionParams {
+            client_session_id: request["clientSessionId"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            agent_id: request["agentId"].as_str().unwrap_or("").to_string(),
+            existing_agent_session_id: None,
+            cwd_override: request["cwd"].as_str().map(String::from),
+            mcp_enabled: request["mcpEnabled"].as_bool().unwrap_or(false),
+            auto_allow: request["autoAllowPermissions"].as_bool().unwrap_or(false),
+            system_notifications: request["systemNotifications"].as_bool().unwrap_or(true),
+        },
+        acp_hooks(&app),
+    )
+    .await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_start_session(_request: Value) -> Value {
+    json!({ "ok": false, "error": "ACP agents are only supported on desktop." })
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_load_session<R: Runtime>(app: AppHandle<R>, request: Value) -> Value {
+    acp::start_or_load_session(
+        acp::StartSessionParams {
+            client_session_id: request["clientSessionId"]
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+            agent_id: request["agentId"].as_str().unwrap_or("").to_string(),
+            existing_agent_session_id: request["agentSessionId"].as_str().map(String::from),
+            cwd_override: request["cwd"].as_str().map(String::from),
+            mcp_enabled: request["mcpEnabled"].as_bool().unwrap_or(false),
+            auto_allow: request["autoAllowPermissions"].as_bool().unwrap_or(false),
+            system_notifications: request["systemNotifications"].as_bool().unwrap_or(true),
+        },
+        acp_hooks(&app),
+    )
+    .await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_load_session(_request: Value) -> Value {
+    json!({ "ok": false, "error": "ACP agents are only supported on desktop." })
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_close_session(client_session_id: String) {
+    acp::close_session(&client_session_id).await;
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_close_session(_client_session_id: String) {}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_prompt(request: Value) -> Value {
+    let client_session_id = request["clientSessionId"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    let prompt = request["prompt"].as_array().cloned().unwrap_or_default();
+    let auto_allow = request["autoAllowPermissions"].as_bool().unwrap_or(false);
+    let system_notifications = request["systemNotifications"].as_bool().unwrap_or(true);
+    acp::prompt(client_session_id, prompt, auto_allow, system_notifications).await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_prompt(_request: Value) -> Value {
+    json!({ "ok": false, "error": "ACP agents are only supported on desktop." })
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_cancel(client_session_id: String) {
+    acp::cancel(&client_session_id).await;
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_cancel(_client_session_id: String) {}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_set_mode(client_session_id: String, mode_id: String) -> Value {
+    acp::set_mode(&client_session_id, &mode_id).await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_set_mode(_client_session_id: String, _mode_id: String) -> Value {
+    json!({ "ok": false, "error": "ACP agents are only supported on desktop." })
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+async fn acp_set_model(client_session_id: String, model_id: String) -> Value {
+    acp::set_model(&client_session_id, &model_id).await
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+async fn acp_set_model(_client_session_id: String, _model_id: String) -> Value {
+    json!({ "ok": false, "error": "ACP agents are only supported on desktop." })
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+fn acp_respond_permission(request_id: String, option_id: Option<String>) {
+    acp::respond_permission(&request_id, option_id);
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+fn acp_respond_permission(_request_id: String, _option_id: Option<String>) {}
+
 // ---- files in the vault and on the computer, for pictures, sound and video in pages
 
 fn not_found() -> tauri::http::Response<Vec<u8>> {
@@ -1274,11 +1512,25 @@ pub fn run() {
             mcp_launch,
             mcp_set_enabled,
             mcp_is_enabled,
+            acp_settings,
+            acp_configure,
+            acp_detect_node,
+            acp_pick_directory,
+            acp_start_session,
+            acp_load_session,
+            acp_close_session,
+            acp_prompt,
+            acp_cancel,
+            acp_set_mode,
+            acp_set_model,
+            acp_respond_permission,
         ])
         .build(tauri::generate_context!())
         .expect("Morrow could not start")
         .run(|_app, event| {
             if let tauri::RunEvent::Exit = event {
+                #[cfg(desktop)]
+                acp::kill_all();
                 sync::close();
                 vault::close();
             }

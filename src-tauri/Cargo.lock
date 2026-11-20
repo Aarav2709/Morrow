@@ -5263,6 +5263,7 @@ dependencies = [
  "libc",
  "mio 1.2.4",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2 0.6.5",
  "tokio-macros",
  "windows-sys 0.61.2",

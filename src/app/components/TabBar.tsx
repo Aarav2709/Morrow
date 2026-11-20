@@ -1,5 +1,6 @@
 import {
   Archive,
+  Bot,
   CalendarCheck,
   Columns2,
   Copy,
@@ -56,6 +57,7 @@ const VIEW_ICONS: Record<string, LucideIcon> = {
   search: Search,
   templates: LayoutTemplate,
   journal: BookOpen,
+  agent: Bot,
 };
 
 function getViewTitle(name: string): string {
@@ -82,6 +84,8 @@ function getViewTitle(name: string): string {
       return t('dialogs.templates');
     case 'journal':
       return t('journal.title');
+    case 'agent':
+      return t('acp.tabTitle');
     default:
       return t('settings.general.startPages.home');
   }
