@@ -222,6 +222,10 @@ export interface DesktopBridge {
   spellSuggest?(word: string): Promise<string[]>;
   spellAdd?(word: string): Promise<void>;
   fetchImage?(url: string): Promise<{ type: string; data: ArrayBuffer } | null>;
+  // the top of a web page, read for the title and description of a bookmark or a link mention
+  fetchPageHead?(url: string): Promise<string>;
+  // lets a website load in a frame of the page, rather than opening in the browser
+  allowFrame?(url: string): Promise<boolean>;
   // a file made in the app, saved where the person picks. the webview has no downloads of its own
   saveFile?(
     name: string,

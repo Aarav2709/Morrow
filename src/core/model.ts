@@ -231,6 +231,9 @@ export const KNOWN_NODE_TYPES = new Set([
   'column',
   'tableOfContents',
   'dateMention',
+  'webEmbed',
+  'bookmark',
+  'linkMention',
 ]);
 
 export const KNOWN_MARK_TYPES = new Set([

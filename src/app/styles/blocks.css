@@ -1085,3 +1085,130 @@ html.is-printing body {
   flex: 1;
   min-width: 0;
 }
+
+/* a website shown in the page, loaded only when asked */
+.web-embed {
+  position: relative;
+  margin: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.web-embed.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}
+.web-embed-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font: var(--text-sm) var(--font-ui);
+  color: var(--text-muted);
+}
+.web-embed-host {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.web-embed-body {
+  display: grid;
+  place-items: center;
+  background: var(--hover);
+}
+.web-embed-body iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+.web-embed-grip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+/* a link as a card with its page's title and description. it is a link, without a link's underline */
+.prose a.bookmark-card,
+.prose a.bookmark-card *,
+.prose a.link-mention {
+  text-decoration: none;
+}
+.bookmark-card {
+  display: flex;
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.bookmark-card:hover {
+  background: var(--hover);
+}
+.bookmark-card.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}
+.bookmark-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-family: var(--font-ui);
+}
+.bookmark-title {
+  font-weight: 550;
+  font-size: var(--text-md, 15px);
+}
+.bookmark-description {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bookmark-site,
+.link-mention {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.bookmark-site {
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* a link drawn as a chip with its page's title */
+.link-mention {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--hover);
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+  vertical-align: baseline;
+}
+.link-mention svg {
+  flex: none;
+  color: var(--text-muted);
+}
+.link-mention:hover {
+  background: var(--accent-soft);
+}
+.link-mention.ProseMirror-selectednode {
+  outline: 2px solid var(--accent);
+}

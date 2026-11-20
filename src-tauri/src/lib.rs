@@ -70,6 +70,44 @@ fn bring_forward<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+// the sites shown in a page's frames, websites and youtube videos, which may load in the window
+fn framed_sites() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
+    static SITES: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> =
+        std::sync::OnceLock::new();
+    SITES.get_or_init(|| {
+        std::sync::Mutex::new(std::collections::HashSet::from([
+            "https://www.youtube-nocookie.com".to_string(),
+        ]))
+    })
+}
+
+fn site_of(url: &str) -> Option<String> {
+    let parsed = url::Url::parse(url).ok()?;
+    (parsed.scheme() == "https").then(|| parsed.origin().ascii_serialization())
+}
+
+fn framed(url: &str) -> bool {
+    site_of(url).is_some_and(|site| {
+        framed_sites()
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
+            .contains(&site)
+    })
+}
+
+// a website about to be shown in a page's frame. its frames are sandboxed, they can't move the window
+#[tauri::command]
+fn allow_frame(url: String) -> bool {
+    let Some(site) = site_of(&url) else {
+        return false;
+    };
+    framed_sites()
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner())
+        .insert(site);
+    true
+}
+
 fn is_web_url(url: &str) -> bool {
     let lower = url.to_ascii_lowercase();
     lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("mailto:")
@@ -329,6 +367,48 @@ fn read_pasted_file(src: &str) -> Res<Response> {
 }
 
 // a picture pasted from the web or another app is saved into the vault, so it stays when its link expires.
+// the start of a web page, for the title and description a bookmark or a link mention shows. only asked
+// for when a link is turned into one, opening a page never contacts anyone
+#[tauri::command]
+async fn fetch_page_head(url: String) -> Res<String> {
+    let lower = url.to_ascii_lowercase();
+    if !lower.starts_with("https://") && !lower.starts_with("http://") {
+        return Err("Not allowed.".into());
+    }
+    let client = reqwest::Client::builder()
+        .user_agent(concat!(
+            "Mozilla/5.0 (compatible; Morrow/",
+            env!("CARGO_PKG_VERSION"),
+            ")"
+        ))
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let mut response = client
+        .get(&url)
+        .header("accept", "text/html")
+        .send()
+        .await
+        .map_err(|error| error.to_string())?;
+    let html = response
+        .headers()
+        .get("content-type")
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.contains("html"));
+    if !response.status().is_success() || !html {
+        return Err("Not a page.".into());
+    }
+    // the head is near the top, the rest of a long page is never read
+    let mut bytes = Vec::new();
+    while let Some(chunk) = response.chunk().await.map_err(|error| error.to_string())? {
+        bytes.extend_from_slice(&chunk);
+        if bytes.len() > 512 * 1024 {
+            break;
+        }
+    }
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
 // fetched here rather than in the page, which most image hosts would refuse
 #[tauri::command]
 async fn fetch_image(url: String) -> Res<Response> {
@@ -1104,12 +1184,16 @@ fn create_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         .visible(false)
         .initialization_script(info_script())
         .disable_drag_drop_handler()
-        // links to the web open in the browser, the window only ever shows morrow itself
+        // links to the web open in the browser, the window only ever shows morrow itself. the web view also
+        // asks here for the frames of websites shown in a page, those the page asked for are let through
         .on_navigation(move |url| {
             let internal = matches!(url.scheme(), "tauri" | "morrow-file")
                 || url
                     .host_str()
                     .is_some_and(|host| host.ends_with(".localhost") || host == "localhost");
+            if !internal && framed(url.as_str()) {
+                return true;
+            }
             if !internal && is_web_url(url.as_str()) {
                 let _ = handle.opener().open_url(url.as_str(), None::<&str>);
             }
@@ -1243,6 +1327,8 @@ pub fn run() {
             read_pasted_picture,
             fetch_calendar,
             fetch_image,
+            fetch_page_head,
+            allow_frame,
             show_data_folder,
             show_backups,
             write_backup,

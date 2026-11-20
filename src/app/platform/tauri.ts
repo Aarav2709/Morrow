@@ -194,6 +194,8 @@ export function tauriBridge(): DesktopBridge | null {
           spellAdd: (word: string) => invoke<void>('spell_add', { word }),
         }
       : {}),
+    fetchPageHead: (url) => invoke<string>('fetch_page_head', { url }),
+    allowFrame: (url) => invoke<boolean>('allow_frame', { url }),
     async fetchImage(url) {
       const bytes = await bytesOrNull('fetch_image', { url });
       if (!bytes) return null;

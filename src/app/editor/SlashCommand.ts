@@ -436,9 +436,9 @@ export const BLOCK_ITEMS: BlockItem[] = [
   {
     id: 'embedMedia',
     title: 'Embed',
-    description: 'A YouTube video, or a picture, sound, video or folder on this computer',
+    description: 'A website, a YouTube video, or a picture, sound, video or folder on this computer',
     icon: Clapperboard,
-    keywords: 'youtube video audio sound music picture folder path local file embed',
+    keywords: 'youtube video audio sound music picture folder path local file embed website iframe web',
     run: (e, r) => {
       chain(e, r).run();
       promptEmbed(e);

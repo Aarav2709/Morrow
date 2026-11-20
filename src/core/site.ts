@@ -225,6 +225,13 @@ function inline(nodes: DocNode[] = [], context: RenderContext): string {
             ? context.renderMath(latex, false)
             : `<code class="math">${escape(latex)}</code>`;
         }
+        case 'linkMention': {
+          const href = String(node.attrs?.href ?? '');
+          const title = escape(String(node.attrs?.title || href));
+          return SAFE_HREF.test(href)
+            ? `<a href="${escape(href)}" rel="noopener noreferrer">${title}</a>`
+            : title;
+        }
         case 'dateMention':
           return `<time class="date-mention" datetime="${escape(String(node.attrs?.date ?? ''))}">${escape(formatDate(String(node.attrs?.date ?? '')))}</time>`;
         case 'pageLink': {
@@ -329,6 +336,17 @@ export function docToHtml(doc: DocNode, context: RenderContext): string {
         return SAFE_HREF.test(src)
           ? `<p><a href="${escape(src)}" rel="noopener noreferrer">${alt || 'Image'}</a></p>`
           : '';
+      }
+      // a published page never loads anything from elsewhere, websites and bookmarks are links
+      case 'webEmbed':
+      case 'bookmark': {
+        const href = String(node.attrs?.src ?? node.attrs?.href ?? '');
+        if (!SAFE_HREF.test(href)) return '';
+        const title = escape(String(node.attrs?.title || href));
+        const description = node.attrs?.description
+          ? `<br><small>${escape(String(node.attrs.description))}</small>`
+          : '';
+        return `<p class="bookmark"><a href="${escape(href)}" rel="noopener noreferrer">${title}</a>${description}</p>`;
       }
       case 'fileAttachment': {
         const fileId = String(node.attrs?.fileId ?? '');

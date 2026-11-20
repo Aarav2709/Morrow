@@ -7,6 +7,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { t } from '../i18n';
 import { mediaKind, youtubeId } from './Media';
+import { insertLinkAs } from './WebBlocks';
 
 type PastedKind = 'youtube' | 'picture' | 'local' | 'link';
 
@@ -54,6 +55,18 @@ function showMenu(
   if (kind === 'youtube') choices.push({ label: t('editor.pasteEmbedVideo'), run: asBlock });
   if (kind === 'picture') choices.push({ label: t('editor.pasteShowPicture'), run: asBlock });
   if (kind === 'local') choices.push({ label: t('editor.pastePlayHere'), run: asBlock });
+  // any web address can be a mention, a bookmark card or the website itself shown in the page
+  if (kind !== 'local') {
+    choices.push(
+      { label: t('editor.web.pasteMention'), run: () => insertLinkAs(editor, from, to, text, 'mention') },
+      { label: t('editor.web.pasteBookmark'), run: () => insertLinkAs(editor, from, to, text, 'bookmark') },
+    );
+    if (/^https:\/\//i.test(text) && kind !== 'youtube' && kind !== 'picture')
+      choices.push({
+        label: t('editor.web.pasteEmbed'),
+        run: () => insertLinkAs(editor, from, to, text, 'embed'),
+      });
+  }
   if (choices.length === 0) return;
   choices.push({ label: t('editor.pasteKeepLink'), run: () => editor.commands.focus() });
 
@@ -198,6 +211,9 @@ export function promptEmbed(editor: Editor): void {
     const chain = editor.chain().focus();
     if (kind === 'youtube' || kind === 'picture' || kind === 'local')
       chain.insertContentAt(at, { type: 'image', attrs: { src: text, alt: '' } }).run();
+    // a website shows live in the page
+    else if (/^https:\/\//i.test(text))
+      chain.insertContentAt(at, { type: 'webEmbed', attrs: { src: text } }).run();
     else
       chain
         .insertContentAt(at, {

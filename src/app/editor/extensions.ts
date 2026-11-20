@@ -25,6 +25,7 @@ import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
 import { Spelling } from './Spelling';
+import { Bookmark, LinkMention, WebEmbed } from './WebBlocks';
 import { IndentedLines, KeepTab, lineContent, LineEdges } from './turnInto';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Fragment, Slice } from '@tiptap/pm/model';
@@ -364,6 +365,9 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     Image,
     FileAttachment,
     FileDrop,
+    WebEmbed,
+    Bookmark,
+    LinkMention,
     Callout,
     Columns,
     Column,

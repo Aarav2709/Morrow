@@ -112,6 +112,23 @@ function block(node: DocNode, options: SerializeOptions): string | null {
       return String(node.attrs?.text ?? '');
     case 'horizontalRule':
       return '---';
+    case 'webEmbed': {
+      // the way obsidian shows a website in a note
+      const src = String(node.attrs?.src ?? '').replace(/"/g, '%22');
+      const height = Number(node.attrs?.height);
+      return `<iframe src="${src}"${Number.isFinite(height) && height > 0 ? ` height="${Math.round(height)}"` : ''}></iframe>`;
+    }
+    case 'bookmark': {
+      // a link on a line of its own, its description kept in the comment above so it shows without going
+      // online. a comment can't hold --, so dashes in it are written single
+      const description = String(node.attrs?.description ?? '')
+        .replace(/\s+/g, ' ')
+        .replace(/-{2,}/g, '-')
+        .trim();
+      const title =
+        escapeText(String(node.attrs?.title ?? '').replace(/[[\]]/g, '')) || String(node.attrs?.href ?? '');
+      return `${BOOKMARK_COMMENT(description)}\n[${title}](${formatHref(String(node.attrs?.href ?? ''))})`;
+    }
     case 'table':
       return table(node, options);
     case 'image': {
@@ -253,6 +270,12 @@ export const BACKGROUND_PATTERN = /^<!--\s*background:\s*([a-z]+)\s*-->$/;
 // a picture set to one side of the page, a comment above it like the background
 export const ALIGN_COMMENT = (side: string) => `<!-- align: ${side} -->`;
 export const ALIGN_PATTERN = /^<!--\s*align:\s*(left|right|center|justify)\s*-->$/;
+// a link on a line of its own shown as a card with its title and description
+export const BOOKMARK_COMMENT = (description: string) =>
+  description ? `<!-- bookmark: ${description} -->` : '<!-- bookmark -->';
+export const BOOKMARK_PATTERN = /^<!--\s*bookmark(?::\s*([\s\S]*?))?\s*-->$/;
+// a link written with this title is shown as a mention, a chip with the linked page's title
+export const MENTION_TITLE = 'mention';
 // a line showing another page without that page's title
 export const EMBED_TITLE_COMMENT = '<!-- embed: no title -->';
 // an html code block drawn as a page under its code
@@ -366,6 +389,14 @@ function inline(nodes: DocNode[], options: SerializeOptions, inTable = false): s
     if (node.type === 'pageLink') {
       closeTo(0);
       out += pendingSpace + wikiLink(node, options, inTable);
+      pendingSpace = '';
+      continue;
+    }
+    if (node.type === 'linkMention') {
+      // a link shown as a small chip with the page's title, an ordinary link with "mention" as its title
+      closeTo(0);
+      const title = escapeText(String(node.attrs?.title ?? '').replace(/[[\]]/g, '')) || 'link';
+      out += `${pendingSpace}[${title}](${formatHref(String(node.attrs?.href ?? ''))} "${MENTION_TITLE}")`;
       pendingSpace = '';
       continue;
     }

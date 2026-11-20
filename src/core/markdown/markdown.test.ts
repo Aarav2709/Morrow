@@ -502,6 +502,46 @@ describe('colours', () => {
     expect(back.map((node) => node.attrs?.align ?? null)).toEqual(['center', 'right', 'justify', null]);
   });
 
+  it('round trips websites shown in a page, bookmarks and link mentions', () => {
+    const doc: DocNode = {
+      type: 'doc',
+      content: [
+        { type: 'webEmbed', attrs: { src: 'https://example.org/widget?a=1&b=2', height: 500 } },
+        {
+          type: 'bookmark',
+          attrs: { href: 'https://example.org/post', title: 'A post', description: 'What it is -- in short' },
+        },
+        {
+          type: 'paragraph',
+          content: [
+            text('See '),
+            { type: 'linkMention', attrs: { href: 'https://example.org/doc', title: 'The doc' } },
+            text(' now'),
+          ],
+        },
+      ],
+    };
+    const out = docToMarkdown(doc);
+    expect(out).toBe(
+      '<iframe src="https://example.org/widget?a=1&b=2" height="500"></iframe>\n\n' +
+        '<!-- bookmark: What it is - in short -->\n[A post](https://example.org/post)\n\n' +
+        'See [The doc](https://example.org/doc "mention") now\n',
+    );
+    const back = markdownToDoc(out).content!;
+    expect(back[0]).toEqual({
+      type: 'webEmbed',
+      attrs: { src: 'https://example.org/widget?a=1&b=2', height: 500 },
+    });
+    expect(back[1]).toEqual({
+      type: 'bookmark',
+      attrs: { href: 'https://example.org/post', title: 'A post', description: 'What it is - in short' },
+    });
+    expect(back[2]!.content![1]).toEqual({
+      type: 'linkMention',
+      attrs: { href: 'https://example.org/doc', title: 'The doc' },
+    });
+  });
+
   it('keeps a page shown without its title as a comment above the line', () => {
     const out = '<!-- embed: no title -->\n![[Notes]]\n';
     const doc = markdownToDoc(out);

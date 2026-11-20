@@ -5,6 +5,8 @@ import type { DocMark, DocNode, PageId } from '../model';
 import { inlineText } from '../doc';
 import {
   ALIGN_PATTERN,
+  BOOKMARK_PATTERN,
+  MENTION_TITLE,
   BACKGROUND_PATTERN,
   EMBED_TITLE_COMMENT,
   PREVIEW_COMMENT,
@@ -347,6 +349,11 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
             note({ align: side });
             break;
           }
+          const bookmark = BOOKMARK_PATTERN.exec(token.content.trim());
+          if (bookmark) {
+            note({ bookmark: (bookmark[1] ?? '').trim() });
+            break;
+          }
           if (token.content.trim() === EMBED_TITLE_COMMENT) {
             note({ embedTitle: false });
             break;
@@ -367,7 +374,7 @@ export function markdownToDoc(source: string, options: ParseOptions = {}): DocNo
     }
   }
 
-  const doc = normalize(root);
+  const doc = normalize(bookmarks(root));
   return (doc.content ?? []).length > 0 ? doc : emptyDoc();
 }
 
@@ -452,8 +459,38 @@ interface Builder {
 const NOTION_ICON = /^<img\s[^>]*src=["'](?:notion:\/\/custom_emoji\/|\/icons\/)[^>]*>\s*/i;
 
 // toggles and notion asides become blocks, any other html is kept exactly as written
+// a line marked as a bookmark that holds one link becomes the bookmark's card. anything else stays the
+// line it is, only losing the mark
+function bookmarks(node: DocNode): DocNode {
+  if (!node.content) return node;
+  node.content = node.content.map((child) => {
+    if (child.type !== 'paragraph' || typeof child.attrs?.bookmark !== 'string') return bookmarks(child);
+    const { bookmark: description, ...attrs } = child.attrs;
+    const parts = (child.content ?? []).filter((part) => !(part.type === 'text' && !part.text?.trim()));
+    const href = parts[0]?.marks?.find((mark) => mark.type === 'link')?.attrs?.href;
+    if (parts.length !== 1 || typeof href !== 'string' || !/^https?:\/\//i.test(href))
+      return { ...child, attrs };
+    return {
+      type: 'bookmark',
+      attrs: { href, title: parts[0]!.text ?? href, description: description as string },
+    };
+  });
+  return node;
+}
+
 function htmlBlock(source: string, options: ParseOptions, b: Builder): void {
   const html = source.trim();
+  // a website shown in the page, the way obsidian writes one
+  const frame = /^<iframe\b([^>]*)>\s*<\/iframe>$/i.exec(html);
+  const frameSrc = frame ? /\ssrc\s*=\s*["']([^"']+)["']/i.exec(frame[1]!)?.[1] : null;
+  if (frameSrc && /^https:\/\//i.test(frameSrc)) {
+    const height = Number(/\sheight\s*=\s*["']?(\d+)/i.exec(frame![1]!)?.[1]);
+    b.push({
+      type: 'webEmbed',
+      attrs: { src: decodeEntities(frameSrc), height: Number.isFinite(height) && height > 0 ? height : null },
+    });
+    return;
+  }
   if (NOTION_ICON.test(html) && !html.replace(NOTION_ICON, '').trim()) return;
   // an empty line kept on purpose, the way morrow writes one
   if (/^<br\s*\/?>$/i.test(html)) {
@@ -601,10 +638,15 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
     if (index !== -1) marks.splice(index, 1);
   };
   let pageTarget: { id: PageId; label: string } | null = null;
+  let mention: { href: string; title: string } | null = null;
 
   for (const token of tokens) {
     if (pageTarget && token.type !== 'link_close') {
       pageTarget.label += token.content;
+      continue;
+    }
+    if (mention && token.type !== 'link_close') {
+      mention.title += token.content;
       continue;
     }
     switch (token.type) {
@@ -632,6 +674,10 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         break;
       case 'link_open': {
         const href = String(token.attrGet('href') ?? '');
+        if (token.attrGet('title') === MENTION_TITLE && /^https?:\/\//i.test(href)) {
+          mention = { href, title: '' };
+          break;
+        }
         const pageId = options.resolveLink?.(href) ?? null;
         const file = pageId ? null : (options.resolveFile?.(href) ?? null);
         if (pageId) pageTarget = { id: pageId, label: '' };
@@ -652,7 +698,10 @@ function inlineNodes(tokens: Token[], options: ParseOptions): DocNode[] {
         remove('highlight');
         break;
       case 'link_close':
-        if (pageTarget) {
+        if (mention) {
+          out.push({ type: 'linkMention', attrs: { href: mention.href, title: mention.title.trim() } });
+          mention = null;
+        } else if (pageTarget) {
           out.push({ type: 'pageLink', attrs: { id: pageTarget.id, label: pageTarget.label.trim() } });
           pageTarget = null;
         } else remove('link');

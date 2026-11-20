@@ -67,6 +67,7 @@ export function inlineText(node: DocNode): string {
   if (node.type === 'dateMention')
     return `${readableDate(String(node.attrs?.date ?? ''))}${node.attrs?.time ? ` ${String(node.attrs.time)}` : ''}`;
   if (node.type === 'inlineMath') return String(node.attrs?.latex ?? '');
+  if (node.type === 'linkMention') return String(node.attrs?.title || node.attrs?.href || '');
   return (node.content ?? []).map(inlineText).join('');
 }
 
@@ -84,6 +85,7 @@ export function docToPlainText(doc: DocNode): string {
       return;
     }
     if (node.type === 'image' && node.attrs?.alt) lines.push(String(node.attrs.alt));
+    if (node.type === 'bookmark') lines.push(String(node.attrs?.title || node.attrs?.href || ''));
     if (node.type === 'rawBlock' && node.attrs?.text) lines.push(String(node.attrs.text));
     if (node.type === 'blockMath' && node.attrs?.latex) lines.push(String(node.attrs.latex));
     // canvases are searched by the words on their cards

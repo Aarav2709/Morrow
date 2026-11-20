@@ -789,6 +789,13 @@ export const en = {
     heading: 'Heading',
     clearFormatting: 'Clear formatting',
     alignText: 'Align',
+    web: {
+      openInBrowser: 'Open in browser',
+      load: 'Load website',
+      pasteMention: 'Paste as mention',
+      pasteBookmark: 'Paste as bookmark',
+      pasteEmbed: 'Show the website in the page',
+    },
     spelling: {
       menu: 'Spelling',
       looking: 'Looking for words…',

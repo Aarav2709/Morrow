@@ -19,7 +19,7 @@
         "style-src": "'self' 'unsafe-inline'",
         "img-src": "'self' data: blob: https: morrow-file: http://morrow-file.localhost",
         "media-src": "'self' blob: morrow-file: http://morrow-file.localhost",
-        "frame-src": "blob: morrow-file: http://morrow-file.localhost https://www.youtube-nocookie.com",
+        "frame-src": "blob: morrow-file: http://morrow-file.localhost https:",
         "font-src": "'self' data:",
         "connect-src": "'self' ipc: http://ipc.localhost",
         "object-src": "'none'",
@@ -30,13 +30,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "nsis",
-      "dmg",
-      "app",
-      "appimage",
-      "deb"
-    ],
+    "targets": ["nsis", "dmg", "app", "appimage", "deb"],
     "publisher": "Aarav Gupta",
     "copyright": "Copyright 2026 Aarav Gupta and Morrow contributors",
     "category": "Productivity",

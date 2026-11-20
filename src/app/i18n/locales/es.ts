@@ -796,6 +796,13 @@ export const es: TranslationSchema = {
     heading: 'Encabezado',
     clearFormatting: 'Quitar el formato',
     alignText: 'Alinear',
+    web: {
+      openInBrowser: 'Abrir en el navegador',
+      load: 'Cargar sitio web',
+      pasteMention: 'Pegar como mención',
+      pasteBookmark: 'Pegar como marcador',
+      pasteEmbed: 'Mostrar el sitio web en la página',
+    },
     spelling: {
       menu: 'Ortografía',
       looking: 'Buscando palabras…',
