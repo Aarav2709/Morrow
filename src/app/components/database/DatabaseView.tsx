@@ -22,7 +22,7 @@ import {
   Upload,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { dateKey } from '../../../core/daily';
 import {
   filterOpsFor,
@@ -67,6 +67,7 @@ import { Switch } from '../primitives';
 import { Emoji } from '../Emoji';
 import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
+import { BulkEditBar, toggleRowSelection } from './BulkEdit';
 import { Grouped, Limited } from './Grouped';
 import { DashboardView } from './DashboardView';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
@@ -116,6 +117,16 @@ export function DatabaseView({
   const [tabMenu, setTabMenu] = useState<{ view: ViewDef; anchor: HTMLElement } | null>(null);
   const [movingView, setMovingView] = useState<string | null>(null);
   const [addMenu, setAddMenu] = useState<HTMLElement | null>(null);
+  const selectionScope = `${page.id}:${view?.id ?? ''}`;
+  const [selection, setSelection] = useState<{ scope: string; ids: Set<PageId> }>(() => ({
+    scope: selectionScope,
+    ids: new Set(),
+  }));
+  const selected = useMemo(
+    () => (selection.scope === selectionScope ? selection.ids : new Set<PageId>()),
+    [selection, selectionScope],
+  );
+  const lastSelectedRef = useRef<{ scope: string; id: PageId | null }>({ scope: selectionScope, id: null });
 
   const choose = (id: string) => {
     setViewId(id);
@@ -132,14 +143,57 @@ export function DatabaseView({
       updateDatabase(page.id, (current) => ({ ...current, views: [newView('table', current, newId)] }));
   }, [editable, database.views.length, page.id]);
 
+  const selectedRows = useMemo(
+    () => (view?.type === 'table' && editable ? rows.filter((row) => selected.has(row.id)) : []),
+    [view?.type, editable, rows, selected],
+  );
+
   if (!view) return null;
   // properties in the order of the view's columns, for cards and lists as well as the table
   const visible = viewColumns(view, database.properties).filter(
     (column): column is PropDef => column !== TITLE_PROP && !view.hidden.includes(column.id),
   );
+  const clearSelection = () => {
+    setSelection({ scope: selectionScope, ids: new Set() });
+    lastSelectedRef.current = { scope: selectionScope, id: null };
+  };
+  const toggleRow = (id: PageId, shiftKey: boolean, visibleRowIds: PageId[]) => {
+    const anchor = lastSelectedRef.current.scope === selectionScope ? lastSelectedRef.current.id : null;
+    setSelection((current) => {
+      const base = current.scope === selectionScope ? current.ids : new Set<PageId>();
+      return {
+        scope: selectionScope,
+        ids: toggleRowSelection(base, visibleRowIds, id, anchor, shiftKey),
+      };
+    });
+    lastSelectedRef.current = { scope: selectionScope, id };
+  };
+  const toggleAllRows = (ids: PageId[], checked: boolean) => {
+    setSelection((current) => {
+      const next = new Set(current.scope === selectionScope ? current.ids : []);
+      for (const id of ids) {
+        if (checked) next.add(id);
+        else next.delete(id);
+      }
+      return { scope: selectionScope, ids: next };
+    });
+    lastSelectedRef.current = { scope: selectionScope, id: null };
+  };
 
   return (
-    <section className="database" aria-label={t('sidebar.database')}>
+    <section
+      className="database"
+      aria-label={t('sidebar.database')}
+      onKeyDown={(event) => {
+        if (
+          event.key === 'Escape' &&
+          selectedRows.length > 0 &&
+          !(event.target as HTMLElement).closest('input, textarea, select, [role="dialog"]')
+        ) {
+          clearSelection();
+        }
+      }}
+    >
       <div className="db-bar">
         <div className="db-tabs" role="tablist" aria-label={t('database.views')}>
           {(onlyView ? database.views.filter((candidate) => candidate.id === view.id) : database.views).map(
@@ -207,6 +261,14 @@ export function DatabaseView({
         <Toolbar dbId={page.id} database={database} view={view} rows={allRows} editable={editable} />
       </div>
       {editable && <ColumnSuggestion dbId={page.id} database={database} rows={allRows} />}
+      {selectedRows.length > 0 && (
+        <BulkEditBar
+          dbId={page.id}
+          database={database}
+          selectedRows={selectedRows}
+          onClear={clearSelection}
+        />
+      )}
 
       {(view.type === 'table' || view.type === 'list' || view.type === 'gallery') &&
         (() => {
@@ -220,6 +282,15 @@ export function DatabaseView({
                 rows={shown}
                 props={visible}
                 editable={editable}
+                selectedIds={selected}
+                onToggleRow={(id, shiftKey) =>
+                  toggleRow(
+                    id,
+                    shiftKey,
+                    shown.map((item) => item.id),
+                  )
+                }
+                onToggleAll={toggleAllRows}
               />
             ) : view.type === 'list' ? (
               <ListView rows={shown} props={visible} database={database} />
@@ -1014,6 +1085,35 @@ function FocusLast() {
 
 const TITLE_WIDTH = 260;
 const COLUMN_WIDTH = 180;
+const SELECT_WIDTH = 34;
+
+function SelectAllCheckbox({
+  checked,
+  indeterminate,
+  disabled,
+  onChange,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  disabled: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="prop-checkbox db-row-checkbox"
+      aria-label={t('database.selectAllRows')}
+      checked={checked}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.checked)}
+    />
+  );
+}
 
 // drag a column's right edge to size it, a double click goes back to the usual width
 function ColumnResizer({
@@ -1058,10 +1158,25 @@ function ColumnResizer({
   );
 }
 
-function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
+function TableView({
+  dbId,
+  database,
+  view,
+  rows,
+  props,
+  editable,
+  selectedIds,
+  onToggleRow,
+  onToggleAll,
+}: ViewProps & {
+  selectedIds: Set<PageId>;
+  onToggleRow: (id: PageId, shiftKey: boolean) => void;
+  onToggleAll: (ids: PageId[], checked: boolean) => void;
+}) {
   const [header, setHeader] = useState<{ prop: PropDef; anchor: HTMLElement } | null>(null);
   const [adding, setAdding] = useState<HTMLElement | null>(null);
   const [focusNew, setFocusNew] = useState<string | null>(null);
+  const shiftKeyRef = useRef(false);
   // the width being dragged, saved to the view once the drag ends
   const [dragging, setDragging] = useState<{ key: string; width: number } | null>(null);
   // the column being dragged to another place
@@ -1096,11 +1211,18 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
       />
     );
   const total =
-    widthOf(TITLE_PROP) + props.reduce((sum, prop) => sum + widthOf(prop.id), 0) + (editable ? 36 : 0);
+    (editable ? SELECT_WIDTH : 0) +
+    widthOf(TITLE_PROP) +
+    props.reduce((sum, prop) => sum + widthOf(prop.id), 0) +
+    (editable ? 36 : 0);
+  const selectedCount = rows.filter((row) => selectedIds.has(row.id)).length;
+  const allChecked = rows.length > 0 && selectedCount === rows.length;
+  const someChecked = selectedCount > 0 && selectedCount < rows.length;
   return (
     <div className="db-table-wrap">
       <table className={`db-table${editable ? ' is-filled' : ''}`} style={{ width: total }}>
         <colgroup>
+          {editable && <col className="db-col-select" style={{ width: SELECT_WIDTH }} />}
           {columns.map((column) => (
             <col key={keyOf(column)} style={{ width: widthOf(keyOf(column)) }} />
           ))}
@@ -1109,6 +1231,21 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
         </colgroup>
         <thead>
           <tr>
+            {editable && (
+              <th scope="col" className="db-col-select">
+                <SelectAllCheckbox
+                  checked={allChecked}
+                  indeterminate={someChecked}
+                  disabled={rows.length === 0}
+                  onChange={(checked) =>
+                    onToggleAll(
+                      rows.map((row) => row.id),
+                      checked,
+                    )
+                  }
+                />
+              </th>
+            )}
             {columns.map((column) => {
               const key = keyOf(column);
               // a column is dragged by its header to another place, the name column too
@@ -1173,22 +1310,43 @@ function TableView({ dbId, database, view, rows, props, editable }: ViewProps) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              {columns.map((column) =>
-                column === TITLE_PROP ? (
-                  <td key={TITLE_PROP} className="db-col-title">
-                    <RowTitle row={row} editable={editable} autoFocus={focusNew === row.id} />
+          {rows.map((row) => {
+            const isSelected = editable && selectedIds.has(row.id);
+            return (
+              <tr key={row.id} className={isSelected ? 'is-selected' : undefined}>
+                {editable && (
+                  <td className="db-col-select">
+                    <input
+                      type="checkbox"
+                      className="prop-checkbox db-row-checkbox"
+                      aria-label={t('database.selectRow', { title: displayTitle(row) })}
+                      checked={isSelected}
+                      onClick={(event) => {
+                        shiftKeyRef.current = event.shiftKey;
+                      }}
+                      onChange={() => {
+                        const shift = shiftKeyRef.current;
+                        shiftKeyRef.current = false;
+                        onToggleRow(row.id, shift);
+                      }}
+                    />
                   </td>
-                ) : (
-                  <td key={column.id}>
-                    <PropertyInput dbId={dbId} prop={column} row={row} editable={editable} />
-                  </td>
-                ),
-              )}
-              {editable && <td />}
-            </tr>
-          ))}
+                )}
+                {columns.map((column) =>
+                  column === TITLE_PROP ? (
+                    <td key={TITLE_PROP} className="db-col-title">
+                      <RowTitle row={row} editable={editable} autoFocus={focusNew === row.id} />
+                    </td>
+                  ) : (
+                    <td key={column.id}>
+                      <PropertyInput dbId={dbId} prop={column} row={row} editable={editable} />
+                    </td>
+                  ),
+                )}
+                {editable && <td />}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {editable && (

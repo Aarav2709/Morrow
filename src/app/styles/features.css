@@ -754,6 +754,63 @@ textarea.text-input.small {
 .db-table .db-col-add {
   min-width: 36px;
 }
+.db-table th.db-col-select,
+.db-table td.db-col-select {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+  text-align: center;
+}
+.db-row-checkbox {
+  margin: 0;
+  vertical-align: middle;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 120ms var(--ease);
+}
+.db-table tr:hover .db-row-checkbox,
+.db-table thead th:hover .db-row-checkbox,
+.db-row-checkbox:focus-visible,
+.db-row-checkbox:checked,
+.db-row-checkbox:indeterminate {
+  opacity: 1;
+}
+.db-table tr.is-selected {
+  background: var(--accent-soft);
+}
+.db-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+}
+.db-bulk-count {
+  font-weight: 500;
+  color: var(--text);
+}
+.db-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.db-bulk-popover {
+  width: 280px;
+}
+.db-bulk-mode {
+  width: 100%;
+}
+.db-bulk-mode button {
+  flex: 1;
+}
+.db-bulk-footer {
+  justify-content: space-between;
+}
 .db-header {
   width: 100%;
   height: 32px;

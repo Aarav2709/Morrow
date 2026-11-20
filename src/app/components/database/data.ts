@@ -55,6 +55,19 @@ export function setValue(rowId: PageId, propId: string, value: PropValue): void 
   run({ type: 'page.setProperties', id: rowId, values: { [propId]: value }, now: Date.now() });
 }
 
+export function setValues(updates: Array<{ rowId: PageId; propId: string; value: PropValue }>): boolean {
+  if (updates.length === 0) return true;
+  const now = Date.now();
+  return runAll(
+    updates.map(({ rowId, propId, value }): Command => ({
+      type: 'page.setProperties',
+      id: rowId,
+      values: { [propId]: value },
+      now,
+    })),
+  ).ok;
+}
+
 // adds an option to a select property and returns it, or the existing one with that name
 export function ensureOption(dbId: PageId, propId: string, name: string): SelectOption | null {
   const prop = databaseOf(dbId)?.properties.find((candidate) => candidate.id === propId);
