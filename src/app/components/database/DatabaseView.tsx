@@ -5,11 +5,14 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Columns3,
+  Download,
   Eye,
   EyeOff,
   Filter,
   GalleryVerticalEnd,
+  GanttChart,
   LayoutDashboard,
   LayoutList,
   Maximize2,
@@ -17,9 +20,8 @@ import {
   Settings2,
   Table2,
   Trash2,
-  X,
-  Download,
   Upload,
+  X,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -69,6 +71,8 @@ import { PageIcon } from '../Sidebar';
 import { addColumnsFromPages, createRow, setValue, updateDatabase, updateView } from './data';
 import { Grouped, Limited } from './Grouped';
 import { DashboardView } from './DashboardView';
+import { FormView } from './FormView';
+import { TimelineView } from './TimelineView';
 import { Chip, DraftInput, NewProperty, PropertyDisplay, PropertyInput } from './PropertyValue';
 import { PropertySettings } from './PropertySettings';
 import { dateLocale, t, tp } from '../../i18n';
@@ -81,6 +85,8 @@ const VIEW_ICONS: Record<ViewType, LucideIcon> = {
   list: LayoutList,
   gallery: GalleryVerticalEnd,
   dashboard: LayoutDashboard,
+  timeline: GanttChart,
+  form: ClipboardList,
 };
 
 const viewKey = (id: PageId) => `morrow.view.${id}`;
@@ -253,7 +259,13 @@ export function DatabaseView({
       {view.type === 'calendar' && (
         <CalendarView dbId={page.id} database={database} view={view} rows={rows} editable={editable} />
       )}
-      {view.type !== 'table' && view.type !== 'dashboard' && editable && (
+      {view.type === 'timeline' && (
+        <TimelineView database={database} view={view} rows={rows} editable={editable} />
+      )}
+      {view.type === 'form' && (
+        <FormView dbId={page.id} database={database} hidden={view.hidden} editable={editable} />
+      )}
+      {view.type !== 'table' && view.type !== 'dashboard' && view.type !== 'form' && editable && (
         <button type="button" className="db-new-row" onClick={() => newRowAndOpen(page.id, {})}>
           <Plus size={14} /> {t('database.new')}
         </button>
@@ -503,28 +515,33 @@ function Toolbar({
   const names = [{ id: TITLE_PROP, name: 'Name', type: 'text' as const }, ...database.properties];
   return (
     <div className="db-tools">
-      <button
-        type="button"
-        className={`text-tool${view.filters.length ? ' is-active' : ''}`}
-        onClick={open('filter')}
-        disabled={!editable}
-      >
-        <Filter size={13} /> {t('database.filter')}
-        {view.filters.length ? ` ${view.filters.length}` : ''}
-      </button>
-      <button
-        type="button"
-        className={`text-tool${view.sorts.length ? ' is-active' : ''}`}
-        onClick={open('sort')}
-        disabled={!editable}
-      >
-        <ArrowDownUp size={13} /> {t('database.sort')}
-        {view.sorts.length ? ` ${view.sorts.length}` : ''}
-      </button>
-      {view.type !== 'dashboard' && (
+      {/* a form shows no rows, so there is nothing to filter or sort */}
+      {view.type !== 'form' && (
+        <>
+          <button
+            type="button"
+            className={`text-tool${view.filters.length ? ' is-active' : ''}`}
+            onClick={open('filter')}
+            disabled={!editable}
+          >
+            <Filter size={13} /> {t('database.filter')}
+            {view.filters.length ? ` ${view.filters.length}` : ''}
+          </button>
+          <button
+            type="button"
+            className={`text-tool${view.sorts.length ? ' is-active' : ''}`}
+            onClick={open('sort')}
+            disabled={!editable}
+          >
+            <ArrowDownUp size={13} /> {t('database.sort')}
+            {view.sorts.length ? ` ${view.sorts.length}` : ''}
+          </button>
+        </>
+      )}
+      {view.type !== 'dashboard' && view.type !== 'form' && (
         <button type="button" className="text-tool" onClick={open('layout')} disabled={!editable}>
           <Settings2 size={13} />{' '}
-          {view.type === 'calendar'
+          {view.type === 'calendar' || view.type === 'timeline'
             ? t('database.date')
             : view.groupBy
               ? t('database.group')
@@ -737,14 +754,18 @@ function Toolbar({
                 ? t('database.groupCardsBy')
                 : view.type === 'calendar'
                   ? t('database.placeRowsBy')
-                  : t('database.groupRowsBy')}
+                  : view.type === 'timeline'
+                    ? t('database.timelineStart')
+                    : t('database.groupRowsBy')}
             </span>
             <select
               className="text-input small"
-              value={(view.type === 'calendar' ? view.dateProp : view.groupBy) ?? ''}
+              value={
+                (view.type === 'calendar' || view.type === 'timeline' ? view.dateProp : view.groupBy) ?? ''
+              }
               onChange={(event) =>
                 updateView(dbId, view.id, (current) =>
-                  current.type === 'calendar'
+                  current.type === 'calendar' || current.type === 'timeline'
                     ? { ...current, dateProp: event.target.value || null }
                     : { ...current, groupBy: event.target.value || null },
                 )
@@ -753,7 +774,7 @@ function Toolbar({
               <option value="">{t('database.none')}</option>
               {database.properties
                 .filter((prop) =>
-                  view.type === 'calendar'
+                  view.type === 'calendar' || view.type === 'timeline'
                     ? prop.type === 'date'
                     : ['select', 'multiSelect', 'checkbox'].includes(prop.type),
                 )
@@ -764,7 +785,31 @@ function Toolbar({
                 ))}
             </select>
           </label>
-          {view.type !== 'calendar' && view.groupBy && (
+          {view.type === 'timeline' && (
+            <label className="field">
+              <span>{t('database.timelineEnd')}</span>
+              <select
+                className="text-input small"
+                value={view.endProp ?? ''}
+                onChange={(event) =>
+                  updateView(dbId, view.id, (current) => ({
+                    ...current,
+                    endProp: event.target.value || null,
+                  }))
+                }
+              >
+                <option value="">{t('database.timelineOneDay')}</option>
+                {database.properties
+                  .filter((prop) => prop.type === 'date' && prop.id !== view.dateProp)
+                  .map((prop) => (
+                    <option key={prop.id} value={prop.id}>
+                      {prop.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          {view.type !== 'calendar' && view.type !== 'timeline' && view.groupBy && (
             <GroupSettings dbId={dbId} database={database} view={view} rows={rows} />
           )}
           {view.type === 'table' && (
@@ -790,7 +835,7 @@ function Toolbar({
               </select>
             </label>
           )}
-          {view.type !== 'calendar' && view.type !== 'board' && (
+          {view.type !== 'calendar' && view.type !== 'board' && view.type !== 'timeline' && (
             <label className="field">
               <span>{t('database.loadLimit')}</span>
               <select

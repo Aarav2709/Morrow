@@ -23,6 +23,8 @@ const VIEW: Record<ViewType, TranslationKey> = {
   list: 'database.viewList',
   gallery: 'database.viewGallery',
   dashboard: 'database.viewDashboard',
+  timeline: 'database.viewTimeline',
+  form: 'database.viewForm',
 };
 
 const FILTER: Record<FilterOp, TranslationKey> = {

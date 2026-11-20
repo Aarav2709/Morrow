@@ -257,7 +257,7 @@ describe('reading stored data', () => {
                 type: 'table',
                 filters: [{ id: 'f', prop: 'status', op: 'is', value: 'opt1' }],
               },
-              { id: 'v2', type: 'timeline' },
+              { id: 'v2', type: 'mindmap' },
             ],
           },
         },

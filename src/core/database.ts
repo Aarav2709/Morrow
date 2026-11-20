@@ -33,6 +33,8 @@ export const VIEW_LABELS: Record<ViewType, string> = {
   list: 'List',
   gallery: 'Gallery',
   dashboard: 'Dashboard',
+  timeline: 'Timeline',
+  form: 'Form',
 };
 
 export function filterOpsFor(type: PropType | 'title'): FilterOp[] {
@@ -64,7 +66,11 @@ export function newView(type: ViewType, database: DatabaseDef, newId: () => stri
     filters: [],
     sorts: [],
     groupBy: type === 'board' ? (select?.id ?? null) : null,
-    dateProp: type === 'calendar' ? (date?.id ?? null) : null,
+    dateProp: type === 'calendar' || type === 'timeline' ? (date?.id ?? null) : null,
+    // a timeline ends its bars at a second date when the database has one
+    ...(type === 'timeline'
+      ? { endProp: database.properties.filter((prop) => prop.type === 'date')[1]?.id ?? null }
+      : {}),
     hidden: [],
     // a dashboard starts with the number of rows and charts of what the database already has
     ...(type === 'dashboard' ? { widgets: defaultWidgets(database, newId) } : {}),

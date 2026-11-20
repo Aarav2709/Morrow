@@ -300,6 +300,7 @@ function databaseToYaml(database: DatabaseDef): Record<string, unknown> {
       ...(view.sorts.length ? { sorts: view.sorts.map((sort) => ({ ...sort })) } : {}),
       ...(view.groupBy ? { groupBy: view.groupBy } : {}),
       ...(view.dateProp ? { dateProp: view.dateProp } : {}),
+      ...(view.endProp ? { endProp: view.endProp } : {}),
       ...(view.hidden.length ? { hidden: [...view.hidden] } : {}),
       ...(view.widths && Object.keys(view.widths).length ? { widths: { ...view.widths } } : {}),
       ...(view.columns?.length ? { columns: [...view.columns] } : {}),

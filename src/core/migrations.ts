@@ -189,6 +189,7 @@ function normalizeView(raw: Record<string, unknown>): ViewDef | null {
     }),
     groupBy: propRef(raw.groupBy),
     dateProp: propRef(raw.dateProp),
+    ...(propRef(raw.endProp) ? { endProp: propRef(raw.endProp) } : {}),
     hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((id): id is string => propRef(id) !== null) : [],
     ...(isRecord(raw.widths) ? { widths: normalizeWidths(raw.widths) } : {}),
     ...groupSettings(raw),

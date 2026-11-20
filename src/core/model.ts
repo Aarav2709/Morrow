@@ -81,7 +81,8 @@ export interface SortRule {
   dir: 'asc' | 'desc';
 }
 
-export type ViewType = 'table' | 'board' | 'calendar' | 'list' | 'gallery' | 'dashboard';
+export type ViewType =
+  'table' | 'board' | 'calendar' | 'list' | 'gallery' | 'dashboard' | 'timeline' | 'form';
 
 // a tile of a dashboard view: a number worked out from the rows, or a chart of them by a property
 export type WidgetKind = 'count' | 'sum' | 'average' | 'min' | 'max' | 'bar' | 'hbar' | 'donut' | 'line';
@@ -94,7 +95,16 @@ export interface Widget {
   // across two of the grid's columns rather than one
   wide?: boolean;
 }
-export const VIEW_TYPES: readonly ViewType[] = ['table', 'board', 'calendar', 'list', 'gallery', 'dashboard'];
+export const VIEW_TYPES: readonly ViewType[] = [
+  'table',
+  'board',
+  'calendar',
+  'list',
+  'gallery',
+  'dashboard',
+  'timeline',
+  'form',
+];
 export const WIDGET_KINDS: readonly WidgetKind[] = [
   'count',
   'sum',
@@ -115,6 +125,8 @@ export interface ViewDef {
   sorts: SortRule[];
   groupBy: string | null;
   dateProp: string | null;
+  // where a timeline's bars end, a second date, missing for bars one day long
+  endProp?: string | null;
   hidden: string[];
   // table column widths in pixels, by property id or title, missing means the default width
   widths?: Record<string, number>;
