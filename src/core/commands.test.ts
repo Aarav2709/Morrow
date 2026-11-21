@@ -270,3 +270,16 @@ describe('robustness', () => {
     expect(applyCommand(corrupted, { type: 'page.move', id: 'a', parentId: null }).ok).toBe(true);
   });
 });
+
+describe('page icons', () => {
+  it('take a picture of your own or a flat icon with a long name', async () => {
+    const { applyCommand } = await import('./commands');
+    const { emptyWorkspace } = await import('./model');
+    const made = applyCommand(emptyWorkspace(), { type: 'page.create', id: 'p', parentId: null, now: 1 });
+    if (!made.ok) throw new Error(made.error);
+    for (const icon of ['emoji:my_company_logo_2026', 'icon:calendar-check:fill:green']) {
+      const set = applyCommand(made.value.state, { type: 'page.setIcon', id: 'p', icon, now: 2 });
+      expect(set.ok).toBe(true);
+    }
+  });
+});

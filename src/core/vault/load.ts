@@ -4,7 +4,7 @@ import { isEncryptedText } from '../crypto';
 import { validateDoc, isRecord } from '../doc';
 import { markdownToDoc } from '../markdown/parse';
 import type { ParseOptions } from '../markdown/parse';
-import { newPageMeta } from '../model';
+import { MAX_ICON_LENGTH, newPageMeta } from '../model';
 import type { DocNode, PageId, PageMeta, WorkspaceState } from '../model';
 import { foldText } from '../search';
 import { compareSiblings } from '../tree';
@@ -103,7 +103,7 @@ export function readRegistry(raw: unknown): Map<string, RegistryEntry> {
     if (value.hideTasks === true) entry.hideTasks = true;
     if (num(value.trashed) !== undefined) entry.trashed = num(value.trashed)!;
     if (typeof value.parent === 'string' && ID_PATTERN.test(value.parent)) entry.parent = value.parent;
-    if (typeof value.icon === 'string' && value.icon.length <= 32) entry.icon = value.icon;
+    if (typeof value.icon === 'string' && [...value.icon].length <= MAX_ICON_LENGTH) entry.icon = value.icon;
     result.set(path, entry);
   }
   return result;

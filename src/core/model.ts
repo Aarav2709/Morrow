@@ -5,7 +5,9 @@ import type { Automation } from './automations';
 export const SCHEMA_VERSION = 3;
 
 export const MAX_TITLE_LENGTH = 500;
-export const MAX_ICON_LENGTH = 16;
+// an emoji, or a longer name of an icon: emoji:name for a picture of your own, icon:name:fill:colour for a
+// flat one
+export const MAX_ICON_LENGTH = 64;
 // limits that keep hostile or corrupted documents from hanging the app
 export const MAX_DOC_DEPTH = 64;
 export const MAX_DOC_NODES = 200_000;
