@@ -55,6 +55,14 @@ const AssistantPanel = lazy(() =>
   import('./assistant/AssistantPanel').then((module) => ({ default: module.AssistantPanel })),
 );
 
+const AgentClientView = lazy(() =>
+  import('./assistant/AgentClientView').then((module) => ({ default: module.AgentClientView })),
+);
+
+const FloatingAgentChat = lazy(() =>
+  import('./assistant/FloatingAgentChat').then((module) => ({ default: module.FloatingAgentChat })),
+);
+
 // the graph pulls in a physics library, it is only loaded when opened
 const GraphView = lazy(() =>
   import('./components/GraphView').then((module) => ({ default: module.GraphView })),
@@ -307,6 +315,15 @@ function viewFor(route: Route) {
       return <GraphView key={route.focus ?? 'all'} focus={route.focus} />;
     case 'search':
       return <SearchView query={route.query} />;
+    case 'agent':
+      return (
+        <AgentClientView
+          sessionId={route.sessionId ?? undefined}
+          origin="tab"
+          onOpenSessionManager={() => openDialog({ kind: 'sessionManager' })}
+          onOpenSettings={() => openDialog({ kind: 'settings', section: 'assistant' })}
+        />
+      );
     default:
       return <HomeView />;
   }
@@ -566,9 +583,14 @@ export function App() {
           )}
         </div>
       </main>
-      {prefs.assistant && prefs.assistantOpen && desktop?.assistant && (
+      {prefs.assistant && prefs.assistantOpen && (desktop?.assistant || desktop?.acp) && (
         <Suspense fallback={null}>
           <AssistantPanel />
+        </Suspense>
+      )}
+      {prefs.assistant && prefs.acpFloatingEnabled && desktop?.acp && (
+        <Suspense fallback={null}>
+          <FloatingAgentChat />
         </Suspense>
       )}
       {ui.palette && <CommandPalette key={ui.paletteForSide ? 'side' : 'main'} />}

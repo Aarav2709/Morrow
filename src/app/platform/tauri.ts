@@ -241,6 +241,26 @@ export function tauriBridge(): DesktopBridge | null {
       turn: (request) => invoke('ai_turn', { request }),
       cancel: (id) => invoke('ai_cancel', { id }),
     },
+    ...(info.platform !== 'android' && info.platform !== 'ios'
+      ? {
+          acp: {
+            settings: () => invoke('acp_settings'),
+            configure: (patch) => invoke('acp_configure', { patch }),
+            detectNode: () => invoke('acp_detect_node'),
+            pickDirectory: (start) => invoke('acp_pick_directory', { start: start ?? null }),
+            startSession: (request) => invoke('acp_start_session', { request }),
+            loadSession: (request) => invoke('acp_load_session', { request }),
+            closeSession: (clientSessionId) => invoke('acp_close_session', { clientSessionId }),
+            prompt: (request) => invoke('acp_prompt', { request }),
+            cancel: (clientSessionId) => invoke('acp_cancel', { clientSessionId }),
+            setMode: (clientSessionId, modeId) => invoke('acp_set_mode', { clientSessionId, modeId }),
+            setModel: (clientSessionId, modelId) => invoke('acp_set_model', { clientSessionId, modelId }),
+            respondPermission: (requestId, optionId) =>
+              invoke('acp_respond_permission', { requestId, optionId }),
+            onEvent: (listener) => subscribe('acp:event', listener),
+          },
+        }
+      : {}),
     mcp: {
       launch: () => invoke('mcp_launch'),
       setEnabled: (enabled) => invoke('mcp_set_enabled', { enabled }),

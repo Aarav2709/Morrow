@@ -182,8 +182,154 @@ export interface BackgroundSettings {
   quickCapture: boolean;
 }
 
+export interface AcpPresetConfig {
+  id: string;
+  displayName: string;
+  defaultCommand: string;
+  defaultArgs: string[];
+  enabled: boolean;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+export interface AcpCustomAgentConfig {
+  id: string;
+  displayName: string;
+  enabled: boolean;
+  command: string;
+  args: string[];
+  env: Record<string, string>;
+}
+
+export interface AcpSettings {
+  defaultAgentId: string;
+  nodePath: string;
+  detectedNodePath: string | null;
+  wslMode: boolean;
+  presets: AcpPresetConfig[];
+  customAgents: AcpCustomAgentConfig[];
+  currentVaultPath: string | null;
+}
+
+export interface AcpConfigurePatch {
+  defaultAgentId?: string;
+  nodePath?: string;
+  wslMode?: boolean;
+  presets?: Array<{
+    id: string;
+    enabled?: boolean;
+    command?: string;
+    args?: string[];
+    env?: Record<string, string>;
+  }>;
+  customAgents?: AcpCustomAgentConfig[];
+}
+
+export interface AcpSessionMode {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface AcpSessionModel {
+  modelId: string;
+  name: string;
+  description?: string;
+}
+
+export interface AcpSlashCommand {
+  name: string;
+  description: string;
+  input?: { hint?: string } | null;
+}
+
+export type AcpPromptPart =
+  | { type: 'text'; text: string }
+  | { type: 'image'; data: string; mimeType: string }
+  | { type: 'audio'; data: string; mimeType: string }
+  | { type: 'resource_link'; uri: string; name: string; mimeType?: string; title?: string }
+  | { type: 'resource'; resource: { uri: string; text: string; mimeType?: string } };
+
+export interface AcpPermissionOption {
+  optionId: string;
+  name: string;
+  kind: string;
+}
+
+export type AcpStartSessionResult =
+  | {
+      ok: true;
+      agentSessionId: string;
+      cwd: string;
+      modes: AcpSessionMode[];
+      currentModeId: string | null;
+      models: AcpSessionModel[];
+      currentModelId: string | null;
+      agentName?: string;
+      agentVersion?: string;
+    }
+  | { ok: false; error: string };
+
+export type AcpEvent =
+  | { kind: 'sessionUpdate'; clientSessionId: string; update: Record<string, unknown> }
+  | {
+      kind: 'permissionRequest';
+      clientSessionId: string;
+      requestId: string;
+      toolCall: Record<string, unknown>;
+      options: AcpPermissionOption[];
+    }
+  | {
+      kind: 'terminalOutput';
+      clientSessionId: string;
+      terminalId: string;
+      output: string;
+      exited?: boolean;
+      exitCode?: number | null;
+    }
+  | { kind: 'debug'; clientSessionId: string; direction: 'in' | 'out' | 'stderr'; line: string }
+  | { kind: 'exit'; clientSessionId: string; code: number | null; message?: string };
+
+export interface DesktopAcpApi {
+  settings(): Promise<AcpSettings>;
+  configure(patch: AcpConfigurePatch): Promise<AcpSettings>;
+  detectNode(): Promise<string | null>;
+  pickDirectory(start?: string | null): Promise<string | null>;
+  startSession(request: {
+    clientSessionId: string;
+    agentId: string;
+    cwd?: string | null;
+    mcpEnabled?: boolean;
+    autoAllowPermissions?: boolean;
+    systemNotifications?: boolean;
+  }): Promise<AcpStartSessionResult>;
+  loadSession(request: {
+    clientSessionId: string;
+    agentId: string;
+    agentSessionId: string;
+    cwd?: string | null;
+    mcpEnabled?: boolean;
+    autoAllowPermissions?: boolean;
+    systemNotifications?: boolean;
+  }): Promise<AcpStartSessionResult>;
+  closeSession(clientSessionId: string): Promise<void>;
+  prompt(request: {
+    clientSessionId: string;
+    prompt: AcpPromptPart[];
+    autoAllowPermissions?: boolean;
+    systemNotifications?: boolean;
+  }): Promise<{ ok: true; stopReason: string } | { ok: false; error: string }>;
+  cancel(clientSessionId: string): Promise<void>;
+  setMode(clientSessionId: string, modeId: string): Promise<{ ok: boolean; error?: string }>;
+  setModel(clientSessionId: string, modelId: string): Promise<{ ok: boolean; error?: string }>;
+  respondPermission(requestId: string, optionId: string | null): Promise<void>;
+  onEvent(listener: (event: AcpEvent) => void): () => void;
+}
+
 export interface DesktopBridge {
   assistant?: DesktopAssistantApi;
+  acp?: DesktopAcpApi;
   updates?: DesktopUpdatesApi;
   mcp?: DesktopMcpApi;
   vault?: DesktopVaultApi;

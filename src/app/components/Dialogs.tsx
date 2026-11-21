@@ -20,6 +20,7 @@ import { SourceDialog } from './SourceDialog';
 import { PairDialog } from './SyncSettings';
 import { TemplateDialog } from './TemplateDialog';
 import { WelcomeDialog } from './WelcomeDialog';
+import { SessionManagerModal } from '../assistant/SessionManagerModal';
 
 function PageIconPicker({ pageId }: { pageId: PageId }) {
   const { t } = useTranslation();
@@ -118,6 +119,8 @@ function OpenDialog({ dialog }: { dialog: NonNullable<ReturnType<typeof useUi>['
       return <PairDialog />;
     case 'capture':
       return <CaptureDialog />;
+    case 'sessionManager':
+      return <SessionManagerModal />;
   }
 }
 

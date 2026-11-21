@@ -34,7 +34,8 @@ export type Dialog =
   | { kind: 'template'; parentId: PageId | null }
   | { kind: 'encrypt'; pageId: PageId }
   | { kind: 'pair' }
-  | { kind: 'capture' };
+  | { kind: 'capture' }
+  | { kind: 'sessionManager' };
 
 // a question asked before something that can't be undone. it opens over whatever dialog is showing, such
 // as settings, which is still there once it is answered
