@@ -1621,6 +1621,8 @@ export const en = {
   },
   acp: {
     tabTitle: 'Agent Client',
+    startEmbedded: 'Start the agent here',
+    needsAssistant: 'Turn on the assistant in Settings to run agents from notes.',
     selectAgent: 'Select agent',
     vaultRoot: 'Vault',
     cwdTitle: 'Working directory: {cwd} (click to change)',

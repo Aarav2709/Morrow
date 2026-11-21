@@ -1635,6 +1635,8 @@ export const pt: TranslationSchema = {
   },
   acp: {
     tabTitle: 'Cliente de Agentes',
+    startEmbedded: 'Iniciar o agente aqui',
+    needsAssistant: 'Ative o assistente nas Configurações para executar agentes a partir de notas.',
     selectAgent: 'Selecionar agente',
     vaultRoot: 'Cofre',
     cwdTitle: 'Diretório de trabalho: {cwd} (clique para alterar)',

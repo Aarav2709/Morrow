@@ -209,3 +209,16 @@ describe('ACP export & embedded config helpers', () => {
     });
   });
 });
+
+describe('agent blocks in a note', () => {
+  it('only run in a folder inside the vault', async () => {
+    const { vaultFolder } = await import('./EmbeddedAgentBlock');
+    const vault = 'C:\\Users\\me\\Notes';
+    expect(vaultFolder(undefined, vault)).toBe(vault);
+    expect(vaultFolder('Projects/site', vault)).toBe('C:/Users/me/Notes/Projects/site');
+    expect(vaultFolder('C:\\Users\\me\\Notes\\Inbox', vault)).toBe('C:/Users/me/Notes/Inbox');
+    expect(vaultFolder('C:\\Windows\\System32', vault)).toBe(vault);
+    expect(vaultFolder('../../secrets', vault)).toBe(vault);
+    expect(vaultFolder('/home/me', null)).toBeUndefined();
+  });
+});
