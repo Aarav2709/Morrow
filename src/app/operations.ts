@@ -1,3 +1,5 @@
+import { docToDocx } from '../core/docx';
+import type { DocxPicture } from '../core/docx';
 import { htmlFileToMarkdown } from './htmlImport';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 import katex from 'katex';
@@ -676,6 +678,62 @@ export async function exportPageHtml(id: PageId): Promise<void> {
   const title = displayTitle(page);
   const html = standalonePage(title, body);
   saveFile(`${safeFileName(title)}.html`, html, 'text/html;charset=utf-8');
+}
+
+// a page as a word document. pictures go in at their size, those word can't show are turned into pngs
+export async function exportPageDocx(id: PageId): Promise<void> {
+  commitEditors();
+  const state = getState();
+  const page = state.pages[id];
+  const doc = state.docs[id];
+  if (!page || !doc) return;
+  if (page.encrypted) {
+    toast(t('toasts.encryptedNotExported'), { tone: 'error' });
+    return;
+  }
+  const pictures = new Map<string, DocxPicture>();
+  for (const fileId of fileIdsInDoc(doc)) {
+    const file = await getSession().getFile(fileId);
+    if (!file || !file.meta.type.startsWith('image/')) continue;
+    try {
+      const blob = new Blob([file.data], { type: file.meta.type });
+      const bitmap = await createImageBitmap(blob);
+      const { width, height } = bitmap;
+      const kind = /png|jpe?g|gif/.exec(file.meta.type)?.[0];
+      let data = new Uint8Array(file.data);
+      let extension: DocxPicture['extension'] =
+        kind === 'jpg' || kind === 'jpeg' ? 'jpeg' : kind === 'gif' ? 'gif' : 'png';
+      if (!kind) {
+        // webp, svg and the like become a png word can show
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+        const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (!png) continue;
+        data = new Uint8Array(await png.arrayBuffer());
+        extension = 'png';
+      }
+      bitmap.close();
+      pictures.set(fileId, { data, extension, width, height });
+    } catch {
+      // a picture that can't be read is left out
+    }
+  }
+  const title = displayTitle(page);
+  const files = docToDocx(doc, {
+    title,
+    picture: (fileId) => pictures.get(fileId) ?? null,
+    titleOf: (other) => (state.pages[other] ? displayTitle(state.pages[other]!) : null),
+  });
+  const entries: Record<string, Uint8Array> = {};
+  for (const [path, content] of Object.entries(files))
+    entries[path] = typeof content === 'string' ? strToU8(content) : content;
+  saveFile(
+    `${safeFileName(title)}.docx`,
+    zipBytes(entries),
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  );
 }
 
 // the open page exactly as it looks, through the system's pdf printer

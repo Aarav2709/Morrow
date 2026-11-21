@@ -506,6 +506,7 @@ export const pt: TranslationSchema = {
     editAsMarkdown: 'Editar como Markdown',
     exportMarkdown: 'Exportar como Markdown',
     exportHtml: 'Exportar como HTML',
+    exportDocx: 'Exportar como Word',
     exportPdf: 'Exportar como PDF',
     publishWebsite: 'Publicar como site',
     importMarkdownHere: 'Importar Markdown aqui',

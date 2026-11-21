@@ -11,6 +11,7 @@ import {
   LayoutTemplate,
   Network,
   FileCode2,
+  FileType,
   FileDown,
   FileText,
   FileUp,
@@ -33,6 +34,7 @@ import type { PageId } from '../../core/model';
 import {
   createPage,
   duplicatePage,
+  exportPageDocx,
   exportPageHtml,
   exportPageMarkdown,
   exportPagePdf,
@@ -189,7 +191,10 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
     { separator: true },
     { label: t('pageMenu.exportMarkdown'), icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
     ...(page.kind === 'page'
-      ? [{ label: t('pageMenu.exportHtml'), icon: FileCode2, onSelect: () => void exportPageHtml(pageId) }]
+      ? [
+          { label: t('pageMenu.exportHtml'), icon: FileCode2, onSelect: () => void exportPageHtml(pageId) },
+          { label: t('pageMenu.exportDocx'), icon: FileType, onSelect: () => void exportPageDocx(pageId) },
+        ]
       : []),
     ...(desktop && page.kind !== 'canvas'
       ? [{ label: t('pageMenu.exportPdf'), icon: FileText, onSelect: () => void exportPagePdf(pageId) }]

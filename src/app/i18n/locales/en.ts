@@ -502,6 +502,7 @@ export const en = {
     editAsMarkdown: 'Edit as Markdown',
     exportMarkdown: 'Export as Markdown',
     exportHtml: 'Export as HTML',
+    exportDocx: 'Export as Word',
     exportPdf: 'Export as PDF',
     publishWebsite: 'Publish as a website',
     importMarkdownHere: 'Import Markdown here',
