@@ -1,3 +1,4 @@
+import { REPEAT_MARK } from '../repeat';
 import { BACKGROUND_HEX, COLORS, TEXT_HEX } from '../model';
 import type { ColorName, DocMark, DocNode, PageId } from '../model';
 
@@ -404,7 +405,14 @@ function inline(nodes: DocNode[], options: SerializeOptions, inTable = false): s
       // dates are written as links to that day's note, the way obsidian names daily notes
       closeTo(0);
       const time = String(node.attrs?.time ?? '');
+      const end = String(node.attrs?.end ?? '');
+      const endTime = String(node.attrs?.endTime ?? '');
+      const repeat = String(node.attrs?.repeat ?? '');
       out += `${pendingSpace}[[${String(node.attrs?.date ?? '')}]]${/^\d{2}:\d{2}$/.test(time) ? ` ${time}` : ''}`;
+      // runs until another day, and repeats, written the way obsidian's tasks plugin reads them
+      if (/^\d{4}-\d{2}-\d{2}$/.test(end))
+        out += ` → [[${end}]]${/^\d{2}:\d{2}$/.test(endTime) ? ` ${endTime}` : ''}`;
+      if (repeat) out += ` ${REPEAT_MARK} ${repeat}`;
       pendingSpace = '';
       continue;
     }

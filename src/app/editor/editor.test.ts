@@ -700,3 +700,30 @@ describe('a link to a block pasted as text', () => {
     expect(link?.attrs).toMatchObject({ id: 'notes-id', anchor: '^abc123' });
   });
 });
+
+describe('a repeating task ticked in the page', () => {
+  it('comes round again just above it', async () => {
+    const { markdownToDoc } = await import('../../core/markdown/parse');
+    const target = make(markdownToDoc('- [ ] Water plants [[2026-11-20]] 🔁 every day\n'));
+    let item = -1;
+    target.state.doc.descendants((node, pos) => {
+      if (node.type.name === 'taskItem' && item === -1) item = pos;
+    });
+    const node = target.state.doc.nodeAt(item)!;
+    target.view.dispatch(target.state.tr.setNodeMarkup(item, undefined, { ...node.attrs, checked: true }));
+    const items: Array<{ checked: boolean; date: string }> = [];
+    target.state.doc.descendants((child) => {
+      if (child.type.name !== 'taskItem') return true;
+      let date = '';
+      child.descendants((inner) => {
+        if (inner.type.name === 'dateMention') date = String(inner.attrs.date);
+      });
+      items.push({ checked: child.attrs.checked === true, date });
+      return false;
+    });
+    expect(items).toHaveLength(2);
+    expect(items[0]!.checked).toBe(false);
+    expect(items[0]!.date > '2026-11-20').toBe(true);
+    expect(items[1]).toEqual({ checked: true, date: '2026-11-20' });
+  });
+});

@@ -1,3 +1,4 @@
+import { formatRepeat, parseRepeat, REPEAT_MARK } from '../repeat';
 import MarkdownIt from 'markdown-it';
 import type { StateBlock, StateInline, Token } from 'markdown-it';
 import { BACKGROUND_HEX, calloutTone, COLORS, emptyDoc, nearestColor, TEXT_HEX } from '../model';
@@ -609,18 +610,53 @@ export function markdownToPage(
   return { title: fallbackTitle, doc };
 }
 
-// a time written just after a date, [[2026-11-10]] 17:05, belongs to the date
+// what is written just after a date belongs to it: a time, [[2026-11-10]] 17:05, the date it runs to,
+// → [[2026-11-12]] 18:00, and how it repeats, 🔁 every week
 function dateTimes(nodes: DocNode[]): DocNode[] {
-  for (let index = 0; index < nodes.length - 1; index++) {
-    const date = nodes[index]!;
-    const next = nodes[index + 1]!;
-    if (date.type !== 'dateMention' || next.type !== 'text' || next.marks?.length) continue;
-    const match = /^ (([01]\d|2[0-3]):[0-5]\d)(?![\d:])/.exec(next.text ?? '');
-    if (!match) continue;
-    date.attrs = { ...date.attrs, time: match[1] };
+  // takes words from the start of the text after the date, the text going when nothing is left of it
+  const take = (index: number, pattern: RegExp): RegExpExecArray | null => {
+    const next = nodes[index + 1];
+    if (next?.type !== 'text' || next.marks?.length) return null;
+    const match = pattern.exec(next.text ?? '');
+    if (!match) return null;
     const rest = next.text!.slice(match[0].length);
     if (rest) next.text = rest;
     else nodes.splice(index + 1, 1);
+    return match;
+  };
+  const TIME = /^ (([01]\d|2[0-3]):[0-5]\d)(?![\d:])/;
+  for (let index = 0; index < nodes.length - 1; index++) {
+    const date = nodes[index]!;
+    if (date.type !== 'dateMention') continue;
+    const time = take(index, TIME);
+    if (time) date.attrs = { ...date.attrs, time: time[1] };
+    // a range: the arrow, then a second date, perhaps with its own time
+    const arrow = nodes[index + 1];
+    const end = nodes[index + 2];
+    if (
+      arrow?.type === 'text' &&
+      !arrow.marks?.length &&
+      arrow.text === ' → ' &&
+      end?.type === 'dateMention'
+    ) {
+      nodes.splice(index + 1, 2);
+      date.attrs = { ...date.attrs, end: end.attrs?.date ?? null };
+      if (end.attrs?.time) date.attrs.endTime = end.attrs.time;
+      else {
+        const endTime = take(index, TIME);
+        if (endTime) date.attrs.endTime = endTime[1];
+      }
+    }
+    const next = nodes[index + 1];
+    if (next?.type === 'text' && !next.marks?.length && next.text?.startsWith(` ${REPEAT_MARK} `)) {
+      const found = parseRepeat(next.text.slice(REPEAT_MARK.length + 2));
+      if (found) {
+        date.attrs = { ...date.attrs, repeat: formatRepeat(found.rule) };
+        const rest = next.text.slice(REPEAT_MARK.length + 2 + found.length);
+        if (rest) next.text = rest;
+        else nodes.splice(index + 1, 1);
+      }
+    }
   }
   return nodes;
 }

@@ -542,6 +542,23 @@ describe('colours', () => {
     });
   });
 
+  it('round trips a date that runs to another and repeats, as obsidian tasks writes it', () => {
+    const out = '- [ ] Trip [[2026-11-20]] 09:00 → [[2026-11-22]] 18:00 🔁 every week for 3 times now\n';
+    const doc = markdownToDoc(out);
+    const line = doc.content![0]!.content![0]!.content![0]!;
+    expect(line.content![1]).toEqual({
+      type: 'dateMention',
+      attrs: {
+        date: '2026-11-20',
+        time: '09:00',
+        end: '2026-11-22',
+        endTime: '18:00',
+        repeat: 'every week for 3 times',
+      },
+    });
+    expect(docToMarkdown(doc)).toBe(out);
+  });
+
   it('keeps a page shown without its title as a comment above the line', () => {
     const out = '<!-- embed: no title -->\n![[Notes]]\n';
     const doc = markdownToDoc(out);

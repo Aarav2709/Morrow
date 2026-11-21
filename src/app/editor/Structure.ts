@@ -1,11 +1,15 @@
-import { mergeAttributes, Node } from '@tiptap/core';
+import { Extension, mergeAttributes, Node } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { Mapping } from '@tiptap/pm/transform';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import Suggestion from '@tiptap/suggestion';
 import { CalendarDays, FileText } from 'lucide-react';
 import { dateKey, parseDateKey } from '../../core/daily';
+import type { DocNode } from '../../core/model';
+import { REPEAT_MARK } from '../../core/repeat';
+import { nextRepeat } from '../../core/tasks';
 import type { MenuItem } from './SuggestionMenu';
 import { renderSuggestion } from './SuggestionMenu';
 import { dateLocale, t } from '../i18n';
@@ -326,6 +330,54 @@ const describeMention = (date: string, time: unknown) =>
     : describeDate(date);
 
 // @today and friends, a date that opens that day's note
+// a date as it reads in a page, with the day it runs to and a mark when it repeats
+function describeRange(node: PMNode): string {
+  const start = describeMention(String(node.attrs.date), node.attrs.time);
+  const end = node.attrs.end ? ` → ${describeMention(String(node.attrs.end), node.attrs.endTime)}` : '';
+  return `${start}${end}${node.attrs.repeat ? ` ${REPEAT_MARK}` : ''}`;
+}
+
+// ticking off a repeating task in the page adds its next time just above it, as the tasks view does
+export const RepeatingTasks = Extension.create({
+  name: 'repeatingTasks',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('repeatingTasks'),
+        appendTransaction(transactions, oldState, newState) {
+          if (
+            !transactions.some((tr) => tr.docChanged) ||
+            transactions.some((tr) => tr.getMeta('repeatingTasks'))
+          )
+            return null;
+          const mapping = new Mapping();
+          for (const tr of transactions) mapping.appendMapping(tr.mapping);
+          const back = mapping.invert();
+          const added: Array<{ pos: number; node: PMNode }> = [];
+          newState.doc.descendants((node, pos) => {
+            if (node.type.name !== 'taskItem') return true;
+            if (node.attrs.checked !== true) return true;
+            let repeats = false;
+            node.firstChild?.forEach((child) => {
+              if (child.type.name === 'dateMention' && child.attrs.repeat) repeats = true;
+            });
+            if (!repeats) return true;
+            const before = oldState.doc.nodeAt(back.map(pos));
+            if (before?.type.name !== 'taskItem' || before.attrs.checked === true) return true;
+            const next = nextRepeat(node.toJSON() as DocNode, new Date());
+            if (next) added.push({ pos, node: newState.schema.nodeFromJSON(next) });
+            return true;
+          });
+          if (!added.length) return null;
+          const tr = newState.tr.setMeta('repeatingTasks', true);
+          for (const { pos, node } of added.reverse()) tr.insert(pos, node);
+          return tr;
+        },
+      }),
+    ];
+  },
+});
+
 export const DateMention = Node.create<DateMentionOptions>({
   name: 'dateMention',
   group: 'inline',
@@ -351,6 +403,10 @@ export const DateMention = Node.create<DateMentionOptions>({
           return VALID_TIME.test(time) ? time : null;
         },
       },
+      // the day and time it runs until, and how it repeats, see core/repeat
+      end: { default: null, parseHTML: (element) => element.getAttribute('data-end') },
+      endTime: { default: null, parseHTML: (element) => element.getAttribute('data-end-time') },
+      repeat: { default: null, parseHTML: (element) => element.getAttribute('data-repeat') },
     };
   },
 
@@ -364,13 +420,16 @@ export const DateMention = Node.create<DateMentionOptions>({
       mergeAttributes(HTMLAttributes, {
         class: 'date-mention',
         datetime: node.attrs.time ? `${node.attrs.date}T${node.attrs.time}` : node.attrs.date,
+        ...(node.attrs.end ? { 'data-end': node.attrs.end } : {}),
+        ...(node.attrs.endTime ? { 'data-end-time': node.attrs.endTime } : {}),
+        ...(node.attrs.repeat ? { 'data-repeat': node.attrs.repeat } : {}),
       }),
-      describeMention(String(node.attrs.date), node.attrs.time),
+      describeRange(node),
     ];
   },
 
   renderText({ node }) {
-    return describeMention(String(node.attrs.date), node.attrs.time);
+    return describeRange(node);
   },
 
   addNodeView() {
@@ -382,10 +441,15 @@ export const DateMention = Node.create<DateMentionOptions>({
       dom.contentEditable = 'false';
       const paint = () => {
         const key = String(current.attrs.date ?? '');
-        dom.textContent = `@${describeMention(key, current.attrs.time)}`;
-        dom.title = t('editor.openNoteFor', {
-          date: parseDateKey(key)?.toLocaleDateString(dateLocale(), { dateStyle: 'full' }) ?? key,
-        });
+        dom.textContent = `@${describeRange(current)}`;
+        dom.title = [
+          t('editor.openNoteFor', {
+            date: parseDateKey(key)?.toLocaleDateString(dateLocale(), { dateStyle: 'full' }) ?? key,
+          }),
+          current.attrs.repeat ? `${REPEAT_MARK} ${String(current.attrs.repeat)}` : '',
+        ]
+          .filter(Boolean)
+          .join('\n');
         const date = parseDateKey(key);
         const today = dateKey(new Date());
         dom.classList.toggle('is-past', !!date && key < today);

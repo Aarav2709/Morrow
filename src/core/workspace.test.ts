@@ -155,7 +155,17 @@ describe('links and tasks', () => {
       },
     });
     expect(collectTasks(state)).toEqual([
-      { pageId: 't', index: 0, text: 'Water plants', checked: true, date: null, time: null },
+      {
+        pageId: 't',
+        index: 0,
+        text: 'Water plants',
+        checked: true,
+        date: null,
+        time: null,
+        end: null,
+        endTime: null,
+        repeat: null,
+      },
     ]);
   });
 });

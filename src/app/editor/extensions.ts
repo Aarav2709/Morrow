@@ -30,7 +30,7 @@ import { IndentedLines, KeepTab, lineContent, LineEdges } from './turnInto';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Fragment, Slice } from '@tiptap/pm/model';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { Column, Columns, DateMention, TableOfContents } from './Structure';
+import { Column, Columns, DateMention, RepeatingTasks, TableOfContents } from './Structure';
 
 export interface ExtensionOptions extends PageLinkOptions {
   onBlockMenu: (request: BlockMenuRequest) => void;
@@ -294,6 +294,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     BlockBackground,
     TextAlignment,
     Spelling,
+    RepeatingTasks,
     EmbedTitle,
     CodePreview,
     StarterKit.configure({
