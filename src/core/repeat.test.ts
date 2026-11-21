@@ -89,3 +89,22 @@ describe('a task changed from its details', () => {
     expect(docToMarkdown(renamed)).toBe('- [ ] Call Bo [[2026-11-20]] → [[2026-11-22]]\n');
   });
 });
+
+describe('a synced block edited where it is shown', () => {
+  it('is written back into its page, keeping its id', async () => {
+    const { markdownToDoc } = await import('./markdown/parse');
+    const { docToMarkdown } = await import('./markdown/serialize');
+    const { anchorSlice, replaceAnchorSlice } = await import('./anchors');
+    const page = markdownToDoc('Intro\n\nShared words ^abc123\n\n## Part\n\nOne\n\n## Next\n\nTwo\n');
+    const edited = { type: 'paragraph', content: [{ type: 'text', text: 'Shared and changed' }] };
+    expect(docToMarkdown(replaceAnchorSlice(page, '^abc123', [edited])!)).toContain(
+      'Shared and changed ^abc123',
+    );
+    const part = anchorSlice(page, 'Part')!;
+    const more = [...part.content!, { type: 'paragraph', content: [{ type: 'text', text: 'Added' }] }];
+    expect(docToMarkdown(replaceAnchorSlice(page, 'Part', more)!)).toContain(
+      '## Part\n\nOne\n\nAdded\n\n## Next',
+    );
+    expect(replaceAnchorSlice(page, '^gone', [edited])).toBeNull();
+  });
+});

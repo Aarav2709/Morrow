@@ -49,6 +49,7 @@ import {
   Pencil,
   Pilcrow,
   Quote,
+  RefreshCw,
   Smile,
   Strikethrough,
   Trash2,
@@ -853,7 +854,7 @@ function newBlockId(): string {
 
 // copies a [[link]] to one block: a heading by its text, anything else by a ^id written after it,
 // the same way obsidian links blocks, so the link works in both apps
-function copyBlockLink(editor: Editor, pos: number, pageTitle: string): void {
+function copyBlockLink(editor: Editor, pos: number, pageTitle: string, synced = false): void {
   const block = editor.state.doc.nodeAt(pos);
   if (!block) return;
   let anchor: string;
@@ -871,9 +872,12 @@ function copyBlockLink(editor: Editor, pos: number, pageTitle: string): void {
     }
     anchor = `^${id}`;
   }
-  const link = `[[${pageTitle.replace(/[[\]|#^]/g, ' ').trim()}#${anchor}]]`;
+  // a synced block is the same link shown in full, ![[Page#^id]], which obsidian also shows
+  const link = `${synced ? '!' : ''}[[${pageTitle.replace(/[[\]|#^]/g, ' ').trim()}#${anchor}]]`;
   void copyText(link).then((copied) =>
-    copied ? toast(t('editor.blockLinkCopied')) : toast(t('editor.couldNotCopy'), { tone: 'error' }),
+    copied
+      ? toast(synced ? t('editor.synced.copied') : t('editor.blockLinkCopied'))
+      : toast(t('editor.couldNotCopy'), { tone: 'error' }),
   );
 }
 
@@ -1459,6 +1463,11 @@ export function BlockMenu({
             label: t('editor.copyLinkToBlock'),
             icon: Link2,
             onSelect: () => copyBlockLink(editor, request.pos, pageTitle),
+          },
+          {
+            label: t('editor.synced.copy'),
+            icon: RefreshCw,
+            onSelect: () => copyBlockLink(editor, request.pos, pageTitle, true),
           },
         ]
       : []),

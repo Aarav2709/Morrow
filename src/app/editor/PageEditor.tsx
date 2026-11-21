@@ -18,6 +18,7 @@ import { dateKey } from '../../core/daily';
 import { Bell, BellOff, BookPlus, CalendarCog, CalendarDays, Clock } from 'lucide-react';
 import { MonthPickerPopover } from '../components/MonthPicker';
 import { CropDialog } from './CropDialog';
+import { SyncedBlock } from './SyncedBlock';
 import { forgetSpelling, misspelledAt, ownSpelling } from './Spelling';
 import { desktop } from '../platform/desktop';
 import { Menu } from '../components/Menu';
@@ -85,7 +86,16 @@ function mountEmbed(
   const page = state.pages[id];
   if (!page || id === hostId) return null;
   const canvas = page.kind === 'canvas' && !page.encrypted && !isEffectivelyTrashed(state.pages, id);
-  if (!page.database && !canvas) return null;
+  // a block or a section of an ordinary page is a synced block, edited right where it is shown
+  if (!page.database && !canvas) {
+    if (!anchor || !editable || page.encrypted || isEffectivelyTrashed(state.pages, id)) return null;
+    if (!state.docs[id] || !anchorSlice(state.docs[id]!, anchor)) return null;
+    const host = document.createElement('div');
+    element.append(host);
+    const root = createRoot(host);
+    root.render(<SyncedBlock sourceId={id} anchor={anchor} setAnchor={setAnchor} />);
+    return () => setTimeout(() => root.unmount());
+  }
   // after # a database names the view to show, anything else is a part of the page shown as text
   const wanted = anchor?.toLowerCase();
   const view = wanted

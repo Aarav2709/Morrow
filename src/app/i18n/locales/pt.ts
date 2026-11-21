@@ -806,6 +806,12 @@ export const pt: TranslationSchema = {
     heading: 'Título',
     clearFormatting: 'Limpar a formatação',
     alignText: 'Alinhar',
+    synced: {
+      label: 'Bloco sincronizado',
+      hint: 'O que mudar aqui muda o bloco na sua página e em todos os lugares onde aparece.',
+      copy: 'Copiar como bloco sincronizado',
+      copied: 'Bloco sincronizado copiado, cole em qualquer página para mostrar o mesmo bloco lá.',
+    },
     web: {
       openInBrowser: 'Abrir no navegador',
       load: 'Carregar site',

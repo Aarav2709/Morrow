@@ -799,6 +799,12 @@ export const en = {
     heading: 'Heading',
     clearFormatting: 'Clear formatting',
     alignText: 'Align',
+    synced: {
+      label: 'Synced block',
+      hint: 'Edits here change the block in its own page and everywhere it is shown.',
+      copy: 'Copy as synced block',
+      copied: 'Synced block copied, paste it in any page to show the same block there.',
+    },
     web: {
       openInBrowser: 'Open in browser',
       load: 'Load website',
