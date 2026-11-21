@@ -4,6 +4,7 @@ import { inlineText } from '../core/doc';
 import { displayTitle } from '../core/model';
 import type { DocNode } from '../core/model';
 import { parseDateKey } from '../core/daily';
+import { formatRepeat, nextOccurrence, parseRepeat } from '../core/repeat';
 import { desktop } from './platform/desktop';
 import { newId } from './platform/files';
 import { getPreferences, setPreferences } from './platform/preferences';
@@ -18,8 +19,14 @@ export function remindersFor(pageId: string, date: string): Reminder[] {
   return getPreferences().reminders.filter((item) => item.pageId === pageId && item.date === date);
 }
 
-// a reminder on the day at the given time
-export function addReminder(pageId: string, date: string, hour: number, minute = 0): void {
+// a reminder on the day at the given time. a date that repeats reminds again on each of its days
+export function addReminder(
+  pageId: string,
+  date: string,
+  hour: number,
+  minute = 0,
+  repeat?: string | null,
+): void {
   const day = parseDateKey(date);
   if (!day) return;
   // in the time zone picked in settings, or this computer's
@@ -27,7 +34,25 @@ export function addReminder(pageId: string, date: string, hour: number, minute =
   const reminders = getPreferences().reminders.filter(
     (item) => !(item.pageId === pageId && item.date === date),
   );
-  setPreferences({ reminders: [...reminders, { id: newId(), pageId, date, at }] });
+  setPreferences({
+    reminders: [...reminders, { id: newId(), pageId, date, at, ...(repeat ? { repeat } : {}) }],
+  });
+}
+
+// the reminder a repeating one leaves behind when it goes off, at the same time on the date's next day
+export function nextReminder(item: Reminder): Reminder | null {
+  const parsed = item.repeat ? parseRepeat(item.repeat) : null;
+  const fired = new Date(item.at);
+  const next = parsed ? nextOccurrence(item.date, parsed.rule, fired) : null;
+  const day = next ? parseDateKey(next.date) : null;
+  if (!next || !day) return null;
+  return {
+    id: newId(),
+    pageId: item.pageId,
+    date: next.date,
+    at: zonedMoment(day.getFullYear(), day.getMonth(), day.getDate(), fired.getHours(), fired.getMinutes()),
+    repeat: formatRepeat(next.rule),
+  };
 }
 
 export function removeReminders(pageId: string, date: string): void {
@@ -66,7 +91,9 @@ function remind(now = Date.now()): void {
   const { reminders } = getPreferences();
   const due = reminders.filter((item) => item.at <= now);
   if (!due.length) return;
-  setPreferences({ reminders: reminders.filter((item) => item.at > now) });
+  // repeating ones are set again for their next day
+  const again = due.flatMap((item) => nextReminder(item) ?? []);
+  setPreferences({ reminders: [...reminders.filter((item) => item.at > now), ...again] });
   const { pages } = getState();
   for (const item of due) {
     const page = pages[item.pageId];

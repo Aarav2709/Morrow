@@ -199,6 +199,7 @@ function dateMenuEntries(
   scheduled: string | null,
   pickTime: () => void,
   pickDate: (() => void) | null,
+  repeat: string | null = null,
 ): MenuEntry[] {
   const key = dateKey(date);
   const set = remindersFor(pageId, key)[0];
@@ -242,7 +243,7 @@ function dateMenuEntries(
             icon: Bell,
             checked: atScheduled,
             onSelect: () => {
-              addReminder(pageId, key, scheduledAt.getHours(), scheduledAt.getMinutes());
+              addReminder(pageId, key, scheduledAt.getHours(), scheduledAt.getMinutes(), repeat);
               toast(t('reminders.set', { time: time(scheduledAt.getHours(), scheduledAt.getMinutes()) }));
             },
           },
@@ -253,7 +254,7 @@ function dateMenuEntries(
       icon: Bell,
       checked: !!setAt && !atScheduled && setAt.getHours() === hour && setAt.getMinutes() === 0,
       onSelect: () => {
-        addReminder(pageId, key, hour);
+        addReminder(pageId, key, hour, 0, repeat);
         toast(t('reminders.set', { time: time(hour) }));
       },
     })),
@@ -272,6 +273,21 @@ function dateMenuEntries(
       ? [{ label: t('reminders.remove'), icon: BellOff, onSelect: () => removeReminders(pageId, key) }]
       : []),
   ];
+}
+
+// how the date a menu was opened on repeats, read from it in the page
+function repeatOfMention(editor: Editor, element: HTMLElement): string | null {
+  try {
+    const pos = editor.view.posAtDOM(element, 0);
+    for (const at of [pos, pos - 1]) {
+      const node = at >= 0 ? editor.state.doc.nodeAt(at) : null;
+      if (node?.type.name === 'dateMention')
+        return typeof node.attrs.repeat === 'string' ? node.attrs.repeat : null;
+    }
+  } catch {
+    // no longer in the page
+  }
+  return null;
 }
 
 // a date written in the page moves to another day, its time of day kept
@@ -774,6 +790,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
             dateMenu.time,
             () => setTimePicker(dateMenu),
             editable ? () => setDatePicker(dateMenu) : null,
+            repeatOfMention(editor, dateMenu.anchor),
           )}
         />
       )}

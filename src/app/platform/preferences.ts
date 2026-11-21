@@ -16,6 +16,8 @@ export interface Reminder {
   // the day written in the page, yyyy-mm-dd, and when on it to remind
   date: string;
   at: number;
+  // a reminder on a repeating date sets the next one when it goes off, see core/repeat
+  repeat?: string;
 }
 // what morrow shows when it opens: today's note, the home page, or where you left off
 export type StartPage = 'today' | 'home' | 'last';
