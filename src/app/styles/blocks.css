@@ -849,6 +849,12 @@ html.is-printing body {
   padding: 0 8px;
   font-weight: 500;
 }
+.prose .inline-database .db-table th.db-col-select,
+.prose .inline-database .db-table td.db-col-select {
+  width: 34px;
+  padding: 0;
+  text-align: center;
+}
 .prose .inline-database .db-table td {
   padding: 0;
 }
