@@ -9,8 +9,8 @@ import { eventsByDay, useCalendars } from '../calendars';
 import { describeTime } from '../editor/Structure';
 import { dateLocale, t } from '../i18n';
 import { captureToToday } from '../operations';
+import { TaskDetails } from './TaskDetails';
 import { usePreferences } from '../platform/preferences';
-import { openPage } from '../router';
 import { run } from '../workspace';
 
 export type CalendarMode = 'month' | 'week';
@@ -40,6 +40,7 @@ export function TasksCalendar({
   const [cursor, setCursor] = useState(() => new Date());
   const [selected, setSelected] = useState(todayKey);
   const byDay = useMemo(() => tasksByDay(state, tasks), [state, tasks]);
+  const [details, setDetails] = useState<TaskRef | null>(null);
   const events = useMemo(() => eventsByDay(calendars), [calendars]);
 
   const days = useMemo(() => {
@@ -134,12 +135,18 @@ export function TasksCalendar({
                   </span>
                 ))}
                 {dayTasks.slice(0, Math.max(0, limit - dayEvents.length)).map((task) => (
-                  <span
+                  <button
+                    type="button"
                     key={`t${task.pageId}:${task.index}`}
                     className={`calendar-chip is-task${task.checked ? ' is-done' : ''}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setDetails(task);
+                    }}
                   >
+                    {task.repeat ? '🔁 ' : ''}
                     {task.text || t('tasks.untitledTask')}
-                  </span>
+                  </button>
                 ))}
                 {items > limit && (
                   <span className="calendar-more">{t('tasks.moreOnDay', { count: items - limit })}</span>
@@ -154,7 +161,15 @@ export function TasksCalendar({
         tasks={byDay.get(selected) ?? []}
         events={events.get(selected) ?? []}
         state={state}
+        onDetails={setDetails}
       />
+      {details && (
+        <TaskDetails
+          key={`${details.pageId}:${details.index}`}
+          task={details}
+          onClose={() => setDetails(null)}
+        />
+      )}
     </div>
   );
 }
@@ -164,11 +179,13 @@ function DayAgenda({
   tasks,
   events,
   state,
+  onDetails,
 }: {
   dayKey: string;
   tasks: TaskRef[];
   events: ReturnType<typeof eventsByDay> extends Map<string, infer V> ? V : never;
   state: WorkspaceState;
+  onDetails: (task: TaskRef) => void;
 }) {
   const [draft, setDraft] = useState('');
   const date = parseDateKey(dayKey) ?? new Date();
@@ -218,11 +235,7 @@ function DayAgenda({
                   }
                 />
               </label>
-              <button
-                type="button"
-                className="task-text"
-                onClick={() => openPage(task.pageId, task.text || null)}
-              >
+              <button type="button" className="task-text" onClick={() => onDetails(task)}>
                 {task.time && <span className="tasks-agenda-time">{describeTime(task.time)}</span>}
                 {/* the words and the page they are on sit on two lines, so they never run together */}
                 <span className="tasks-agenda-text">

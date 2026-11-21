@@ -3584,3 +3584,77 @@ td:hover .prop-empty,
   width: auto;
   max-width: 160px;
 }
+
+/* a task from the tasks calendar in full */
+.task-details {
+  width: min(520px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px;
+}
+.task-details-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.task-details-title {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--text);
+  font: 600 20px var(--font-ui);
+}
+.task-details-grid {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  gap: 10px 12px;
+  font-size: var(--text-sm);
+}
+.task-details-grid > span:nth-child(odd) {
+  color: var(--text-muted);
+}
+.task-details-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.task-details-when .date-field {
+  width: auto;
+  min-width: 140px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.task-details-number {
+  width: 64px;
+}
+.task-details-when select {
+  width: auto;
+}
+.task-details-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.task-details-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.task-details-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+button.calendar-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}

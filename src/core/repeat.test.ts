@@ -59,3 +59,33 @@ describe('a repeating task ticked off', () => {
     expect(docToMarkdown(setTaskChecked(doc, 1, true)!)).toContain('- [x] Other');
   });
 });
+
+describe('a task changed from its details', () => {
+  it('keeps its words and formatting when only its date changes, and takes new words when they change', async () => {
+    const { markdownToDoc } = await import('./markdown/parse');
+    const { docToMarkdown } = await import('./markdown/serialize');
+    const { updateTask } = await import('./tasks');
+    const doc = markdownToDoc('- [ ] Call **Ana** [[2026-11-20]]\n');
+    const moved = updateTask(
+      doc,
+      0,
+      {
+        text: 'Call Ana',
+        date: '2026-11-21',
+        time: '10:00',
+        end: null,
+        endTime: null,
+        repeat: 'every month',
+      },
+      'Call Ana',
+    )!;
+    expect(docToMarkdown(moved)).toBe('- [ ] Call **Ana** [[2026-11-21]] 10:00 🔁 every month\n');
+    const renamed = updateTask(
+      doc,
+      0,
+      { text: 'Call Bo', date: '2026-11-20', time: null, end: '2026-11-22', endTime: null, repeat: null },
+      'Call Ana',
+    )!;
+    expect(docToMarkdown(renamed)).toBe('- [ ] Call Bo [[2026-11-20]] → [[2026-11-22]]\n');
+  });
+});

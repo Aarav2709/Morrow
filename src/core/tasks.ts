@@ -163,3 +163,73 @@ export function tasksByDay(state: WorkspaceState, tasks: TaskRef[]): Map<string,
   for (const list of days.values()) list.sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'));
   return days;
 }
+
+export interface TaskChange {
+  text: string;
+  date: string | null;
+  time: string | null;
+  end: string | null;
+  endTime: string | null;
+  repeat: string | null;
+  // a page linked from the task, added after its words
+  link?: { id: PageId; label: string };
+}
+
+// a task's line written again from its details: its words, when it is, and how it repeats. words that
+// stay the same keep their formatting and links, new words replace them. null when the task is gone
+export function updateTask(doc: DocNode, index: number, change: TaskChange, oldText: string): DocNode | null {
+  let seen = 0;
+  let found = false;
+  const mentionOf = (): DocNode | null =>
+    change.date
+      ? {
+          type: 'dateMention',
+          attrs: {
+            date: change.date,
+            time: change.time,
+            ...(change.end ? { end: change.end } : {}),
+            ...(change.end && change.endTime ? { endTime: change.endTime } : {}),
+            ...(change.repeat ? { repeat: change.repeat } : {}),
+          },
+        }
+      : null;
+  const rewrite = (line: DocNode): DocNode => {
+    const content = line.content ?? [];
+    const mention = mentionOf();
+    let words: DocNode[];
+    if (change.text.trim() === oldText.trim()) {
+      words = content.filter((child) => child.type !== 'dateMention');
+      // the space left where the date was
+      const last = words[words.length - 1];
+      if (last?.type === 'text' && last.text)
+        words[words.length - 1] = { ...last, text: last.text.replace(/\s+$/, '') };
+    } else words = change.text.trim() ? [{ type: 'text', text: change.text.trim() }] : [];
+    const out = words.filter((child) => child.type !== 'text' || child.text);
+    if (change.link)
+      out.push(
+        { type: 'text', text: ' ' },
+        { type: 'pageLink', attrs: { id: change.link.id, label: change.link.label } },
+      );
+    if (mention) out.push({ type: 'text', text: ' ' }, mention);
+    return { ...line, content: out };
+  };
+  const visit = (node: DocNode): DocNode => {
+    if (found || !node.content) return node;
+    let changed = false;
+    const content = node.content.map((child) => {
+      if (found) return child;
+      if (child.type === 'taskItem' && seen++ === index) {
+        found = true;
+        changed = true;
+        const [first, ...rest] = child.content ?? [];
+        return { ...child, content: [rewrite(first ?? { type: 'paragraph', content: [] }), ...rest] };
+      }
+      const next = visit(child);
+      if (next !== child) changed = true;
+      return next;
+    });
+    return changed ? { ...node, content } : node;
+  };
+  const next = visit(doc);
+  return found ? next : null;
+}

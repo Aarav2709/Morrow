@@ -39,6 +39,16 @@ export function addReminder(
   });
 }
 
+// a reminder at a moment of its own, such as an hour before a task starts, kept with the task's day
+export function setReminderAt(pageId: string, date: string, at: number, repeat?: string | null): void {
+  const reminders = getPreferences().reminders.filter(
+    (item) => !(item.pageId === pageId && item.date === date),
+  );
+  setPreferences({
+    reminders: [...reminders, { id: newId(), pageId, date, at, ...(repeat ? { repeat } : {}) }],
+  });
+}
+
 // the reminder a repeating one leaves behind when it goes off, at the same time on the date's next day
 export function nextReminder(item: Reminder): Reminder | null {
   const parsed = item.repeat ? parseRepeat(item.repeat) : null;
