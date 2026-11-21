@@ -168,6 +168,7 @@ export function Sidebar() {
     [customSections],
   );
   const [dropSection, setDropSection] = useState<string | null>(null);
+  const [favoriteMenu, setFavoriteMenu] = useState<{ id: PageId; anchor: HTMLElement } | null>(null);
   // templates have a section of their own rather than sitting among the pages
   const templatesPage = useMemo(() => findTemplatesPage(state), [state]);
   const templateCount = useMemo(() => listTemplates(state).length, [state]);
@@ -324,6 +325,11 @@ export function Sidebar() {
                   type="button"
                   className={`tree-row flat${activeId === page.id ? ' is-active' : ''}`}
                   onClick={go(() => openPage(page.id))}
+                  // a favourite has the same menu as the page in the tree
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    setFavoriteMenu({ id: page.id, anchor: event.currentTarget });
+                  }}
                 >
                   <span className="tree-icon">
                     <PageIcon page={page} />
@@ -527,6 +533,18 @@ export function Sidebar() {
             <Fragment key={item}>{bottomItems[item as BottomItem]}</Fragment>
           ))}
       </div>
+      {favoriteMenu && (
+        <Menu
+          anchor={favoriteMenu.anchor}
+          label={t('pageMenu.pageOptions')}
+          entries={pageMenuEntries(favoriteMenu.id, () => {
+            // renaming happens in the tree, where the page is opened to it
+            openPage(favoriteMenu.id);
+            setUi({ renaming: favoriteMenu.id });
+          })}
+          onClose={() => setFavoriteMenu(null)}
+        />
+      )}
       {newMenu && (
         <Menu
           anchor={newMenu}
