@@ -22,7 +22,7 @@ struct Provider {
     key_url: &'static str,
 }
 
-const PROVIDERS: [Provider; 5] = [
+const PROVIDERS: [Provider; 6] = [
     Provider {
         id: "anthropic",
         label: "Claude",
@@ -54,6 +54,14 @@ const PROVIDERS: [Provider; 5] = [
         needs_key: true,
         default_model: "",
         key_url: "https://openrouter.ai/keys",
+    },
+    Provider {
+        id: "groq",
+        label: "Groq",
+        base_url: "https://api.groq.com/openai/v1",
+        needs_key: true,
+        default_model: "",
+        key_url: "https://console.groq.com/keys",
     },
     Provider {
         id: "custom",

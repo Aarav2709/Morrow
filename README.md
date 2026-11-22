@@ -91,7 +91,7 @@ https://github.com/user-attachments/assets/a279710f-1a50-4f1a-82ff-17714cfe7641
   Ctrl/Cmd + Shift + T to reopen a closed tab and Ctrl/Cmd + 1 to 9 to jump
 - **Drag a page** from the sidebar into another page to link it
 - **An optional assistant** that searches, reads and edits your pages in Morrow's
-  own Markdown, with Claude, ChatGPT, Gemini, OpenRouter or a local model through
+  own Markdown, with Claude, ChatGPT, Gemini, OpenRouter, Groq or a local model through
   Ollama or LM Studio. You bring the key, every change is shown for approval,
   kept in page history and can be undone, and locked pages are never sent
 - **An MCP server** so Claude Desktop, Cursor, VS Code and other MCP apps can

@@ -92,7 +92,7 @@ export interface DesktopSyncApi {
   onEvent(listener: (event: SyncEvent) => void): () => void;
 }
 
-export type AssistantProviderId = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'custom';
+export type AssistantProviderId = 'anthropic' | 'openai' | 'gemini' | 'openrouter' | 'groq' | 'custom';
 
 export interface AssistantSettings {
   provider: AssistantProviderId;

@@ -21,6 +21,7 @@ const MAKERS: Record<AssistantProviderId, string> = {
   openai: 'OpenAI',
   gemini: 'Google',
   openrouter: 'Many models, one key',
+  groq: 'Open models, quickly',
   custom: 'Ollama, LM Studio, your own',
 };
 
