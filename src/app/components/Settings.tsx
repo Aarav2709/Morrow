@@ -788,7 +788,12 @@ function KnownVaults() {
   const current = getSession().location;
   const [vaults, setVaults] = useState<Array<{ path: string; name: string; exists: boolean }>>([]);
   const refresh = () => void desktop?.vault?.state().then((state) => setVaults(state.recent));
-  useEffect(refresh, []);
+  // the open vault's new name shows here too, as soon as it is given
+  useEffect(() => {
+    refresh();
+    window.addEventListener(VAULT_RENAMED, refresh);
+    return () => window.removeEventListener(VAULT_RENAMED, refresh);
+  }, []);
   const move = (index: number, by: -1 | 1) => {
     const next = [...vaults];
     const [item] = next.splice(index, 1);
