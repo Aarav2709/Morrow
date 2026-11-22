@@ -23,8 +23,10 @@ import type { DocNode, PageId } from '../../core/model';
 import { findPagesByTitle } from '../../core/search';
 import { isImagePath } from '../../core/vault/paths';
 import { fileUrl } from '../platform/attachments';
+import { drawCanvas, takeCanvasImageRequest } from '../canvasImage';
+import { safeFileName } from '../../core/portability';
 import { desktop, openExternal } from '../platform/desktop';
-import { newId } from '../platform/files';
+import { newId, saveFile } from '../platform/files';
 import { openPage } from '../router';
 import { openDialog, toast } from '../ui';
 import { getState, run, useWorkspace } from '../workspace';
@@ -343,7 +345,12 @@ export function CanvasView({
   const [capturing, setCapturing] = useState(false);
   const saveImage = async () => {
     const root = rootRef.current;
-    if (!root || !desktop?.exportPng) return;
+    if (!root) return;
+    // a system whose window can't be photographed gets the canvas drawn by morrow instead
+    if (!desktop?.exportPng) {
+      await drawnImage();
+      return;
+    }
     const before = view;
     setSelected(new Set());
     setSelectedEdge(null);
@@ -362,6 +369,48 @@ export function CanvasView({
     if (result.ok) toast(t('canvas.savedImage'));
     else if (result.error) toast(result.error, { tone: 'error' });
   };
+
+  const drawnImage = async () => {
+    // the pictures on file cards are loaded first, so they are in the picture
+    const pictures = new Map<string, HTMLImageElement>();
+    for (const node of data.nodes) {
+      if (node.type !== 'file' || !isImagePath(node.file) || pictures.has(node.file)) continue;
+      const url = await fileUrl(node.file);
+      if (!url) continue;
+      const image = new Image();
+      image.src = url;
+      try {
+        await image.decode();
+        pictures.set(node.file, image);
+      } catch {
+        // its name shows instead
+      }
+    }
+    const pages = getState().pages;
+    const drawn = drawCanvas(data, {
+      pageTitle: (id) => (pages[id] ? displayTitle(pages[id]!) : id),
+      picture: (path) => pictures.get(path) ?? null,
+      dark: document.documentElement.dataset.theme === 'dark',
+    });
+    const blob = await new Promise<Blob | null>((resolve) => drawn.toBlob(resolve, 'image/png'));
+    if (!blob) {
+      toast(t('canvas.imageFailed'), { tone: 'error' });
+      return;
+    }
+    saveFile(`${safeFileName(displayTitle(pages[pageId]))}.png`, await blob.arrayBuffer(), 'image/png');
+  };
+
+  // the page's menu asks for the picture too, taken by the canvas open as its page rather than one
+  // shown inside another page
+  useEffect(() => {
+    if (embedded) return;
+    const take = () => {
+      if (takeCanvasImageRequest(pageId)) void saveImage();
+    };
+    take();
+    window.addEventListener('morrow:canvas-image', take);
+    return () => window.removeEventListener('morrow:canvas-image', take);
+  });
 
   // start fitted to what is on the canvas
   useEffect(() => {
@@ -1161,17 +1210,15 @@ export function CanvasView({
         >
           <Maximize size={16} />
         </button>
-        {desktop?.exportPng && (
-          <button
-            type="button"
-            className="icon-button"
-            title={t('canvas.saveImage')}
-            aria-label={t('canvas.saveImage')}
-            onClick={() => void saveImage()}
-          >
-            <ImageDown size={16} />
-          </button>
-        )}
+        <button
+          type="button"
+          className="icon-button"
+          title={t('canvas.saveImage')}
+          aria-label={t('canvas.saveImage')}
+          onClick={() => void saveImage()}
+        >
+          <ImageDown size={16} />
+        </button>
         {editable && (selectedNodes.length > 0 || selectedEdge) && (
           <>
             <span className="toolbar-divider" />

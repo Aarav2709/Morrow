@@ -1698,6 +1698,7 @@ export const en = {
     zoomOut: 'Zoom out',
     zoomIn: 'Zoom in',
     saveImage: 'Save as image',
+    imageFailed: 'The canvas could not be saved as a picture.',
     savedImage: 'Saved the canvas as an image.',
     fitEverythingInView: 'Fit everything in view',
     deleteSelection: 'Delete selection',

@@ -12,6 +12,7 @@ import {
   Network,
   FileCode2,
   FileType,
+  ImageDown,
   FileDown,
   FileText,
   FileUp,
@@ -56,9 +57,10 @@ import {
   setPreferences,
   toggleOutline,
 } from '../platform/preferences';
-import { navigate } from '../router';
+import { navigate, openPage } from '../router';
 import { getUi, openDialog, setUi } from '../ui';
 import { childrenOf } from '../../core/tree';
+import { requestCanvasImage } from '../canvasImage';
 import { getSession, getState, run } from '../workspace';
 import { t } from '../i18n';
 import type { MenuEntry } from './Menu';
@@ -190,6 +192,19 @@ export function pageMenuEntries(pageId: PageId, rename: () => void): MenuEntry[]
       : []),
     { separator: true },
     { label: t('pageMenu.exportMarkdown'), icon: FileDown, onSelect: () => void exportPageMarkdown(pageId) },
+    // a canvas saves as a picture, drawn by the canvas when it is open
+    ...(page.kind === 'canvas'
+      ? [
+          {
+            label: t('canvas.saveImage'),
+            icon: ImageDown,
+            onSelect: () => {
+              openPage(pageId);
+              requestCanvasImage(pageId);
+            },
+          },
+        ]
+      : []),
     ...(page.kind === 'page'
       ? [
           { label: t('pageMenu.exportHtml'), icon: FileCode2, onSelect: () => void exportPageHtml(pageId) },

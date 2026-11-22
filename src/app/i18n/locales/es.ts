@@ -1714,6 +1714,7 @@ export const es: TranslationSchema = {
     zoomOut: 'Alejar',
     zoomIn: 'Acercar',
     saveImage: 'Guardar como imagen',
+    imageFailed: 'No se pudo guardar el lienzo como imagen.',
     savedImage: 'Lienzo guardado como imagen.',
     fitEverythingInView: 'Ajustar todo a la vista',
     deleteSelection: 'Eliminar la selección',

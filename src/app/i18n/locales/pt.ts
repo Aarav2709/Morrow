@@ -1713,6 +1713,7 @@ export const pt: TranslationSchema = {
     zoomOut: 'Diminuir zoom',
     zoomIn: 'Aumentar zoom',
     saveImage: 'Salvar como imagem',
+    imageFailed: 'Não foi possível salvar a tela como imagem.',
     savedImage: 'Quadro salvo como imagem.',
     fitEverythingInView: 'Ajustar tudo à tela',
     deleteSelection: 'Excluir a seleção',
