@@ -5,6 +5,9 @@ describe('pasting a link', () => {
   it('knows what a pasted address could be', () => {
     expect(pastedKind('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe('youtube');
     expect(pastedKind('https://youtu.be/dQw4w9WgXcQ')).toBe('youtube');
+    expect(pastedKind('https://x.com/someone/status/1234567890123456789')).toBe('post');
+    expect(pastedKind('https://twitter.com/someone/status/20?s=20')).toBe('post');
+    expect(pastedKind('https://x.com/someone')).toBe('link');
     expect(pastedKind('https://example.org/cat.png')).toBe('picture');
     expect(pastedKind('https://example.org/about')).toBe('link');
     expect(pastedKind('/home/me/Videos/talk.mp4')).toBe('local');

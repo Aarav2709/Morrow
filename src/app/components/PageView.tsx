@@ -562,6 +562,8 @@ function TitleField({
     <textarea
       ref={inputRef}
       className="page-title"
+      // a title in arabic or hebrew reads from the right, like the page under it
+      dir="auto"
       rows={1}
       placeholder={t('page.untitled')}
       aria-label={t('page.titleAria')}

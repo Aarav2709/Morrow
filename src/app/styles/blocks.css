@@ -894,6 +894,38 @@ html.is-printing body {
   visibility: hidden;
 }
 
+/* a post on x before it is shown: where it is and a button, then x's own frame as tall as the post */
+.post-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  max-width: 550px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+.post-card:hover {
+  background: var(--hover);
+}
+.post-card-label {
+  font-weight: 600;
+}
+.post-card-link {
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.post-frame {
+  display: block;
+  width: 100%;
+  max-width: 550px;
+  height: 500px;
+  border: 0;
+}
+
 /* a text property that wraps shows all its lines and grows as more are typed */
 .prop-input.prop-wrap {
   display: block;

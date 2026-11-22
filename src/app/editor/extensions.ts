@@ -25,6 +25,7 @@ import { PageLink } from './PageLink';
 import type { PageLinkOptions } from './PageLink';
 import { SlashCommand } from './SlashCommand';
 import { Spelling } from './Spelling';
+import { TextDirection } from './TextDirection';
 import { Bookmark, LinkMention, WebEmbed } from './WebBlocks';
 import { IndentedLines, KeepTab, lineContent, LineEdges } from './turnInto';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
@@ -293,6 +294,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
     BlockIds,
     BlockBackground,
     TextAlignment,
+    TextDirection,
     Spelling,
     RepeatingTasks,
     EmbedTitle,

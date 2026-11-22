@@ -126,6 +126,8 @@ export const Image = Node.create({
       const src = typeof node.attrs.src === 'string' ? node.attrs.src : null;
       const video = src && !node.attrs.fileId ? youtubeId(src) : null;
       if (video) return { dom: youtubeEmbed(dom, video), stopEvent: () => true, ignoreMutation: () => true };
+      const post = src && !node.attrs.fileId ? postId(src) : null;
+      if (post) return { dom: postEmbed(dom, src!, post), stopEvent: () => true, ignoreMutation: () => true };
       const local = src && !node.attrs.fileId ? localMediaUrl(src) : null;
       if (local) {
         dom.classList.remove('is-loading');
@@ -313,6 +315,75 @@ function youtubeEmbed(dom: HTMLElement, id: string): HTMLElement {
   });
   dom.append(card);
   return dom;
+}
+
+// a post on x, or twitter as it was, written as a picture, ![](https://x.com/name/status/…), the way obsidian
+// embeds one
+const POST =
+  /^https?:\/\/(?:www\.|mobile\.)?(?:twitter|x)\.com\/(?:\w{1,15}|i\/web|i)\/status(?:es)?\/(\d{1,20})/i;
+
+export function postId(src: string): string | null {
+  return POST.exec(src)?.[1] ?? null;
+}
+
+// a post shows as a link to it, and is only loaded from x once asked, so opening a page never contacts anyone.
+// x's own embed tells the page how tall the post is, so the frame fits it
+function postEmbed(dom: HTMLElement, src: string, id: string): HTMLElement {
+  dom.className = 'image-block media-block media-post';
+  dom.replaceChildren();
+  const card = document.createElement('a');
+  card.className = 'post-card';
+  card.href = src;
+  card.setAttribute('aria-label', t('editor.postOnX'));
+  const label = document.createElement('span');
+  label.className = 'post-card-label';
+  label.textContent = t('editor.postOnX');
+  const link = document.createElement('span');
+  link.className = 'post-card-link';
+  link.textContent = src.replace(/^https?:\/\//i, '');
+  const load = document.createElement('span');
+  load.className = 'button small';
+  load.textContent = t('editor.showPost');
+  card.append(label, link, load);
+  card.addEventListener('click', (event) => {
+    event.preventDefault();
+    // ctrl or cmd click opens it on x instead
+    if (event.ctrlKey || event.metaKey) {
+      openExternal(src);
+      return;
+    }
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const frame = document.createElement('iframe');
+    frame.className = 'post-frame';
+    frame.src = `https://platform.twitter.com/embed/Tweet.html?id=${id}&dnt=true&theme=${dark ? 'dark' : 'light'}`;
+    frame.title = t('editor.postOnX');
+    frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    const resize = (message: MessageEvent) => {
+      if (!frame.isConnected) {
+        window.removeEventListener('message', resize);
+        return;
+      }
+      if (message.source !== frame.contentWindow || message.origin !== 'https://platform.twitter.com') return;
+      const data: unknown = typeof message.data === 'string' ? safeJson(message.data) : message.data;
+      const embed = (
+        data as { 'twttr.embed'?: { method?: string; params?: Array<{ height?: number }> } } | null
+      )?.['twttr.embed'];
+      const height = embed?.method === 'twttr.private.resize' ? embed.params?.[0]?.height : undefined;
+      if (typeof height === 'number' && height > 0) frame.style.height = `${Math.ceil(height)}px`;
+    };
+    window.addEventListener('message', resize);
+    dom.replaceChildren(frame);
+  });
+  dom.append(card);
+  return dom;
+}
+
+function safeJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 // a picture, sound or video elsewhere on the computer, shown from where it is: a file:// address, a full path

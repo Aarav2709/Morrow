@@ -1,15 +1,15 @@
 // pasting a link on its own puts the link in, then offers what else it could be: a youtube link can play in
-// the page, a picture's address can show the picture, and a sound or video file on this computer can play
-// where it is. typing anything, or escape, keeps the link
+// the page, a post on x can show in it, a picture's address can show the picture, and a sound or video file
+// on this computer can play where it is. typing anything, or escape, keeps the link
 import { Extension } from '@tiptap/core';
 import type { Editor } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { t } from '../i18n';
-import { mediaKind, youtubeId } from './Media';
+import { mediaKind, postId, youtubeId } from './Media';
 import { insertLinkAs } from './WebBlocks';
 
-type PastedKind = 'youtube' | 'picture' | 'local' | 'link';
+type PastedKind = 'youtube' | 'post' | 'picture' | 'local' | 'link';
 
 const PICTURE = /\.(png|jpe?g|gif|webp|avif|svg|bmp)(\?[^\s]*)?$/i;
 
@@ -23,6 +23,7 @@ export function pastedKind(text: string): PastedKind | null {
   if (!text || /\s/.test(text) || text.length > 2000) return null;
   if (/^https?:\/\//i.test(text)) {
     if (youtubeId(text)) return 'youtube';
+    if (postId(text)) return 'post';
     return PICTURE.test(text) ? 'picture' : 'link';
   }
   // a path on this computer: file://, /home/... or C:\...
@@ -53,6 +54,7 @@ function showMenu(
       .run();
   };
   if (kind === 'youtube') choices.push({ label: t('editor.pasteEmbedVideo'), run: asBlock });
+  if (kind === 'post') choices.push({ label: t('editor.pasteEmbedPost'), run: asBlock });
   if (kind === 'picture') choices.push({ label: t('editor.pasteShowPicture'), run: asBlock });
   if (kind === 'local') choices.push({ label: t('editor.pastePlayHere'), run: asBlock });
   // any web address can be a mention, a bookmark card or the website itself shown in the page
@@ -61,7 +63,7 @@ function showMenu(
       { label: t('editor.web.pasteMention'), run: () => insertLinkAs(editor, from, to, text, 'mention') },
       { label: t('editor.web.pasteBookmark'), run: () => insertLinkAs(editor, from, to, text, 'bookmark') },
     );
-    if (/^https:\/\//i.test(text) && kind !== 'youtube' && kind !== 'picture')
+    if (/^https:\/\//i.test(text) && kind !== 'youtube' && kind !== 'post' && kind !== 'picture')
       choices.push({
         label: t('editor.web.pasteEmbed'),
         run: () => insertLinkAs(editor, from, to, text, 'embed'),

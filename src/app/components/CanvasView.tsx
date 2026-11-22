@@ -1447,6 +1447,8 @@ function TextEditor({
     <textarea
       ref={ref}
       className="canvas-textarea"
+      // arabic or hebrew reads from the right, like the card once it is done
+      dir="auto"
       autoFocus
       // carries on where the text ends rather than in front of it
       onFocus={(event) => event.currentTarget.setSelectionRange(value.length, value.length)}
@@ -1466,7 +1468,8 @@ function TextEditor({
   );
 }
 
-// card text is markdown, headings and lists are shown lightly styled
+// card text is markdown, headings and lists are shown lightly styled. each line reads from the right when
+// it starts in arabic or hebrew
 function TextCard({ text }: { text: string }) {
   if (!text.trim()) return <span className="canvas-placeholder">{t('canvas.emptyCard')}</span>;
   return (
@@ -1475,18 +1478,22 @@ function TextCard({ text }: { text: string }) {
         const heading = /^(#{1,3})\s+(.*)$/.exec(line);
         if (heading)
           return (
-            <p key={index} className={`canvas-h${heading[1]!.length}`}>
+            <p key={index} dir="auto" className={`canvas-h${heading[1]!.length}`}>
               {heading[2]}
             </p>
           );
         const bullet = /^\s*[-*]\s+(.*)$/.exec(line);
         if (bullet)
           return (
-            <p key={index} className="canvas-bullet">
+            <p key={index} dir="auto" className="canvas-bullet">
               • {bullet[1]}
             </p>
           );
-        return <p key={index}>{line || ' '}</p>;
+        return (
+          <p key={index} dir="auto">
+            {line || ' '}
+          </p>
+        );
       })}
     </div>
   );

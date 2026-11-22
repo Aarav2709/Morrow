@@ -156,11 +156,12 @@
   font-size: inherit;
 }
 
+/* sides are named by where a line starts, so a quote or a list in arabic or hebrew has them on the right */
 .prose blockquote {
   margin-left: 0;
   margin-right: 0;
-  padding-left: 1em;
-  border-left: 3px solid var(--border-strong);
+  padding-inline-start: 1em;
+  border-inline-start: 3px solid var(--border-strong);
   color: var(--text-muted);
   font-style: italic;
 }
@@ -181,7 +182,7 @@
 
 .prose ul,
 .prose ol {
-  padding-left: 1.45em;
+  padding-inline-start: 1.45em;
   margin: 0;
 }
 
@@ -215,7 +216,7 @@
 
 .prose ul[data-type='taskList'] {
   list-style: none;
-  padding-left: 0.1em;
+  padding-inline-start: 0.1em;
 }
 
 .prose ul[data-type='taskList'] li {
@@ -284,7 +285,7 @@
   border: 1px solid var(--border-strong);
   padding: 6px 10px;
   vertical-align: top;
-  text-align: left;
+  text-align: start;
   position: relative;
   min-width: 80px;
 }
