@@ -20,6 +20,8 @@ export interface PageLinkOptions {
   open: (id: PageId, anchor: string | null) => void;
   findPages: (query: string) => Array<{ id: PageId; title: string; path: string }>;
   createPage: (title: string) => PageId | null;
+  // whether that page goes under this one, so the menu can say a subpage. it does unless this says not
+  createsSubpage?: () => boolean;
   // finds the page a written [[target]] means, for links made before the page existed
   resolveTarget: (target: string) => PageId | null;
   // makes the page a link points at, used when following a link to a page that does not exist yet
@@ -370,7 +372,10 @@ export const PageLink = Node.create<PageLinkOptions>({
           if (title && !pages.some((page) => page.label?.toLowerCase() === title.toLowerCase())) {
             pages.push({
               id: `${CREATE_PREFIX}${title}`,
-              title: t('editor.newSubpage', { title }),
+              title:
+                options.createsSubpage?.() === false
+                  ? t('editor.newPageNamed', { title })
+                  : t('editor.newSubpage', { title }),
               label: title,
               ...extra,
               icon: FilePlus2,

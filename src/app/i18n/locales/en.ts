@@ -982,6 +982,7 @@ export const en = {
     linkToPage: 'Link to page',
     noPagesFound: 'No pages found',
     newSubpage: 'New subpage “{title}”',
+    newPageNamed: 'New page “{title}”',
     mentionDateOrPage: 'Mention a date or page',
     nothingMatches: 'Nothing matches',
     addRow: '+ Row',

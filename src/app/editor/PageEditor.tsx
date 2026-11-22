@@ -571,6 +571,7 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
               title,
               open: false,
             }),
+          createsSubpage: () => !getState().pages[pageId]?.dailyDate,
           resolveTarget: (target) => resolveLinkTarget(getState(), target),
           // obsidian makes a missing linked page at the top of the vault, so does morrow
           createFromTarget: (target) => createPage({ title: target.split('/').pop() || target, open: false }),

@@ -357,6 +357,7 @@ export function createExtensions(options: ExtensionOptions): AnyExtension[] {
       open: options.open,
       findPages: options.findPages,
       createPage: options.createPage,
+      ...(options.createsSubpage ? { createsSubpage: options.createsSubpage } : {}),
       resolveTarget: options.resolveTarget,
       createFromTarget: options.createFromTarget,
       renderEmbed: options.renderEmbed,

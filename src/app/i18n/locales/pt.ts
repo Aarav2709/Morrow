@@ -992,6 +992,7 @@ export const pt: TranslationSchema = {
     linkToPage: 'Link para página',
     noPagesFound: 'Nenhuma página encontrada',
     newSubpage: 'Nova subpágina “{title}”',
+    newPageNamed: 'Nova página “{title}”',
     mentionDateOrPage: 'Mencione uma data ou página',
     nothingMatches: 'Nenhum resultado',
     addRow: '+ Linha',
