@@ -310,6 +310,10 @@ export const en = {
       moveOnPhone: 'Move to a folder on the phone',
       moveOnPhoneHelp:
         'A copy goes into the folder you pick, such as Documents, where a file manager can reach it, and opens there. The old one stays until you delete it.',
+      name: 'Name',
+      nameHelp:
+        "Shown in the sidebar and among your vaults. It is kept in the vault, so it goes where the folder goes. Leave it empty for the folder's name.",
+      nameAria: 'Vault name',
       currentFolder: 'Vault folder',
       showFolder: 'Show',
       chooseAnother: 'Open another',

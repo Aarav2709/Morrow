@@ -55,6 +55,7 @@ import type {
 } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
+import { useVaultName, VAULT_RENAMED, vaultName } from '../platform/vault';
 import type { SettingsSection } from '../ui';
 import { chooseVaultFolder, switchVault } from '../vaults';
 import {
@@ -859,6 +860,38 @@ function KnownVaults() {
   );
 }
 
+// a vault's own name, for a folder whose name says little, such as "vault" inside a project
+function VaultNameRow({ root }: { root: string }) {
+  const { t } = useTranslation();
+  const shown = useVaultName(root);
+  const [draft, setDraft] = useState<string | null>(null);
+  const save = () => {
+    if (draft !== null && draft.trim() !== shown)
+      void desktop?.vault
+        ?.rename?.(draft)
+        .then(() => window.dispatchEvent(new Event(VAULT_RENAMED)))
+        .catch((error: unknown) => toast(String(error), { tone: 'error' }));
+    setDraft(null);
+  };
+  return (
+    <SettingRow label={t('settings.vault.name')} help={t('settings.vault.nameHelp')}>
+      <input
+        className="text-input small settings-input"
+        aria-label={t('settings.vault.nameAria')}
+        placeholder={vaultName(root)}
+        maxLength={80}
+        value={draft ?? shown}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+          if (event.key === 'Escape') setDraft(null);
+        }}
+      />
+    </SettingRow>
+  );
+}
+
 function VaultSettings() {
   const { t, tp } = useTranslation();
   const prefs = usePreferences();
@@ -885,6 +918,7 @@ function VaultSettings() {
   return (
     <>
       <SettingsGroup help={t('settings.vault.groupHelp')}>
+        {desktop?.vault?.rename && vault && <VaultNameRow root={vault} />}
         <SettingRow
           label={t('settings.vault.currentFolder')}
           help={<span className="settings-path">{vault}</span>}

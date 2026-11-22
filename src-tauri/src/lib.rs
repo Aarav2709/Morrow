@@ -1048,6 +1048,11 @@ async fn vault_identity() -> Res<Value> {
 }
 
 #[tauri::command]
+async fn vault_rename(name: String) -> Res<Value> {
+    blocking(move || vault::rename(&name)).await?
+}
+
+#[tauri::command]
 async fn vault_read_synced(path: String) -> Res<Option<String>> {
     blocking(move || vault::synced_file_base64(&path)).await
 }
@@ -1759,6 +1764,7 @@ pub fn run() {
             vault_copy_image,
             vault_manifest,
             vault_identity,
+            vault_rename,
             vault_read_synced,
             vault_write_synced,
             vault_prepare_copy,

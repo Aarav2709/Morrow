@@ -295,6 +295,7 @@ export function tauriBridge(): DesktopBridge | null {
       copyImage: (path) => invoke('vault_copy_image', { path }),
       manifest: () => invoke('vault_manifest'),
       identity: () => invoke('vault_identity'),
+      rename: (name: string) => invoke('vault_rename', { name }),
       readSynced: (path) => invoke('vault_read_synced', { path }),
       writeSynced: (path, data, expect) => invoke('vault_write_synced', { path, data, expect }),
       prepareCopy: (dir, vaultId) => invoke('vault_prepare_copy', { dir, vaultId }),

@@ -35,6 +35,8 @@ export interface DesktopVaultApi {
   onChanges(listener: (changes: unknown) => void): () => void;
   manifest(): Promise<Record<string, string>>;
   identity(): Promise<{ id: string; name: string }>;
+  // the name the open vault shows, kept in the vault. an empty one goes back to the folder's name
+  rename?(name: string): Promise<{ name: string }>;
   readSynced(path: string): Promise<string | null>;
   writeSynced(
     path: string,

@@ -13,6 +13,8 @@ use std::time::Duration;
 const MAX_FILES: usize = 200_000;
 const MAX_DEPTH: usize = 64;
 const MAX_TEXT_BYTES: u64 = 32 * 1024 * 1024;
+// a vault's name, long enough for any real one
+const MAX_NAME: usize = 80;
 pub const MAX_FILE_BYTES: u64 = 1024 * 1024 * 1024;
 const TEMP_MARK: &str = ".morrow-tmp-";
 
@@ -96,13 +98,27 @@ fn base_name(path: &Path) -> String {
         .unwrap_or_default()
 }
 
+// the name a vault was given, kept in the vault so it travels with it, or else its folder's name. a folder
+// called "vault" in every project would otherwise show the same name for each
+fn display_name(root: &Path) -> String {
+    paths::read_json(&root.join(".morrow").join("vault.json"))
+        .and_then(|raw| {
+            raw["name"]
+                .as_str()
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(String::from)
+        })
+        .unwrap_or_else(|| base_name(root))
+}
+
 pub fn state() -> Value {
     let list = read_list();
     let recent: Vec<Value> = list
         .recent
         .iter()
         .map(|(path, _)| {
-            json!({ "path": path, "name": base_name(Path::new(path)), "exists": is_dir(Path::new(path)) })
+            json!({ "path": path, "name": display_name(Path::new(path)), "exists": is_dir(Path::new(path)) })
         })
         .collect();
     let current = list.current.filter(|path| is_dir(Path::new(path)));
@@ -776,7 +792,7 @@ fn valid_id(id: &str) -> bool {
 pub fn identity() -> Result<Value> {
     let (root, _) = roots()?;
     let file = root.join(".morrow").join("vault.json");
-    let name = base_name(&root);
+    let name = display_name(&root);
     if let Some(id) = paths::read_json(&file).and_then(|raw| raw["id"].as_str().map(String::from)) {
         if valid_id(&id) {
             return Ok(json!({ "id": id, "name": name }));
@@ -789,6 +805,28 @@ pub fn identity() -> Result<Value> {
     );
     write_atomic(&file, body.as_bytes())?;
     Ok(json!({ "id": id, "name": name }))
+}
+
+// names the open vault, an empty name or the folder's own name goes back to the folder's name
+pub fn rename(name: &str) -> Result<Value> {
+    let (root, _) = roots()?;
+    // the id is made first, so the file the name is kept in always has one
+    identity()?;
+    let file = root.join(".morrow").join("vault.json");
+    let mut raw = paths::read_json(&file)
+        .filter(Value::is_object)
+        .ok_or("The vault's settings could not be read.")?;
+    let name: String = name.trim().chars().take(MAX_NAME).collect();
+    if name.is_empty() || name == base_name(&root) {
+        if let Some(fields) = raw.as_object_mut() {
+            fields.remove("name");
+        }
+    } else {
+        raw["name"] = json!(name);
+    }
+    let body = format!("{}\n", serde_json::to_string_pretty(&raw).map_err(err)?);
+    write_atomic(&file, body.as_bytes())?;
+    Ok(json!({ "name": display_name(&root) }))
 }
 
 // prepares an empty folder to become a copy of a vault on another computer

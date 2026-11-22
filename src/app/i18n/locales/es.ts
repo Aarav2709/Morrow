@@ -315,6 +315,10 @@ export const es: TranslationSchema = {
       moveOnPhone: 'Mover a una carpeta del teléfono',
       moveOnPhoneHelp:
         'Una copia va a la carpeta que elijas, como Documentos, donde un gestor de archivos la alcanza, y se abre allí. La anterior se queda hasta que la borres.',
+      name: 'Nombre',
+      nameHelp:
+        'Se muestra en la barra lateral y entre tus bóvedas. Se guarda en la bóveda, así que va adonde vaya la carpeta. Déjalo vacío para usar el nombre de la carpeta.',
+      nameAria: 'Nombre de la bóveda',
       currentFolder: 'Carpeta de la bóveda',
       showFolder: 'Mostrar',
       chooseAnother: 'Abrir otra',

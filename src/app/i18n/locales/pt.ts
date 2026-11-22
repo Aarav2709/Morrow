@@ -315,6 +315,10 @@ export const pt: TranslationSchema = {
       moveOnPhone: 'Mover para uma pasta do telefone',
       moveOnPhoneHelp:
         'Uma cópia vai para a pasta que você escolher, como Documentos, onde um gerenciador de arquivos alcança, e abre lá. A antiga fica até você apagar.',
+      name: 'Nome',
+      nameHelp:
+        'Aparece na barra lateral e entre os seus cofres. Fica guardado no cofre, então vai para onde a pasta for. Deixe vazio para usar o nome da pasta.',
+      nameAria: 'Nome do cofre',
       currentFolder: 'Pasta do cofre',
       showFolder: 'Mostrar',
       chooseAnother: 'Abrir outro',

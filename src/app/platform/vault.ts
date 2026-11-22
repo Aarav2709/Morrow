@@ -2,7 +2,8 @@ import type { VaultScan } from '../../core/vault/load';
 import { encodePathForUrl } from '../../core/vault/paths';
 import type { VaultOp, VaultOpResult } from '../../core/vault/plan';
 import type { VaultBridge, VaultChange } from '../../storage/vaultBridge';
-import { nativeFileUrl } from './desktop';
+import { useEffect, useState } from 'react';
+import { desktop, nativeFileUrl } from './desktop';
 import type { DesktopVaultApi } from './desktop';
 
 // the vault as the desktop shell exposes it, every call goes through the shell's path checks
@@ -26,4 +27,28 @@ export function desktopVaultBridge(api: DesktopVaultApi, root: string): VaultBri
 
 export function vaultName(root: string): string {
   return root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+}
+
+// sent when the open vault is given a new name, so the sidebar shows it straight away
+export const VAULT_RENAMED = 'morrow:vault-renamed';
+
+// the name a vault shows: the one it was given, kept in the vault, or else its folder's name
+export function useVaultName(root: string | null): string {
+  const [named, setNamed] = useState<string | null>(null);
+  useEffect(() => {
+    if (!root) return;
+    let live = true;
+    const load = () =>
+      void desktop?.vault
+        ?.state()
+        .then((vaults) => live && setNamed(vaults.recent.find((item) => item.path === root)?.name ?? null))
+        .catch(() => undefined);
+    load();
+    window.addEventListener(VAULT_RENAMED, load);
+    return () => {
+      live = false;
+      window.removeEventListener(VAULT_RENAMED, load);
+    };
+  }, [root]);
+  return named ?? (root ? vaultName(root) : '');
 }

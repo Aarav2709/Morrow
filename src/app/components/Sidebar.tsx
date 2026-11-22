@@ -56,7 +56,7 @@ import { useReviewLog } from '../review';
 import { formatShortcut, runAction } from '../actions';
 import { t, useTranslation } from '../i18n';
 import { canOpenFolders, desktop } from '../platform/desktop';
-import { vaultName } from '../platform/vault';
+import { useVaultName } from '../platform/vault';
 import { chooseVaultFolder, createVault, switchVault } from '../vaults';
 import { getSession } from '../workspace';
 import { createPage, expandPage, importMarkdown, movePage, toggleFavorite, trashPage } from '../operations';
@@ -185,6 +185,7 @@ export function Sidebar() {
     recent: Array<{ path: string; name: string; exists: boolean }>;
   } | null>(null);
   const location = getSession().location;
+  const shownVaultName = useVaultName(location);
   // the journal is lit for its own view and for any daily note open
   const inJournal =
     route.name === 'journal' ||
@@ -472,7 +473,7 @@ export function Sidebar() {
           <button
             type="button"
             className="brand"
-            aria-label={t('sidebar.switchVaultAria', { name: vaultName(location) })}
+            aria-label={t('sidebar.switchVaultAria', { name: shownVaultName })}
             title={location}
             onClick={(event) => {
               const anchor = event.currentTarget;
@@ -480,7 +481,7 @@ export function Sidebar() {
             }}
           >
             <Logo size={20} />
-            <span className="brand-name">{vaultName(location)}</span>
+            <span className="brand-name">{shownVaultName}</span>
             <ChevronDown size={13} className="brand-chevron" />
           </button>
         ) : (
