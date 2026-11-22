@@ -563,7 +563,14 @@ export function PageEditor({ pageId, doc, editable, find, anchor, onExitTop, onD
                   .map((ancestor) => displayTitle(ancestor))
                   .join(' / '),
               })),
-          createPage: (title) => createPage({ parentId: pageId, title, open: false }),
+          // a daily note's subpages are out of the tree with the journal, so a page made from a link in
+          // one goes to the top of the vault, where the tree shows it
+          createPage: (title) =>
+            createPage({
+              parentId: getState().pages[pageId]?.dailyDate ? null : pageId,
+              title,
+              open: false,
+            }),
           resolveTarget: (target) => resolveLinkTarget(getState(), target),
           // obsidian makes a missing linked page at the top of the vault, so does morrow
           createFromTarget: (target) => createPage({ title: target.split('/').pop() || target, open: false }),

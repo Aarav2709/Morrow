@@ -3048,6 +3048,10 @@ td:hover .prop-empty,
 .journal-folder {
   margin-top: 18px;
 }
+/* pages made inside a daily note, under its row, since the tree leaves them out */
+.journal-subpages {
+  margin: 0 0 4px 30px;
+}
 
 /* tasks on a calendar: a month or a week beside the day picked, with events from calendars brought in */
 .collection.is-wide {

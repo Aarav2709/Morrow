@@ -4,10 +4,10 @@ import { dateKey, findJournal, journalGroups, parseDateKey } from '../../core/da
 import type { JournalGroup } from '../../core/daily';
 import { inlineText } from '../../core/doc';
 import { displayTitle } from '../../core/model';
-import type { DocNode, PageMeta } from '../../core/model';
+import type { DocNode, PageMeta, WorkspaceState } from '../../core/model';
 import { foldText } from '../../core/search';
 import { tagClass, tagsOf } from '../../core/tags';
-import { livePages } from '../../core/tree';
+import { childrenOf, livePages } from '../../core/tree';
 import { dateLocale, t } from '../i18n';
 import { openToday } from '../operations';
 import { openPage } from '../router';
@@ -21,6 +21,11 @@ import { PageIcon } from './Sidebar';
 import { TopBar } from './TopBar';
 
 // what a daily note starts with, a line of it under its date
+// the pages made inside a daily note, which the tree leaves out with the journal, so they are found here
+function subpagesOf(pages: WorkspaceState['pages'], id: string): PageMeta[] {
+  return childrenOf(pages, id).filter((page) => page.archivedAt === null);
+}
+
 function opening(doc: DocNode | undefined): string {
   for (const block of doc?.content ?? []) {
     const text = inlineText(block).trim();
@@ -45,12 +50,15 @@ export function JournalView() {
     if (!words.length) return notes;
     return notes.filter((page) => {
       const tags = tagsOf(page, state.docs[page.id]).map((tag) => foldText(tag));
-      const text = foldText(`${displayTitle(page)} ${page.dailyDate} ${opening(state.docs[page.id])}`);
+      const inside = subpagesOf(state.pages, page.id).map((child) => displayTitle(child));
+      const text = foldText(
+        `${displayTitle(page)} ${page.dailyDate} ${opening(state.docs[page.id])} ${inside.join(' ')}`,
+      );
       return words.every((word) =>
         word.startsWith('#') ? tags.some((tag) => tag.startsWith(word.slice(1))) : text.includes(word),
       );
     });
-  }, [notes, query, state.docs]);
+  }, [notes, query, state.docs, state.pages]);
   const groups = useMemo(() => journalGroups(matching, new Date(), weekStart), [matching, weekStart]);
   const today = dateKey(new Date());
   const hasToday = notes.some((page) => page.dailyDate === today);
@@ -148,7 +156,13 @@ export function JournalView() {
                   {open && (
                     <ul className="link-list">
                       {entries.slice(0, group === 'older' && !searching ? 200 : undefined).map((page) => (
-                        <JournalRow key={page.id} page={page} doc={state.docs[page.id]} today={today} />
+                        <JournalRow
+                          key={page.id}
+                          page={page}
+                          doc={state.docs[page.id]}
+                          subpages={subpagesOf(state.pages, page.id)}
+                          today={today}
+                        />
                       ))}
                     </ul>
                   )}
@@ -171,7 +185,17 @@ export function JournalView() {
   );
 }
 
-function JournalRow({ page, doc, today }: { page: PageMeta; doc: DocNode | undefined; today: string }) {
+function JournalRow({
+  page,
+  doc,
+  subpages,
+  today,
+}: {
+  page: PageMeta;
+  doc: DocNode | undefined;
+  subpages: PageMeta[];
+  today: string;
+}) {
   const date = parseDateKey(page.dailyDate!);
   const line = opening(doc);
   const tags = tagsOf(page, doc);
@@ -208,6 +232,25 @@ function JournalRow({ page, doc, today }: { page: PageMeta; doc: DocNode | undef
         </span>
         <span className="link-row-meta">{relativeTime(page.updatedAt)}</span>
       </button>
+      {subpages.length > 0 && (
+        <ul className="link-list journal-subpages">
+          {subpages.map((child) => (
+            <li key={child.id}>
+              <button
+                type="button"
+                className="link-row"
+                data-page-id={child.id}
+                onClick={() => openPage(child.id)}
+              >
+                <span className="tree-icon">
+                  <PageIcon page={child} />
+                </span>
+                <span className="link-row-title">{displayTitle(child)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </li>
   );
 }
