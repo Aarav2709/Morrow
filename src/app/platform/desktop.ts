@@ -404,9 +404,10 @@ export const desktop: DesktopBridge | null =
 if (desktop && typeof window !== 'undefined') window.morrow = desktop;
 
 // a file in the open vault, or a picture or video elsewhere on the computer, as an address the page can load.
-// windows' webview has no addresses of its own kind, there they look like a website on this computer
+// the webviews of windows and android have no addresses of their own kind, there they look like a website on
+// this computer
 export function nativeFileUrl(kind: 'vault' | 'local', encodedPath: string): string {
-  return desktop?.platform === 'win32'
+  return desktop?.platform === 'win32' || desktop?.platform === 'android'
     ? `http://morrow-file.localhost/${kind}/${encodedPath}`
     : `morrow-file://localhost/${kind}/${encodedPath}`;
 }

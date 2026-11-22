@@ -233,6 +233,23 @@ describe('edits made outside morrow', () => {
     await session.close();
   });
 
+  it('finds a picture that arrives after the note showing it', async () => {
+    const vault = new MemoryVault({ 'Notes/Trip.md': 'Start\n' });
+    const session = await open(vault);
+    const trip = idOf(session, 'Trip');
+    const picture = () => session.getState().docs[trip]!.content!.find((node) => node.type === 'image');
+    // sync writes the note first and its pictures after, one file at a time
+    vault.external({ 'Notes/Trip.md': 'Look ![](../attachments/image%2075.png)\n' });
+    expect(picture()?.attrs?.fileId).toBeFalsy();
+    const updatedAt = session.getState().pages[trip]!.updatedAt;
+    vault.external({ 'attachments/image 75.png': 'PNG' });
+    expect(picture()?.attrs?.fileId).toBe('attachments/image 75.png');
+    // read again, not changed
+    expect(session.getState().pages[trip]!.updatedAt).toBe(updatedAt);
+    expect(vault.text('Notes/Trip.md')).toBe('Look ![](../attachments/image%2075.png)\n');
+    await session.close();
+  });
+
   it('picks up changed, new and deleted files', async () => {
     const vault = new MemoryVault(OBSIDIAN);
     const session = await open(vault);

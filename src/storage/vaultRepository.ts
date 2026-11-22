@@ -779,15 +779,28 @@ export class VaultRepository implements WorkspaceRepository {
       if (isHiddenPath(change.path)) continue;
       latest.set(change.path, change);
     }
+    const arrived: string[] = [];
     for (const change of latest.values()) {
       if (!change.other) continue;
       if (change.text === null) this.others.delete(change.path);
-      else this.others.add(change.path);
+      else {
+        if (!this.others.has(change.path)) arrived.push(change.path);
+        this.others.add(change.path);
+      }
     }
     // a path that disappeared may have been a folder of pages
     const pageChanges = [...latest.values()].filter(
       (change) => (change.dir && change.text === null) || (!change.other && isPageFile(change.path)),
     );
+    // sync brings files one at a time, so a picture can arrive after the note showing it. a note naming a
+    // file that just arrived is read again from the text it already has, to find it
+    const again = new Set<string>();
+    for (const [id, text] of this.notesNaming(arrived)) {
+      const file = this.layout.get(id)?.file;
+      if (!file || latest.has(file)) continue;
+      again.add(file);
+      pageChanges.push({ path: file, text, mtime: 0, birthtime: 0 });
+    }
     if (pageChanges.length === 0) return null;
 
     const byFile = new Map<string, PageId>();
@@ -878,7 +891,9 @@ export class VaultRepository implements WorkspaceRepository {
       const ours = this.wroteAt.get(change.path.toLowerCase());
       if (ours !== undefined && change.mtime > 0 && change.mtime < ours) continue;
       const known = byFile.get(change.path.toLowerCase()) ?? moves.get(change.path);
-      if (known !== undefined && text === this.texts.get(known) && !moves.has(change.path)) continue;
+      const reread = again.has(change.path);
+      if (known !== undefined && text === this.texts.get(known) && !moves.has(change.path) && !reread)
+        continue;
       const folder = stripExtension(change.path);
       const parentFolder = dirname(folder);
       let id = known;
@@ -897,7 +912,9 @@ export class VaultRepository implements WorkspaceRepository {
           createdAt: change.birthtime || Date.now(),
           order: Number.MAX_SAFE_INTEGER,
         });
-      const page: PageMeta = { ...base, parentId, updatedAt: change.mtime || Date.now() };
+      // a note read again is unchanged, so it keeps the time it was last changed
+      const updatedAt = reread ? base.updatedAt : change.mtime || Date.now();
+      const page: PageMeta = { ...base, parentId, updatedAt };
       if (parentFolder === TRASH_DIR) page.trashedAt = page.trashedAt ?? Date.now();
       else if (dirname(this.layout.get(id)?.folder ?? '') === TRASH_DIR) page.trashedAt = null;
       layout.set(id, { file: change.path, folder });
@@ -950,6 +967,28 @@ export class VaultRepository implements WorkspaceRepository {
         if (patch.pages.some((page) => !this.registryHas(page.id))) this.registryDirty = true;
       },
     };
+  }
+
+  // the notes whose text names one of these files, the way a picture or a link to it would
+  private notesNaming(paths: string[]): Map<PageId, string> {
+    const found = new Map<PageId, string>();
+    if (paths.length === 0) return found;
+    const names = new Set<string>();
+    for (const path of paths) {
+      const name = basename(path).toLowerCase();
+      names.add(name);
+      names.add(encodeURIComponent(name).toLowerCase());
+    }
+    for (const [id, text] of this.texts) {
+      if (!isPageFile(this.layout.get(id)?.file ?? '') || isEncryptedText(text)) continue;
+      const lower = text.toLowerCase();
+      for (const name of names)
+        if (lower.includes(name)) {
+          found.set(id, text);
+          break;
+        }
+    }
+    return found;
   }
 
   private registryHas(id: PageId): boolean {

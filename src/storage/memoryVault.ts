@@ -182,7 +182,16 @@ export class MemoryVault implements VaultBridge {
     for (const [path, text] of Object.entries(changes)) {
       if (text === null) this.files.delete(path);
       else this.put(path, text);
-      reported.push({ path, text, mtime: this.clock, birthtime: this.clock });
+      // files other than pages are only named, as the watcher does
+      if (isPageFile(path)) reported.push({ path, text, mtime: this.clock, birthtime: this.clock });
+      else
+        reported.push({
+          path,
+          text: text === null ? null : '',
+          mtime: this.clock,
+          birthtime: 0,
+          other: true,
+        });
     }
     for (const listener of this.listeners) listener(reported);
   }
