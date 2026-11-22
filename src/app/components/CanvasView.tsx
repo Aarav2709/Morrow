@@ -389,6 +389,8 @@ export function CanvasView({
     const pages = getState().pages;
     const drawn = drawCanvas(data, {
       pageTitle: (id) => (pages[id] ? displayTitle(pages[id]!) : id),
+      // as much as the card could show, the card's size decides how much is drawn
+      pageText: (id) => docToPlainText(getState().docs[id] ?? { type: 'doc' }).slice(0, PAGE_CARD_CHARS),
       picture: (path) => pictures.get(path) ?? null,
       dark: document.documentElement.dataset.theme === 'dark',
     });

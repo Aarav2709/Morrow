@@ -15,8 +15,9 @@ const MARGIN = 40;
 const MAX_SIDE = 8000;
 
 export interface CanvasImageOptions {
-  // the title of a page a card shows
+  // the title of a page a card shows, and its text under the title
   pageTitle: (id: string) => string;
+  pageText: (id: string) => string;
   // a picture a file card shows, already loaded, or null for its name only
   picture: (path: string) => HTMLImageElement | ImageBitmap | null;
   dark: boolean;
@@ -93,26 +94,45 @@ function roundedRect(
 }
 
 // words wrapped to a width, as many lines as fit the height
-function wrapText(
+// a run of words in one style, such as a heading or a line of a card
+interface Block {
+  text: string;
+  font: string;
+  color: string;
+  lineHeight: number;
+}
+
+// a line whose first letter is arabic or hebrew reads from the right, as it does on the canvas
+function startsRightToLeft(text: string): boolean {
+  const first = /\p{L}/u.exec(text)?.[0];
+  return first !== undefined && /[֐-ࣿיִ-﷿ﹰ-ﻼ]/.test(first);
+}
+
+// blocks one under the other, each wrapped to the width, as many lines as fit the height
+function drawBlocks(
   context: CanvasRenderingContext2D,
-  text: string,
+  blocks: Block[],
   x: number,
   y: number,
   width: number,
   height: number,
-  lineHeight: number,
 ): void {
-  let line = 0;
-  const maxLines = Math.max(1, Math.floor(height / lineHeight));
-  for (const paragraph of text.split('\n')) {
-    const words = paragraph.split(/\s+/);
+  let top = y;
+  const bottom = y + height;
+  for (const block of blocks) {
+    context.font = block.font;
+    context.fillStyle = block.color;
+    const rtl = startsRightToLeft(block.text);
+    context.direction = rtl ? 'rtl' : 'ltr';
+    context.textAlign = rtl ? 'right' : 'left';
+    const left = rtl ? x + width : x;
     let current = '';
     const flush = () => {
-      if (line < maxLines) context.fillText(current, x, y + line * lineHeight);
-      line++;
+      if (top + block.lineHeight <= bottom + 2) context.fillText(current, left, top);
+      top += block.lineHeight;
       current = '';
     };
-    for (const word of words) {
+    for (const word of block.text.split(/\s+/)) {
       const next = current ? `${current} ${word}` : word;
       if (context.measureText(next).width > width && current) {
         flush();
@@ -120,14 +140,30 @@ function wrapText(
       } else current = next;
     }
     flush();
-    if (line >= maxLines) return;
+    if (top >= bottom) break;
   }
+  context.direction = 'ltr';
+  context.textAlign = 'left';
+}
+
+// a text card's markdown as blocks: headings larger and bolder, list items with a bullet, the rest plain
+function textBlocks(text: string, font: string, color: string): Block[] {
+  return text.split('\n').map((line) => {
+    const heading = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (heading) {
+      const level = heading[1]!.length;
+      const size = level === 1 ? 24 : level === 2 ? 20 : 17;
+      return { text: plainText(heading[2]!), font: `700 ${size}px ${font}`, color, lineHeight: size + 8 };
+    }
+    const bullet = /^\s*[-*+]\s+(.*)$/.exec(line);
+    const words = bullet ? `•  ${plainText(bullet[1]!)}` : plainText(line);
+    return { text: words || ' ', font: `15px ${font}`, color, lineHeight: 21 };
+  });
 }
 
 // markdown marks a text card's words may carry, left off so the picture reads cleanly
 function plainText(text: string): string {
   return text
-    .replace(/^#{1,6}\s+/gm, '')
     .replace(/\*\*|__|~~|==|`/g, '')
     .replace(
       /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]/g,
@@ -155,13 +191,16 @@ export function drawCanvas(data: CanvasData, options: CanvasImageOptions): HTMLC
 
   // groups first, behind everything else
   for (const node of data.nodes.filter((item) => item.type === 'group')) {
+    // a group of its own colour has a solid edge in it, a plain one a light dashed edge as on the canvas
     const color = colourOf(node.color, muted);
     roundedRect(context, node.x, node.y, node.width, node.height, 12);
     context.fillStyle = `${color}14`;
     context.fill();
-    context.strokeStyle = color;
-    context.lineWidth = 1.5;
+    context.strokeStyle = node.color ? color : border;
+    context.lineWidth = node.color ? 1.5 : 1.25;
+    if (!node.color) context.setLineDash([6, 5]);
     context.stroke();
+    context.setLineDash([]);
     if (node.type === 'group' && node.label) {
       context.fillStyle = color;
       context.font = `600 15px ${font}`;
@@ -256,42 +295,25 @@ export function drawCanvas(data: CanvasData, options: CanvasImageOptions): HTMLC
     context.clip();
     context.textBaseline = 'top';
     const pad = 14;
+    const area = [node.x + pad, node.y + pad, node.width - pad * 2, node.height - pad * 2] as const;
     if (node.type === 'text') {
-      context.fillStyle = text;
-      context.font = `15px ${font}`;
-      wrapText(
-        context,
-        plainText(node.text),
-        node.x + pad,
-        node.y + pad,
-        node.width - pad * 2,
-        node.height - pad * 2,
-        21,
-      );
+      drawBlocks(context, textBlocks(node.text, font, text), ...area);
     } else if (node.type === 'page') {
-      context.fillStyle = text;
-      context.font = `600 16px ${font}`;
-      wrapText(
+      // its title and as much of its text as fits, as the card shows them
+      drawBlocks(
         context,
-        options.pageTitle(node.pageId),
-        node.x + pad,
-        node.y + pad,
-        node.width - pad * 2,
-        node.height - pad * 2,
-        22,
+        [
+          { text: options.pageTitle(node.pageId), font: `600 17px ${font}`, color: text, lineHeight: 26 },
+          ...options
+            .pageText(node.pageId)
+            .split('\n')
+            .filter((line) => line.trim())
+            .map((line) => ({ text: line, font: `14px ${font}`, color: muted, lineHeight: 20 })),
+        ],
+        ...area,
       );
     } else if (node.type === 'link') {
-      context.fillStyle = muted;
-      context.font = `14px ${font}`;
-      wrapText(
-        context,
-        node.url,
-        node.x + pad,
-        node.y + pad,
-        node.width - pad * 2,
-        node.height - pad * 2,
-        20,
-      );
+      drawBlocks(context, [{ text: node.url, font: `14px ${font}`, color: muted, lineHeight: 20 }], ...area);
     } else if (node.type === 'file') {
       const image = options.picture(node.file);
       if (image) {
@@ -300,17 +322,8 @@ export function drawCanvas(data: CanvasData, options: CanvasImageOptions): HTMLC
         const h = image.height * ratio;
         context.drawImage(image, node.x + (node.width - w) / 2, node.y + (node.height - h) / 2, w, h);
       } else {
-        context.fillStyle = text;
-        context.font = `14px ${font}`;
-        wrapText(
-          context,
-          node.file.split('/').pop() ?? node.file,
-          node.x + pad,
-          node.y + pad,
-          node.width - pad * 2,
-          node.height - pad * 2,
-          20,
-        );
+        const name = node.file.split('/').pop() ?? node.file;
+        drawBlocks(context, [{ text: name, font: `14px ${font}`, color: text, lineHeight: 20 }], ...area);
       }
     }
     context.restore();
