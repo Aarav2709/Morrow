@@ -816,6 +816,7 @@ export const en = {
     changeIcon: 'Change icon',
     changeCover: 'Change cover',
     useAnImage: 'Use an image',
+    picturesInVault: 'Pictures in this vault',
     subpages: 'Subpages',
     onThisPage: 'On this page',
     outlineAria: 'Outline',

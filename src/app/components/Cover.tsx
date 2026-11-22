@@ -1,10 +1,10 @@
 import { ImageIcon, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { COVER_GRADIENTS } from '../../core/model';
-import type { PageMeta } from '../../core/model';
+import type { FileMeta, PageMeta } from '../../core/model';
 import { fileUrl, storeFiles } from '../platform/attachments';
 import { pickFiles } from '../platform/files';
-import { run } from '../workspace';
+import { getSession, run } from '../workspace';
 import { Popover } from './Popover';
 import { t } from '../i18n';
 
@@ -48,6 +48,31 @@ export function CoverBanner({ page, editable }: { page: PageMeta; editable: bool
   );
 }
 
+// the newest pictures, enough to find a recent one without loading every picture in a large vault
+const MAX_PICTURES = 48;
+
+function CoverPicture({ file, active, onPick }: { file: FileMeta; active: boolean; onPick: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    void fileUrl(file.id).then((next) => live && setUrl(next));
+    return () => {
+      live = false;
+    };
+  }, [file.id]);
+  return (
+    <button
+      type="button"
+      className={`cover-choice cover-picture${active ? ' is-active' : ''}`}
+      aria-label={file.name}
+      title={file.name}
+      onClick={onPick}
+    >
+      {url && <img src={url} alt="" loading="lazy" draggable={false} />}
+    </button>
+  );
+}
+
 export function CoverPicker({
   page,
   anchor,
@@ -61,6 +86,26 @@ export function CoverPicker({
     setCover(page, cover);
     onClose();
   };
+  // pictures already in the vault can be a cover too, rather than adding the same one again
+  const [pictures, setPictures] = useState<FileMeta[]>([]);
+  useEffect(() => {
+    let live = true;
+    void getSession()
+      .listFiles()
+      .catch(() => [])
+      .then((files) => {
+        if (!live) return;
+        setPictures(
+          files
+            .filter((file) => file.type.startsWith('image/'))
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, MAX_PICTURES),
+        );
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
   return (
     <Popover anchor={anchor} onClose={onClose} label={t('page.cover')} className="cover-picker">
       <div className="cover-grid">
@@ -74,6 +119,21 @@ export function CoverPicker({
           />
         ))}
       </div>
+      {pictures.length > 0 && (
+        <>
+          <p className="cover-picker-heading muted">{t('page.picturesInVault')}</p>
+          <div className="cover-grid cover-pictures">
+            {pictures.map((file) => (
+              <CoverPicture
+                key={file.id}
+                file={file}
+                active={page.cover === file.id}
+                onPick={() => pick(file.id)}
+              />
+            ))}
+          </div>
+        </>
+      )}
       <div className="popover-actions">
         <button
           type="button"

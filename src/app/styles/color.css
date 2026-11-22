@@ -667,6 +667,26 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* pictures already in the vault, under the gradients, scrolling when there are many */
+.cover-picker-heading {
+  margin: 12px 0 6px;
+  font-size: 12px;
+}
+.cover-pictures {
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 3px;
+}
+.cover-picture {
+  overflow: hidden;
+  background: var(--hover);
+}
+.cover-picture img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 /* home page */
 .tint-gray {

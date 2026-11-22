@@ -825,6 +825,7 @@ export const es: TranslationSchema = {
     changeIcon: 'Cambiar icono',
     changeCover: 'Cambiar portada',
     useAnImage: 'Usar una imagen',
+    picturesInVault: 'Imágenes de esta bóveda',
     subpages: 'Subpáginas',
     onThisPage: 'En esta página',
     outlineAria: 'Esquema',
