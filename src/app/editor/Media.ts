@@ -11,6 +11,7 @@ import { activeRoute } from '../router';
 import { selectedBlocks } from './BlockSelect';
 import { getSession } from '../workspace';
 import { t } from '../i18n';
+import type { PdfViewHandle } from './PdfView';
 
 export const Image = Node.create({
   name: 'image',
@@ -219,7 +220,7 @@ export const FileAttachment = Node.create({
   },
 
   addNodeView() {
-    return ({ node }) => {
+    return ({ node, editor }) => {
       const dom = document.createElement('div');
       dom.className = 'file-block';
       dom.contentEditable = 'false';
@@ -241,19 +242,13 @@ export const FileAttachment = Node.create({
       // sound, video and pdfs play right on the page
       const kind = mediaKind(String(node.attrs.name ?? ''));
       if (!kind) return { dom };
+      if (kind === 'pdf') return pdfView(dom, String(node.attrs.fileId ?? ''), editor.isEditable);
       const shell = document.createElement('div');
       shell.className = `media-block media-${kind}`;
       shell.contentEditable = 'false';
-      const player =
-        kind === 'pdf'
-          ? document.createElement('iframe')
-          : document.createElement(kind === 'audio' ? 'audio' : 'video');
-      if (player instanceof HTMLMediaElement) {
-        player.controls = true;
-        player.preload = 'metadata';
-      } else {
-        player.title = String(node.attrs.name ?? 'PDF');
-      }
+      const player = document.createElement(kind === 'audio' ? 'audio' : 'video');
+      player.controls = true;
+      player.preload = 'metadata';
       dom.classList.add('is-compact');
       shell.append(player, dom);
       void fileUrl(String(node.attrs.fileId ?? '')).then((url) => {
@@ -268,6 +263,53 @@ export const FileAttachment = Node.create({
     };
   },
 });
+
+// a pdf shown by morrow, where its text can be highlighted. the viewer loads with pdf.js the first time a page
+// shows a pdf, and anything it still has to save is saved when the block goes away
+function pdfView(dom: HTMLElement, fileId: string, editable: boolean) {
+  const shell = document.createElement('div');
+  shell.className = 'media-block media-pdf is-loading';
+  shell.contentEditable = 'false';
+  dom.classList.add('is-compact');
+  shell.append(dom);
+  // the editor lets a block be dragged anywhere on it, which in a pdf would carry the block off rather than
+  // select the text to highlight. pressed on the pdf it can't be dragged, from its name row it still can
+  shell.addEventListener('pointerdown', (event) => {
+    if (event.target instanceof globalThis.Node && dom.contains(event.target)) return;
+    const draggable = shell.draggable;
+    shell.draggable = false;
+    const restore = () => {
+      shell.draggable = draggable;
+      window.removeEventListener('pointerup', restore, true);
+      window.removeEventListener('pointercancel', restore, true);
+    };
+    window.addEventListener('pointerup', restore, true);
+    window.addEventListener('pointercancel', restore, true);
+  });
+  let handle: PdfViewHandle | null = null;
+  let gone = false;
+  void import('./PdfView')
+    .then(({ mountPdf }) => mountPdf(shell, fileId, editable))
+    .then((mounted) => {
+      shell.classList.remove('is-loading');
+      if (gone) void mounted.destroy();
+      else handle = mounted;
+    })
+    .catch(() => {
+      shell.classList.remove('is-loading');
+      shell.classList.add('is-missing');
+    });
+  return {
+    dom: shell,
+    // the viewer takes its own clicks, keys and selections, the name and save button stay the editor's
+    stopEvent: (event: Event) => event.target instanceof globalThis.Node && !dom.contains(event.target),
+    ignoreMutation: () => true,
+    destroy: () => {
+      gone = true;
+      void handle?.destroy();
+    },
+  };
+}
 
 // a youtube video written as a picture, ![](https://www.youtube.com/watch?v=…), the way obsidian embeds one
 const YOUTUBE =

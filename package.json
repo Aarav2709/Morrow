@@ -80,6 +80,7 @@
     "lucide-react": "^1.56.0",
     "markdown-it": "^15.0.2",
     "mermaid": "^12.2.0",
+    "pdfjs-dist": "^6.5.438",
     "prettier": "^3.9.10",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

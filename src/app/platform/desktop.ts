@@ -26,6 +26,8 @@ export interface DesktopVaultApi {
   readText(path: string): Promise<string | null>;
   readBytes(path: string): Promise<Uint8Array | null>;
   createFile(path: string, data: ArrayBuffer): Promise<void>;
+  // writes over a file that is already there, such as a pdf highlighted in morrow
+  replaceFile?(path: string, data: ArrayBuffer): Promise<void>;
   exists(path: string): Promise<boolean>;
   list(path: string): Promise<Array<{ path: string; size: number; mtime: number }>>;
   reveal(path?: string): Promise<void>;

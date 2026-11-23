@@ -47,6 +47,8 @@ export interface WorkspaceRepository {
   putFiles(files: StoredFile[], place?: FilePlace): Promise<FileMeta[]>;
   // where a file is now, for one whose folder was renamed along with a page since it was read
   currentFileId?(id: FileId): FileId;
+  // writes new contents over a stored file, such as a pdf with highlights added. absent where storage can't
+  replaceFile?(id: FileId, data: ArrayBuffer): Promise<void>;
   // a url the page can load the file from directly, null when it has to be read into memory
   fileUrl?(id: FileId): string | null;
   // called with changes made outside morrow, returns the pages it accepted

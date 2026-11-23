@@ -152,6 +152,11 @@ export class MemoryVault implements VaultBridge {
     this.put(path, data);
   }
 
+  async replaceFile(path: string, data: ArrayBuffer): Promise<void> {
+    if (!this.files.has(path)) throw new Error(`${path} is gone`);
+    this.put(path, data);
+  }
+
   async exists(path: string): Promise<boolean> {
     return this.files.has(path) || this.dirs.has(path);
   }

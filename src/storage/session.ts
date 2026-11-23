@@ -134,6 +134,21 @@ export class WorkspaceSession {
     return this.repository.fileUrl?.(id) ?? null;
   }
 
+  // whether stored files can be changed in place, as a pdf is when highlighted
+  get canReplaceFiles(): boolean {
+    return typeof this.repository.replaceFile === 'function';
+  }
+
+  async replaceFile(id: FileId, data: ArrayBuffer): Promise<Result<void>> {
+    if (!this.repository.replaceFile) return fail('Files kept here cannot be changed.');
+    try {
+      await this.repository.replaceFile(id, data);
+      return ok(undefined);
+    } catch (error) {
+      return fail(`The file could not be saved: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   // a file's id as it is now, the folders of pages can be renamed with the files inside them
   currentFileId(id: FileId): FileId {
     return this.repository.currentFileId?.(id) ?? id;

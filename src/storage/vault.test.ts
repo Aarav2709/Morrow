@@ -553,3 +553,25 @@ describe('where new pictures and files go', () => {
     await session.close();
   });
 });
+
+describe('changing a file in place', () => {
+  const bytes = (text: string) => new TextEncoder().encode(text).buffer as ArrayBuffer;
+  const text = (data: ArrayBuffer | null | undefined) => (data ? new TextDecoder().decode(data) : null);
+
+  it('writes over a pdf that was highlighted, and never makes one that has gone again', async () => {
+    const vault = new MemoryVault({ 'Paper.md': 'p\n', 'attachments/paper.pdf': 'PDF one' });
+    const session = await open(vault);
+    expect(session.canReplaceFiles).toBe(true);
+    const [file] = await session.listFiles();
+    if (!file) throw new Error('no file');
+    expect((await session.replaceFile(file.id, bytes('PDF two'))).ok).toBe(true);
+    expect(text(await vault.readBytes('attachments/paper.pdf'))).toBe('PDF two');
+    expect(text((await session.getFile(file.id))?.data)).toBe('PDF two');
+
+    // deleted outside morrow while the page was open
+    vault.external({ 'attachments/paper.pdf': null });
+    expect((await session.replaceFile(file.id, bytes('PDF three'))).ok).toBe(false);
+    expect(await vault.exists('attachments/paper.pdf')).toBe(false);
+    await session.close();
+  });
+});

@@ -785,6 +785,11 @@ export class VaultRepository implements WorkspaceRepository {
     return this.bridge.fileUrl(this.currentFileId(id));
   }
 
+  async replaceFile(id: FileId, data: ArrayBuffer): Promise<void> {
+    if (!this.bridge.replaceFile) throw new Error('This vault cannot change files in place.');
+    await this.bridge.replaceFile(this.currentFileId(id), data);
+  }
+
   // the files in every attachments folder: the vault's own, and those beside notes
   async listFiles(): Promise<FileMeta[]> {
     const folders = new Set([ATTACHMENTS_DIR]);

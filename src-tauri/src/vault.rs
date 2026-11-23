@@ -625,6 +625,16 @@ pub fn create_file(relative: &str, data: &[u8]) -> Result<()> {
     write_atomic(&absolute, data)
 }
 
+// a file the person changed in morrow, such as a pdf they highlighted, written over the one that is there.
+// it must still be there, so a file deleted or moved elsewhere in the meantime is never made again
+pub fn replace_file(relative: &str, data: &[u8]) -> Result<()> {
+    let absolute = resolve(relative)?;
+    if !absolute.is_file() {
+        return Err("The file is no longer there.".into());
+    }
+    write_atomic(&absolute, data)
+}
+
 pub fn path_exists(relative: &str) -> Result<bool> {
     Ok(exists(&resolve(relative)?))
 }

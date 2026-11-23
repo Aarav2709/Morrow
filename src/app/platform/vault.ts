@@ -18,6 +18,9 @@ export function desktopVaultBridge(api: DesktopVaultApi, root: string): VaultBri
       return bytes ? (bytes.slice().buffer as ArrayBuffer) : null;
     },
     createFile: (path, data) => api.createFile(path, data),
+    ...(api.replaceFile
+      ? { replaceFile: (path: string, data: ArrayBuffer) => api.replaceFile!(path, data) }
+      : {}),
     exists: (path) => api.exists(path),
     listFiles: (dir) => api.list(dir),
     onChange: (listener) => api.onChanges((changes) => listener(changes as VaultChange[])),

@@ -43,12 +43,56 @@ function emojiImages(): Plugin {
   };
 }
 
+// what pdf.js reads only when a pdf needs it: character maps for chinese, japanese and korean text, the
+// standard fonts a pdf may name without including, and the decoders for scanned pictures. pdf.js asks for
+// them by name inside a folder, so they are copied as they are
+function pdfjsData(): Plugin {
+  const root = path.dirname(require.resolve('pdfjs-dist/package.json'));
+  const folders = ['cmaps', 'standard_fonts', 'wasm'];
+  const types: Record<string, string> = {
+    '.bcmap': 'application/octet-stream',
+    '.wasm': 'application/wasm',
+    '.js': 'text/javascript',
+  };
+  return {
+    name: 'morrow-pdfjs-data',
+    configureServer(server) {
+      server.middlewares.use('/pdfjs/', (request, response, next) => {
+        const [folder, name, ...rest] = decodeURIComponent((request.url ?? '').split('?')[0]!)
+          .replace(/^\//, '')
+          .split('/');
+        if (!folder || !name || rest.length || !folders.includes(folder) || name.startsWith('.'))
+          return next();
+        const file = path.join(root, folder, name);
+        let data: Buffer;
+        try {
+          data = readFileSync(file);
+        } catch {
+          return next();
+        }
+        response.setHeader('Content-Type', types[path.extname(name)] ?? 'application/octet-stream');
+        response.end(data);
+      });
+    },
+    generateBundle() {
+      for (const folder of folders)
+        for (const name of readdirSync(path.join(root, folder)))
+          this.emitFile({
+            type: 'asset',
+            fileName: `pdfjs/${folder}/${name}`,
+            source: readFileSync(path.join(root, folder, name)),
+          });
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
     react(),
     // the emoji images are copied as files rather than imported, so their package is named here
     thirdPartyLicenses(['@lobehub/fluent-emoji-3d']),
     emojiImages(),
+    pdfjsData(),
   ],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // relative base so the build loads from the desktop app or any static path

@@ -29,6 +29,8 @@ export interface VaultBridge {
   readBytes(path: string): Promise<ArrayBuffer | null>;
   // creates a new file, never replaces one
   createFile(path: string, data: ArrayBuffer): Promise<void>;
+  // writes over a file that is already there, failing when it is gone
+  replaceFile?(path: string, data: ArrayBuffer): Promise<void>;
   exists(path: string): Promise<boolean>;
   listFiles(dir: string): Promise<VaultFileInfo[]>;
   onChange(listener: (changes: VaultChange[]) => void): () => void;

@@ -967,6 +967,16 @@ async fn vault_create_file(request: Request<'_>) -> Res<()> {
 }
 
 #[tauri::command]
+async fn vault_replace_file(request: Request<'_>) -> Res<()> {
+    let path = header(&request, "path").ok_or("Invalid path.")?;
+    let InvokeBody::Raw(data) = request.body() else {
+        return Err("Invalid file data.".into());
+    };
+    let data = data.clone();
+    blocking(move || vault::replace_file(&path, &data)).await?
+}
+
+#[tauri::command]
 async fn vault_exists(path: String) -> Res<bool> {
     blocking(move || vault::path_exists(&path)).await?
 }
@@ -1756,6 +1766,7 @@ pub fn run() {
             vault_read_text,
             vault_read_bytes,
             vault_create_file,
+            vault_replace_file,
             vault_exists,
             vault_list,
             vault_reveal,

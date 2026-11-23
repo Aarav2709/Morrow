@@ -282,6 +282,7 @@ export function tauriBridge(): DesktopBridge | null {
       readText: (path) => invoke('vault_read_text', { path }),
       readBytes: (path) => bytesOrNull('vault_read_bytes', { path }),
       createFile: (path, data) => invoke('vault_create_file', new Uint8Array(data), pathHeader(path)),
+      replaceFile: (path, data) => invoke('vault_replace_file', new Uint8Array(data), pathHeader(path)),
       exists: (path) => invoke('vault_exists', { path }),
       list: (path) => invoke('vault_list', { path }),
       // a folder that can't be shown, such as a phone's own storage, says why rather than doing nothing

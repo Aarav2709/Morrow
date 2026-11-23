@@ -276,6 +276,43 @@
   border: 0;
   background: var(--bg);
 }
+/* a pdf shown by morrow: a bar for highlighting above the pages, which scroll inside their own frame */
+.media-pdf .pdf-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.media-pdf .pdf-highlight[aria-pressed='true'] {
+  background: var(--accent-soft, var(--hover));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.media-pdf .pdf-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.media-pdf .pdf-frame {
+  position: relative;
+  height: 560px;
+  background: var(--bg-subtle, var(--hover));
+}
+.media-pdf .pdf-scroll {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+/* pdf.js's highlight toolbar sits inside the page's text, whose letters are sized to the pdf, and its buttons
+   would take that size and push their icons out of view */
+.media-pdf .editToolbar {
+  font-size: 13px;
+  line-height: normal;
+}
+.media-pdf.is-loading {
+  min-height: 120px;
+}
 .media-block .file-block.is-compact {
   border: 0;
   border-radius: 0;
