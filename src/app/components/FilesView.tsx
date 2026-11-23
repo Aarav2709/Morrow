@@ -49,7 +49,11 @@ export function FilesView() {
     for (const page of livePages(state.pages)) {
       const doc = state.docs[page.id];
       if (!doc) continue;
-      for (const id of new Set(fileIdsInDoc(doc))) map.set(id, [...(map.get(id) ?? []), page]);
+      // by where each file is now, its folder may have been renamed with a page
+      for (const fileId of new Set(fileIdsInDoc(doc))) {
+        const id = getSession().currentFileId(fileId);
+        map.set(id, [...(map.get(id) ?? []), page]);
+      }
     }
     return map;
   }, [state]);

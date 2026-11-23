@@ -2,7 +2,7 @@
 import { canvasDoc, canvasFromDoc, readCanvas, writeCanvas } from '../core/canvas';
 import { decryptPage, encryptPage, isEncryptedText, newPageKey } from '../core/crypto';
 import type { PageKey } from '../core/crypto';
-import { isDocEmpty, isRecord, validateDoc, walk } from '../core/doc';
+import { fileIdsInDoc, isDocEmpty, isRecord, validateDoc, walk } from '../core/doc';
 import { snapshotsToPrune } from '../core/history';
 import { parseWikiLink } from '../core/markdown/parse';
 import { docToMarkdown } from '../core/markdown/serialize';
@@ -48,6 +48,7 @@ import {
   dirname,
   extension,
   isHiddenPath,
+  isAttachmentFolder,
   isImagePath,
   isInTrash,
   isPageFile,
@@ -58,10 +59,10 @@ import {
   stripExtension,
   TRASH_DIR,
 } from '../core/vault/paths';
-import { planMoves, replayRename } from '../core/vault/plan';
-import type { VaultOp, VaultOpResult } from '../core/vault/plan';
+import { movedPath, planMoves, replayRename, withFolderMove } from '../core/vault/plan';
+import type { FolderMoves, VaultOp, VaultOpResult } from '../core/vault/plan';
 import type { LoadedWorkspace } from '../core/migrations';
-import type { ExternalPatch, StoredFile, WorkspaceRepository, WriteBatch } from './repository';
+import type { ExternalPatch, FilePlace, StoredFile, WorkspaceRepository, WriteBatch } from './repository';
 import type { VaultBridge, VaultChange } from './vaultBridge';
 
 export const REGISTRY_PATH = `${MORROW_DIR}/workspace.json`;
@@ -87,6 +88,9 @@ export class VaultRepository implements WorkspaceRepository {
   // pages that could not be read, their files are never rewritten
   private locked = new Set<PageId>();
   private others = new Set<string>();
+  // folders renamed with their pages since the vault was read. pages still name the files inside by where
+  // they were, so each is looked up through these until the vault is read again
+  private fileMoves: FolderMoves = [];
   private registryText: string | null = null;
   private recentText: string | null = null;
   // keys of unlocked encrypted pages, kept in memory only
@@ -210,6 +214,13 @@ export class VaultRepository implements WorkspaceRepository {
       }
     }
     ops.push(...planMoves(previous, next));
+    // a folder renamed with its page takes the pictures and files inside with it, such as a folder of
+    // attachments beside its notes. links to them are written to where they will be after this save
+    let planned = this.fileMoves;
+    for (const op of ops)
+      if (op.op === 'rename' && !isPageFile(op.from)) planned = withFolderMove(planned, op.from, op.to);
+    const fileWas = (fileId: string) => movedPath(this.fileMoves, fileId);
+    const fileAt = (fileId: string) => movedPath(planned, fileId);
 
     const oldTargets = linkTargets(previous);
     const newTargets = linkTargets(next);
@@ -237,6 +248,12 @@ export class VaultRepository implements WorkspaceRepository {
       if (state.pages[id]?.kind === 'database')
         for (const child of childrenOf(state.pages, id, true)) candidates.add(child.id);
     }
+    // pages anywhere that show a file which moves in this save are written again with its new place
+    if (planned !== this.fileMoves)
+      for (const [id, page] of Object.entries(state.pages)) {
+        const refs = fileRefsOf(state.docs[id], page.cover, page.kind === 'canvas');
+        if (refs.some((fileId) => fileAt(fileId) !== fileWas(fileId))) candidates.add(id);
+      }
 
     const resolveOld = retargeted.size > 0 ? makeResolver(state, previous, this.sources) : null;
     for (const id of candidates) {
@@ -251,6 +268,8 @@ export class VaultRepository implements WorkspaceRepository {
         previous.get(id),
         resolveOld,
         retargeted,
+        fileWas,
+        fileAt,
       );
       if (text === null) continue;
       let written = text;
@@ -349,17 +368,30 @@ export class VaultRepository implements WorkspaceRepository {
     before: Placement | undefined,
     resolveOld: Resolver | null,
     retargeted: Set<PageId>,
+    fileWas: (fileId: string) => string = (fileId) => fileId,
+    fileAt: (fileId: string) => string = (fileId) => fileId,
   ): string | null {
     const page = state.pages[id]!;
     const placement = layout.get(id)!;
-    if (page.kind === 'canvas')
-      return writeCanvas(canvasFromDoc(state.docs[id]), (pageId) => layout.get(pageId)?.file ?? null);
+    if (page.kind === 'canvas') {
+      const canvas = canvasFromDoc(state.docs[id]);
+      const nodes = canvas.nodes.map((node) =>
+        node.type === 'file' ? { ...node, file: fileAt(node.file) } : node,
+      );
+      return writeCanvas({ ...canvas, nodes }, (pageId) => layout.get(pageId)?.file ?? null);
+    }
     // a folder that just got a note of its own, for its tags, properties or kind, has no text yet
     const doc = state.docs[id] ?? emptyDoc();
     const dir = dirname(placement.file!);
     let source = this.sources.get(id) ?? null;
-    const movedDir = before !== undefined && dirname(before.folder) !== dirname(placement.folder);
-    if (source && source.body !== null && (edited || (movedDir && hasFileRefs(doc)))) {
+    // the note's own words are kept as they are unless a link to a picture or file in them would now lead
+    // somewhere else, because the note moved away from it or it moved away from the note. a note moved
+    // along with the folder of pictures beside it keeps every link as it was
+    const dirBefore = before?.file ? dirname(before.file) : dir;
+    const linksChange = fileRefsOf(doc, null, false).some(
+      (fileId) => relativePath(dirBefore, fileWas(fileId)) !== relativePath(dir, fileAt(fileId)),
+    );
+    if (source && source.body !== null && (edited || linksChange)) {
       source = { ...source, body: null };
       this.sources.set(id, source);
     }
@@ -380,12 +412,13 @@ export class VaultRepository implements WorkspaceRepository {
         linkTarget: (pageId) => targets.get(pageId) ?? null,
         titleOf: (pageId) => (state.pages[pageId] ? displayTitle(state.pages[pageId]) : null),
         filePath: (fileId) =>
-          fileId.includes('/') || fileId.includes('.') ? relativePath(dir, fileId) : null,
+          fileId.includes('/') || fileId.includes('.') ? relativePath(dir, fileAt(fileId)) : null,
       });
     }
     const parent = page.parentId ? state.pages[page.parentId] : undefined;
+    const cover = page.cover && !page.cover.startsWith('gradient-') ? fileAt(page.cover) : page.cover;
     const managed = managedFrontmatter(
-      page,
+      cover === page.cover ? page : { ...page, cover },
       basename(placement.folder),
       parent?.kind === 'database' ? parent.database : null,
     );
@@ -474,6 +507,12 @@ export class VaultRepository implements WorkspaceRepository {
         break;
       case 'rename':
         replayRename(layout, op.from, op.to);
+        // the pictures and files inside a renamed folder went with it
+        if (!isPageFile(op.from)) {
+          const moved: FolderMoves = [[op.from, op.to]];
+          this.fileMoves = withFolderMove(this.fileMoves, op.from, op.to);
+          this.others = new Set([...this.others].map((path) => movedPath(moved, path)));
+        }
         break;
       case 'remove':
         for (const [id, placement] of layout) {
@@ -692,7 +731,19 @@ export class VaultRepository implements WorkspaceRepository {
 
   // ---- images and files, stored in the attachments folder and referenced by their path
 
-  async putFiles(files: StoredFile[]): Promise<FileMeta[]> {
+  // the folder new files go in, for the page they were added to
+  private attachmentFolder(place?: FilePlace): string {
+    const placement = place?.pageId ? this.layout.get(place.pageId) : undefined;
+    // a page not saved yet has no folder, its files go where the vault keeps them
+    if (!place || place.layout === 'vault' || !placement) return ATTACHMENTS_DIR;
+    const file = placement.file ?? `${placement.folder}.md`;
+    if (isInTrash(file)) return ATTACHMENTS_DIR;
+    if (place.layout === 'beside') return joinPath(dirname(file), ATTACHMENTS_DIR);
+    return joinPath(ATTACHMENTS_DIR, safeFileName(basename(placement.folder), 80));
+  }
+
+  async putFiles(files: StoredFile[], place?: FilePlace): Promise<FileMeta[]> {
+    const folder = this.attachmentFolder(place);
     const metas: FileMeta[] = [];
     for (const file of files) {
       const dot = file.meta.name.lastIndexOf('.');
@@ -705,9 +756,9 @@ export class VaultRepository implements WorkspaceRepository {
               .toLowerCase()
           : '';
       const base = safeFileName(dot > 0 ? file.meta.name.slice(0, dot) : file.meta.name, 80);
-      let path = joinPath(ATTACHMENTS_DIR, `${base}${ext}`);
+      let path = joinPath(folder, `${base}${ext}`);
       for (let n = 2; this.others.has(path) || (await this.bridge.exists(path)); n++) {
-        path = joinPath(ATTACHMENTS_DIR, `${base} ${n}${ext}`);
+        path = joinPath(folder, `${base} ${n}${ext}`);
       }
       await this.bridge.createFile(path, file.data);
       this.others.add(path);
@@ -716,18 +767,42 @@ export class VaultRepository implements WorkspaceRepository {
     return metas;
   }
 
+  currentFileId(id: FileId): FileId {
+    return movedPath(this.fileMoves, id);
+  }
+
   async getFile(id: FileId): Promise<StoredFile | null> {
-    const data = await this.bridge.readBytes(id);
+    const path = this.currentFileId(id);
+    const data = await this.bridge.readBytes(path);
     if (!data) return null;
-    return { meta: { id, name: basename(id), type: mimeOf(id), size: data.byteLength, createdAt: 0 }, data };
+    return {
+      meta: { id: path, name: basename(path), type: mimeOf(path), size: data.byteLength, createdAt: 0 },
+      data,
+    };
   }
 
   fileUrl(id: FileId): string | null {
-    return this.bridge.fileUrl(id);
+    return this.bridge.fileUrl(this.currentFileId(id));
   }
 
+  // the files in every attachments folder: the vault's own, and those beside notes
   async listFiles(): Promise<FileMeta[]> {
-    const files = await this.bridge.listFiles(ATTACHMENTS_DIR).catch(() => []);
+    const folders = new Set([ATTACHMENTS_DIR]);
+    for (const path of this.others) {
+      const parts = path.split('/');
+      const at = parts.findIndex((part) => part.toLowerCase() === ATTACHMENTS_DIR);
+      if (at > 0 && at < parts.length - 1) folders.add(parts.slice(0, at + 1).join('/'));
+    }
+    const seen = new Set<string>();
+    const files: Array<{ path: string; size: number; mtime: number }> = [];
+    for (const folder of folders) {
+      if (isInTrash(folder)) continue;
+      for (const file of await this.bridge.listFiles(folder).catch(() => [])) {
+        if (seen.has(file.path) || !isAttachmentFolder(dirname(file.path))) continue;
+        seen.add(file.path);
+        files.push(file);
+      }
+    }
     return files.map((file) => ({
       id: file.path,
       name: basename(file.path),
@@ -738,8 +813,9 @@ export class VaultRepository implements WorkspaceRepository {
   }
 
   async deleteFiles(ids: FileId[]): Promise<void> {
-    const results = await this.bridge.apply(ids.map((path) => ({ op: 'remove', path })));
-    for (const id of ids) this.others.delete(id);
+    const paths = ids.map((id) => this.currentFileId(id));
+    const results = await this.bridge.apply(paths.map((path) => ({ op: 'remove', path })));
+    for (const path of paths) this.others.delete(path);
     const failed = results.find((result) => !result.ok);
     if (failed && !failed.ok) throw new Error(failed.message);
   }
@@ -1088,14 +1164,15 @@ function linksTo(doc: DocNode, ids: Set<PageId>): boolean {
   return found;
 }
 
-function hasFileRefs(doc: DocNode): boolean {
-  let found = false;
-  walk(doc, (node) => {
-    if ((node.type === 'image' && typeof node.attrs?.fileId === 'string') || node.type === 'fileAttachment')
-      found = true;
-    return !found;
-  });
-  return found;
+// the vault paths of the pictures and files a page shows: in its words, as its cover, or on a canvas
+function fileRefsOf(doc: DocNode | undefined, cover: string | null, canvas: boolean): string[] {
+  const refs = cover && !cover.startsWith('gradient-') ? [cover] : [];
+  if (!doc) return refs;
+  if (canvas) {
+    for (const node of canvasFromDoc(doc).nodes) if (node.type === 'file') refs.push(node.file);
+    return refs;
+  }
+  return [...refs, ...fileIdsInDoc(doc).filter(Boolean)];
 }
 
 // rewrites [[links]] in a file morrow has not otherwise touched, outside code

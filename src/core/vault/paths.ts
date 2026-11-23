@@ -4,6 +4,16 @@ export const TRASH_DIR = '.trash';
 export const MORROW_DIR = '.morrow';
 export const ATTACHMENTS_DIR = 'attachments';
 
+// where new pictures and files go: one folder for the vault, a folder beside each note, or a folder of
+// its own for each note inside the vault's
+export type AttachmentLayout = 'vault' | 'beside' | 'perNote';
+export const ATTACHMENT_LAYOUTS: readonly AttachmentLayout[] = ['beside', 'perNote', 'vault'];
+
+// a folder of pictures and files, the vault's own or one beside a note, or any folder inside one
+export function isAttachmentFolder(path: string): boolean {
+  return path.split('/').some((part) => part.toLowerCase() === ATTACHMENTS_DIR);
+}
+
 export const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'avif', 'bmp', 'ico']);
 
 export function dirname(path: string): string {

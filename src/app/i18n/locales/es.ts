@@ -346,6 +346,12 @@ export const es: TranslationSchema = {
       emptyTrashHelp: 'Las páginas que llevan más tiempo en la papelera se eliminan para siempre.',
       never: 'Nunca',
       afterDays: 'A los {days} días',
+      newFilesGo: 'Las imágenes y archivos nuevos van',
+      newFilesGoHelp:
+        'Las imágenes que pegas, insertas o importas, guardadas junto a la nota, en una carpeta con su nombre dentro de attachments, o todas en attachments. Las que ya están en la bóveda se quedan donde están.',
+      besideNote: 'Junto a la nota',
+      folderPerNote: 'Una carpeta por nota',
+      oneFolder: 'Una sola carpeta',
       unusedFiles: 'Imágenes y archivos',
       unusedFilesHelp: 'Un archivo se conserva mientras alguna página o versión lo utilice.',
       cleanUnused: 'Eliminar {count} sin usar',

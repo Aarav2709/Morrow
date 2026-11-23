@@ -54,6 +54,7 @@ import type {
   FooterSection,
 } from '../platform/preferences';
 import type { PageWidth, StartPage, ThemePreference, TrashDays, WritingFont } from '../platform/preferences';
+import type { AttachmentLayout } from '../../core/vault/paths';
 import { closeDialog, confirmAction, openDialog, toast } from '../ui';
 import { useVaultName, VAULT_RENAMED, vaultName } from '../platform/vault';
 import type { SettingsSection } from '../ui';
@@ -1011,6 +1012,18 @@ function VaultSettings() {
         </SettingRow>
       </SettingsGroup>
       <SettingsGroup title={t('settings.vault.unusedFiles')}>
+        <SettingRow label={t('settings.vault.newFilesGo')} help={t('settings.vault.newFilesGoHelp')}>
+          <Segmented<AttachmentLayout>
+            label={t('settings.vault.newFilesGo')}
+            value={prefs.attachmentFolder}
+            options={[
+              ['beside', t('settings.vault.besideNote')],
+              ['perNote', t('settings.vault.folderPerNote')],
+              ['vault', t('settings.vault.oneFolder')],
+            ]}
+            onChange={(attachmentFolder) => setPreferences({ attachmentFolder })}
+          />
+        </SettingRow>
         <SettingRow
           label={
             files

@@ -13,7 +13,7 @@ import { readPageText, takeProperties } from './pageFile';
 import type { PageSource } from './pageFile';
 import { impliedTitle } from './pageFile';
 import {
-  ATTACHMENTS_DIR,
+  isAttachmentFolder,
   basename,
   dirname,
   extension,
@@ -147,8 +147,8 @@ export function loadVault(scan: VaultScan, newId: () => string, now = Date.now()
   const filed = new Set(candidates.map((candidate) => candidate.folder.toLowerCase()));
   for (const folder of scan.folders) {
     if (folder.path === TRASH_DIR || isHiddenPath(folder.path)) continue;
-    // the attachments folder holds files, it only becomes a page if someone keeps notes in it
-    if (folder.path === ATTACHMENTS_DIR && !pageFolders.has(folder.path)) continue;
+    // an attachments folder holds files, even emptied, it only becomes a page if someone keeps notes in it
+    if (isAttachmentFolder(folder.path) && !pageFolders.has(folder.path)) continue;
     if (!pageFolders.has(folder.path) && !folder.empty) continue;
     if (filed.has(folder.path.toLowerCase())) continue;
     filed.add(folder.path.toLowerCase());

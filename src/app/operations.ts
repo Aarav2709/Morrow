@@ -275,11 +275,11 @@ export function captureToToday(text: string, date = new Date()): boolean {
 // files shared from another app, such as a pdf, saved into the vault and added to the end of today's note,
 // a picture shown as itself and anything else as an attachment
 export async function captureFilesToToday(files: File[]): Promise<number> {
-  const stored = await storeFiles(files);
-  if (!stored.length) return 0;
   commitEditors();
   const id = ensureToday();
   if (!id) return 0;
+  const stored = await storeFiles(files, id);
+  if (!stored.length) return 0;
   const doc = getState().docs[id] ?? { type: 'doc', content: [] };
   const blocks = stored.map((file) =>
     file.type.startsWith('image/')
@@ -548,17 +548,20 @@ async function removeFilesLeftBehind(files: Set<FileId>): Promise<void> {
   try {
     await getSession().flush();
     const used = await usedFileIds();
-    const unused = [...files].filter((id) => !used.has(id));
+    const unused = [...files].filter((id) => !used.has(getSession().currentFileId(id)));
     if (unused.length) await getSession().deleteFiles(unused);
   } catch (error) {
     console.warn('Morrow could not remove the files of deleted pages:', error);
   }
 }
 
+// every file a page or page version uses, by where it is now. a folder renamed with its page takes its
+// pictures along while pages still name them by where they were, which would otherwise count them unused
 async function usedFileIds(): Promise<Set<FileId>> {
-  const used = referencedFileIds(getState());
-  for (const snapshot of await getSession().allSnapshots()) {
-    for (const id of fileIdsInDoc(snapshot.doc)) used.add(id);
+  const session = getSession();
+  const used = new Set([...referencedFileIds(getState())].map((id) => session.currentFileId(id)));
+  for (const snapshot of await session.allSnapshots()) {
+    for (const id of fileIdsInDoc(snapshot.doc)) used.add(session.currentFileId(id));
   }
   return used;
 }

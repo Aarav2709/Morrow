@@ -341,6 +341,12 @@ export const en = {
       emptyTrashHelp: 'Pages in the trash longer than this are deleted for good.',
       never: 'Never',
       afterDays: 'After {days} days',
+      newFilesGo: 'New pictures and files go',
+      newFilesGoHelp:
+        'Pictures you paste, insert or import, kept beside the note, in a folder named after it inside attachments, or all in attachments. Those already in the vault stay where they are.',
+      besideNote: 'Beside the note',
+      folderPerNote: 'A folder per note',
+      oneFolder: 'One folder',
       unusedFiles: 'Images and files',
       unusedFilesHelp: 'A file stays while any page or page version uses it.',
       cleanUnused: 'Remove {count} unused',

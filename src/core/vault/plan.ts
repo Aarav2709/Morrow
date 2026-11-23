@@ -114,3 +114,38 @@ export function replayRename(layout: Map<PageId, Placement>, from: string, to: s
     if (folder !== placement.folder || file !== placement.file) layout.set(id, { folder, file });
   }
 }
+
+// folders renamed along with their pages, each from where it was to where it is now. pictures and files
+// inside them keep the ids pages knew them by until the vault is read again, these say where they went
+export type FolderMoves = ReadonlyArray<readonly [string, string]>;
+
+// where a path is now, after the folders it was in were renamed. a later rename can be of a folder inside
+// where an earlier one went, so it looks again until nothing more applies
+export function movedPath(moves: FolderMoves, path: string): string {
+  let current = path;
+  for (let step = 0; step < 16; step++) {
+    const lower = current.toLowerCase();
+    let best: readonly [string, string] | null = null;
+    for (const move of moves) {
+      const from = move[0].toLowerCase();
+      if ((lower === from || lower.startsWith(`${from}/`)) && (!best || move[0].length > best[0].length))
+        best = move;
+    }
+    if (!best) break;
+    const next = best[1] + current.slice(best[0].length);
+    if (next === current) break;
+    current = next;
+  }
+  return current;
+}
+
+// the moves with one more folder renamed. moves into that folder now lead to its new place, and a move
+// back cancels the one it undoes, so following them never goes round in a circle
+export function withFolderMove(moves: FolderMoves, from: string, to: string): FolderMoves {
+  const lower = from.toLowerCase();
+  const next = moves
+    .filter(([earlier]) => earlier.toLowerCase() !== lower)
+    .map(([earlier, now]) => [earlier, movedPath([[from, to]], now)] as const)
+    .filter(([earlier, now]) => earlier !== now);
+  return [...next, [from, to]];
+}

@@ -3,6 +3,8 @@ import { useSyncExternalStore } from 'react';
 import type { SupportedLocale } from '../i18n/types';
 import { COLORS } from '../../core/model';
 import type { ColorName } from '../../core/model';
+import { ATTACHMENT_LAYOUTS } from '../../core/vault/paths';
+import type { AttachmentLayout } from '../../core/vault/paths';
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type WritingFont = 'serif' | 'sans' | 'mono';
@@ -121,6 +123,9 @@ export interface Preferences {
   databaseLimit: number;
   // pages in the trash longer than this many days are deleted for good, 0 keeps them until emptied
   trashDays: TrashDays;
+  // where new pictures and files go: beside the note they were added to, in a folder of the note's own, or in
+  // the vault's one attachments folder
+  attachmentFolder: AttachmentLayout;
   // reminders set on dates in pages, shown by this computer when they are due
   reminders: Reminder[];
   // how much of a split tab the first side takes
@@ -228,6 +233,7 @@ const defaults: Preferences = {
   mentionsButton: true,
   databaseLimit: 100,
   trashDays: 0,
+  attachmentFolder: 'beside',
   reminders: [],
   splitShare: 0.5,
   startPage: 'today',
@@ -380,6 +386,7 @@ function read(): Preferences {
             .slice(0, 500)
         : [],
       trashDays: ([30, 60, 90] as const).find((days) => days === parsed.trashDays) ?? 0,
+      attachmentFolder: ATTACHMENT_LAYOUTS.find((layout) => layout === parsed.attachmentFolder) ?? 'beside',
       outlines: parsed.outlines !== false,
       shownOutlines: Array.isArray(parsed.shownOutlines)
         ? parsed.shownOutlines.filter((id): id is string => typeof id === 'string').slice(0, 2000)

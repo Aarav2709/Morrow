@@ -7,7 +7,7 @@ import type { DocNode, FileId, FileMeta, PageId, Snapshot, WorkspaceState } from
 import { fail, ok } from '../core/result';
 import type { Result } from '../core/result';
 import { openRepository } from './repository';
-import type { ExternalPatch, StoredFile, WorkspaceRepository } from './repository';
+import type { ExternalPatch, FilePlace, StoredFile, WorkspaceRepository } from './repository';
 import { SaveQueue } from './saveQueue';
 import type { SaveQueueOptions, SaveStatus } from './saveQueue';
 
@@ -134,6 +134,11 @@ export class WorkspaceSession {
     return this.repository.fileUrl?.(id) ?? null;
   }
 
+  // a file's id as it is now, the folders of pages can be renamed with the files inside them
+  currentFileId(id: FileId): FileId {
+    return this.repository.currentFileId?.(id) ?? id;
+  }
+
   onExternal(listener: (patch: ExternalPatch, accepted: PageId[]) => void): () => void {
     this.externalListeners.add(listener);
     return () => this.externalListeners.delete(listener);
@@ -247,9 +252,9 @@ export class WorkspaceSession {
   }
 
   // files are written straight away, a page only references them once they are safely stored
-  async addFiles(files: StoredFile[]): Promise<Result<FileMeta[]>> {
+  async addFiles(files: StoredFile[], place?: FilePlace): Promise<Result<FileMeta[]>> {
     try {
-      return ok(await this.repository.putFiles(files));
+      return ok(await this.repository.putFiles(files, place));
     } catch (error) {
       return fail(`The file could not be saved: ${error instanceof Error ? error.message : String(error)}`);
     }

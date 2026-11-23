@@ -6,6 +6,7 @@ import type { LoadedWorkspace } from '../core/migrations';
 import { SCHEMA_VERSION } from '../core/model';
 import type { DocNode, FileId, FileMeta, PageId, PageMeta, Snapshot, WorkspaceState } from '../core/model';
 import { errorMessage, fail, ok } from '../core/result';
+import type { AttachmentLayout } from '../core/vault/paths';
 import type { Result } from '../core/result';
 
 export interface WriteBatch {
@@ -31,13 +32,21 @@ export interface StoredFile {
   data: ArrayBuffer;
 }
 
+export interface FilePlace {
+  pageId: PageId | null;
+  layout: AttachmentLayout;
+}
+
 export interface WorkspaceRepository {
   load(): Promise<Result<LoadedWorkspace & { firstRun: boolean }>>;
   // resolves only after the transaction commits, rejects on any failure
   write(batch: WriteBatch): Promise<void>;
   markInitialized(): Promise<void>;
-  // stores files and returns their metadata, the ids may differ from the ones passed in
-  putFiles(files: StoredFile[]): Promise<FileMeta[]>;
+  // stores files and returns their metadata, the ids may differ from the ones passed in. storage that
+  // keeps files beside notes puts them where the layout says for the page they were added to
+  putFiles(files: StoredFile[], place?: FilePlace): Promise<FileMeta[]>;
+  // where a file is now, for one whose folder was renamed along with a page since it was read
+  currentFileId?(id: FileId): FileId;
   // a url the page can load the file from directly, null when it has to be read into memory
   fileUrl?(id: FileId): string | null;
   // called with changes made outside morrow, returns the pages it accepted

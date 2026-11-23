@@ -468,3 +468,88 @@ describe('deleting a page for good', () => {
     expect(await vault.exists('.morrow/history/gone.json')).toBe(false);
   });
 });
+
+describe('where new pictures and files go', () => {
+  const png = (name: string) => ({
+    meta: { id: 'x', name, type: 'image/png', size: 3, createdAt: 0 },
+    data: new TextEncoder().encode('PNG').buffer as ArrayBuffer,
+  });
+
+  it('puts them beside the note, in a folder for the note, or in the vault folder', async () => {
+    const vault = new MemoryVault({ 'Recipes.md': 'r\n', 'Recipes/Quince Syrup.md': 'q\n', 'Top.md': 't\n' });
+    const repository = new VaultRepository(vault, newId);
+    const opened = await WorkspaceSession.open(repository, { delayMs: 0 });
+    if (!opened.ok) throw new Error(opened.error);
+    const session = opened.value;
+    const quince = idOf(session, 'Quince Syrup');
+    const top = idOf(session, 'Top');
+    const [beside] = await repository.putFiles([png('image.png')], { pageId: quince, layout: 'beside' });
+    const [own] = await repository.putFiles([png('image.png')], { pageId: quince, layout: 'perNote' });
+    const [shared] = await repository.putFiles([png('image.png')], { pageId: quince, layout: 'vault' });
+    const [again] = await repository.putFiles([png('image.png')], { pageId: quince, layout: 'beside' });
+    const [atTop] = await repository.putFiles([png('image.png')], { pageId: top, layout: 'beside' });
+    expect(beside!.id).toBe('Recipes/attachments/image.png');
+    expect(own!.id).toBe('attachments/Quince Syrup/image.png');
+    expect(shared!.id).toBe('attachments/image.png');
+    expect(again!.id).toBe('Recipes/attachments/image 2.png');
+    // a note at the top of the vault keeps its pictures in the vault's own folder
+    expect(atTop!.id).toBe('attachments/image 2.png');
+    expect((await repository.listFiles()).map((file) => file.id).sort()).toEqual([
+      'Recipes/attachments/image 2.png',
+      'Recipes/attachments/image.png',
+      'attachments/Quince Syrup/image.png',
+      'attachments/image 2.png',
+      'attachments/image.png',
+    ]);
+    await session.close();
+  });
+
+  it('keeps every link to a picture working when the folder it is in is renamed with its page', async () => {
+    const vault = new MemoryVault({
+      'Recipes.md': 'All recipes\n',
+      'Recipes/Quince.md': 'Look ![](attachments/x.png)\n',
+      'Recipes/attachments/x.png': 'PNG',
+      'Index.md': '---\ncover: Recipes/attachments/x.png\n---\nSee ![](Recipes/attachments/x.png)\n',
+    });
+    const repository = new VaultRepository(vault, newId);
+    const opened = await WorkspaceSession.open(repository, { delayMs: 0 });
+    if (!opened.ok) throw new Error(opened.error);
+    const session = opened.value;
+    await run(session, { type: 'page.rename', id: idOf(session, 'Recipes'), title: 'Cooking', now: 5 });
+    expect(vault.text('Cooking/attachments/x.png')).toBe('PNG');
+    // the note moved with the folder beside it, so its file is left exactly as it was
+    expect(vault.text('Cooking/Quince.md')).toBe('Look ![](attachments/x.png)\n');
+    // a page elsewhere points at where the picture went, for its words and its cover
+    expect(vault.text('Index.md')).toContain('![](Cooking/attachments/x.png)');
+    expect(vault.text('Index.md')).toContain('cover: Cooking/attachments/x.png');
+    // the picture still shows, and nothing counts it as unused
+    expect(session.fileUrl('Recipes/attachments/x.png')).toBe('memory://Cooking/attachments/x.png');
+    expect(session.currentFileId('Recipes/attachments/x.png')).toBe('Cooking/attachments/x.png');
+    // an edit later writes the link where the picture is
+    const quince = idOf(session, 'Quince');
+    const doc = session.getState().docs[quince]!;
+    await run(session, {
+      type: 'page.setDoc',
+      id: quince,
+      doc: {
+        ...doc,
+        content: [...doc.content!, { type: 'paragraph', content: [{ type: 'text', text: 'more' }] }],
+      },
+      now: 6,
+    } as Command);
+    expect(vault.text('Cooking/Quince.md')).toContain('![](attachments/x.png)');
+    await session.close();
+  });
+
+  it('never makes a page of a folder of pictures beside notes, even an empty one', async () => {
+    const vault = new MemoryVault({ 'Recipes.md': 'r\n', 'Recipes/Quince.md': 'q\n' });
+    vault.dirs.add('Recipes/attachments');
+    vault.dirs.add('attachments/Quince');
+    const session = await open(vault);
+    const titles = Object.values(session.getState().pages).map((page) => page.title);
+    expect(titles).not.toContain('attachments');
+    expect(titles).not.toContain('Quince 2');
+    expect(titles.filter((title) => title === 'Quince')).toHaveLength(1);
+    await session.close();
+  });
+});

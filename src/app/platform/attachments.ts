@@ -1,10 +1,12 @@
-import type { FileId, FileMeta } from '../../core/model';
+import type { FileId, FileMeta, PageId } from '../../core/model';
 import type { StoredFile } from '../../storage/repository';
 import { t } from '../i18n';
 import { toast } from '../ui';
+import { activeRoute } from '../router';
 import { getSession } from '../workspace';
 import { desktop } from './desktop';
 import { newId, saveFile } from './files';
+import { getPreferences } from './preferences';
 
 export const MAX_FILE_BYTES = 100 * 1024 * 1024;
 
@@ -25,8 +27,15 @@ export function fileUrl(id: FileId): Promise<string | null> {
   return url;
 }
 
-// reads and stores files, returns their metadata only once every file is safely saved
-export async function storeFiles(files: File[]): Promise<FileMeta[]> {
+// the page files are being added to, the one open where the person is working
+function activePageId(): PageId | null {
+  const route = activeRoute();
+  return route.name === 'page' ? route.id : null;
+}
+
+// reads and stores files, returns their metadata only once every file is safely saved. they go where the
+// setting says for the page they belong to, the open page unless another is named
+export async function storeFiles(files: File[], pageId: PageId | null = activePageId()): Promise<FileMeta[]> {
   const accepted = files.filter((file) => file.size <= MAX_FILE_BYTES);
   if (accepted.length < files.length) toast(t('toasts.filesTooLarge'), { tone: 'error' });
   if (accepted.length === 0) return [];
@@ -42,7 +51,7 @@ export async function storeFiles(files: File[]): Promise<FileMeta[]> {
       data: await file.arrayBuffer(),
     })),
   );
-  const result = await getSession().addFiles(stored);
+  const result = await getSession().addFiles(stored, { pageId, layout: getPreferences().attachmentFolder });
   if (!result.ok) {
     toast(result.error, { tone: 'error' });
     return [];

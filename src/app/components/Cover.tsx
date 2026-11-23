@@ -140,7 +140,7 @@ export function CoverPicker({
           className="button small"
           onClick={() =>
             void pickFiles('image/*', false).then(async (files) => {
-              const [stored] = await storeFiles(files);
+              const [stored] = await storeFiles(files, page.id);
               if (stored) pick(stored.id);
             })
           }
