@@ -1455,7 +1455,11 @@ function TableView({
                   ) : (
                     <td
                       key={column.id}
-                      className={stuckClass(index).trim() || undefined}
+                      className={
+                        // a tick box sits in the middle of its column, against the left edge it looked cramped
+                        `${column.type === 'checkbox' ? 'db-col-checkbox' : ''}${stuckClass(index)}`.trim() ||
+                        undefined
+                      }
                       style={stuck(index)}
                     >
                       <PropertyInput dbId={dbId} prop={column} row={row} editable={editable} />

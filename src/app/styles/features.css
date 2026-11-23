@@ -761,6 +761,10 @@ textarea.text-input.small {
 .db-table .is-frozen-last {
   box-shadow: inset -1px 0 0 var(--border-strong);
 }
+/* a tick box sits in the middle of its column, the box is a block of its own so it is centred by its margins */
+.db-table td.db-col-checkbox .prop-checkbox {
+  margin: 0 auto;
+}
 .db-table th.db-col-select,
 .db-table td.db-col-select {
   width: 34px;
