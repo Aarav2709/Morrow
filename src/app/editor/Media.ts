@@ -358,6 +358,8 @@ function postEmbed(dom: HTMLElement, src: string, id: string): HTMLElement {
     frame.src = `https://platform.twitter.com/embed/Tweet.html?id=${id}&dnt=true&theme=${dark ? 'dark' : 'light'}`;
     frame.title = t('editor.postOnX');
     frame.referrerPolicy = 'strict-origin-when-cross-origin';
+    // the frame is made as tall as the post, as x's own widget does, so it never scrolls inside the page
+    frame.setAttribute('scrolling', 'no');
     const resize = (message: MessageEvent) => {
       if (!frame.isConnected) {
         window.removeEventListener('message', resize);
